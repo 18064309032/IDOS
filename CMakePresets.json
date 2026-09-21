@@ -1,0 +1,43 @@
+{
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "win-x64-debug",
+            "displayName": "Windows x64 Debug",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "binaryDir": "${sourceDir}/../build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": { "type": "STRING", "value": "Debug" }
+            }
+        },
+        {
+            "name": "win-x64-release",
+            "displayName": "Windows x64 Release",
+            "inherits": "win-x64-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": { "type": "STRING", "value": "Release" }
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "win-x64-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "release",
+            "configurePreset": "win-x64-release",
+            "configuration": "Release"
+        }
+    ]
+}
