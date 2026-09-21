@@ -1,7 +1,7 @@
 #ifndef IDOS_DATA_OBJECT_H
 #define IDOS_DATA_OBJECT_H
 
-#include "../idosobject.h"
+#include "idosobject.h"
 #include "idos_core.h"
 
 /**
@@ -22,6 +22,22 @@ public:
     explicit IDOSDataObject(QObject* parent = nullptr);
 
     ~IDOSDataObject() override;
+
+    /**
+     * @brief 获取稳定类型标识。
+     * @return typeId 字符串（如 "idos.well"），用于注册表分发、序列化与插件扩展。
+     * 纯虚强制每个具体子类实现，防止遗漏。
+     */
+    virtual QString typeId() const = 0;
+
+    /**
+     * @brief 容器对象的 objectId 引用（可选）。
+     *
+     * 挂在其他对象之下的子对象（如网格属性引用所属网格）返回容器
+     * objectId；顶层对象返回空字符串。树模型据此分流：容器子对象
+     * 不进顶层，由容器的 provider 子树展示。
+     */
+    virtual QString containerId() const { return QString(); }
 
     /**
      * @brief 获取对象可见性。

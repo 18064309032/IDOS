@@ -30,6 +30,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Debug 产物加 d 后缀：idos_cored.dll / idos_renderd.dll / idosd.exe
 set(CMAKE_DEBUG_POSTFIX "d")
 
+# 所有产物统一输出到 build/bin（VS 多配置时为 bin/Debug），
+# 保证 exe 与自己的 DLL 同目录，避免 DLL 搜索失败（0xC0000135）
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 # MSVC 源文件按 UTF-8 解析（避免 C4819 中文注释警告）
 if(MSVC)
     add_compile_options(/utf-8)
@@ -37,16 +43,45 @@ endif()
 
 find_package(Qt5 COMPONENTS Core Widgets Network REQUIRED)
 
-find_package(VTK REQUIRED COMPONENTS
-    CommonCore
-    CommonDataModel
-    RenderingCore
-    RenderingOpenGL2
-    InteractionStyle
-    GUISupportQt
-)
+# 渲染模块开关：当前暂不实现渲染，默认关闭（无需 VTK）
+# 打开方式：cmake -DIDOS_ENABLE_RENDER=ON --preset win-x64-debug-local
+option(IDOS_ENABLE_RENDER "Enable VTK rendering module" OFF)
+
+if(IDOS_ENABLE_RENDER)
+    find_package(VTK REQUIRED COMPONENTS
+        CommonCore
+        CommonDataModel
+        RenderingCore
+        RenderingOpenGL2
+        InteractionStyle
+        GUISupportQt
+    )
+endif()
 
 # 源码按模块组织
 add_subdirectory(src)
 add_subdirectory(resources)
 add_subdirectory(i18n)
+
+# ---------------------------------------------------------------------
+# include 架构边界守护（最严格模式：每次构建自动执行，违规即构建失败）
+# 规则明细见 tools/check_includes.ps1 头部注释
+# ---------------------------------------------------------------------
+set(IDOS_CHECK_INCLUDES_SCRIPT "${CMAKE_SOURCE_DIR}/tools/check_includes.ps1")
+
+add_custom_target(check_includes ALL
+    COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${IDOS_CHECK_INCLUDES_SCRIPT}"
+            -SourceRoot "${CMAKE_SOURCE_DIR}/src"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "检查 include 架构边界..."
+    VERBATIM
+)
+
+# 同时纳入 CTest（CI / 手动体检：ctest -R check_includes）
+enable_testing()
+add_test(NAME check_includes
+    COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${IDOS_CHECK_INCLUDES_SCRIPT}"
+            -SourceRoot "${CMAKE_SOURCE_DIR}/src"
+)

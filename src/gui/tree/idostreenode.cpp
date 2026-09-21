@@ -34,6 +34,9 @@ void IDOSTreeNode::setName(const QString& name) { m_name = name; }
 QIcon IDOSTreeNode::icon() const { return m_icon; }
 void IDOSTreeNode::setIcon(const QIcon& icon) { m_icon = icon; }
 
+QString IDOSTreeNode::tag() const { return m_tag; }
+void IDOSTreeNode::setTag(const QString& tag) { m_tag = tag; }
+
 void IDOSTreeNode::appendChild(IDOSTreeNode* child)
 {
     if (child == nullptr) return;

@@ -2,9 +2,12 @@
 add_library(idos_core SHARED
     idosobject.cpp
     idosproject.cpp
+    idostyperegistry.cpp
     data/idosdataobject.cpp
     data/grid/idosgrid.cpp
     data/grid/idosgridcell.cpp
+    data/grid/idosgridproperty.cpp
+    data/model/idosmodel.cpp
     data/well/idoswell.cpp
     data/well/idoswellcompletion.cpp
     data/well/idoswellsegment.cpp
@@ -13,10 +16,9 @@ add_library(idos_core SHARED
 )
 target_include_directories(idos_core
     PUBLIC
+        # 仅暴露模块根：include 一律从根出发写全路径
+        # （如 #include "data/grid/idosgrid.h"），禁止 "../" 目录穿越
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/data
-        ${CMAKE_CURRENT_SOURCE_DIR}/data/grid
-        ${CMAKE_CURRENT_SOURCE_DIR}/data/well
 )
 target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui)
 target_compile_definitions(idos_core PRIVATE IDOS_CORE_LIB)

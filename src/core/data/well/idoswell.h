@@ -1,7 +1,7 @@
 #ifndef IDOS_WELL_H
 #define IDOS_WELL_H
 
-#include "../idosdataobject.h"
+#include "data/idosdataobject.h"
 #include "idoswellcompletion.h"
 #include "idoswellsegment.h"
 #include "idoswellcontrol.h"
@@ -29,6 +29,8 @@ public:
 
     explicit IDOSWell(QObject* parent = nullptr);
     ~IDOSWell() override;
+
+    QString typeId() const override { return QStringLiteral("idos.well"); }
 
     /** 井类型。 */
     Type type() const;

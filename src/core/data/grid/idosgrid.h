@@ -1,7 +1,7 @@
 #ifndef IDOS_GRID_H
 #define IDOS_GRID_H
 
-#include "../idosdataobject.h"
+#include "data/idosdataobject.h"
 #include "idosgridcell.h"
 #include <QVector>
 #include <QVector3D>
@@ -28,6 +28,8 @@ public:
 
     explicit IDOSGrid(QObject* parent = nullptr);
     ~IDOSGrid() override;
+
+    QString typeId() const override { return QStringLiteral("idos.grid"); }
 
     /** 网格类型。 */
     Type type() const;

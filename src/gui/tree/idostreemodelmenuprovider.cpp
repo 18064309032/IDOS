@@ -1,31 +1,31 @@
-#include "idosmodeltreemenuprovider.h"
-#include "idosmodeltreemodel.h"
+#include "idostreemodelmenuprovider.h"
+#include "idostreemodel.h"
+#include "idostreeitemprovider.h"
 #include "data/idosdataobject.h"
-#include "data/grid/idosgrid.h"
 #include <QTreeView>
 #include <QMenu>
 #include <QAction>
 
-IDOSModelTreeMenuProvider::IDOSModelTreeMenuProvider(QObject* parent)
+IDOSTreeModelMenuProvider::IDOSTreeModelMenuProvider(QObject* parent)
     : IDOSTreeMenuProvider(parent)
     , m_model(nullptr)
     , m_view(nullptr)
 {
 }
 
-IDOSModelTreeMenuProvider::~IDOSModelTreeMenuProvider() = default;
+IDOSTreeModelMenuProvider::~IDOSTreeModelMenuProvider() = default;
 
-void IDOSModelTreeMenuProvider::setModel(IDOSModelTreeModel* model)
+void IDOSTreeModelMenuProvider::setModel(IDOSTreeModel* model)
 {
     m_model = model;
 }
 
-void IDOSModelTreeMenuProvider::setTreeView(QTreeView* view)
+void IDOSTreeModelMenuProvider::setTreeView(QTreeView* view)
 {
     m_view = view;
 }
 
-QMenu* IDOSModelTreeMenuProvider::createContextMenu()
+QMenu* IDOSTreeModelMenuProvider::createContextMenu()
 {
     if (m_model == nullptr || m_view == nullptr) return nullptr;
 
@@ -47,16 +47,18 @@ QMenu* IDOSModelTreeMenuProvider::createContextMenu()
 
     menu->addSeparator();
 
-    // 类型特定操作
-    if (auto* grid = qobject_cast<IDOSGrid*>(obj))
+    // 类型特定操作由按 typeId 注册的 provider 提供
+    if (obj != nullptr)
     {
-        Q_UNUSED(grid);
-        // 网格特定操作暂时没有
+        if (auto* provider = m_model->providerFor(obj->typeId()))
+        {
+            provider->addMenuActions(menu, obj);
+        }
     }
 
     menu->addSeparator();
 
-    // 删除（暂时禁用）
+    // 删除（暂时禁用；后续需引用检查：被模型引用的对象先断引用）
     auto* deleteAction = new QAction(tr("Delete"), menu);
     deleteAction->setEnabled(false);
     deleteAction->setStatusTip(tr("Delete is not available yet"));

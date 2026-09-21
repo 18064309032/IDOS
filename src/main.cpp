@@ -1,35 +1,59 @@
 #include <QApplication>
-#include <QVTKOpenGLWindow.h>
+#include <QLocale>
+#include <QTranslator>
 
-#include <vtkActor.h>
-#include <vtkCubeSource.h>
-#include <vtkNew.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderer.h>
+#include "idosmainwindow.h"
+#include "idosproject.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridproperty.h"
+#include "data/model/idosmodel.h"
+#include "data/well/idoswell.h"
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    vtkNew<vtkCubeSource> cube;
-    cube->SetXLength(2.0);
-    cube->SetYLength(2.0);
-    cube->SetZLength(2.0);
+    // 加载翻译：优先 exe 同目录（发布布局），其次构建目录 i18n/（开发布局）
+    auto* translator = new QTranslator(&app);
+    const QString exeDir = QCoreApplication::applicationDirPath();
+    if (translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"), exeDir)
+        || translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"),
+                            exeDir + QStringLiteral("/../../i18n"))) {
+        app.installTranslator(translator);
+    }
 
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(cube->GetOutputPort());
+    // 演示工程：网格（含属性）进模型树，井（带射孔/轨迹）进输入树"井组"
+    IDOSProject project;
 
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
+    auto* grid = new IDOSGrid(&project);
+    grid->setName(QStringLiteral("Demo Grid"));
+    grid->setDimensions(10, 10, 5);
+    project.addObject(grid);
 
-    vtkNew<vtkRenderer> renderer;
-    renderer->AddActor(actor);
-    renderer->SetBackground(0.1, 0.2, 0.4);
+    auto* permx = new IDOSGridProperty(&project);
+    permx->setName(QStringLiteral("Permeability X"));
+    permx->setKeyword(QStringLiteral("PERMX"));
+    permx->setGridId(grid->objectId());          // containerId → 挂网格子树
+    permx->setDimensions(10, 10, 5);
+    QVector<double> permValues(10 * 10 * 5, 100.0);
+    permx->setValues(permValues);
+    project.addObject(permx);                    // 模型树：网格 → 属性 → 静态属性 → PERMX
 
-    QVTKOpenGLWindow window;
-    window.renderWindow()->AddRenderer(renderer);
-    window.resize(800, 600);
+    auto* well = new IDOSWell(&project);
+    well->setName(QStringLiteral("Well-1"));
+    well->addCompletion(IDOSWellCompletion());
+    well->addSegment(IDOSWellSegment());
+    project.addObject(well);
+
+    // 模拟工况：按 objectId 引用网格与井（引用 = 配料清单，数据本体不搬家）
+    auto* simCase = new IDOSModel(&project);
+    simCase->setName(QStringLiteral("Demo Case"));
+    simCase->setGridId(grid->objectId());
+    simCase->addWellRef(well->objectId());
+    project.addObject(simCase);
+
+    IDOSMainWindow window;
+    window.setProject(&project);
     window.show();
 
     return app.exec();

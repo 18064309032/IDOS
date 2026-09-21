@@ -47,6 +47,13 @@ public:
     QIcon icon() const;
     void setIcon(const QIcon& icon);
 
+    /**
+     * 通用标签：provider 的暂存空间（如引用影子节点存引用 objectId、
+     * 工况节点存成员签名），机制层不解释其内容。
+     */
+    QString tag() const;
+    void setTag(const QString& tag);
+
     // ===== 修改 =====
 
     /** 追加子节点，接管所有权。 */
@@ -63,6 +70,7 @@ protected:
     IDOSTreeNode* m_parent;
     QString m_name;
     QIcon m_icon;
+    QString m_tag;
     bool m_isGroup;
 };
 
