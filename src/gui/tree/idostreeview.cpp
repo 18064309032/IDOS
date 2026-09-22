@@ -30,7 +30,7 @@ void IDOSTreeView::contextMenuEvent(QContextMenuEvent* event)
         return;
     }
 
-    // QGIS 风格：点击空区域则清除当前选中
+    // 点击空区域则清除当前选中
     const QModelIndex clickedIndex = indexAt(event->pos());
     if (!clickedIndex.isValid())
     {

@@ -33,6 +33,9 @@ public:
     /** 按 objectId 查找数据对象。找不到返回 nullptr。 */
     IDOSDataObject* objectById(const QString& objectId) const;
 
+    /** 按对象名查找数据对象（provider 按井名汇合时用）。重名返回第一个；找不到返回 nullptr。 */
+    IDOSDataObject* objectByName(const QString& name) const;
+
     /** 获取所有数据对象。 */
     QList<IDOSDataObject*> objects() const;
 

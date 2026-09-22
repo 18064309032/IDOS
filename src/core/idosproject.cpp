@@ -49,6 +49,15 @@ IDOSDataObject* IDOSProject::objectById(const QString& objectId) const
     return m_objects.value(objectId, nullptr);
 }
 
+IDOSDataObject* IDOSProject::objectByName(const QString& name) const
+{
+    for (IDOSDataObject* object : m_objects)
+    {
+        if (object->name() == name) return object;
+    }
+    return nullptr;
+}
+
 QList<IDOSDataObject*> IDOSProject::objects() const
 {
     return m_objects.values();

@@ -3,3 +3,10 @@
 *.vs
 
 *.trae
+
+*.box-agent
+
+*.box-agent-scratch
+
+.vscode
+

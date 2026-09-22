@@ -13,9 +13,8 @@ class IDOSTreeNode;
  * @brief 按类型注册的树节点构建策略（扩展点）。
  *
  * 每种数据类型注册一个 provider，决定该类型对象在树上的子节点结构与
- * 右键菜单（仿 QGIS QgsDataItemProvider 模式）。树模型本身不认识具体
- * 类型，只按 IDOSDataObject::typeId() 查表分发——插件注册自己的
- * provider 即可让新类型上树。
+ * 右键菜单。树模型本身不认识具体类型，只按 IDOSDataObject::typeId()
+ * 查表分发——插件注册自己的 provider 即可让新类型上树。
  *
  * 非 QObject，由注册方（通常为 IDOSTreeModel 子类）管理生命周期。
  */

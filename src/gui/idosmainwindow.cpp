@@ -4,15 +4,16 @@
 #include "modeltree/idosmodeltreemodel.h"
 #include "modeltree/idosmodeltreeview.h"
 #include "tree/idostreemodelmenuprovider.h"
-#include "tree/idostreeview.h"
 #include "idosproject.h"
 
-#include <QDockWidget>
+#include <DockManager.h>
+#include <DockWidget.h>
+
 #include <QLabel>
 
 IDOSMainWindow::IDOSMainWindow(QWidget* parent)
-    : QMainWindow(parent)
-    , m_actionNewProject(nullptr)   // 占位：SARibbon 接入后创建并入 ribbon 面板
+    : SARibbonMainWindow(parent)
+    , m_actionNewProject(nullptr)
     , m_actionOpenProject(nullptr)
     , m_actionSaveProject(nullptr)
     , m_actionImportWell(nullptr)
@@ -22,48 +23,59 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_modelTreeModel(new IDOSModelTreeModel(this))
     , m_inputView(nullptr)
     , m_modelView(nullptr)
+    , m_dockManager(nullptr)
 {
     setWindowTitle(QStringLiteral("IDOS"));
     resize(1280, 800);
 
-    // 双树同源：成对的 model/view 子类各管一个面板，按类型注册表分流。
-    // 布局参照 Petrel/tNavigator：两棵树上下排列停靠左侧，右侧留给 3D 视图
-    m_inputView = new IDOSInputTreeView(this);
-    createTreeDock(QStringLiteral("inputTreeDock"), tr("Input"),
-                   m_inputModel, m_inputView, Qt::LeftDockWidgetArea);
-
-    m_modelView = new IDOSModelTreeView(this);
-    createTreeDock(QStringLiteral("modelTreeDock"), tr("Model"),
-                   m_modelTreeModel, m_modelView, Qt::LeftDockWidgetArea);
+    // CDockManager 作为 central widget，ADS 接管整个中央区域的停靠管理
+    m_dockManager = new ads::CDockManager(this);
+    // 清空 ADS 内部 stylesheet，避免覆盖 SARibbon 主题
+    m_dockManager->setStyleSheet(QString());
+    setCentralWidget(m_dockManager);
 
     // 中央区域占位，渲染模块接入后替换为 3D 视图
-    auto* placeholder = new QLabel(tr("3D View (renderer not yet connected)"), this);
+    QLabel* placeholder = new QLabel(tr("3D View (renderer not yet connected)"), this);
     placeholder->setAlignment(Qt::AlignCenter);
-    setCentralWidget(placeholder);
+    ads::CDockWidget* centralDock = new ads::CDockWidget(m_dockManager, tr("3D View"));
+    centralDock->setObjectName(QStringLiteral("central3DDock"));
+    centralDock->setWidget(placeholder);
+    centralDock->setFeatures(ads::CDockWidget::NoDockWidgetFeatures);
+    m_dockManager->setCentralWidget(centralDock);
+
+    // ---- 输入树 ----
+    m_inputView = new IDOSInputTreeView(this);
+    m_inputView->setModel(m_inputModel);
+
+    IDOSTreeModelMenuProvider* inputMenuProvider = new IDOSTreeModelMenuProvider(this);
+    inputMenuProvider->setModel(m_inputModel);
+    inputMenuProvider->setTreeView(m_inputView);
+    m_inputView->setMenuProvider(inputMenuProvider);
+
+    ads::CDockWidget* inputDock = new ads::CDockWidget(m_dockManager, tr("Input"));
+    inputDock->setObjectName(QStringLiteral("inputTreeDock"));
+    inputDock->setWidget(m_inputView);
+    inputDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    ads::CDockAreaWidget* inputArea = m_dockManager->addDockWidget(ads::LeftDockWidgetArea, inputDock);
+
+    // ---- 模型树 ----
+    m_modelView = new IDOSModelTreeView(this);
+    m_modelView->setModel(m_modelTreeModel);
+
+    IDOSTreeModelMenuProvider* modelMenuProvider = new IDOSTreeModelMenuProvider(this);
+    modelMenuProvider->setModel(m_modelTreeModel);
+    modelMenuProvider->setTreeView(m_modelView);
+    m_modelView->setMenuProvider(modelMenuProvider);
+
+    ads::CDockWidget* modelDock = new ads::CDockWidget(m_dockManager, tr("Model"));
+    modelDock->setObjectName(QStringLiteral("modelTreeDock"));
+    modelDock->setWidget(m_modelView);
+    modelDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    // 相对 inputArea 底部插入，左侧形成上下分割而非标签页
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, modelDock, inputArea);
 }
 
 IDOSMainWindow::~IDOSMainWindow() = default;
-
-IDOSTreeView* IDOSMainWindow::createTreeDock(const QString& objectName, const QString& title,
-                                             IDOSTreeModel* model, IDOSTreeView* view,
-                                             Qt::DockWidgetArea area)
-{
-    view->setModel(model);
-
-    // 右键菜单：可见性切换等（Provider 由窗口持有）
-    auto* menuProvider = new IDOSTreeModelMenuProvider(this);
-    menuProvider->setModel(model);
-    menuProvider->setTreeView(view);
-    view->setMenuProvider(menuProvider);
-
-    auto* dock = new QDockWidget(title, this);
-    dock->setObjectName(objectName);   // 稳定标识（saveState/restoreState 用），不随翻译变化
-    dock->setWidget(view);
-    dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
-    addDockWidget(area, dock);
-
-    return view;
-}
 
 IDOSInputTreeView* IDOSMainWindow::inputTreeView() const { return m_inputView; }
 

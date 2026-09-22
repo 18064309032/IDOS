@@ -5,6 +5,8 @@
 #include "idos_core.h"
 #include <QStringList>
 
+class IDOSProject;
+
 /**
  * @brief 模拟工况对象（模型树的根业务对象，如 "UPSACLE_GASWATER_ECL"）。
  *
@@ -47,12 +49,49 @@ public:
     /** 是否引用了指定对象（删除保护查询用）。 */
     bool references(const QString& objectId) const;
 
+    // ===== 引用解析（provider 留 pending 名/路径，Coordinator 后处理）=====
+
+    /**
+     * @brief provider 暂存的待解析井名清单（来自 .DATA 的 WELSPECS）。
+     *
+     * 不是序列化字段——只在导入瞬时存在，resolveReferences 跑完即清空。
+     * 导入协调者 mergeFrom/addObject 完成后调 resolveReferences 把名字
+     * 通过 Project::objectByName 转 objectId 写进 m_wellIds。
+     */
+    QStringList pendingWellNames() const;
+    void setPendingWellNames(const QStringList& names);
+
+    /**
+     * @brief .DATA 的 GRID 段 INCLUDE 的 .EGRID 绝对路径。
+     *
+     * 瞬时字段——不序列化。pendingImportPaths() 返回它让 Coordinator
+     * 递归把网格加进 Project，之后 resolveReferences 走 basename 找 grid
+     * 把 gridId 补上。二次导入完成后清空。
+     */
+    QString pendingGridPath() const;
+    void setPendingGridPath(const QString& path);
+
+    /**
+     * @brief 返回 [m_pendingGridPath]（空则返回空列表，基类约定）。
+     */
+    QStringList pendingImportPaths() const override;
+
+    /**
+     * @brief 用 Project 解析 pendingWellNames → wellIds + pendingGridPath → gridId。
+     *
+     * 幂等：命中的井名/gridId 解析后从 pending 清除；未命中的井名保留等
+     * 下次导入补链。gridId 解析失败时 pending path 保留供下次。
+     */
+    void resolveReferences(IDOSProject* project) override;
+
     Q_SIGNAL void gridRefChanged();
     Q_SIGNAL void wellRefsChanged();
 
 private:
     QString m_gridId;
     QStringList m_wellIds;
+    QStringList m_pendingWellNames;   // 瞬时：resolveReferences 后清空命中部分
+    QString m_pendingGridPath;        // 瞬时：gridId 解析后清空
 };
 
 #endif // IDOS_MODEL_H

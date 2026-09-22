@@ -88,6 +88,14 @@ public:
     /** ACTNUM 原始数组（只读访问）。 */
     const QVector<int>& actnum() const;
 
+    /**
+     * @brief 同名网格重复导入时整体替换（一个 grid 文件即一份完整网格）。
+     *
+     * 类型不符 no-op（基类约定）。命中即用 other 的 dims/COORD/ZCORN/ACTNUM
+     * 全量覆盖本对象，再发射 gridDataChanged/dataChanged。
+     */
+    void mergeFrom(const IDOSDataObject* other) override;
+
     Q_SIGNAL void typeChanged(Type type);
     Q_SIGNAL void dimensionsChanged(int nx, int ny, int nz);
     Q_SIGNAL void gridDataChanged();

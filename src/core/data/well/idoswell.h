@@ -6,6 +6,9 @@
 #include "idoswellsegment.h"
 #include "idoswellcontrol.h"
 #include "idoswellhead.h"
+#include "idoswellpath.h"
+#include "idoswelllogset.h"
+#include "idoswellmarkerset.h"
 #include <QList>
 
 /**
@@ -66,6 +69,40 @@ public:
     IDOSWellHead wellHead() const;
     void setWellHead(const IDOSWellHead& head);
 
+    // ===== 井数据组合（按井名汇合的四类输入）=====
+
+    /** 井眼轨迹（.dev，实测井身几何；区别于模拟器 segments/WELSEGS）。 */
+    const IDOSWellPath& path() const;
+    void setPath(const IDOSWellPath& path);
+
+    /** 测井曲线集合（LAS）。 */
+    const IDOSWellLogSet& logs() const;
+    void setLogs(const IDOSWellLogSet& logs);
+
+    /** 层位 pick 集合（Well Tops）。 */
+    const IDOSWellMarkerSet& markers() const;
+    void setMarkers(const IDOSWellMarkerSet& markers);
+
+    // ===== 合并支持（mergeFrom 判断"该字段是否被填充过"用）=====
+
+    /** 井头是否已被填充（provider 调过 setWellHead）。 */
+    bool hasWellHead() const;
+    /** 井眼轨迹是否已被填充。 */
+    bool hasPath() const;
+    /** 测井曲线集合是否已被填充。 */
+    bool hasLogs() const;
+    /** 层位 pick 集合是否已被填充。 */
+    bool hasMarkers() const;
+
+    /**
+     * @brief 把同类井的已填充字段合并进本对象。
+     *
+     * 仅合并对方 hasXxx 为 true 的字段：header/path 整体覆盖；
+     * logs 按 channel 名覆盖、tops 按 horizon 名覆盖（同名替换、新名追加）。
+     * 类型不符（非 IDOSWell）no-op。供 IDOSImportCoordinator 多态分派。
+     */
+    void mergeFrom(const IDOSDataObject* other) override;
+
     /** 开关井状态。 */
     bool isOpen() const;
     void setOpen(bool open);
@@ -77,6 +114,9 @@ public:
     Q_SIGNAL void segmentsChanged(const QList<IDOSWellSegment>& segments);
     Q_SIGNAL void wellControlChanged(const IDOSWellControl& control);
     Q_SIGNAL void wellHeadChanged(const IDOSWellHead& head);
+    Q_SIGNAL void pathChanged(const IDOSWellPath& path);
+    Q_SIGNAL void logsChanged(const IDOSWellLogSet& logs);
+    Q_SIGNAL void markersChanged(const IDOSWellMarkerSet& markers);
     Q_SIGNAL void openStatusChanged(bool open);
 
 private:
@@ -89,6 +129,13 @@ private:
     QList<IDOSWellSegment> m_segments;
     IDOSWellControl m_wellControl;
     IDOSWellHead m_wellHead;
+    IDOSWellPath m_path;
+    IDOSWellLogSet m_logs;
+    IDOSWellMarkerSet m_markers;
+    bool m_hasWellHead;
+    bool m_hasPath;
+    bool m_hasLogs;
+    bool m_hasMarkers;
     bool m_open;
 };
 

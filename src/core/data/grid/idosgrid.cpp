@@ -139,3 +139,12 @@ void IDOSGrid::setCornerPointData(int nx, int ny, int nz,
 const QVector<double>& IDOSGrid::coord() const { return m_coord; }
 const QVector<double>& IDOSGrid::zcorn() const { return m_zcorn; }
 const QVector<int>& IDOSGrid::actnum() const { return m_actnum; }
+
+void IDOSGrid::mergeFrom(const IDOSDataObject* other)
+{
+    if (other == nullptr || other->typeId() != typeId()) return;   // 类型不符 no-op
+    const IDOSGrid* g = static_cast<const IDOSGrid*>(other);
+
+    // 网格整体替换：dims + COORD/ZCORN/ACTNUM 一次性覆盖
+    setCornerPointData(g->m_nx, g->m_ny, g->m_nz, g->m_coord, g->m_zcorn, g->m_actnum);
+}

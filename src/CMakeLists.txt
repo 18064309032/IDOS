@@ -68,4 +68,22 @@ if(WIN32)
             COMMENT "Copying VTK DLLs to exe directory..."
         )
     endif()
+
+    # Deploy SARibbon DLLs（按配置拷贝对应 Debug/Release 版本，避免错配）
+    # 注意：生成器表达式必须压成单行，换行+缩进会原样塞进展开结果，
+    # 导致 cmd 按行解析时 copy_if_different 源参数被截断
+    add_custom_command(TARGET idos POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<IF:$<CONFIG:Debug>,${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/bin/SARibbonBard.dll,${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/bin/SARibbonBar.dll>"
+            "$<TARGET_FILE_DIR:idos>"
+        COMMENT "Copying SARibbon DLL to exe directory..."
+    )
+
+    # Deploy Qt ADS DLLs（按配置拷贝对应 Debug/Release 版本）
+    add_custom_command(TARGET idos POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<IF:$<CONFIG:Debug>,${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/bin/qtadvanceddocking-qt5d.dll,${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/bin/qtadvanceddocking-qt5.dll>"
+            "$<TARGET_FILE_DIR:idos>"
+        COMMENT "Copying Qt ADS DLL to exe directory..."
+    )
 endif()

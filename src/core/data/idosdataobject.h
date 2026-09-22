@@ -4,6 +4,10 @@
 #include "idosobject.h"
 #include "idos_core.h"
 
+#include <QStringList>
+
+class IDOSProject;
+
 /**
  * @brief 数据领域对象的基类。
  *
@@ -38,6 +42,43 @@ public:
      * 不进顶层，由容器的 provider 子树展示。
      */
     virtual QString containerId() const { return QString(); }
+
+    /**
+     * @brief 把同类的数据合并进本对象（导入协调者多态分派用）。
+     *
+     * 各子类按自己语义合并：井按井名汇合 header/path/logs/markers，
+     * 网格按网格名等。类型不符应 no-op（子类用 typeId 校验）。
+     * 调用方 IDOSImportCoordinator 只 dispatch，不写类型判断、不强转。
+     *
+     * 基类默认 no-op 容错，具体子类应 override 实现自身合并语义。
+     */
+    virtual void mergeFrom(const IDOSDataObject* other) { (void)other; }
+
+    /**
+     * @brief 导入完成后用 Project 解析对象内引用（按名→objectId）。
+     *
+     * 适用场景：provider 从外部文件只能拿到"名字"（如 ECLIPSE .DATA 的
+     * 井名），但领域对象需存 objectId 弱引用。mergeFrom/addObject 落定后，
+     * Coordinator 调本钩子，让对象拿 Project 把名字解析成 objectId。
+     *
+     * 基类默认 no-op（多数对象无引用需要解析）；IDOSModel 等带弱引用的
+     * 子类 override 实现。子类自己保证重复调用幂等（清空 pending）。
+     */
+    virtual void resolveReferences(IDOSProject* project) { (void)project; }
+
+    /**
+     * @brief 返回需要 Coordinator 二次递归导入的外部文件路径。
+     *
+     * 适用场景：某个对象的源文件里 INCLUDE 了别的文件（如 .DATA 里 INCLUDE
+     * 一个 .EGRID），但本对象不直接解析那个文件——只留路径让 Coordinator
+     * 递归走对应 provider 把被引用对象加进 Project。Coordinator 在调
+     * resolveReferences 之前会先递归 import 全部 pendingImportPaths，使
+     * resolveReferences 时被引用对象已在 Project 里。
+     *
+     * 基类默认返回空（多数对象不依赖其他文件）；IDOSModel 等 override
+     * 返回自己留的路径。子类自己保证重复调用幂等（resolveReferences 后清空）。
+     */
+    virtual QStringList pendingImportPaths() const { return {}; }
 
     /**
      * @brief 获取对象可见性。

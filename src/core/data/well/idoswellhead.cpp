@@ -7,6 +7,8 @@ IDOSWellHead::IDOSWellHead()
     , m_waterDepth(0.0)
     , m_wellheadPressure(0.0)
     , m_wellheadTemperature(0.0)
+    , m_topDepth(0.0)
+    , m_bottomDepth(0.0)
 {
 }
 
@@ -27,3 +29,9 @@ void IDOSWellHead::setWellheadPressure(double pressure) { m_wellheadPressure = p
 
 double IDOSWellHead::wellheadTemperature() const { return m_wellheadTemperature; }
 void IDOSWellHead::setWellheadTemperature(double temperature) { m_wellheadTemperature = temperature; }
+
+double IDOSWellHead::topDepth() const { return m_topDepth; }
+void IDOSWellHead::setTopDepth(double depth) { m_topDepth = depth; }
+
+double IDOSWellHead::bottomDepth() const { return m_bottomDepth; }
+void IDOSWellHead::setBottomDepth(double depth) { m_bottomDepth = depth; }

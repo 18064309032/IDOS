@@ -1,4 +1,7 @@
 #include "idoswell.h"
+#include "idoswellpath.h"
+#include "idoswelllogset.h"
+#include "idoswellmarkerset.h"
 
 IDOSWell::IDOSWell(QObject* parent)
     : IDOSDataObject(parent)
@@ -7,6 +10,10 @@ IDOSWell::IDOSWell(QObject* parent)
     , m_j(0)
     , m_k(0)
     , m_referenceDepth(0.0)
+    , m_hasWellHead(false)
+    , m_hasPath(false)
+    , m_hasLogs(false)
+    , m_hasMarkers(false)
     , m_open(true)
 {
 }
@@ -98,7 +105,35 @@ IDOSWellHead IDOSWell::wellHead() const { return m_wellHead; }
 void IDOSWell::setWellHead(const IDOSWellHead& head)
 {
     m_wellHead = head;
+    m_hasWellHead = true;
     emit wellHeadChanged(m_wellHead);
+    emit dataChanged();
+}
+
+const IDOSWellPath& IDOSWell::path() const { return m_path; }
+void IDOSWell::setPath(const IDOSWellPath& path)
+{
+    m_path = path;
+    m_hasPath = true;
+    emit pathChanged(m_path);
+    emit dataChanged();
+}
+
+const IDOSWellLogSet& IDOSWell::logs() const { return m_logs; }
+void IDOSWell::setLogs(const IDOSWellLogSet& logs)
+{
+    m_logs = logs;
+    m_hasLogs = true;
+    emit logsChanged(m_logs);
+    emit dataChanged();
+}
+
+const IDOSWellMarkerSet& IDOSWell::markers() const { return m_markers; }
+void IDOSWell::setMarkers(const IDOSWellMarkerSet& markers)
+{
+    m_markers = markers;
+    m_hasMarkers = true;
+    emit markersChanged(m_markers);
     emit dataChanged();
 }
 
@@ -109,4 +144,39 @@ void IDOSWell::setOpen(bool open)
     m_open = open;
     emit openStatusChanged(m_open);
     emit dataChanged();
+}
+
+bool IDOSWell::hasWellHead() const { return m_hasWellHead; }
+bool IDOSWell::hasPath() const { return m_hasPath; }
+bool IDOSWell::hasLogs() const { return m_hasLogs; }
+bool IDOSWell::hasMarkers() const { return m_hasMarkers; }
+
+void IDOSWell::mergeFrom(const IDOSDataObject* other)
+{
+    if (other == nullptr || other->typeId() != typeId()) return;   // 类型不符 no-op
+    const IDOSWell* w = static_cast<const IDOSWell*>(other);
+
+    // header / path：整字段覆盖
+    if (w->hasWellHead()) setWellHead(w->wellHead());
+    if (w->hasPath())     setPath(w->path());
+
+    // logs：按 channel 名覆盖（同名替换、新名追加）
+    if (w->hasLogs())
+    {
+        IDOSWellLogSet merged = m_logs;   // 值类型拷贝
+        const QList<IDOSWellLogChannel> chans = w->logs().channels();
+        for (const IDOSWellLogChannel& ch : chans)
+            merged.addChannel(ch);
+        setLogs(merged);
+    }
+
+    // tops：按 horizon 名覆盖（同名覆盖深度、新名追加）
+    if (w->hasMarkers())
+    {
+        IDOSWellMarkerSet merged = m_markers;
+        const QList<IDOSWellMarker> ms = w->markers().markers();
+        for (const IDOSWellMarker& m : ms)
+            merged.addMarker(m);
+        setMarkers(merged);
+    }
 }

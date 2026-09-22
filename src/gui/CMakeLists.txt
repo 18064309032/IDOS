@@ -26,5 +26,5 @@ target_include_directories(idos_gui
         # （如 #include "tree/idostreemodel.h"），禁止 "../" 目录穿越
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)
+target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets SARibbon::SARibbonBar ADS::ADS)
 target_compile_definitions(idos_gui PRIVATE IDOS_GUI_LIB)

@@ -38,6 +38,14 @@ public:
     double wellheadTemperature() const;
     void setWellheadTemperature(double temperature);
 
+    /** 测井顶深（米，井头汇总表 Top_Depth）。 */
+    double topDepth() const;
+    void setTopDepth(double depth);
+
+    /** 测井底深（米，井头汇总表 Bottom Depth）。 */
+    double bottomDepth() const;
+    void setBottomDepth(double depth);
+
 private:
     double m_surfaceX;
     double m_surfaceY;
@@ -45,6 +53,8 @@ private:
     double m_waterDepth;
     double m_wellheadPressure;
     double m_wellheadTemperature;
+    double m_topDepth;
+    double m_bottomDepth;
 };
 
 #endif // IDOS_WELL_HEAD_H

@@ -27,8 +27,7 @@ enum class IDOSObjectCategory
  * @brief 数据对象类型的元数据档案卡（扩展点）。
  *
  * 描述一种数据类型：稳定 typeId、显示名、工厂函数、类别与输入树分组。
- * 官方类型与插件类型走同一注册通道（仿 QGIS QgsLayoutItemAbstractMetadata 模式）。
- * 非 QObject，由注册表通过 unique_ptr 持有。
+ * 官方类型与插件类型走同一注册通道，非 QObject，由注册表通过 unique_ptr 持有。
  */
 class CORE_EXPORT IDOSObjectTypeMetadata
 {

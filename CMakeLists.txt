@@ -43,6 +43,52 @@ endif()
 
 find_package(Qt5 COMPONENTS Core Widgets Network REQUIRED)
 
+# ---------------------------------------------------------------------
+# SARibbon 第三方库（仅 include/lib/bin 三段式布局，无 CMake config 文件）
+# 通过 IMPORTED target 暴露：include 路径 + 链接库 + Debug/Release 自动切换
+# Debug 产物 SARibbonBard.{dll,lib}，Release 产物 SARibbonBar.{dll,lib}
+# ---------------------------------------------------------------------
+add_library(SARibbon::SARibbonBar SHARED IMPORTED)
+set_target_properties(SARibbon::SARibbonBar PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/include"
+    # VS 多配置构建按配置自动选库；IMPORTED_LOCATION 为 fallback（命令行单配置）
+    IMPORTED_LOCATION_DEBUG   "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/bin/SARibbonBard.dll"
+    IMPORTED_IMPLIB_DEBUG      "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/lib/SARibbonBard.lib"
+    IMPORTED_LOCATION_RELEASE  "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/bin/SARibbonBar.dll"
+    IMPORTED_IMPLIB_RELEASE    "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/lib/SARibbonBar.lib"
+    IMPORTED_LOCATION          "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/bin/SARibbonBar.dll"
+    IMPORTED_IMPLIB            "${CMAKE_SOURCE_DIR}/thirdparty/SARibbon/lib/SARibbonBar.lib"
+)
+
+# ---------------------------------------------------------------------
+# Qt Advanced Docking System（预编译三段式：include/lib/bin，无 CMake config）
+# 通过 IMPORTED target 暴露：include 路径 + 链接库 + Debug/Release 自动切换
+# Debug: qtadvanceddocking-qt5d.{dll,lib}，Release: qtadvanceddocking-qt5.{dll,lib}
+# ---------------------------------------------------------------------
+add_library(ADS::ADS SHARED IMPORTED)
+set_target_properties(ADS::ADS PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/include"
+    IMPORTED_LOCATION_DEBUG   "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/bin/qtadvanceddocking-qt5d.dll"
+    IMPORTED_IMPLIB_DEBUG      "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/lib/qtadvanceddocking-qt5d.lib"
+    IMPORTED_LOCATION_RELEASE  "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/bin/qtadvanceddocking-qt5.dll"
+    IMPORTED_IMPLIB_RELEASE    "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/lib/qtadvanceddocking-qt5.lib"
+    IMPORTED_LOCATION          "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/bin/qtadvanceddocking-qt5.dll"
+    IMPORTED_IMPLIB            "${CMAKE_SOURCE_DIR}/thirdparty/AdvancedDockingSystem/lib/qtadvanceddocking-qt5.lib"
+)
+
+# ---------------------------------------------------------------------
+# OPM (opm-common) 静态库：ECLIPSE 输入文件解析
+# 三段式布局：include + lib（静态库，无 DLL）。Debug/Release 自动切换。
+# 链入 idos_providers 提供 .DATA 解析能力（Parser → Deck → EclipseState）。
+# ---------------------------------------------------------------------
+add_library(OPM::opmcommon STATIC IMPORTED)
+set_target_properties(OPM::opmcommon PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/opm/include"
+    IMPORTED_LOCATION_DEBUG   "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommond.lib"
+    IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
+    IMPORTED_LOCATION         "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
+)
+
 # 渲染模块开关：当前暂不实现渲染，默认关闭（无需 VTK）
 # 打开方式：cmake -DIDOS_ENABLE_RENDER=ON --preset win-x64-debug-local
 option(IDOS_ENABLE_RENDER "Enable VTK rendering module" OFF)
