@@ -1,5 +1,8 @@
 # src/CMakeLists.txt — 源码汇总层
-# 按依赖顺序添加子模块：core(最底层) → render → gui → auto → app → idos(可执行)
+# 子模块（按阅读顺序，非严格依赖序——add_subdirectory 先后不影响链接解析）：
+#   core(最底层，仅 Qt Core/Gui) → python / render / gui(功能层)
+#   → app(装配层，链全部模块) → assistant / analysis(扩展占位) → providers(格式解析)
+# 最后定义可执行目标 idos。
 
 add_subdirectory(core)
 add_subdirectory(python)
@@ -7,7 +10,7 @@ add_subdirectory(render)
 add_subdirectory(gui)
 add_subdirectory(app)
 add_subdirectory(assistant)
-add_subdirectory(process)
+add_subdirectory(analysis)
 add_subdirectory(providers)
 
 # 可执行目标
@@ -24,9 +27,8 @@ target_link_libraries(idos PRIVATE
     Qt5::Network
 )
 
-if(IDOS_ENABLE_RENDER)
-    target_link_libraries(idos PRIVATE ${VTK_LIBRARIES})
-endif()
+# VTK 不链接 exe：只由 idos_render 持有（根 CMake 中已设 PRIVATE），
+# exe 用不到 VTK 头/库；运行期 VTK DLL 由下方 POST_BUILD 拷贝部署。
 
 if(WIN32)
     # Deploy Qt DLLs (windeployqt analyzes Qt dependencies)

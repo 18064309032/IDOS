@@ -7,6 +7,11 @@ target_link_libraries(idos_render PUBLIC idos_core)
 target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)
-    target_link_libraries(idos_render PUBLIC ${VTK_LIBRARIES})
+    # VTK 设 PRIVATE：头文件与库只进 idos_render 自己，
+    # 下游（gui/app/exe）不继承 VTK include——防止 app 里
+    # #include <vtkActor.h> 直接编过、绕过 render 边界。
+    # 宏保持 PUBLIC：IDOS_ENABLE_RENDER 需要传播给下游做条件编译。
+    # （exe 侧 VTK DLL 部署与直接链接见根/src CMakeLists 的 POST_BUILD。）
+    target_link_libraries(idos_render PRIVATE ${VTK_LIBRARIES})
     target_compile_definitions(idos_render PUBLIC IDOS_ENABLE_RENDER)
 endif()

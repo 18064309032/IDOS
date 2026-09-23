@@ -7,7 +7,7 @@ target_link_libraries(idos_app PUBLIC
     idos_gui
     idos_python
     idos_assistant
-    idos_process
+    idos_analysis
     idos_providers
     Qt5::Core
     Qt5::Widgets

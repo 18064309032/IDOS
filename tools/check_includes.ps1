@@ -3,10 +3,19 @@
 #
 # 规则（违例即退出码 1，构建/CI 失败）：
 #   1. 全项目禁止 "../" 目录穿越式 include
-#   2. core/ 禁止 include gui 侧头文件（tree/ inputtree/ modeltree/ 等）
-#      —— 这条同时被 CMake 依赖图兜底（core 未链接 Widgets），双保险
+#   2. core/ 禁止 include 其他任何模块的头（gui/providers/render/app/扩展侧）
+#      —— core 与 gui 的这条同时被 CMake 依赖图兜底（core 未链接 Widgets），双保险
 #   3. gui/tree/（机制层）禁止 include 业务层（inputtree/ modeltree/ 主窗口）
 #   4. gui 业务层互不依赖（inputtree 不 include modeltree，反之亦然）
+#   5. providers/ 禁止 include gui 侧与 app 侧头（解析层不认识界面与装配）
+#   6. render/ 禁止 include gui 侧、providers 侧与 app 侧头（渲染只依赖 core + VTK）
+#   7. gui/ 禁止 include providers 侧、app 侧与扩展模块侧头
+#      （允许 render 侧：设计约定 GUI 可依赖 Core/Render，需在 gui/CMakeLists 同步链接）
+#   8. analysis/ python/ assistant/ 只允许 include core 侧与自身根头
+#      —— 扩展/自动化模块不得依赖 gui/providers/render/app，也不得互相依赖
+#      （对应设计约束：python/assistant 反向链接 App = 统一操作入口失效）
+#   9. app/ 禁止 include gui、providers、render 的内部子目录
+#      —— app 只走各模块公共头与工厂；app 自身是唯一可认识所有模块公共面的装配层
 #
 # 用法：
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools/check_includes.ps1
@@ -42,6 +51,31 @@ foreach ($file in $files) {
     $isTreeMechanism = $rel -like 'gui/tree/*'
     $isInputTree = $rel -like 'gui/inputtree/*'
     $isModelTree = $rel -like 'gui/modeltree/*'
+    $isGuiFile = $rel -like 'gui/*'
+    $isProvidersFile = $rel -like 'providers/*'
+    $isRenderFile = $rel -like 'render/*'
+    $isAppFile = $rel -like 'app/*'
+    $isAnalysisFile = $rel -like 'analysis/*'
+    $isPythonFile = $rel -like 'python/*'
+    $isAssistantFile = $rel -like 'assistant/*'
+    $isExtFile = $isAnalysisFile -or $isPythonFile -or $isAssistantFile
+
+    # 各模块的"侧"（include 一律从模块根出发写全路径，故按根相对路径匹配）
+    $providersSide = '^(well/|grid/|model/|idos_providers\.h$|idosdataprovider\.h$|idosprovidermetadata\.h$|idosproviderregistry\.h$|idosimportcoordinator\.h$)'
+    $renderSide = '^(idos_render\.h$|scene/|adapters/|interaction/|overlays/)'
+    $appSide = '^(idos_app\.h$|action/|import/|command/|task/|automation/|plugin/)'
+    $extSide = '^(idos_analysis\.h$|idos_python\.h$|idos_assistant\.h$)'
+
+    # 内部子目录（仅规则 9 用：app 不深入模块内部，公共根头不受限）
+    $guiInternal = '^(tree/|inputtree/|modeltree/|views/|properties/|dialogs/)'
+    $providersInternal = '^(well/|grid/|model/)'
+    $renderInternal = '^(scene/|adapters/|interaction/|overlays/)'
+
+    # 扩展模块自身的根头（规则 8 允许 self-include）
+    $ownHeader = ''
+    if ($isAnalysisFile) { $ownHeader = 'idos_analysis.h' }
+    elseif ($isPythonFile) { $ownHeader = 'idos_python.h' }
+    elseif ($isAssistantFile) { $ownHeader = 'idos_assistant.h' }
 
     $lines = Get-Content -Path $file.FullName -Encoding UTF8
     for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -55,9 +89,10 @@ foreach ($file in $files) {
             continue
         }
 
-        # 规则 2：core 不依赖 gui
-        if ($isCoreFile -and $inc -match $guiSidePattern) {
-            $violations.Add("${location}: core 禁止 include gui 侧头文件: $inc")
+        # 规则 2：core 不依赖任何其他模块
+        if ($isCoreFile -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
+                -or $inc -match $renderSide -or $inc -match $appSide -or $inc -match $extSide)) {
+            $violations.Add("${location}: core 禁止 include 其他模块头文件: $inc")
             continue
         }
 
@@ -74,6 +109,42 @@ foreach ($file in $files) {
         }
         if ($isModelTree -and $inc -like 'inputtree/*') {
             $violations.Add("${location}: modeltree 禁止 include inputtree: $inc")
+        }
+
+        # 规则 5：解析层不认识界面与装配
+        if ($isProvidersFile -and ($inc -match $guiSidePattern -or $inc -match $appSide)) {
+            $violations.Add("${location}: providers 禁止 include gui/app 侧头文件: $inc")
+            continue
+        }
+
+        # 规则 6：渲染层只依赖 core（+VTK），不认识界面/解析/装配
+        if ($isRenderFile -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
+                -or $inc -match $appSide -or $inc -match $extSide)) {
+            $violations.Add("${location}: render 禁止 include gui/providers/app/扩展侧头文件: $inc")
+            continue
+        }
+
+        # 规则 7：gui 不认识解析层、装配层与扩展模块（允许 render 侧，见头部注释）
+        if ($isGuiFile -and ($inc -match $providersSide -or $inc -match $appSide `
+                -or $inc -match $extSide)) {
+            $violations.Add("${location}: gui 禁止 include providers/app/扩展模块侧头文件: $inc")
+            continue
+        }
+
+        # 规则 8：扩展/自动化模块只认 core + 自身根头
+        if ($isExtFile -and $inc -ne $ownHeader `
+                -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
+                      -or $inc -match $renderSide -or $inc -match $appSide `
+                      -or $inc -match $extSide)) {
+            $violations.Add("${location}: analysis/python/assistant 只允许 include core 侧头文件: $inc")
+            continue
+        }
+
+        # 规则 9：app 走公共头与工厂，不深入其他模块内部子目录
+        if ($isAppFile -and ($inc -match $guiInternal -or $inc -match $providersInternal `
+                -or $inc -match $renderInternal)) {
+            $violations.Add("${location}: app 禁止 include 其他模块的内部子目录: $inc")
+            continue
         }
     }
 }
