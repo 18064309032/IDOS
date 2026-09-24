@@ -22,9 +22,6 @@ class IDOSDataProvider;
  *   createProvider() 返回 fresh instance，用完即弃。
  *
  * 用法：
- *   // 注册（GUI 启动时集中调一次）
- *   registry.registerMetadata(std::make_unique<IDOSWellLasMetadata>());
- *
  *   // 按扩展名查 → 拿 Metadata → 工厂创建 → 解析
  *   QList<IDOSProviderMetadata*> metas = registry.metadataForFile(path);
  *   std::unique_ptr<IDOSDataProvider> provider = metas.first()->createProvider();

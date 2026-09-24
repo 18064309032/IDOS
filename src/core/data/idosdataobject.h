@@ -48,7 +48,7 @@ public:
      *
      * 各子类按自己语义合并：井按井名汇合 header/path/logs/markers，
      * 网格按网格名等。类型不符应 no-op（子类用 typeId 校验）。
-     * 调用方 IDOSImportCoordinator 只 dispatch，不写类型判断、不强转。
+     * 调用方 IDOSDataLoadService 只负责加载，不写类型判断、不强转。
      *
      * 基类默认 no-op 容错，具体子类应 override 实现自身合并语义。
      */
@@ -61,7 +61,7 @@ public:
      * 井名），但领域对象需存 objectId 弱引用。mergeFrom/addObject 落定后，
      * Coordinator 调本钩子，让对象拿 Project 把名字解析成 objectId。
      *
-     * 基类默认 no-op（多数对象无引用需要解析）；IDOSModel 等带弱引用的
+     * 基类默认 no-op（多数对象无引用需要解析）；工况等带弱引用的
      * 子类 override 实现。子类自己保证重复调用幂等（清空 pending）。
      */
     virtual void resolveReferences(IDOSProject* project) { (void)project; }
@@ -75,7 +75,7 @@ public:
      * resolveReferences 之前会先递归 import 全部 pendingImportPaths，使
      * resolveReferences 时被引用对象已在 Project 里。
      *
-     * 基类默认返回空（多数对象不依赖其他文件）；IDOSModel 等 override
+     * 基类默认返回空（多数对象不依赖其他文件）；带外部引用的对象可 override
      * 返回自己留的路径。子类自己保证重复调用幂等（resolveReferences 后清空）。
      */
     virtual QStringList pendingImportPaths() const { return {}; }

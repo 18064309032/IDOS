@@ -1,5 +1,9 @@
 #include "idosproviderregistry.h"
 #include "idosdataprovider.h"
+#include "case/idossimulationcaseeclipsemetadata.h"
+#include "grid/idosgrideclipsemetadata.h"
+#include "well/idoswellheadermetadata.h"
+#include "well/idoswelllasmetadata.h"
 
 #include <QFileInfo>
 #include <QHash>
@@ -14,6 +18,7 @@ struct IDOSProviderRegistry::Impl
 IDOSProviderRegistry::IDOSProviderRegistry()
     : m_impl(std::make_unique<Impl>())
 {
+    registerBuiltinProviders();
 }
 
 IDOSProviderRegistry::~IDOSProviderRegistry() = default;
@@ -60,6 +65,14 @@ std::unique_ptr<IDOSDataProvider> IDOSProviderRegistry::createProvider(const QSt
 QList<IDOSProviderMetadata*> IDOSProviderRegistry::metadataList() const
 {
     return m_impl->metadatas.values();
+}
+
+void IDOSProviderRegistry::registerBuiltinProviders()
+{
+    registerMetadata(std::make_unique<IDOSWellHeaderMetadata>());
+    registerMetadata(std::make_unique<IDOSWellLasMetadata>());
+    registerMetadata(std::make_unique<IDOSGridEclipseMetadata>());
+    registerMetadata(std::make_unique<IDOSSimulationCaseEclipseMetadata>());
 }
 
 QList<IDOSProviderMetadata*> IDOSProviderRegistry::metadataForFile(const QString& filePath) const

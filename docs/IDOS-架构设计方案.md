@@ -1,177 +1,304 @@
 # IDOS 架构设计方案
 
-适用仓库：`D:\CMakeCoder\IDOS`。日期：2026-09-22。状态：待评审的目标方案。
+适用仓库：`D:\CMakeCoder\IDOS`。
+状态：当前有效方案。
+目标：把 IDOS 做成可扩展的数据平台，基础平台负责工程、对象、树、窗口、加载和显示；业务能力通过明确的数据对象、树 Provider、数据 Provider、分析模块和后续插件扩展。
 
-## 1. 目标与范围
+## 1. 总体原则
 
-以现有 CMake 工程为基础，建设井、油藏网格、属性和模拟工况的数据与可视化平台。第一阶段验证真实导入、工程保存恢复和多窗口显示；再增加专业计算、插件和自动化。
+- 平台做通用能力，业务做可注册扩展。
+- 工程中的所有业务数据统一由 `IDOSProject` 管理。
+- 跨模块长期引用只使用稳定 `objectId`，不保存业务对象裸指针。
+- 树只是展示结构，不决定对象生命周期。
+- 数据树和工况树是两棵不同的业务树，不再使用 Input/Model 这种容易混淆的旧分类。
+- 不使用自定义命名空间。
+- 不引入万能 `Context`、`Center`、`Workflow`、`Bridge` 类。
+- 能在具体模块解决的问题，不上升成通用框架。
+- 根目录公共头面向二次开发；内部目录头文件默认只给模块内部使用。
 
-本方案不复刻 Petrel 内部架构，不宣称已经具备其专业能力，也不迁入 QtCoder 工程的大量实现。本次只交付设计文档，实际类名和 API 在对应阶段实现前细化。
+## 2. 目标目录结构
 
-技术基础保持 C++17、Qt 5、MSVC、CMake、VTK；OPM 只作为 Providers 的格式依赖。仅建立一个 Render 模块。
+```text
+D:\CMakeCoder\IDOS
+├─ src
+│  ├─ core
+│  │  ├─ idos_core.h
+│  │  ├─ idosproject.h
+│  │  ├─ idosobject.h
+│  │  ├─ idosobjectregistry.h
+│  │  ├─ idoscommand.h
+│  │  ├─ idossession.h
+│  │  ├─ case
+│  │  ├─ command
+│  │  ├─ data
+│  │  ├─ object
+│  │  ├─ project
+│  │  └─ tree
+│  ├─ gui
+│  │  ├─ idos_gui.h
+│  │  ├─ idosdockwidget.h
+│  │  ├─ idospropertywidget.h
+│  │  ├─ idosworkspacewidget.h
+│  │  ├─ case
+│  │  ├─ curve
+│  │  ├─ grid
+│  │  ├─ input
+│  │  ├─ render
+│  │  ├─ result
+│  │  ├─ table
+│  │  ├─ tree
+│  │  └─ well
+│  ├─ app
+│  │  ├─ idos_app.h
+│  │  ├─ idosapplication.h
+│  │  ├─ idosmainwindow.h
+│  │  ├─ idosappinterface.h
+│  │  ├─ action
+│  │  ├─ command
+│  │  ├─ layout
+│  │  └─ plugin
+│  │     ├─ idos_plugin.h
+│  │     ├─ idosplugin.h
+│  │     ├─ idosinterface.h
+│  │     ├─ idospluginmanager.*
+│  │     ├─ idospluginloader.*
+│  │     ├─ idospluginmetadata.*
+│  │     └─ idospluginregistry.*
+│  ├─ assistant
+│  │  ├─ idos_assistant.h
+│  │  ├─ idosassistantservice.h
+│  │  ├─ idosassistantsession.h
+│  │  ├─ idosassistantcontext.h
+│  │  ├─ idosassistanttool.h
+│  │  └─ idosassistanttoolregistry.h
+│  ├─ python
+│  │  ├─ idos_python.h
+│  │  ├─ idospythonruntime.h
+│  │  └─ idospythonmodule.h
+│  ├─ providers
+│  │  ├─ idos_providers.h
+│  │  ├─ idosdataprovider.h
+│  │  ├─ idosdataloadservice.h
+│  │  ├─ eclipse
+│  │  ├─ petrel
+│  │  ├─ navigator
+│  │  ├─ well
+│  │  ├─ production
+│  │  ├─ streamline
+│  │  └─ seismic
+│  ├─ analysis
+│  │  ├─ idos_analysis.h
+│  │  ├─ idosanalysisalgorithm.h
+│  │  ├─ idosanalysisresult.h
+│  │  ├─ curve
+│  │  ├─ fracture
+│  │  ├─ grid
+│  │  └─ well
+│  ├─ render_core
+│  ├─ render_qt
+│  └─ render_adapters
+│     └─ idos
+├─ python
+├─ tests
+├─ docs
+├─ data
+└─ thirdparty
+```
 
-## 2. 当前状态与需要解决的问题
+说明：
 
-| 已核对的现状 | 设计处理 |
+- `src/render` 是旧接口，最终移除；新增代码使用 `render_core`、`render_qt`、`render_adapters/idos`。
+- `src/auto` 是待拆分旧模块，不作为目标架构保留。
+- 根目录 `python` 只放纯 Python SDK 脚本，结构应对应 C++ 暴露出来的 Python 接口。
+- `src/python` 是 C++ Python 模块，不放 `.py` 脚本。
+- 当前暂不维护 `sdk` 目录。未来由构建把需要二次开发的公共头扁平导出到 SDK 目录。
+
+## 3. 模块职责
+
+| 模块 | 职责 |
 |---|---|
-| Project 按 objectId 持有对象；树节点引用 ID | 保留，补齐唯一性、删除约束和批量通知 |
-| 井数据由井头、轨迹、曲线和分层值对象组合 | 保留专业分类，不逐样本 QObject 化 |
-| 类型注册表同时决定 Input/Model 与分组 | 类型工厂留 Core，界面组织移 GUI |
-| ImportCoordinator 仅按名称找到目标并调用 mergeFrom | 使用类型与业务身份匹配，明确冲突与失败，不静默丢数据 |
-| DataObject 包含全局 visible、导入待处理路径等 | 显示状态移 Render，导入临时状态移 ImportBatch |
-| IDOSModel 实际表达模拟工况 | 改为 IDOSSimulationCase，明确共享输入与私有配置 |
-| IDOSWell 同时持有井控、模拟完井、网格位置 | 工况专属字段移 IDOSCaseWell，避免方案互相影响 |
-| Render 默认关闭并为 dummy；MainWindow 中是画布占位 | 先实现一个真实网格与属性的显示闭环 |
-| LAS 只有格式检查和空井；EGRID 已有转换代码 | 不把接口存在视为解析完成，分别做数据正确性验收 |
-| App、Python、Assistant、Process 多数仍为占位 | 先装配 App，不抢先建设空扩展框架 |
+| `core` | 工程、对象、会话、命令、业务状态、基础数据结构 |
+| `gui` | 树、属性面板、工作区、业务窗口、对话框和交互控件 |
+| `app` | 程序装配、主窗口、Action、布局、插件系统和应用级注册 |
+| `assistant` | AI 助手服务、会话、上下文、工具和工具注册 |
+| `python` | C++ Python 运行时、模块注入和控制台支撑 |
+| `providers` | 数据源识别、文件解析、数据加载服务 |
+| `analysis` | 独立分析算法和分析结果 |
+| `render_core` | 渲染核心对象、场景、数据表达 |
+| `render_qt` | Qt 渲染窗口和交互适配 |
+| `render_adapters/idos` | IDOS 业务对象到渲染对象的适配 |
 
-当前 EGRID 转换取柱线顶部 XY，不能完整表达倾斜柱线；几何、ZCORN 与有效单元索引需要专项验证，不能用“画面看起来像网格”作为通过标准。
+## 4. 公共 API 规则
 
-## 3. 模块职责与依赖
+- 模块根目录头文件视为公共 API。
+- 模块子目录头文件默认是内部实现或业务分组。
+- 公共 API 头文件不得 include 本模块子目录内部头。
+- 公共 API 函数签名不得暴露内部目录类型。
+- 如果某个子目录类型需要给二次开发使用，应提升到模块根目录。
+- 聚合头只 include 同模块根目录公共头。
+- 插件 SDK 头放在 `src/app/plugin`，对外头文件使用 `idos_plugin.h`。
 
-| 模块 | 拥有的职责 | 禁止承担 |
-|---|---|---|
-| core | 工程对象、业务关系、专业数据、修订号、工程读写 | 界面分组、VTK、活动窗口、后台调度 |
-| providers | 格式识别、解析、源字段到业务记录的转换 | 修改活动工程、打开对话框、操作撤销栈 |
-| render | 数据到 VTK 的转换、场景、相机、拾取、每画布显示状态 | 工程数据所有权、主窗口菜单和业务提交 |
-| gui | 树、面板、专业窗口、工作区和交互请求 | 文件解析、昂贵算法、另存一份业务对象 |
-| app | 装配、会话、操作、撤销命令、任务调度 | 把所有业务算法堆在 MainWindow |
-| analysis（后续） | 读取明确数据输入并生成计算数据 | 依赖 GUI 或直接改活动工程 |
-| python/assistant（后续） | 运行脚本/助手并调用注册能力 | 绕过统一操作入口任意操作窗口内部状态 |
+## 5. 插件系统
 
-App 依赖 Core/Providers/GUI/Render，GUI 依赖 Core/Render，Render 和 Providers 依赖 Core。Core 不反向依赖这些模块。渲染适配器位于 `render/adapters`，不单独建立库。
+插件系统放在 `src/app/plugin`，不放进 `core`。
 
-Core 维持 Qt Core/必要的 Qt Gui 数学类型，不链接 Qt Widgets。QUndoStack/QUndoCommand 放 App；业务数据与关系校验仍由 Core 保证，避免只有通过界面调用才安全。
+目标类：
 
-## 4. 工程、对象和引用
+- `IDOSPlugin`
+- `IDOSInterface`
+- `IDOSPluginManager`
+- `IDOSPluginLoader`
+- `IDOSPluginMetadata`
+- `IDOSPluginRegistry`
+- `idos_plugin.h`
 
-### 4.1 身份与所有权
+`idos_plugin.h` 是给外部插件开发者使用的导出头，内部只定义插件导出相关宏和必要入口约定。内部模块不依赖旧工程的 `idospluginapi.h`。
 
-- Project 统一拥有顶层 IDOSDataObject，QObject 父子关系只表达生命周期。
-- objectId 创建后保持稳定，加载时在加入工程前恢复；不允许入库后直接修改 ID。
-- 名称允许重名且可以修改；跨模块引用不能以名称作为主键。
-- 同一指针重复加入应幂等或明确拒绝，不重复连接信号；不同对象同 ID 默认拒绝，不自动 deleteLater 覆盖。
-- 树节点、网格属性、工况和窗口使用 ID 查找业务对象；长生命周期不缓存业务裸指针。
-- 子记录若需要持久定位，使用稳定记录键；数组下标和显示名不能替代永久身份。
+## 6. 数据加载
 
-### 4.2 关系与删除
+数据加载统一使用 `IDOSDataLoadService`。
 
-至少明确四种关系：网格属性所属网格、工况引用网格、工况引用井、工况引用属性。关系校验由 Project 协调，专业合法性由相应类型验证。
+职责：
 
-删除网格时，先检查属性与工况引用。第一版默认拒绝仍被引用的删除，并向用户展示依赖；显式级联删除作为一条完整命令。移除工况中的井引用只删除 IDOSCaseWell 配置，不删除共享井。撤销必须恢复对象 ID、数据和引用关系。
+- 根据文件路径识别合适的 Provider。
+- 调用 Provider 解析文件。
+- 把解析出的对象加入 `IDOSProject`。
+- 返回加载成功的对象 ID。
+- 保存最后一次错误信息。
 
-### 4.3 工况隔离与修订
+命名上不再使用 `ImportCoordinator`，因为平台不应该把数据进入工程这件事只限定为“导入”。后续打开缓存、脚本加载、批量加载等都可以归入数据加载服务。
 
-共享 IDOSWell 保存井头、实测轨迹、曲线和分层；IDOSCaseWell 保存某个工况的井控、模拟完井、分段和网格定位。
+## 7. Provider 体系
 
-第一版修订号只用于过期检查、结果失效和渲染缓存，不是历史版本库。方案修改共享网格/属性时，应显式选择影响所有引用者或派生新对象；默认派生，记录来源 ID。禁止把“同一份可变数据”当作所有方案的天然正确模型。
+Provider 分两类：
 
-后续计算运行必须保存输入数据快照或可取回的不可变版本、参数、算法版本与输出关系。只保存 objectId + revision 而不保留旧数据，不能实现结果复现。
+- 数据 Provider：负责识别和解析外部数据。
+- 树 Provider：负责把业务对象组织成树节点。
 
-## 5. 专业数据契约
+数据 Provider 放在 `src/providers`。
+树 Provider 放在 `src/gui` 对应业务目录或 `src/gui/tree` 的基础接口中。
 
-| 数据 | 必须明确的约束 |
-|---|---|
-| 网格 | 完整柱线/角点几何、坐标精度、单元角点顺序、维度有效范围、有效单元映射 |
-| 属性 | 所属网格及修订、全单元或有效单元布局、统一索引次序、单位、空值 |
-| 井轨迹 | 坐标系、长度单位、MD/TVD 含义、深度方向、采样点顺序 |
-| 曲线 | 通道标识、单位、深度轴、空值、重复采样处理规则 |
-| 工况 | 输入关系、私有参数、单位约定、修改影响范围 |
+Provider 注册尽量简单，不额外引入 `AppContext`、`BuiltinRegistrar`、`registerBuiltinTreeProviders` 这类间接层。当前阶段允许在 `IDOSMainWindow` 中直接 new 注册表并注册内置 Provider。
 
-业务几何使用双精度存储；QVector3D 为 float，不能作为高精度原始地理坐标的唯一存储。可以在显示时以局部原点转换成绘制坐标。统一单元索引，建议明确采用 `i + nx * (j + ny * k)`；转换只在边界进行，并用非对称尺寸样本验证。
+## 8. 两棵树设计
 
-## 6. 导入与后台任务
+平台保留两棵业务树：
 
-### 6.1 正常流程
+- 数据树：显示工程中的基础数据对象，例如井、网格、属性、生产数据等。
+- 工况树：显示工况对象及其引用关系，例如某个模拟工况引用哪些井、网格、参数和结果。
 
-1. App 根据路径和用户选择定位 Provider；多个格式候选时显式选择，不无条件取第一个。
-2. 工作线程解析为 ImportBatch，包含数据记录、源标识和待解析引用，不含活动工程 QObject。
-3. ImportOperation 回到 GUI/工程所属线程检查会话代次、目标对象修订及取消状态。
-4. 按类型、来源命名空间、外部业务标识匹配；名称只用于受控候选匹配。
-5. 完成整批对象 ID 分配，再解析整批引用；依赖文件解析应检测环、限制重复并明确错误。
-6. 校验后用一次命令提交；失败则保持工程不变。
+两棵树共用基础树节点和基础 Model 能力，但各自有自己的 Model 和 Provider。
 
-默认禁止不知情覆盖。支持的冲突策略由导入对话框明确给出：新增、合并、替换、跳过；只有实际实现的策略才展示。merge 返回明确结果或 bool/errorMessage，类型不匹配不能无操作后报告成功。
+目标类：
 
-### 6.2 线程和关闭工程
+- `IDOSTreeNode`
+- `IDOSObjectTreeNode`
+- `IDOSTreeGroupNode`
+- `IDOSTreePartNode`
+- `IDOSTreeReferenceNode`
+- `IDOSTreePartKey`
+- `IDOSTreeBuilder`
+- `IDOSTreeProvider`
+- `IDOSDataTreeProvider`
+- `IDOSCaseTreeProvider`
+- `IDOSTreeProviderRegistry`
+- `IDOSDataTreeModel`
+- `IDOSDataTreeView`
+- `IDOSCaseTreeModel`
+- `IDOSCaseTreeView`
 
-任务持有输入快照及取消标记，不持有 QWidget。解析器实例为任务私有；注册信息应在启动任务前获取为稳定快照，避免并发修改注册表。
+设计约束：
 
-Qt QObject 在创建线程内管理，不能靠 setParent 解决跨线程对象归属。任务结果采用可移动纯数据，提交线程再构造轻量 QObject 外壳；重几何处理在后台完成。
+- 不使用 `domain` 字符串区分树，因为数据树和工况树已经是不同 Model。
+- 不使用 `IDOSTreeBuildContext`。
+- Builder 只负责创建树节点，不保存业务上下文。
+- 树节点通过 `objectId`、part key 或 reference 表达含义。
+- 删除对象和移除引用必须区分。
 
-关闭工程使会话代次失效并请求取消；迟到结果只释放，不写进新工程。主线程不阻塞等待。App 退出期间仍须管理工作线程完成与资源回收，不能直接销毁运行中的 QThread。
+## 9. 工况对象
 
-## 7. 操作、撤销与界面请求
+工况对象必须有基类。
 
-- Action 只处理 QAction、具名槽、可用状态和用户输入。
-- 应用操作负责校验、调度和组装命令。
-- Command 执行确定性的 redo/undo，不在 redo 中重新读取原始文件或重新运行算法。
-- 工程内容变化进入撤销栈；相机、临时选择、窗口激活不混入业务撤销栈。
-- 初期单工程对应一个 Session 和一个 QUndoStack，防止跨工程撤销。
-- 删除命令使用可恢复快照或严格转移的所有权；不能只保存即将 deleteLater 的裸指针。
-- 大数据撤销可共享不可变数据块；超过预算时明确提示，不能静默丢失撤销记录。
+目标类：
 
-后续 Python/AI 复用应用操作。App 向运行时注册回调，或实现运行时定义的宿主接口，不让 Python/Assistant 库反向链接 App。所有入口遵守相同的引用校验和线程约束。
+- `IDOSCaseItemRef`
+- `IDOSCaseObject`
+- `IDOSSimulationCaseObject`
 
-## 8. 树、选择与工作区
+`IDOSCaseObject` 继承业务数据对象，表示一个可保存、可显示、可引用数据的工况。
+`IDOSCaseItemRef` 用于表示工况树中对数据树对象或对象内部子项的引用。
 
-Input/Model 是界面展示域，不是业务对象的永久类别。保留现有两棵树，但允许同一对象在多处以引用节点出现。树菜单请求应携带节点关系信息，区分删除对象和移除引用。
+工况树不是数据树的复制。它可以引用数据树中的井、网格、属性、结果和其他业务节点，但不拥有这些基础数据。
 
-IDOSSelection 管理当前对象和选中集合；窗口显示集合独立存在。更新携带来源窗口 ID，接收方对无变化更新保持幂等，避免树与拾取双向通知循环。
+## 10. Python 设计
 
-IDOSWorkspace 管理窗口生命周期和活动窗口。IDOSViewFactory 创建具体窗口并返回公共基类，App 不 include GUI 内部目录。窗口基类只声明共同能力；特殊渲染操作通过明确能力接口或 RenderWidget 公共 API 路由，不直接访问内部 Actor。
+Python 分成两部分：
 
-## 9. 渲染边界
+- `src/python`：C++ Python 运行时、模块注入、控制台支撑。
+- 根目录 `python`：纯 Python SDK 脚本。
 
-一个 IDOSRenderWidget 对应一个画布和一个独立场景，内部包含 RenderObject、适配器和交互工具。专业窗口 IDOSRenderView 只是工作区外壳，不实现第二套渲染引擎。
+根目录 `python` 目录只放 `.py` 相关脚本，不作为 VS C++ 工程里的源码筛选器展示。
+Python SDK 的目录结构应接近 C++ 暴露出来的接口，例如未来运行时可形成 `idos.core`、`idos.gui`、`idos.app` 等 Python 包。
 
-每个画布按 objectId 保存可见性、属性选择、色标、透明度；相机和裁剪属于画布。相同网格在两个窗口中可以显示不同属性，修改 A 的样式不影响 B。
+## 11. Assistant 设计
 
-渲染缓存可以丢弃并重建；完整几何和属性必须保存在工程。缓存更新依赖对象修订和转换参数，不只依赖名称。拾取返回业务对象与原始单元标识，需保留 VTK 单元到业务单元的映射。
+AI 助手作为独立模块，模块名使用 `assistant`。
 
-初期在 GUI 线程维护 VTK 场景和绘制。后台只做经过隔离的数据处理，不从工作线程修改活动 renderer/actor。先做显示、拾取和色标，再做裁剪、测量与更大数据优化。
+目标职责：
 
-## 10. 工程存储
+- 助手服务。
+- 助手会话。
+- 上下文整理。
+- 工具抽象。
+- 工具注册。
 
-工程应保存元数据、类型与对象 ID、完整专业数组、引用、工况配置、修订信息和窗口状态。来源路径仅作追溯，不能成为重开必需依赖。
+助手 UI 不放在 `src/assistant`，而是放在 `src/gui` 对应界面位置。`src/assistant` 只负责能力，不负责窗口。
 
-首版可采用单文件容器：文件头及版本、元数据与对象目录、具备长度和校验的数据块、界面状态块。元数据可以是结构化文本，大数组用二进制块；不把所有数组展开成 JSON。实际编码格式在存储实现阶段明确字节序、精度和 Qt 流版本并写测试。
+## 12. auto 模块处理
 
-保存使用一致快照、临时文件和可用的原子替换机制；失败保留原工程。读取先构建临时 Project，完成 ID/引用/数据长度/版本校验后再切换，不能边读边破坏当前工程。
+`src/auto` 是旧模块，目标架构中不保留。
 
-Core 对 UI 状态只保存带版本的不透明字节块；GUI 负责解释。未知 UI 窗口类型可跳过并提示，未知业务类型默认拒绝以可写方式打开，避免保存时丢数据。插件加入后再设计未知类型原样保留策略。
+拆分方向：
 
-## 11. 公共 API、构建和命名
+- Action 相关能力进入 `src/app/action`。
+- Python 脚本校验和运行相关能力进入 `src/python`。
+- Assistant 相关能力进入 `src/assistant`。
 
-采用目录文档中的公共头白名单：模块根公共头，以及 Core 明确公开的专业数据目录。公共头不引用内部类；SDK 将来保留公开目录结构。这是对前面对话根目录限定方案的明确修订，不暗中更改现有规范。
+拆分完成后删除 `src/auto`。
 
-每模块一个 CMakeLists，按真实源码列出 target_sources。能隐藏的第三方依赖设 PRIVATE；公共类型需要的 Qt/Core 依赖再设 PUBLIC。VTK/OPM 类型不进入公共签名时保持内部依赖。CMake 的 PUBLIC include 路径本身不能阻止外部包含内部头，需配套静态检查。
+## 13. MainWindow 装配原则
 
-`IDOS_ENABLE_RENDER=OFF` 时仍可构建 Core/Providers 和相应测试；GUI 的非渲染能力应可编译，通过条件注册禁用渲染窗口。不能在关闭开关后仍链接 VTK。
+当前阶段可以在 `IDOSMainWindow` 中直接创建并持有注册表裸指针。
 
-保留 Qt AUTOMOC/AUTOUIC/AUTORCC，配置 Qt/VTK/MSVC Debug 与 Release 的一致组合。最低 CMake 版本需覆盖使用的命令：当前配置声明 3.16 却使用 cmake_path，实施时应提高到至少 3.20 或替换该命令。
+例如：
 
-辅助类只在存在明确状态、所有权或扩展职责时创建。值类型沿用现有 .h/.cpp，不为压缩文件数强行合并；纯声明的小值类型可按需改为单头。新类遵守具名槽、中文接口注释和英文可翻译 UI 文本。
+- 创建 `IDOSTreeProviderRegistry`。
+- 注册内置数据树 Provider。
+- 注册内置工况树 Provider。
+- 创建数据树 Model/View。
+- 创建工况树 Model/View。
+- 把当前 Project 设置给两棵树。
 
-## 12. 分阶段实施与验收
+不引入额外 AppContext，不增加不必要的 Registrar。
 
-| 阶段 | 修改范围 | 通过条件 |
-|---|---|---|
-| P0 基线与规则 | 补独立构建基线、公共 API 白名单、依赖检查 | 当前可用树演示不回退；Core 不依赖 GUI/VTK；现有未提交修改保留 |
-| P1 数据与导入 | 对象唯一性、引用、工况配置隔离、井头和 EGRID 导入 | 同名不同类型不误合并；两工况井控互不影响；倾斜柱线、非方形网格和 ACTNUM/属性映射正确 |
-| P2 工程与命令 | 工程读写、Session、导入/重命名/删除命令 | 移走源文件仍可重开；ID 与引用保持；撤销恢复数据与关系；损坏文件不覆盖当前工程 |
-| P3 工作区与渲染 | 单 Render 模块、窗口工厂、选择、色标与拾取 | 同网格双窗口独立属性/样式；拾取单元与表格一致；保存恢复窗口状态 |
-| P4 后台化与规模 | 后台解析、取消、过期检查、缓存预算 | 解析期间 UI 可操作；关闭工程后迟到结果不写入；失败提交不留半成品 |
-| P5 专业扩展 | 首个真实算法、Python、插件接入点 | 界面与脚本操作结果一致；新能力无需改通用树/主窗口业务分支 |
+## 14. 后续实施顺序
 
-P1 的同步解析可以先用小样本验证核心正确性，但不能作为可发布的大文件 UI 导入。需要真实大数据时，将 P4 中后台导入部分提前到 P1/P2；不以开发阶段顺序为由允许发布时阻塞 GUI。
+1. 清理旧目录和旧命名。
+2. 固化两棵树和 Provider 注册机制。
+3. 使用 `IDOSDataLoadService` 接入真实数据加载。
+4. 补齐工况对象和工况树引用显示。
+5. 整理 `src/python` 与根目录 `python`。
+6. 拆分并移除 `src/auto`。
+7. 接入插件系统。
+8. 再补 Assistant、Python 控制台和高级业务扩展。
 
-测试以行为为准：数值与引用测试、工程 round-trip、命令 undo/redo、双窗口状态隔离、线程取消。文本 sourcecheck 只能检查边界，不能代替行为测试。每次代码迁移更新 CMake、翻译和必要测试，并运行 git diff --check。
+## 15. 验收标准
 
-## 13. 第一轮建议落实的范围
-
-先进行 P0/P1：保留专业目录和树机制，整理 App 装配；补 ID 唯一性与关系规则；验证网格真实数据；把模拟井配置从共享井中分离。工程保存与单画布显示随后推进。
-
-暂不做分布式服务、完整版本分支系统、通用可视化工作流编辑器或插件热卸载。后续插件最先明确类型/窗口/任务仍存活时禁止卸载的规则，再讨论动态卸载。
-
-这套设计的验收目标是：增加一种专业对象或操作时，有明确的数据位置、执行入口和显示接入点，而不必在 Project、MainWindow、树和渲染内部同时加入大量类型判断。
+- 新增一种数据类型时，只需要新增数据对象、数据 Provider 和树 Provider，不需要在主窗口里写大量类型判断。
+- 新增一种工况时，只需要新增工况对象和工况树 Provider。
+- 数据树和工况树职责清楚，不混用 Input/Model 旧概念。
+- `src/python` 不出现纯 Python 脚本。
+- 根目录 `python` 不参与 C++ 工程源码筛选器。
+- 新代码不依赖旧 `src/render`。
+- 旧 `src/auto` 能逐步清空并删除。
+- 公共 API 不暴露内部目录类型。

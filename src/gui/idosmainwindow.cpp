@@ -1,9 +1,12 @@
 #include "idosmainwindow.h"
-#include "inputtree/idosinputtreemodel.h"
-#include "inputtree/idosinputtreeview.h"
-#include "modeltree/idosmodeltreemodel.h"
-#include "modeltree/idosmodeltreeview.h"
-#include "tree/idostreemodelmenuprovider.h"
+#include "input/idosdatatreemodel.h"
+#include "input/idosdatatreeview.h"
+#include "input/providers/idosgriddatatreeprovider.h"
+#include "input/providers/idoswelldatatreeprovider.h"
+#include "case/idoscasetreemodel.h"
+#include "case/idoscasetreeview.h"
+#include "case/providers/idossimulationcasetreeprovider.h"
+#include "tree/idostreeproviderregistry.h"
 #include "idosproject.h"
 
 #include <DockManager.h>
@@ -19,12 +22,19 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionImportWell(nullptr)
     , m_actionImportGrid(nullptr)
     , m_project(nullptr)
-    , m_inputModel(new IDOSInputTreeModel(this))
-    , m_modelTreeModel(new IDOSModelTreeModel(this))
-    , m_inputView(nullptr)
-    , m_modelView(nullptr)
+    , m_dataTreeModel(new IDOSDataTreeModel(this))
+    , m_caseTreeModel(new IDOSCaseTreeModel(this))
+    , m_dataTreeView(nullptr)
+    , m_caseTreeView(nullptr)
+    , m_treeProviderRegistry(new IDOSTreeProviderRegistry())
     , m_dockManager(nullptr)
 {
+    m_treeProviderRegistry->registerDataProvider(new IDOSWellDataTreeProvider());
+    m_treeProviderRegistry->registerDataProvider(new IDOSGridDataTreeProvider());
+    m_treeProviderRegistry->registerCaseProvider(new IDOSSimulationCaseTreeProvider());
+    m_dataTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
+    m_caseTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
+
     setWindowTitle(QStringLiteral("IDOS"));
     resize(1280, 800);
 
@@ -43,53 +53,43 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     centralDock->setFeatures(ads::CDockWidget::NoDockWidgetFeatures);
     m_dockManager->setCentralWidget(centralDock);
 
-    // ---- 输入树 ----
-    m_inputView = new IDOSInputTreeView(this);
-    m_inputView->setModel(m_inputModel);
+    // ---- 数据树 ----
+    m_dataTreeView = new IDOSDataTreeView(this);
+    m_dataTreeView->setModel(m_dataTreeModel);
+    ads::CDockWidget* dataDock = new ads::CDockWidget(m_dockManager, tr("Data"));
+    dataDock->setObjectName(QStringLiteral("dataTreeDock"));
+    dataDock->setWidget(m_dataTreeView);
+    dataDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    ads::CDockAreaWidget* dataArea = m_dockManager->addDockWidget(ads::LeftDockWidgetArea, dataDock);
 
-    IDOSTreeModelMenuProvider* inputMenuProvider = new IDOSTreeModelMenuProvider(this);
-    inputMenuProvider->setModel(m_inputModel);
-    inputMenuProvider->setTreeView(m_inputView);
-    m_inputView->setMenuProvider(inputMenuProvider);
-
-    ads::CDockWidget* inputDock = new ads::CDockWidget(m_dockManager, tr("Input"));
-    inputDock->setObjectName(QStringLiteral("inputTreeDock"));
-    inputDock->setWidget(m_inputView);
-    inputDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
-    ads::CDockAreaWidget* inputArea = m_dockManager->addDockWidget(ads::LeftDockWidgetArea, inputDock);
-
-    // ---- 模型树 ----
-    m_modelView = new IDOSModelTreeView(this);
-    m_modelView->setModel(m_modelTreeModel);
-
-    IDOSTreeModelMenuProvider* modelMenuProvider = new IDOSTreeModelMenuProvider(this);
-    modelMenuProvider->setModel(m_modelTreeModel);
-    modelMenuProvider->setTreeView(m_modelView);
-    m_modelView->setMenuProvider(modelMenuProvider);
-
-    ads::CDockWidget* modelDock = new ads::CDockWidget(m_dockManager, tr("Model"));
-    modelDock->setObjectName(QStringLiteral("modelTreeDock"));
-    modelDock->setWidget(m_modelView);
-    modelDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
-    // 相对 inputArea 底部插入，左侧形成上下分割而非标签页
-    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, modelDock, inputArea);
+    // ---- 工况树 ----
+    m_caseTreeView = new IDOSCaseTreeView(this);
+    m_caseTreeView->setModel(m_caseTreeModel);
+    ads::CDockWidget* caseDock = new ads::CDockWidget(m_dockManager, tr("Case"));
+    caseDock->setObjectName(QStringLiteral("caseTreeDock"));
+    caseDock->setWidget(m_caseTreeView);
+    caseDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
 }
 
-IDOSMainWindow::~IDOSMainWindow() = default;
+IDOSMainWindow::~IDOSMainWindow()
+{
+    delete m_treeProviderRegistry;
+}
 
-IDOSInputTreeView* IDOSMainWindow::inputTreeView() const { return m_inputView; }
+IDOSDataTreeView* IDOSMainWindow::dataTreeView() const { return m_dataTreeView; }
 
-IDOSModelTreeView* IDOSMainWindow::modelTreeView() const { return m_modelView; }
+IDOSCaseTreeView* IDOSMainWindow::caseTreeView() const { return m_caseTreeView; }
 
-IDOSInputTreeModel* IDOSMainWindow::inputTreeModel() const { return m_inputModel; }
+IDOSDataTreeModel* IDOSMainWindow::dataTreeModel() const { return m_dataTreeModel; }
 
-IDOSModelTreeModel* IDOSMainWindow::modelTreeModel() const { return m_modelTreeModel; }
+IDOSCaseTreeModel* IDOSMainWindow::caseTreeModel() const { return m_caseTreeModel; }
 
 void IDOSMainWindow::setProject(IDOSProject* project)
 {
     if (m_project == project) return;
 
     m_project = project;
-    m_inputModel->setProject(project);
-    m_modelTreeModel->setProject(project);
+    m_dataTreeModel->setProject(project);
+    m_caseTreeModel->setProject(project);
 }

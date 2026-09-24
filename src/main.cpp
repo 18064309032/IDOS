@@ -4,9 +4,10 @@
 
 #include "idosmainwindow.h"
 #include "idosproject.h"
+#include "case/idoscaseitemref.h"
+#include "case/idossimulationcaseobject.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
-#include "data/model/idosmodel.h"
 #include "data/well/idoswell.h"
 
 int main(int argc, char* argv[])
@@ -46,10 +47,10 @@ int main(int argc, char* argv[])
     project.addObject(well);
 
     // 模拟工况：按 objectId 引用网格与井（引用 = 配料清单，数据本体不搬家）
-    auto* simCase = new IDOSModel(&project);
+    auto* simCase = new IDOSSimulationCaseObject(&project);
     simCase->setName(QStringLiteral("Demo Case"));
-    simCase->setGridId(grid->objectId());
-    simCase->addWellRef(well->objectId());
+    simCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    simCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.well"), well->objectId()));
     project.addObject(simCase);
 
     IDOSMainWindow window;

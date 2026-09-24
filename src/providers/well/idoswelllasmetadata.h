@@ -6,10 +6,6 @@
 /**
  * @brief LAS 井 provider 的元数据 + 工厂。
  *
- * 注册方式（GUI 启动时）：
- *   IDOSProviderRegistry::instance().registerMetadata(
- *       std::make_unique<IDOSWellLasMetadata>());
- *
  * 使用方式：
  *   auto* meta = registry.metadata("idos.well.las");
  *   auto provider = meta->createProvider();

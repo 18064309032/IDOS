@@ -99,7 +99,7 @@ public:
      *
      * 仅合并对方 hasXxx 为 true 的字段：header/path 整体覆盖；
      * logs 按 channel 名覆盖、tops 按 horizon 名覆盖（同名替换、新名追加）。
-     * 类型不符（非 IDOSWell）no-op。供 IDOSImportCoordinator 多态分派。
+     * 类型不符（非 IDOSWell）no-op。
      */
     void mergeFrom(const IDOSDataObject* other) override;
 

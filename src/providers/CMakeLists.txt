@@ -3,15 +3,15 @@
 add_library(idos_providers SHARED
     idosprovidermetadata.cpp
     idosproviderregistry.cpp
-    idosimportcoordinator.cpp
+    idosdataloadservice.cpp
     well/idoswellheadermetadata.cpp
     well/idoswellheaderprovider.cpp
     well/idoswelllasmetadata.cpp
     well/idoswelllasprovider.cpp
     grid/idosgrideclipsemetadata.cpp
     grid/idosgrideclipseprovider.cpp
-    model/idosmodeleclipsemetadata.cpp
-    model/idosmodeleclipseprovider.cpp
+    case/idossimulationcaseeclipsemetadata.cpp
+    case/idossimulationcaseeclipseprovider.cpp
 )
 target_include_directories(idos_providers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # OPM 静态库：只在 providers 模块用（Parser 解析 .DATA）；不对外暴露

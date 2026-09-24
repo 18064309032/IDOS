@@ -1,7 +1,7 @@
 #include "idostyperegistry.h"
+#include "case/idossimulationcaseobject.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
-#include "data/model/idosmodel.h"
 #include "data/well/idoswell.h"
 #include <QDebug>
 #include <QObject>
@@ -56,9 +56,9 @@ void IDOSTypeRegistry::registerBuiltinTypes()
     registerType(std::make_unique<IDOSObjectTypeMetadataImpl<IDOSGridProperty>>(
         QStringLiteral("idos.gridproperty"), QStringLiteral("Grid Property"),
         IDOSObjectCategory::Model));
-    // 模型对象：模拟工况（模型树的根业务对象，按 objectId 引用网格与井）
-    registerType(std::make_unique<IDOSObjectTypeMetadataImpl<IDOSModel>>(
-        QStringLiteral("idos.model"), QStringLiteral("Model"),
+    // 工况对象：工况树使用
+    registerType(std::make_unique<IDOSObjectTypeMetadataImpl<IDOSSimulationCaseObject>>(
+        QStringLiteral("idos.case"), QStringLiteral("Case"),
         IDOSObjectCategory::Model));
 }
 

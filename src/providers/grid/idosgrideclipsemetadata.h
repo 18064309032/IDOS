@@ -6,10 +6,6 @@
 /**
  * @brief ECLIPSE 网格 provider 的元数据 + 工厂。
  *
- * 注册方式（GUI 启动时）：
- *   IDOSProviderRegistry::instance().registerMetadata(
- *       std::make_unique<IDOSGridEclipseMetadata>());
- *
  * 扩展名匹配 *.GRID / *.EGRID（不区分大小写）；
  * canHandle 默认按扩展名匹配（基类已实现，无需 override）。
  */

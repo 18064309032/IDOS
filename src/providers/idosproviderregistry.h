@@ -14,14 +14,10 @@ class IDOSProviderMetadata;
 /**
  * @brief 数据解析 provider 注册表。
  *
- * 单例，管理所有 IDOSProviderMetadata 子类实例。GUI 启动时集中注册
- * （不自注册，避免跨 DLL 静态初始化顺序问题）。
+ * 单例，管理所有 IDOSProviderMetadata 子类实例。构造时注册内置 provider，
+ * 插件可在启动后追加注册自己的 provider。
  *
  * 用法：
- *   // GUI 启动时注册（每种格式一行）
- *   registry.registerMetadata(std::make_unique<IDOSWellLasMetadata>());
- *   registry.registerMetadata(std::make_unique<IDOSGridEclipseMetadata>());
- *
  *   // 按扩展名查 → 拿 Metadata → 工厂创建 → 解析
  *   QList<IDOSProviderMetadata*> metas = registry.metadataForFile(path);
  *   if (!metas.isEmpty()) {
@@ -56,6 +52,9 @@ public:
 
     /** 已注册的全部 metadata。 */
     QList<IDOSProviderMetadata*> metadataList() const;
+
+    /** 注册内置数据导入 provider。 */
+    void registerBuiltinProviders();
 
     /**
      * @brief 按扩展名查候选 metadata（不区分大小写）。

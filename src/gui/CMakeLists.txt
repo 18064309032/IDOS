@@ -6,19 +6,26 @@ add_library(idos_gui SHARED
     tree/idostreenode.cpp
     tree/idostreeview.cpp
     tree/idostreemenuprovider.cpp
+    tree/idostreepartkey.cpp
+    tree/idostreegroupnode.cpp
     tree/idosobjecttreenode.cpp
-    tree/idosvaluetreenode.cpp
+    tree/idostreepartnode.cpp
+    tree/idostreereferencenode.cpp
+    tree/idostreebuilder.cpp
+    tree/idostreeprovider.cpp
+    tree/idosdatatreeprovider.cpp
+    tree/idoscasetreeprovider.cpp
+    tree/idostreeproviderregistry.cpp
     tree/idostreemodel.cpp
-    tree/idostreemodelmenuprovider.cpp
-    # 输入树：TreeScope::Input + 输入数据的 provider/视图
-    inputtree/idosinputtreemodel.cpp
-    inputtree/idosinputtreeview.cpp
-    inputtree/idoswellitemprovider.cpp
-    # 模型树：TreeScope::Model + 模型对象的 provider/视图
-    modeltree/idosmodeltreemodel.cpp
-    modeltree/idosmodeltreeview.cpp
-    modeltree/idosgriditemprovider.cpp
-    modeltree/idosmodelitemprovider.cpp
+    # 数据树
+    input/idosdatatreemodel.cpp
+    input/idosdatatreeview.cpp
+    input/providers/idoswelldatatreeprovider.cpp
+    input/providers/idosgriddatatreeprovider.cpp
+    # 新架构工况树
+    case/idoscasetreemodel.cpp
+    case/idoscasetreeview.cpp
+    case/providers/idossimulationcasetreeprovider.cpp
 )
 target_include_directories(idos_gui
     PUBLIC

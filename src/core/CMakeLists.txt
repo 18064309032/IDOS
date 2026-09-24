@@ -4,11 +4,13 @@ add_library(idos_core SHARED
     idosobject.cpp
     idosproject.cpp
     idostyperegistry.cpp
+    case/idoscaseitemref.cpp
+    case/idoscaseobject.cpp
+    case/idossimulationcaseobject.cpp
     data/idosdataobject.cpp
     data/grid/idosgrid.cpp
     data/grid/idosgridcell.cpp
     data/grid/idosgridproperty.cpp
-    data/model/idosmodel.cpp
     data/well/idoswell.cpp
     data/well/idoswellcompletion.cpp
     data/well/idoswellsegment.cpp
