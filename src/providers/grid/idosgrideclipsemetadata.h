@@ -1,3 +1,4 @@
+#include <QObject>
 #ifndef IDOS_GRID_ECLIPSE_METADATA_H
 #define IDOS_GRID_ECLIPSE_METADATA_H
 
@@ -11,13 +12,10 @@
  */
 class PROVIDERS_EXPORT IDOSGridEclipseMetadata : public IDOSProviderMetadata
 {
-public:
-    QString id() const override { return QStringLiteral("idos.grid.eclipse"); }
-    QString displayName() const override { return QStringLiteral("ECLIPSE Grid"); }
-    QStringList fileExtensions() const override
-    {
-        return QStringList{ QStringLiteral("*.GRID"), QStringLiteral("*.EGRID") };
-    }
+  public:
+    QString id() const override;
+    QString displayName() const override;
+    QStringList fileExtensions() const override;
 
     std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };

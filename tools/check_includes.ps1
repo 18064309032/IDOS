@@ -1,161 +1,126 @@
-﻿# =====================================================================
-# check_includes.ps1 —— include 架构边界守护脚本
-#
-# 规则（违例即退出码 1，构建/CI 失败）：
-#   1. 全项目禁止 "../" 目录穿越式 include
-#   2. core/ 禁止 include 其他任何模块的头（gui/providers/render/app/扩展侧）
-#      —— core 与 gui 的这条同时被 CMake 依赖图兜底（core 未链接 Widgets），双保险
-#   3. gui/tree/（机制层）禁止 include 业务层（inputtree/ modeltree/ 主窗口）
-#   4. gui 业务层互不依赖（inputtree 不 include modeltree，反之亦然）
-#   5. providers/ 禁止 include gui 侧与 app 侧头（解析层不认识界面与装配）
-#   6. render/ 禁止 include gui 侧、providers 侧与 app 侧头（渲染只依赖 core + VTK）
-#   7. gui/ 禁止 include providers 侧、app 侧与扩展模块侧头
-#      （允许 render 侧：设计约定 GUI 可依赖 Core/Render，需在 gui/CMakeLists 同步链接）
-#   8. analysis/ python/ assistant/ 只允许 include core 侧与自身根头
-#      —— 扩展/自动化模块不得依赖 gui/providers/render/app，也不得互相依赖
-#      （对应设计约束：python/assistant 反向链接 App = 统一操作入口失效）
-#   9. app/ 禁止 include gui、providers、render 的内部子目录
-#      —— app 只走各模块公共头与工厂；app 自身是唯一可认识所有模块公共面的装配层
-#
-# 用法：
-#   powershell -NoProfile -ExecutionPolicy Bypass -File tools/check_includes.ps1
-#   可选参数 -SourceRoot <路径>（默认 <脚本目录>/../src）
-# 由根 CMakeLists.txt 的 check_includes 目标（ALL）在每次构建时自动执行。
-# =====================================================================
-param(
-    [string]$SourceRoot = ""
-)
-
-if ($SourceRoot -eq "") {
-    $SourceRoot = Join-Path $PSScriptRoot "..\src"
+﻿# 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
+# 公共头在模块根目录；app/plugin 是方案明确规定的插件 SDK 例外。
+# 检查直接 include 和已知内部类型引用，不替代 C++ 编译器的语义分析。
+param([string]$SourceRoot = "")
+$ErrorActionPreference = 'Stop'
+if (!$SourceRoot) { $SourceRoot = Join-Path $PSScriptRoot '../src' }
+$root = (Resolve-Path -LiteralPath $SourceRoot).Path
+$modules = @(Get-ChildItem -LiteralPath $root -Directory)
+$files = @(Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object { $_.Extension -in '.h','.hpp','.cpp','.cc' })
+$headers = @($files | Where-Object { $_.Extension -in '.h','.hpp' })
+$violations = New-Object 'System.Collections.Generic.List[string]'
+$allowed = @{
+    core = @()
+    gui = @('core','render_core','render_qt','render_adapters')
+    providers = @('core')
+    render = @()
+    render_core = @()
+    render_qt = @('render_core')
+    render_adapters = @('core','render_core')
+    analysis = @('core')
+    python = @('core')
+    assistant = @('core')
+    app = @('core','gui','providers','render','render_core','render_qt','render_adapters','analysis','python','assistant')
 }
-
-if (-not (Test-Path $SourceRoot)) {
-    Write-Host "check_includes: 源码目录不存在: $SourceRoot" -ForegroundColor Red
-    exit 1
+function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
+function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' }
+function WithoutComments($content) {
+    [regex]::Replace($content, '(?s)/\*.*?\*/|(?m)//[^\r\n]*', { param($m) [regex]::Replace($m.Value, '[^\r\n]', ' ') })
 }
-
-$sourceRootResolved = (Resolve-Path $SourceRoot).Path
-
-# gui 侧 include 目标（相对模块根的路径或 gui 根头文件）
-$guiSidePattern = '^(tree/|inputtree/|modeltree/|idos_gui\.h$|idosmainwindow\.h$)'
-
-$violations = New-Object System.Collections.Generic.List[string]
-$fileCount = 0
-
-$files = Get-ChildItem -Path $SourceRoot -Recurse -File -Include *.h, *.hpp, *.cpp, *.cc
+# 同目录布局通过显式清单保留 GUI 分层；子目录布局仍按目录识别。
+$guiLayers = @{}
+$layerManifest = Join-Path $PSScriptRoot 'gui_layers.json'
+if (Test-Path -LiteralPath $layerManifest) {
+    $layerDefinitions = Get-Content -LiteralPath $layerManifest -Raw | ConvertFrom-Json
+    foreach ($property in $layerDefinitions.PSObject.Properties) {
+        $guiLayers[$property.Name] = $property.Value
+    }
+}
 foreach ($file in $files) {
-    $fileCount++
-    $rel = $file.FullName.Substring($sourceRootResolved.Length + 1).Replace('\', '/')
-    $isCoreFile = $rel -like 'core/*'
-    $isTreeMechanism = $rel -like 'gui/tree/*'
-    $isInputTree = $rel -like 'gui/inputtree/*'
-    $isModelTree = $rel -like 'gui/modeltree/*'
-    $isGuiFile = $rel -like 'gui/*'
-    $isProvidersFile = $rel -like 'providers/*'
-    $isRenderFile = $rel -like 'render/*'
-    $isAppFile = $rel -like 'app/*'
-    $isAnalysisFile = $rel -like 'analysis/*'
-    $isPythonFile = $rel -like 'python/*'
-    $isAssistantFile = $rel -like 'assistant/*'
-    $isExtFile = $isAnalysisFile -or $isPythonFile -or $isAssistantFile
-
-    # 各模块的"侧"（include 一律从模块根出发写全路径，故按根相对路径匹配）
-    $providersSide = '^(well/|grid/|model/|idos_providers\.h$|idosdataprovider\.h$|idosprovidermetadata\.h$|idosproviderregistry\.h$|idosimportcoordinator\.h$)'
-    $renderSide = '^(idos_render\.h$|scene/|adapters/|interaction/|overlays/)'
-    $appSide = '^(idos_app\.h$|action/|import/|command/|task/|automation/|plugin/)'
-    $extSide = '^(idos_analysis\.h$|idos_python\.h$|idos_assistant\.h$)'
-
-    # 内部子目录（仅规则 9 用：app 不深入模块内部，公共根头不受限）
-    $guiInternal = '^(tree/|inputtree/|modeltree/|views/|properties/|dialogs/)'
-    $providersInternal = '^(well/|grid/|model/)'
-    $renderInternal = '^(scene/|adapters/|interaction/|overlays/)'
-
-    # 扩展模块自身的根头（规则 8 允许 self-include）
-    $ownHeader = ''
-    if ($isAnalysisFile) { $ownHeader = 'idos_analysis.h' }
-    elseif ($isPythonFile) { $ownHeader = 'idos_python.h' }
-    elseif ($isAssistantFile) { $ownHeader = 'idos_assistant.h' }
-
-    $lines = Get-Content -Path $file.FullName -Encoding UTF8
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -notmatch '^\s*#\s*include\s*"([^"]+)"') { continue }
-        $inc = $Matches[1]
-        $location = "$rel($($i + 1))"
-
-        # 规则 1：禁止目录穿越
-        if ($inc -like '*../*') {
-            $violations.Add("${location}: 禁止 '../' 目录穿越: #include `"$inc`"")
-            continue
-        }
-
-        # 规则 2：core 不依赖任何其他模块
-        if ($isCoreFile -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
-                -or $inc -match $renderSide -or $inc -match $appSide -or $inc -match $extSide)) {
-            $violations.Add("${location}: core 禁止 include 其他模块头文件: $inc")
-            continue
-        }
-
-        # 规则 3：机制层不依赖业务层
-        if ($isTreeMechanism -and $inc -match '^(inputtree/|modeltree/|idosmainwindow)') {
-            $violations.Add("${location}: 机制层 tree/ 禁止 include 业务层头文件: $inc")
-            continue
-        }
-
-        # 规则 4：业务层互不依赖
-        if ($isInputTree -and $inc -like 'modeltree/*') {
-            $violations.Add("${location}: inputtree 禁止 include modeltree: $inc")
-            continue
-        }
-        if ($isModelTree -and $inc -like 'inputtree/*') {
-            $violations.Add("${location}: modeltree 禁止 include inputtree: $inc")
-        }
-
-        # 规则 5：解析层不认识界面与装配
-        if ($isProvidersFile -and ($inc -match $guiSidePattern -or $inc -match $appSide)) {
-            $violations.Add("${location}: providers 禁止 include gui/app 侧头文件: $inc")
-            continue
-        }
-
-        # 规则 6：渲染层只依赖 core（+VTK），不认识界面/解析/装配
-        if ($isRenderFile -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
-                -or $inc -match $appSide -or $inc -match $extSide)) {
-            $violations.Add("${location}: render 禁止 include gui/providers/app/扩展侧头文件: $inc")
-            continue
-        }
-
-        # 规则 7：gui 不认识解析层、装配层与扩展模块（允许 render 侧，见头部注释）
-        if ($isGuiFile -and ($inc -match $providersSide -or $inc -match $appSide `
-                -or $inc -match $extSide)) {
-            $violations.Add("${location}: gui 禁止 include providers/app/扩展模块侧头文件: $inc")
-            continue
-        }
-
-        # 规则 8：扩展/自动化模块只认 core + 自身根头
-        if ($isExtFile -and $inc -ne $ownHeader `
-                -and ($inc -match $guiSidePattern -or $inc -match $providersSide `
-                      -or $inc -match $renderSide -or $inc -match $appSide `
-                      -or $inc -match $extSide)) {
-            $violations.Add("${location}: analysis/python/assistant 只允许 include core 侧头文件: $inc")
-            continue
-        }
-
-        # 规则 9：app 走公共头与工厂，不深入其他模块内部子目录
-        if ($isAppFile -and ($inc -match $guiInternal -or $inc -match $providersInternal `
-                -or $inc -match $renderInternal)) {
-            $violations.Add("${location}: app 禁止 include 其他模块的内部子目录: $inc")
-            continue
+    $rel = RelativePath $file.FullName
+    if ($rel -match '^gui/(tree|input|case)/') { $guiLayers[$file.BaseName] = $Matches[1] }
+}
+$internalTypes = @{}
+foreach ($header in $headers) {
+    $rel = RelativePath $header.FullName
+    if (!(IsPublic $rel)) {
+        $content = WithoutComments ([IO.File]::ReadAllText($header.FullName))
+        foreach ($match in [regex]::Matches($content, '\b(?:class|struct)\s+(?:\w+_EXPORT\s+)?(IDOS\w+)\s*(?:final\s*)?(?::[^;{]+)?\{')) {
+            $internalTypes[$match.Groups[1].Value] = $rel
         }
     }
 }
-
-if ($violations.Count -gt 0) {
-    Write-Host "check_includes: 发现 $($violations.Count) 处架构边界违规：" -ForegroundColor Red
-    foreach ($v in $violations) {
-        Write-Host "  $v" -ForegroundColor Red
+foreach ($file in $files) {
+    $rel = RelativePath $file.FullName
+    $module = ($rel -split '/')[0]
+    $content = WithoutComments ([IO.File]::ReadAllText($file.FullName))
+    $public = $file.Extension -in '.h','.hpp' -and (IsPublic $rel)
+    if ($public) {
+        foreach ($type in $internalTypes.Keys) {
+            if ($content -match "\b$([regex]::Escape($type))\b") {
+                $violations.Add("${rel}: 公共头引用内部类型 $type ($($internalTypes[$type]))")
+            }
+        }
     }
+    $lineNumber = 0
+    foreach ($line in ($content -split '\r?\n')) {
+        $lineNumber++
+        if ($line -notmatch '^\s*#\s*include\s*(["<])([^">]+)[">]') { continue }
+        $quoted = $Matches[1] -eq '"'
+        $inc = $Matches[2].Replace('\','/')
+        $location = "${rel}(${lineNumber})"
+        if ($inc -match '(^|/)\.\.(/|$)' -or [IO.Path]::IsPathRooted($inc)) {
+            $violations.Add("${location}: 禁止目录穿越或绝对路径 include: $inc")
+            continue
+        }
+        $candidates = @()
+        if ($quoted) {
+            $local = Join-Path $file.DirectoryName $inc
+            if (Test-Path -LiteralPath $local -PathType Leaf) { $candidates = @((Get-Item -LiteralPath $local)) }
+        }
+        if (!$candidates.Count -and $module -ne 'main.cpp') {
+            $own = Join-Path (Join-Path $root $module) $inc
+            if (Test-Path -LiteralPath $own -PathType Leaf) { $candidates = @((Get-Item -LiteralPath $own)) }
+        }
+        if (!$candidates.Count) {
+            $candidates = @(foreach ($dir in $modules) {
+                $path = Join-Path $dir.FullName $inc
+                if (Test-Path -LiteralPath $path -PathType Leaf) { Get-Item -LiteralPath $path }
+            })
+            $qualified = Join-Path $root $inc
+            if (Test-Path -LiteralPath $qualified -PathType Leaf) { $candidates += Get-Item -LiteralPath $qualified }
+            $candidates = @($candidates | Sort-Object FullName -Unique)
+        }
+        if (!$candidates.Count) {
+            if ($quoted -or $inc -match '(^|/)idos[^/]*\.h$') { $violations.Add("${location}: 无法解析项目头文件: $inc") }
+            continue # 第三方尖括号头由编译器检查。
+        }
+        if ($candidates.Count -ne 1) { $violations.Add("${location}: 头文件归属不唯一: $inc"); continue }
+        $target = $candidates[0]
+        $targetRel = RelativePath $target.FullName
+        $targetModule = ($targetRel -split '/')[0]
+        if ($module -ne $targetModule) {
+            if ($module -ne 'main.cpp' -and (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module])) {
+                $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
+            }
+            if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
+        }
+        if ($public -and !(IsPublic $targetRel)) { $violations.Add("${location}: 公共头禁止包含内部头: $targetRel") }
+        if ($module -eq 'gui' -and $targetModule -eq 'gui') {
+            $fromLayer = $guiLayers[$file.BaseName]
+            $toLayer = $guiLayers[$target.BaseName]
+            if (($fromLayer -eq 'tree' -and $toLayer -in 'input','case') -or
+                ($fromLayer -eq 'input' -and $toLayer -eq 'case') -or
+                ($fromLayer -eq 'case' -and $toLayer -eq 'input')) {
+                $violations.Add("${location}: GUI $fromLayer 禁止依赖 $toLayer ($inc)")
+            }
+        }
+    }
+}
+if ($violations.Count) {
+    $violations | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+    Write-Host "check_includes: $($violations.Count) 处违规"
     exit 1
 }
-
-Write-Host "check_includes: 架构边界检查通过 ($fileCount 个源文件)"
+Write-Host "check_includes: 架构边界检查通过 ($($files.Count) 个源文件)"
 exit 0

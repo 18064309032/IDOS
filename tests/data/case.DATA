@@ -1,0 +1,10 @@
+RUNSPEC
+TITLE
+Sample Case
+GRID
+PROPS
+SOLUTION
+SCHEDULE
+INCLUDE
+'case-wells.inc' /
+END

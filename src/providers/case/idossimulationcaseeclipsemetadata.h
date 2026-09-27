@@ -1,3 +1,4 @@
+#include <QObject>
 #ifndef IDOS_SIMULATION_CASE_ECLIPSE_METADATA_H
 #define IDOS_SIMULATION_CASE_ECLIPSE_METADATA_H
 
@@ -10,13 +11,10 @@
  */
 class PROVIDERS_EXPORT IDOSSimulationCaseEclipseMetadata : public IDOSProviderMetadata
 {
-public:
-    QString id() const override { return QStringLiteral("idos.case.simulation.eclipse"); }
-    QString displayName() const override { return QStringLiteral("ECLIPSE Simulation Case"); }
-    QStringList fileExtensions() const override
-    {
-        return QStringList{ QStringLiteral("*.DATA"), QStringLiteral("*.data") };
-    }
+  public:
+    QString id() const override;
+    QString displayName() const override;
+    QStringList fileExtensions() const override;
 
     std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };

@@ -41,7 +41,7 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-find_package(Qt5 COMPONENTS Core Widgets Network REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Widgets Network REQUIRED)
 
 # ---------------------------------------------------------------------
 # SARibbon 第三方库（仅 include/lib/bin 三段式布局，无 CMake config 文件）
@@ -89,9 +89,9 @@ set_target_properties(OPM::opmcommon PROPERTIES
     IMPORTED_LOCATION         "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
 )
 
-# 渲染模块开关：当前暂不实现渲染，默认关闭（无需 VTK）
+# 渲染模块开关。
 # 打开方式：cmake -DIDOS_ENABLE_RENDER=ON --preset win-x64-debug-local
-option(IDOS_ENABLE_RENDER "Enable VTK rendering module" OFF)
+option(IDOS_ENABLE_RENDER "Enable VTK rendering module" ON)
 
 if(IDOS_ENABLE_RENDER)
     find_package(VTK REQUIRED COMPONENTS
@@ -100,6 +100,8 @@ if(IDOS_ENABLE_RENDER)
         RenderingCore
         RenderingOpenGL2
         InteractionStyle
+        InteractionWidgets
+        RenderingAnnotation
         GUISupportQt
     )
 endif()
@@ -126,8 +128,18 @@ add_custom_target(check_includes ALL
 
 # 同时纳入 CTest（CI / 手动体检：ctest -R check_includes）
 enable_testing()
+option(IDOS_BUILD_TESTS "Build Qt project workflow tests" OFF)
+if(IDOS_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 add_test(NAME check_includes
     COMMAND powershell -NoProfile -ExecutionPolicy Bypass
             -File "${IDOS_CHECK_INCLUDES_SCRIPT}"
             -SourceRoot "${CMAKE_SOURCE_DIR}/src"
+)
+
+add_test(NAME check_includes_regressions
+    COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${CMAKE_SOURCE_DIR}/tools/test_check_includes.ps1"
+            -ScratchRoot "${CMAKE_BINARY_DIR}/boundary-fixtures"
 )

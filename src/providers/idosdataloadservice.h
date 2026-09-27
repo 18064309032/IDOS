@@ -16,8 +16,8 @@ class IDOSProject;
  */
 class PROVIDERS_EXPORT IDOSDataLoadService
 {
-public:
-    IDOSDataLoadService() = default;
+  public:
+    IDOSDataLoadService();
 
     /**
      * @brief 从文件加载数据到工程。
@@ -27,7 +27,7 @@ public:
 
     QString lastError() const;
 
-private:
+  private:
     QString m_lastError;
 };
 

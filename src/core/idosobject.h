@@ -15,7 +15,7 @@ class CORE_EXPORT IDOSObject : public QObject
 {
     Q_OBJECT
 
-public:
+  public:
     /**
      * @brief 构造领域对象，自动生成唯一 objectId。
      * @param parent Qt 父对象，用于父子所有权管理生命周期。
@@ -54,7 +54,7 @@ public:
      */
     Q_SIGNAL void nameChanged(const QString& name);
 
-protected:
+  protected:
     /**
      * @brief 设置对象唯一标识。
      * @details 仅在加载工程文件恢复对象时使用，正常构造由系统自动分配。
@@ -62,7 +62,7 @@ protected:
      */
     void setObjectId(const QString& id);
 
-private:
+  private:
     QString m_objectId;
     QString m_name;
 };

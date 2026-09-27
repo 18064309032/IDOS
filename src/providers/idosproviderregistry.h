@@ -32,7 +32,7 @@ class IDOSProviderMetadata;
  */
 class PROVIDERS_EXPORT IDOSProviderRegistry
 {
-public:
+  public:
     /** 全局唯一实例。 */
     static IDOSProviderRegistry& instance();
 
@@ -72,11 +72,11 @@ public:
      */
     QString fileFilters() const;
 
-private:
+  private:
     IDOSProviderRegistry();
     Q_DISABLE_COPY(IDOSProviderRegistry)
 
-    struct Impl;
+    class Impl;
     std::unique_ptr<Impl> m_impl;
 };
 

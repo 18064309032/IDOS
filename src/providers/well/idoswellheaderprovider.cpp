@@ -1,79 +1,112 @@
 #include "idoswellheaderprovider.h"
-#include "data/well/idoswell.h"
-#include "data/well/idoswellhead.h"
-
+#include "idoswell.h"
+#include "idoswellhead.h"
+#include <QObject>
 #include <QFile>
-#include <QFileInfo>
 #include <QRegularExpression>
-#include <QStringList>
 #include <QTextStream>
+#include <cmath>
 
 QList<IDOSDataObject*> IDOSWellHeaderProvider::read(const QString& filePath)
 {
+    setLastError(QString());
     QList<IDOSDataObject*> result;
-
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-        setLastError(QStringLiteral("Cannot open file: %1").arg(file.errorString()));
+        setLastError(QObject::tr("Cannot open file: %1").arg(file.errorString()));
         return result;
     }
-
     QTextStream stream(&file);
-
-    // 跳过表头行
-    stream.readLine();
-
-    int importedCount = 0;
-
+    stream.setCodec("UTF-8");
+    QString header;
+    int lineNumber = 0;
+    while (!stream.atEnd() && header.isEmpty())
+    {
+        header = stream.readLine().trimmed();
+        ++lineNumber;
+    }
+    header.replace(QRegularExpression(QStringLiteral("Bottom\\s+Depth"), QRegularExpression::CaseInsensitiveOption),
+                   QStringLiteral("Bottom_Depth"));
+    const QStringList columns = header.toLower().split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+    const QStringList expected = {QStringLiteral("wellname"),     QStringLiteral("x-coord"),
+                                  QStringLiteral("y-coord"),      QStringLiteral("top_depth"),
+                                  QStringLiteral("bottom_depth"), QStringLiteral("kb"),
+                                  QStringLiteral("symbol")};
+    if (columns.size() != expected.size())
+    {
+        setLastError(QObject::tr(
+            "Expected seven well header columns: WellName, X-Coord, Y-Coord, Top_Depth, Bottom Depth, KB, Symbol."));
+        return result;
+    }
+    QList<int> indexes;
+    for (const QString& name : expected)
+    {
+        if (columns.count(name) != 1)
+        {
+            setLastError(QObject::tr("Missing or repeated header column: %1").arg(name));
+            return result;
+        }
+        indexes.append(columns.indexOf(name));
+    }
     while (!stream.atEnd())
     {
-        QString line = stream.readLine().trimmed();
-        if (line.isEmpty()) continue;
-
-        // 空白分隔（一个或多个空格/制表符）
-        QStringList fields = line.split(QRegularExpression(QStringLiteral("\\s+")),
-                                        Qt::SkipEmptyParts);
-        // 列：WellName X Y Top_Depth Bottom_Depth KB Symbol
-        if (fields.size() < 6)
+        const QString line = stream.readLine().trimmed();
+        ++lineNumber;
+        if (line.isEmpty())
         {
-            continue;   // 跳过不完整行
+            continue;
         }
-
-        bool okX = false, okY = false, okTop = false, okBottom = false, okKB = false;
-        QString wellName = fields[0];
-        double x = fields[1].toDouble(&okX);
-        double y = fields[2].toDouble(&okY);
-        double topDepth = fields[3].toDouble(&okTop);
-        double bottomDepth = fields[4].toDouble(&okBottom);
-        double kb = fields[5].toDouble(&okKB);
-
-        if (!okX || !okY || !okTop || !okBottom || !okKB)
+        const QStringList fields = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+        if (fields.size() != 7)
         {
-            continue;   // 跳过数值解析失败行
+            setLastError(QObject::tr("Line %1: expected seven values.").arg(lineNumber));
+            break;
         }
-
-        // 建 Well、填井头；所有权交调用方
-        IDOSWell* well = new IDOSWell();
-        well->setName(wellName);
-
+        double values[5] = {};
+        bool valid = true;
+        for (int i = 0; i < 5; ++i)
+        {
+            bool ok = false;
+            values[i] = fields[indexes[i + 1]].toDouble(&ok);
+            if (!ok || !std::isfinite(values[i]))
+            {
+                setLastError(QObject::tr("Line %1: invalid number in %2.").arg(lineNumber).arg(expected[i + 1]));
+                valid = false;
+                break;
+            }
+        }
+        if (!valid)
+        {
+            break;
+        }
+        bool symbolOk = false;
+        const int symbol = fields[indexes[6]].toInt(&symbolOk);
+        if (!symbolOk || symbol < 0 || values[2] > values[3])
+        {
+            setLastError(QObject::tr("Line %1: invalid symbol or top depth exceeds bottom depth.").arg(lineNumber));
+            break;
+        }
         IDOSWellHead head;
-        head.setSurfaceX(x);
-        head.setSurfaceY(y);
-        head.setSurfaceElevation(kb);
-        head.setTopDepth(topDepth);
-        head.setBottomDepth(bottomDepth);
+        head.setSurfaceX(values[0]);
+        head.setSurfaceY(values[1]);
+        head.setTopDepth(values[2]);
+        head.setBottomDepth(values[3]);
+        head.setKb(values[4]);
+        head.setSymbol(symbol);
+        IDOSWell* well = new IDOSWell();
+        well->setName(fields[indexes[0]]);
         well->setWellHead(head);
-
         result.append(well);
-        ++importedCount;
     }
-
-    if (importedCount == 0)
+    if (!lastError().isEmpty())
     {
-        setLastError(QStringLiteral("No valid well header rows parsed from %1")
-                         .arg(QFileInfo(filePath).fileName()));
+        qDeleteAll(result);
+        result.clear();
     }
-
+    else if (result.isEmpty())
+    {
+        setLastError(QObject::tr("The file contains no well header data."));
+    }
     return result;
 }

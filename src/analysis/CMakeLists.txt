@@ -11,7 +11,7 @@
 #                业务编排在 app。
 #
 # 依赖链：idos_analysis → idos_core → (Qt5::Core Qt5::Gui)
-add_library(idos_analysis SHARED dummy.cpp)
-target_include_directories(idos_analysis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(idos_analysis PUBLIC idos_core)
-target_compile_definitions(idos_analysis PRIVATE IDOS_ANALYSIS_LIB)
+# 尚无实现，保留接口目标；有真实源文件后再建立共享库。
+add_library(idos_analysis INTERFACE)
+target_include_directories(idos_analysis INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(idos_analysis INTERFACE idos_core)

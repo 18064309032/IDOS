@@ -23,8 +23,8 @@ class IDOSDataObject;
  */
 class PROVIDERS_EXPORT IDOSDataProvider
 {
-public:
-    virtual ~IDOSDataProvider() = default;
+  public:
+    virtual ~IDOSDataProvider();
 
     /**
      * @brief 从文件解析数据对象。
@@ -41,13 +41,13 @@ public:
     // ===== 错误 =====
 
     /** 最近一次 read() 的错误信息；无错误返回空。 */
-    QString lastError() const { return m_lastError; }
+    QString lastError() const;
 
-protected:
+  protected:
     /** 设置错误信息（子类解析失败时调用）。 */
-    void setLastError(const QString& msg) { m_lastError = msg; }
+    void setLastError(const QString& msg);
 
-private:
+  private:
     QString m_lastError;
 };
 

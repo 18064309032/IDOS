@@ -1,0 +1,4 @@
+WELSPECS
+'A10' 'FIELD' 1 1 1* 'OIL' /
+'B1' 'FIELD' 1 1 1* 'OIL' /
+/

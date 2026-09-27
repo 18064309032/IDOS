@@ -1,5 +1,6 @@
+#include <QObject>
 #include "idoswelllasprovider.h"
-#include "data/well/idoswell.h"
+#include "idoswell.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -12,7 +13,7 @@ QList<IDOSDataObject*> IDOSWellLasProvider::read(const QString& filePath)
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-        setLastError(QStringLiteral("Cannot open file: %1").arg(file.errorString()));
+        setLastError(QObject::tr("Cannot open file: %1").arg(file.errorString()));
         return result;
     }
 
@@ -23,7 +24,7 @@ QList<IDOSDataObject*> IDOSWellLasProvider::read(const QString& filePath)
     if (!line.trimmed().startsWith("~V", Qt::CaseInsensitive) &&
         !line.trimmed().startsWith("~VERSION", Qt::CaseInsensitive))
     {
-        setLastError(QStringLiteral("Not a valid LAS file"));
+        setLastError(QObject::tr("Not a valid LAS file"));
         return result;
     }
 

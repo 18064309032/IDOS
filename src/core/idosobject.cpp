@@ -8,7 +8,9 @@ IDOSObject::IDOSObject(QObject* parent)
 {
 }
 
-IDOSObject::~IDOSObject() = default;
+IDOSObject::~IDOSObject()
+{
+}
 
 QString IDOSObject::objectId() const
 {

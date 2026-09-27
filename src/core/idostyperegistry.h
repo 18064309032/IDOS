@@ -19,8 +19,8 @@ class IDOSDataObject;
  */
 enum class IDOSObjectCategory
 {
-    Input,   ///< 输入数据，归输入树
-    Model    ///< 模型对象，归模型树
+    Input, ///< 输入数据，归输入树
+    Model  ///< 模型对象，归模型树
 };
 
 /**
@@ -31,7 +31,7 @@ enum class IDOSObjectCategory
  */
 class CORE_EXPORT IDOSObjectTypeMetadata
 {
-public:
+  public:
     /**
      * @brief 构造类型元数据。
      * @param typeId 稳定类型标识（如 "idos.well"），插件建议用带命名空间的逆域名形式。
@@ -39,8 +39,7 @@ public:
      * @param category 类别（输入树 / 模型树）。
      * @param inputGroup 仅 Input 类别有效：输入树中的分组名（如"井组"），为空则不归组。
      */
-    IDOSObjectTypeMetadata(const QString& typeId, const QString& displayName,
-                           IDOSObjectCategory category,
+    IDOSObjectTypeMetadata(const QString& typeId, const QString& displayName, IDOSObjectCategory category,
                            const QString& inputGroup = QString());
     virtual ~IDOSObjectTypeMetadata();
 
@@ -63,29 +62,11 @@ public:
      */
     virtual IDOSDataObject* create(QObject* parent = nullptr) const = 0;
 
-private:
+  private:
     QString m_typeId;
     QString m_displayName;
     IDOSObjectCategory m_category;
     QString m_inputGroup;
-};
-
-/**
- * @brief 默认模板实现：create 直接 new T(parent)。
- *
- * T 必须是 IDOSDataObject 子类且提供 QObject* 构造函数。
- * 模板无需导出（MSVC 模板不导出），仅在头文件内实例化使用。
- */
-template<typename T>
-class IDOSObjectTypeMetadataImpl : public IDOSObjectTypeMetadata
-{
-public:
-    using IDOSObjectTypeMetadata::IDOSObjectTypeMetadata;
-
-    IDOSDataObject* create(QObject* parent = nullptr) const override
-    {
-        return new T(parent);
-    }
 };
 
 /**
@@ -97,7 +78,7 @@ public:
  */
 class CORE_EXPORT IDOSTypeRegistry
 {
-public:
+  public:
     /** 全局唯一实例；首次调用时注册内置类型。 */
     static IDOSTypeRegistry& instance();
 
@@ -129,7 +110,7 @@ public:
     /** 已注册的全部类型元数据。 */
     QList<const IDOSObjectTypeMetadata*> knownTypes() const;
 
-private:
+  private:
     IDOSTypeRegistry();
     Q_DISABLE_COPY(IDOSTypeRegistry)
 

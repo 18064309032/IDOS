@@ -12,7 +12,7 @@
  */
 class PROVIDERS_EXPORT IDOSWellHeaderProvider : public IDOSDataProvider
 {
-public:
+  public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
 };
 

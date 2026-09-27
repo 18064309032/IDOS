@@ -1,18 +1,21 @@
+#include <QObject>
 #include "idosproviderregistry.h"
 #include "idosdataprovider.h"
 #include "case/idossimulationcaseeclipsemetadata.h"
 #include "grid/idosgrideclipsemetadata.h"
 #include "well/idoswellheadermetadata.h"
 #include "well/idoswelllasmetadata.h"
+#include "well/idoswellpathmetadata.h"
 
 #include <QFileInfo>
 #include <QHash>
 #include <vector>
 
-struct IDOSProviderRegistry::Impl
+class IDOSProviderRegistry::Impl
 {
-    QHash<QString, IDOSProviderMetadata*> metadatas;   // id → metadata，裸指针（unique_ptr 持有所有权）
-    std::vector<std::unique_ptr<IDOSProviderMetadata>> ownership;   // 析构时统一释放
+  public:
+    QHash<QString, IDOSProviderMetadata*> metadatas;              // id → metadata，裸指针（unique_ptr 持有所有权）
+    std::vector<std::unique_ptr<IDOSProviderMetadata>> ownership; // 析构时统一释放
 };
 
 IDOSProviderRegistry::IDOSProviderRegistry()
@@ -21,7 +24,9 @@ IDOSProviderRegistry::IDOSProviderRegistry()
     registerBuiltinProviders();
 }
 
-IDOSProviderRegistry::~IDOSProviderRegistry() = default;
+IDOSProviderRegistry::~IDOSProviderRegistry()
+{
+}
 
 IDOSProviderRegistry& IDOSProviderRegistry::instance()
 {
@@ -31,16 +36,25 @@ IDOSProviderRegistry& IDOSProviderRegistry::instance()
 
 bool IDOSProviderRegistry::registerMetadata(std::unique_ptr<IDOSProviderMetadata> metadata)
 {
-    if (!metadata) return false;
+    if (!metadata)
+    {
+        return false;
+    }
 
     QString id = metadata->id();
-    auto it = m_impl->metadatas.find(id);
+    QHash<QString, IDOSProviderMetadata*>::iterator it = m_impl->metadatas.find(id);
     if (it != m_impl->metadatas.end())
     {
         // 替换旧的
-        auto oldIt = std::find_if(m_impl->ownership.begin(), m_impl->ownership.end(),
-            [&](const std::unique_ptr<IDOSProviderMetadata>& p) { return p.get() == it.value(); });
-        if (oldIt != m_impl->ownership.end()) m_impl->ownership.erase(oldIt);
+        for (std::vector<std::unique_ptr<IDOSProviderMetadata>>::iterator oldIt = m_impl->ownership.begin();
+             oldIt != m_impl->ownership.end(); ++oldIt)
+        {
+            if (oldIt->get() == it.value())
+            {
+                m_impl->ownership.erase(oldIt);
+                break;
+            }
+        }
         m_impl->metadatas.erase(it);
     }
 
@@ -58,7 +72,10 @@ IDOSProviderMetadata* IDOSProviderRegistry::metadata(const QString& id) const
 std::unique_ptr<IDOSDataProvider> IDOSProviderRegistry::createProvider(const QString& id) const
 {
     IDOSProviderMetadata* meta = metadata(id);
-    if (!meta) return nullptr;
+    if (!meta)
+    {
+        return nullptr;
+    }
     return meta->createProvider();
 }
 
@@ -70,6 +87,7 @@ QList<IDOSProviderMetadata*> IDOSProviderRegistry::metadataList() const
 void IDOSProviderRegistry::registerBuiltinProviders()
 {
     registerMetadata(std::make_unique<IDOSWellHeaderMetadata>());
+    registerMetadata(std::make_unique<IDOSWellPathMetadata>());
     registerMetadata(std::make_unique<IDOSWellLasMetadata>());
     registerMetadata(std::make_unique<IDOSGridEclipseMetadata>());
     registerMetadata(std::make_unique<IDOSSimulationCaseEclipseMetadata>());
@@ -77,8 +95,8 @@ void IDOSProviderRegistry::registerBuiltinProviders()
 
 QList<IDOSProviderMetadata*> IDOSProviderRegistry::metadataForFile(const QString& filePath) const
 {
-    QList<IDOSProviderMetadata*> trueMatch;   // canHandle() 真检测匹配
-    QList<IDOSProviderMetadata*> extMatch;    // 仅扩展名匹配
+    QList<IDOSProviderMetadata*> trueMatch; // canHandle() 真检测匹配
+    QList<IDOSProviderMetadata*> extMatch;  // 仅扩展名匹配
 
     for (IDOSProviderMetadata* m : m_impl->metadatas)
     {
@@ -118,9 +136,12 @@ QString IDOSProviderRegistry::fileFilters() const
         perProvider.append(QStringLiteral("%1 (%2)").arg(m->displayName(), exts.join(" ")));
     }
 
-    if (allExtensions.isEmpty()) return QString();
+    if (allExtensions.isEmpty())
+    {
+        return QString();
+    }
 
-    QString allFilter = QStringLiteral("All Supported Files (%1)").arg(allExtensions.join(" "));
+    QString allFilter = QObject::tr("All Supported Files (%1)").arg(allExtensions.join(" "));
     QStringList result;
     result.append(allFilter);
     result.append(perProvider);

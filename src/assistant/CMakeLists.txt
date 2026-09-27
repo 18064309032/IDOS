@@ -1,5 +1,5 @@
 # idos_assistant: AI 助手
-add_library(idos_assistant SHARED dummy.cpp)
-target_include_directories(idos_assistant PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(idos_assistant PUBLIC idos_core)
-target_compile_definitions(idos_assistant PRIVATE IDOS_ASSISTANT_LIB)
+# 尚无实现，保留接口目标；有真实源文件后再建立共享库。
+add_library(idos_assistant INTERFACE)
+target_include_directories(idos_assistant INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(idos_assistant INTERFACE idos_core)

@@ -29,8 +29,8 @@ class IDOSDataProvider;
  */
 class PROVIDERS_EXPORT IDOSProviderMetadata
 {
-public:
-    virtual ~IDOSProviderMetadata() = default;
+  public:
+    virtual ~IDOSProviderMetadata();
 
     // ===== 元数据 =====
 

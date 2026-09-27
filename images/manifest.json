@@ -1,0 +1,368 @@
+[
+  {
+    "file": "app-project-new.svg",
+    "module": "app",
+    "purpose": "Create a project",
+    "color": "#3566B8"
+  },
+  {
+    "file": "app-project-open.svg",
+    "module": "app",
+    "purpose": "Open a project",
+    "color": "#3566B8"
+  },
+  {
+    "file": "app-project-save.svg",
+    "module": "app",
+    "purpose": "Save a project",
+    "color": "#3566B8"
+  },
+  {
+    "file": "app-project-settings.svg",
+    "module": "app",
+    "purpose": "Project settings",
+    "color": "#3566B8"
+  },
+  {
+    "file": "app-import.svg",
+    "module": "app",
+    "purpose": "Import data",
+    "color": "#3566B8"
+  },
+  {
+    "file": "app-export.svg",
+    "module": "app",
+    "purpose": "Export data",
+    "color": "#3566B8"
+  },
+  {
+    "file": "core-project.svg",
+    "module": "core",
+    "purpose": "Project container",
+    "color": "#53667F"
+  },
+  {
+    "file": "core-object.svg",
+    "module": "core",
+    "purpose": "Data object",
+    "color": "#53667F"
+  },
+  {
+    "file": "core-reference.svg",
+    "module": "core",
+    "purpose": "Object reference",
+    "color": "#53667F"
+  },
+  {
+    "file": "gui-data-tree.svg",
+    "module": "gui",
+    "purpose": "Data tree",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-well-group.svg",
+    "module": "gui",
+    "purpose": "Well Group",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-global-logs.svg",
+    "module": "gui",
+    "purpose": "Global Well Logs",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-global-completions.svg",
+    "module": "gui",
+    "purpose": "Global Completions",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-global-observations.svg",
+    "module": "gui",
+    "purpose": "Global Observations",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-properties.svg",
+    "module": "gui",
+    "purpose": "Well Properties",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-wells.svg",
+    "module": "gui",
+    "purpose": "Wells collection",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well.svg",
+    "module": "gui",
+    "purpose": "Individual well",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-new.svg",
+    "module": "gui",
+    "purpose": "Create a well",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-import.svg",
+    "module": "gui",
+    "purpose": "Import well data",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-wellhead.svg",
+    "module": "gui",
+    "purpose": "Well header data",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-trajectory.svg",
+    "module": "gui",
+    "purpose": "Well trajectory",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-logs.svg",
+    "module": "gui",
+    "purpose": "Well Logs",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-completions.svg",
+    "module": "gui",
+    "purpose": "Completions",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-well-zones.svg",
+    "module": "gui",
+    "purpose": "Well tops and zones",
+    "color": "#23865A"
+  },
+  {
+    "file": "gui-seismic.svg",
+    "module": "gui",
+    "purpose": "Seismic",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-surface-properties.svg",
+    "module": "gui",
+    "purpose": "Surface Properties",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-faults.svg",
+    "module": "gui",
+    "purpose": "Faults",
+    "color": "#C87528"
+  },
+  {
+    "file": "gui-boundaries.svg",
+    "module": "gui",
+    "purpose": "Polygons and Boundaries",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-natural-fractures.svg",
+    "module": "gui",
+    "purpose": "Natural Fractures",
+    "color": "#C87528"
+  },
+  {
+    "file": "gui-hydraulic-fractures.svg",
+    "module": "gui",
+    "purpose": "Hydraulic Fracturing",
+    "color": "#C87528"
+  },
+  {
+    "file": "gui-fluids.svg",
+    "module": "gui",
+    "purpose": "Fluids",
+    "color": "#168B9C"
+  },
+  {
+    "file": "gui-rock-physics.svg",
+    "module": "gui",
+    "purpose": "Rock Physics Functions",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-initial-conditions.svg",
+    "module": "gui",
+    "purpose": "Initial Conditions",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-microseismic.svg",
+    "module": "gui",
+    "purpose": "Microseismic",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-production.svg",
+    "module": "gui",
+    "purpose": "Production Summary",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-flow-diagnostics.svg",
+    "module": "gui",
+    "purpose": "Flow Diagnostics",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-field-management.svg",
+    "module": "gui",
+    "purpose": "Field Management Strategies",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-grid.svg",
+    "module": "gui",
+    "purpose": "Grid object",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-grid-geometry.svg",
+    "module": "gui",
+    "purpose": "Grid Geometry",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-grid-static-properties.svg",
+    "module": "gui",
+    "purpose": "Static Grid Properties",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-grid-dynamic-properties.svg",
+    "module": "gui",
+    "purpose": "Dynamic Grid Properties",
+    "color": "#168599"
+  },
+  {
+    "file": "gui-case.svg",
+    "module": "gui",
+    "purpose": "Simulation case",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-case-inputs.svg",
+    "module": "gui",
+    "purpose": "Case Input Data",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-case-parameters.svg",
+    "module": "gui",
+    "purpose": "Case Parameters",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-case-results.svg",
+    "module": "gui",
+    "purpose": "Case Results",
+    "color": "#7955B0"
+  },
+  {
+    "file": "gui-case-views.svg",
+    "module": "gui",
+    "purpose": "Case Views",
+    "color": "#7955B0"
+  },
+  {
+    "file": "providers-file.svg",
+    "module": "providers",
+    "purpose": "Data provider file",
+    "color": "#3566B8"
+  },
+  {
+    "file": "providers-las.svg",
+    "module": "providers",
+    "purpose": "LAS format",
+    "color": "#23865A"
+  },
+  {
+    "file": "providers-eclipse.svg",
+    "module": "providers",
+    "purpose": "ECLIPSE format",
+    "color": "#168599"
+  },
+  {
+    "file": "providers-load.svg",
+    "module": "providers",
+    "purpose": "Data loading service",
+    "color": "#3566B8"
+  },
+  {
+    "file": "analysis-chart.svg",
+    "module": "analysis",
+    "purpose": "Analysis module",
+    "color": "#AA568D"
+  },
+  {
+    "file": "analysis-curve.svg",
+    "module": "analysis",
+    "purpose": "Curve analysis",
+    "color": "#AA568D"
+  },
+  {
+    "file": "analysis-run.svg",
+    "module": "analysis",
+    "purpose": "Run analysis",
+    "color": "#AA568D"
+  },
+  {
+    "file": "render-scene.svg",
+    "module": "render",
+    "purpose": "Render scene",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-view.svg",
+    "module": "render",
+    "purpose": "Render viewport",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-visible.svg",
+    "module": "render",
+    "purpose": "Show object",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-hidden.svg",
+    "module": "render",
+    "purpose": "Hide object",
+    "color": "#437AAA"
+  },
+  {
+    "file": "python-console.svg",
+    "module": "python",
+    "purpose": "Python console",
+    "color": "#997828"
+  },
+  {
+    "file": "python-script.svg",
+    "module": "python",
+    "purpose": "Python script",
+    "color": "#997828"
+  },
+  {
+    "file": "assistant-chat.svg",
+    "module": "assistant",
+    "purpose": "Assistant conversation",
+    "color": "#7460B8"
+  },
+  {
+    "file": "assistant-tools.svg",
+    "module": "assistant",
+    "purpose": "Assistant tools",
+    "color": "#7460B8"
+  }
+]

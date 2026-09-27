@@ -1,3 +1,4 @@
+#include <QObject>
 #ifndef IDOS_WELL_HEADER_METADATA_H
 #define IDOS_WELL_HEADER_METADATA_H
 
@@ -11,15 +12,12 @@
  */
 class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSProviderMetadata
 {
-public:
-    QString id() const override
-    { return QStringLiteral("idos.well.header"); }
+  public:
+    QString id() const override;
 
-    QString displayName() const override
-    { return QStringLiteral("Well Header"); }
+    QString displayName() const override;
 
-    QStringList fileExtensions() const override
-    { return QStringList{ QStringLiteral("Wellheader.txt") }; }
+    QStringList fileExtensions() const override;
 
     bool canHandle(const QString& filePath) const override;
 

@@ -1,6 +1,6 @@
 # IDOS 架构设计方案
 
-适用仓库：`D:\CMakeCoder\IDOS`。
+适用仓库：`E:\CJW-Archive\IDOS`。
 状态：当前有效方案。
 目标：把 IDOS 做成可扩展的数据平台，基础平台负责工程、对象、树、窗口、加载和显示；业务能力通过明确的数据对象、树 Provider、数据 Provider、分析模块和后续插件扩展。
 
@@ -14,12 +14,12 @@
 - 不使用自定义命名空间。
 - 不引入万能 `Context`、`Center`、`Workflow`、`Bridge` 类。
 - 能在具体模块解决的问题，不上升成通用框架。
-- 根目录公共头面向二次开发；内部目录头文件默认只给模块内部使用。
+- 模块根目录公共头面向二次开发；同名 `.h` 和 `.cpp` 放在同一目录。公共类在模块根目录成对放置，内部类在所属子目录内成对放置。
 
 ## 2. 目标目录结构
 
 ```text
-D:\CMakeCoder\IDOS
+E:\CJW-Archive\IDOS
 ├─ src
 │  ├─ core
 │  │  ├─ idos_core.h
@@ -106,6 +106,8 @@ D:\CMakeCoder\IDOS
 ```
 
 说明：
+
+- 下图中的目录代表可选业务分类；同名头文件和实现文件必须成对放置，不把两者分别安排到模块根目录与子目录。
 
 - `src/render` 是旧接口，最终移除；新增代码使用 `render_core`、`render_qt`、`render_adapters/idos`。
 - `src/auto` 是待拆分旧模块，不作为目标架构保留。
@@ -302,3 +304,19 @@ AI 助手作为独立模块，模块名使用 `assistant`。
 - 新代码不依赖旧 `src/render`。
 - 旧 `src/auto` 能逐步清空并删除。
 - 公共 API 不暴露内部目录类型。
+
+## 16. 2026-09-24 架构收尾落地
+
+- 主窗口头和实现迁移到 `src/app`，使用 `APP_EXPORT`；SARibbon 与 ADS 的依赖由 app 持有。
+- 跨模块使用的数据对象、工况对象及其值类型头提升到 `src/core` 根目录；实现仍在 `data`、`case` 分组中。
+- 两棵树的 Model/View、通用树扩展接口和内置树 Provider 头提升到 `src/gui` 根目录，供 app 直接装配；实现仍在 `tree`、`input`、`case` 分组中。
+- `gui/input` 保留为数据树实现分组（与本方案目录图一致），不再代表旧 Input/Model 双树分类。
+- 公共头显式列入 CMake target，确保 Qt AUTOMOC 与头文件、实现文件同目录的布局一致；VS 筛选器按实际目录生成。
+- include 检查按实际文件归属判断模块，禁止跨模块内部头、公共头包含内部头，以及公共头引用已知内部 IDOS 类型。检查是静态守护，不能替代完整 C++ 语义审查。
+- 新渲染模块尚未实现。旧 `src/render` 保留占位构建，app 已不再链接它，后续按三模块方案迁移。
+- 当前已无 `src/auto`，不再安排重复拆分；`src/python` 和 `src/assistant` 仍为占位模块。
+
+下一实施项：通过 app 的加载操作调用 `IDOSDataLoadService`，先接通井头文件到工程和数据树；工况引用显示随后补齐。
+### 同目录布局补充（2026-09-24）
+
+core 和 gui 中原先分开的 42 个实现文件已移至对应头文件旁。公共 API 仍以模块根目录头文件识别；GUI 的逻辑分层由 `tools/gui_layers.json` 记录，架构检查继续禁止通用树依赖具体数据树或工况树。
