@@ -1,5 +1,6 @@
 #include "idoswellrenderobjectprovider.h"
 #include "idoswell.h"
+#include "idoswellgeometryresolver.h"
 #include "idoswellhead.h"
 #include "idoswellpath.h"
 #include "idoswellpathpoint.h"
@@ -39,15 +40,17 @@ IDOSRenderObject* IDOSWellRenderObjectProvider::createObject(const IDOSDataObjec
     {
         return nullptr;
     }
+
     IDOSWellRenderObject* renderObject = new IDOSWellRenderObject();
     renderObject->setId(well->objectId());
     renderObject->setName(well->name());
+    renderObject->setInjector(well->type() == IDOSWell::Type::Injector);
 
-    if (well->hasWellHead())
+    const IDOSWellGeometryResolver resolver;
+    const IDOSWellGeometryResolution resolution = resolver.resolve(well->wellHead(), well->path());
+    if (resolution.hasStartPoint())
     {
-        const IDOSWellHead head = well->wellHead();
-        renderObject->setWellHeadPosition(
-            QVector3D(head.surfaceX(), head.surfaceY(), head.surfaceElevation()));
+        renderObject->setWellHeadPosition(resolution.startPoint());
     }
 
     if (well->hasPath())
@@ -58,6 +61,7 @@ IDOSRenderObject* IDOSWellRenderObjectProvider::createObject(const IDOSDataObjec
             renderObject->appendPoint(QVector3D(point.x(), point.y(), point.z()));
         }
     }
+
     renderObject->setVisible(true);
     return renderObject;
 }

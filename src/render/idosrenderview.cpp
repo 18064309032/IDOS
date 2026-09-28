@@ -3,6 +3,9 @@
 #include "idosrenderscene.h"
 #include "idoswellrenderobject.h"
 
+#include <QEvent>
+#include <QHash>
+#include <QMouseEvent>
 #include <QVBoxLayout>
 #include <QVTKOpenGLNativeWidget.h>
 
@@ -21,7 +24,9 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
+#include <vtkPropPicker.h>
 #include <vtkRenderer.h>
+#include <vtkStringOutputWindow.h>
 #include <vtkUnstructuredGrid.h>
 
 class IDOSRenderViewPrivate
@@ -31,8 +36,11 @@ class IDOSRenderViewPrivate
     ~IDOSRenderViewPrivate();
 
     vtkSmartPointer<vtkActor> createMeshActor(const IDOSRenderMesh* mesh);
-    vtkSmartPointer<vtkActor> createWellActor(const IDOSWellRenderObject* well);
+    vtkSmartPointer<vtkActor> createWellHeadActor(const IDOSWellRenderObject* well);
+    vtkSmartPointer<vtkActor> createWellTrajectoryActor(const IDOSWellRenderObject* well);
+    void applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const;
     void applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper, const IDOSRenderMesh* mesh) const;
+    void configureVtkOutputWindow();
     void clearActivePipeline();
 
     QVTKOpenGLNativeWidget* vtkWidget;
@@ -44,6 +52,9 @@ class IDOSRenderViewPrivate
     vtkSmartPointer<vtkUnstructuredGrid> activeGrid;
     vtkSmartPointer<vtkDataSetMapper> activeMapper;
     IDOSRenderScene* scene;
+    QHash<vtkActor*, QString> actorObjectIds;
+    QPoint pressedPosition;
+    QString highlightedObjectId;
     bool ownsScene;
 };
 
@@ -57,6 +68,9 @@ IDOSRenderViewPrivate::IDOSRenderViewPrivate()
     , activeGrid(nullptr)
     , activeMapper(nullptr)
     , scene(new IDOSRenderScene())
+    , actorObjectIds()
+    , pressedPosition()
+    , highlightedObjectId()
     , ownsScene(true)
 {
 }
@@ -167,20 +181,34 @@ void IDOSRenderViewPrivate::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataS
     mapper->ScalarVisibilityOn();
 }
 
-vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellActor(const IDOSWellRenderObject* well)
+vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellHeadActor(const IDOSWellRenderObject* well)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    const QVector3D wellHeadPosition = well->wellHeadPosition();
+    const vtkIdType wellHeadId = points->InsertNextPoint(
+        wellHeadPosition.x(), wellHeadPosition.y(), wellHeadPosition.z());
+
     vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
-    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+    vertices->InsertNextCell(1, &wellHeadId);
 
-    if (well->hasWellHead())
-    {
-        const QVector3D wellHeadPosition = well->wellHeadPosition();
-        const vtkIdType wellHeadId = points->InsertNextPoint(
-            wellHeadPosition.x(), wellHeadPosition.y(), wellHeadPosition.z());
-        vertices->InsertNextCell(1, &wellHeadId);
-    }
+    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
+    polyData->SetPoints(points);
+    polyData->SetVerts(vertices);
 
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(polyData);
+
+    vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+    applyWellStyle(actor, well);
+    actor->GetProperty()->SetPointSize(12.0);
+    actor->SetVisibility(well->visible());
+    return actor;
+}
+
+vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellTrajectoryActor(const IDOSWellRenderObject* well)
+{
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     const QVector<QVector3D>& wellPoints = well->points();
     for (int pointIndex = 0; pointIndex < wellPoints.size(); ++pointIndex)
     {
@@ -188,21 +216,17 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellActor(const IDOSWellR
         points->InsertNextPoint(point.x(), point.y(), point.z());
     }
 
-    if (wellPoints.size() >= 2)
+    vtkSmartPointer<vtkIdList> pointIds = vtkSmartPointer<vtkIdList>::New();
+    for (int pointIndex = 0; pointIndex < wellPoints.size(); ++pointIndex)
     {
-        // 井口顶点单独存储，因此轨迹折线从当前 points 的尾部索引开始。
-        vtkSmartPointer<vtkIdList> pointIds = vtkSmartPointer<vtkIdList>::New();
-        const vtkIdType firstTrajectoryPointId = well->hasWellHead() ? 1 : 0;
-        for (int pointIndex = 0; pointIndex < wellPoints.size(); ++pointIndex)
-        {
-            pointIds->InsertNextId(firstTrajectoryPointId + pointIndex);
-        }
-        lines->InsertNextCell(pointIds);
+        pointIds->InsertNextId(pointIndex);
     }
+
+    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+    lines->InsertNextCell(pointIds);
 
     vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
     polyData->SetPoints(points);
-    polyData->SetVerts(vertices);
     polyData->SetLines(lines);
 
     vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -210,12 +234,28 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellActor(const IDOSWellR
 
     vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
     actor->SetMapper(mapper);
-    // 井口与轨迹使用同一颜色和可见性；井口即使无轨迹也应可见。
-    actor->GetProperty()->SetColor(1.0, 0.55, 0.0);
-    actor->GetProperty()->SetLineWidth(2.0);
-    actor->GetProperty()->SetPointSize(10.0);
+    applyWellStyle(actor, well);
+    actor->GetProperty()->SetLineWidth(2.5);
     actor->SetVisibility(well->visible());
     return actor;
+}
+
+void IDOSRenderViewPrivate::applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const
+{
+    if (well->isInjector())
+    {
+        actor->GetProperty()->SetColor(0.2, 0.9, 0.25);
+        return;
+    }
+
+    actor->GetProperty()->SetColor(0.95, 0.2, 0.15);
+}
+
+void IDOSRenderViewPrivate::configureVtkOutputWindow()
+{
+    vtkStringOutputWindow* outputWindow = vtkStringOutputWindow::New();
+    vtkOutputWindow::SetInstance(outputWindow);
+    outputWindow->Delete();
 }
 
 void IDOSRenderViewPrivate::clearActivePipeline()
@@ -229,6 +269,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     : QWidget(parent)
     , m_privateData(new IDOSRenderViewPrivate())
 {
+    m_privateData->configureVtkOutputWindow();
     m_privateData->vtkWidget = new QVTKOpenGLNativeWidget(this);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
@@ -244,6 +285,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     m_privateData->orientationMarker->SetViewport(0.0, 0.0, 0.18, 0.18);
     m_privateData->orientationMarker->SetEnabled(1);
     m_privateData->orientationMarker->InteractiveOff();
+    m_privateData->vtkWidget->installEventFilter(this);
 }
 
 IDOSRenderView::~IDOSRenderView()
@@ -369,10 +411,66 @@ void IDOSRenderView::resetCamera()
     m_privateData->renderWindow->Render();
 }
 
+void IDOSRenderView::setHighlightedObjectId(const QString& objectId)
+{
+    if (m_privateData->highlightedObjectId == objectId)
+    {
+        return;
+    }
+
+    m_privateData->highlightedObjectId = objectId;
+    rebuildActors();
+}
+
+bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_privateData->vtkWidget)
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton)
+            {
+                m_privateData->pressedPosition = mouseEvent->pos();
+            }
+        }
+        else if (event->type() == QEvent::MouseButtonRelease)
+        {
+            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton
+                && (mouseEvent->pos() - m_privateData->pressedPosition).manhattanLength() < 4)
+            {
+                activateObjectAt(mouseEvent->pos());
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void IDOSRenderView::activateObjectAt(const QPoint& position)
+{
+    vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
+    const int picked = picker->Pick(position.x(), m_privateData->vtkWidget->height() - position.y() - 1,
+                                    0.0, m_privateData->renderer);
+    if (picked == 0)
+    {
+        return;
+    }
+
+    vtkActor* actor = picker->GetActor();
+    if (actor == nullptr || !m_privateData->actorObjectIds.contains(actor))
+    {
+        return;
+    }
+
+    emit objectActivated(m_privateData->actorObjectIds.value(actor));
+}
+
 void IDOSRenderView::rebuildActors()
 {
     m_privateData->renderer->RemoveAllViewProps();
     m_privateData->clearActivePipeline();
+    m_privateData->actorObjectIds.clear();
 
     if (m_privateData->scene == nullptr)
     {
@@ -393,7 +491,29 @@ void IDOSRenderView::rebuildActors()
         IDOSWellRenderObject* well = dynamic_cast<IDOSWellRenderObject*>(object);
         if (well != nullptr)
         {
-            m_privateData->renderer->AddActor(m_privateData->createWellActor(well));
+            const bool highlighted = well->id() == m_privateData->highlightedObjectId;
+            if (well->hasWellHead())
+            {
+                vtkSmartPointer<vtkActor> wellHeadActor = m_privateData->createWellHeadActor(well);
+                if (highlighted)
+                {
+                    wellHeadActor->GetProperty()->SetColor(1.0, 0.95, 0.15);
+                    wellHeadActor->GetProperty()->SetPointSize(18.0);
+                }
+                m_privateData->actorObjectIds.insert(wellHeadActor, well->id());
+                m_privateData->renderer->AddActor(wellHeadActor);
+            }
+            if (well->pointCount() >= 2)
+            {
+                vtkSmartPointer<vtkActor> trajectoryActor = m_privateData->createWellTrajectoryActor(well);
+                if (highlighted)
+                {
+                    trajectoryActor->GetProperty()->SetColor(1.0, 0.95, 0.15);
+                    trajectoryActor->GetProperty()->SetLineWidth(5.0);
+                }
+                m_privateData->actorObjectIds.insert(trajectoryActor, well->id());
+                m_privateData->renderer->AddActor(trajectoryActor);
+            }
         }
     }
 

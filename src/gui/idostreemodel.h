@@ -40,6 +40,7 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
 
     IDOSTreeNode* nodeFromIndex(const QModelIndex& index) const;
     IDOSDataObject* objectFromIndex(const QModelIndex& index) const;
+    QModelIndex indexFromObjectId(const QString& objectId) const;
 
     Q_SIGNAL void checkStateChanged(const QModelIndex& index, bool checked);
 

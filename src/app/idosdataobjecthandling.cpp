@@ -162,6 +162,7 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
                 IDOSWell* existingWell = wellByName(target.data(), well->name());
                 if (existingWell == nullptr)
                 {
+                    well->setVisible(false);
                     target->addObject(well);
                     ++createdWells;
                     continue;

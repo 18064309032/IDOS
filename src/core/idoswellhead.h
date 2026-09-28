@@ -2,51 +2,49 @@
 #define IDOS_WELL_HEAD_H
 
 #include "idos_core.h"
+#include "idoswellspatialreference.h"
 
 /**
- * @brief 井头地面数据。
+ * @brief Wellhead surface data.
  *
- * 对应 Eclipse WELLHEAD 关键字。
- * 描述井头在地面的位置和实时监测参数。
+ * Corresponds to the Eclipse WELLHEAD keyword.
+ * Describes the wellhead surface position and real-time monitoring values.
  */
 class CORE_EXPORT IDOSWellHead
 {
   public:
     IDOSWellHead();
 
-    /** 地面 X 坐标（米或经纬度，取决于坐标系）。 */
     double surfaceX() const;
     void setSurfaceX(double x);
 
-    /** 地面 Y 坐标。 */
     double surfaceY() const;
     void setSurfaceY(double y);
 
-    /** 地面海拔高度（米，正为海平面以上）。 */
+    bool hasSurfacePosition() const;
+
     double surfaceElevation() const;
     void setSurfaceElevation(double elevation);
+    bool hasSurfaceElevation() const;
 
-    /** 水深（米，海上井）。 */
+    IDOSWellSpatialReference spatialReference() const;
+    void setSpatialReference(const IDOSWellSpatialReference& reference);
+
     double waterDepth() const;
     void setWaterDepth(double depth);
 
-    /** 井口压力（WHP，bar）。 */
     double wellheadPressure() const;
     void setWellheadPressure(double pressure);
 
-    /** 井口温度（WHT，°C）。 */
     double wellheadTemperature() const;
     void setWellheadTemperature(double temperature);
 
-    /** 测井顶深（米，井头汇总表 Top_Depth）。 */
     double topDepth() const;
     void setTopDepth(double depth);
 
-    /** 测井底深（米，井头汇总表 Bottom Depth）。 */
     double bottomDepth() const;
     void setBottomDepth(double depth);
 
-    /** 原文件 KB 值，基准含义未确认，不等同地面高程。 */
     double kb() const;
     void setKb(double value);
     int symbol() const;
@@ -55,7 +53,11 @@ class CORE_EXPORT IDOSWellHead
   private:
     double m_surfaceX;
     double m_surfaceY;
+    bool m_hasSurfaceX;
+    bool m_hasSurfaceY;
     double m_surfaceElevation;
+    bool m_hasSurfaceElevation;
+    IDOSWellSpatialReference m_spatialReference;
     double m_waterDepth;
     double m_wellheadPressure;
     double m_wellheadTemperature;

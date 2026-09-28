@@ -16,6 +16,9 @@ class IDOSCaseTreeView;
 class IDOSTreeProviderRegistry;
 class IDOSRenderServer;
 class IDOSRenderView;
+class IDOSWell;
+class IDOSWellLogTrackView;
+class IDOSPropertyWidget;
 
 namespace ads
 {
@@ -52,18 +55,22 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   private slots:
     void onProjectDestroyed();
+    void onDataTreeItemActivated(const QModelIndex& index);
+    void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+    void onRenderObjectActivated(const QString& objectId);
 
   protected:
     void closeEvent(QCloseEvent* event) override;
 
   private:
     bool confirmDiscardProject();
+    IDOSWellLogTrackView* findOrCreateWellLogTrackView(IDOSWell* well);
+
     QAction* m_actionNewProject;
     QAction* m_actionOpenProject;
     QAction* m_actionSaveProject;
-	QAction* m_actionSaveProjectAs;
-	QAction* m_actionProjectSettings;
-
+    QAction* m_actionSaveProjectAs;
+    QAction* m_actionProjectSettings;
 
     IDOSProject* m_project;
     IDOSDataTreeModel* m_dataTreeModel;
@@ -73,6 +80,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSTreeProviderRegistry* m_treeProviderRegistry;
     IDOSRenderServer* m_renderServer;
     IDOSRenderView* m_renderView;
+    IDOSPropertyWidget* m_propertyWidget;
 
     ads::CDockManager* m_dockManager;
     ads::CDockWidget* m_renderDock;

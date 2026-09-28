@@ -3,7 +3,11 @@
 IDOSWellHead::IDOSWellHead()
     : m_surfaceX(0.0)
     , m_surfaceY(0.0)
+    , m_hasSurfaceX(false)
+    , m_hasSurfaceY(false)
     , m_surfaceElevation(0.0)
+    , m_hasSurfaceElevation(false)
+    , m_spatialReference()
     , m_waterDepth(0.0)
     , m_wellheadPressure(0.0)
     , m_wellheadTemperature(0.0)
@@ -18,33 +22,60 @@ double IDOSWellHead::surfaceX() const
 {
     return m_surfaceX;
 }
+
 void IDOSWellHead::setSurfaceX(double x)
 {
     m_surfaceX = x;
+    m_hasSurfaceX = true;
 }
 
 double IDOSWellHead::surfaceY() const
 {
     return m_surfaceY;
 }
+
 void IDOSWellHead::setSurfaceY(double y)
 {
     m_surfaceY = y;
+    m_hasSurfaceY = true;
+}
+
+bool IDOSWellHead::hasSurfacePosition() const
+{
+    return m_hasSurfaceX && m_hasSurfaceY;
 }
 
 double IDOSWellHead::surfaceElevation() const
 {
     return m_surfaceElevation;
 }
+
 void IDOSWellHead::setSurfaceElevation(double elevation)
 {
     m_surfaceElevation = elevation;
+    m_hasSurfaceElevation = true;
+}
+
+bool IDOSWellHead::hasSurfaceElevation() const
+{
+    return m_hasSurfaceElevation;
+}
+
+IDOSWellSpatialReference IDOSWellHead::spatialReference() const
+{
+    return m_spatialReference;
+}
+
+void IDOSWellHead::setSpatialReference(const IDOSWellSpatialReference& reference)
+{
+    m_spatialReference = reference;
 }
 
 double IDOSWellHead::waterDepth() const
 {
     return m_waterDepth;
 }
+
 void IDOSWellHead::setWaterDepth(double depth)
 {
     m_waterDepth = depth;
@@ -54,6 +85,7 @@ double IDOSWellHead::wellheadPressure() const
 {
     return m_wellheadPressure;
 }
+
 void IDOSWellHead::setWellheadPressure(double pressure)
 {
     m_wellheadPressure = pressure;
@@ -63,6 +95,7 @@ double IDOSWellHead::wellheadTemperature() const
 {
     return m_wellheadTemperature;
 }
+
 void IDOSWellHead::setWellheadTemperature(double temperature)
 {
     m_wellheadTemperature = temperature;
@@ -72,6 +105,7 @@ double IDOSWellHead::topDepth() const
 {
     return m_topDepth;
 }
+
 void IDOSWellHead::setTopDepth(double depth)
 {
     m_topDepth = depth;
@@ -81,6 +115,7 @@ double IDOSWellHead::bottomDepth() const
 {
     return m_bottomDepth;
 }
+
 void IDOSWellHead::setBottomDepth(double depth)
 {
     m_bottomDepth = depth;
@@ -90,14 +125,17 @@ double IDOSWellHead::kb() const
 {
     return m_kb;
 }
+
 void IDOSWellHead::setKb(double value)
 {
     m_kb = value;
 }
+
 int IDOSWellHead::symbol() const
 {
     return m_symbol;
 }
+
 void IDOSWellHead::setSymbol(int value)
 {
     m_symbol = value;

@@ -29,9 +29,17 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void clear();
     void refresh();
     void resetCamera();
+    void setHighlightedObjectId(const QString& objectId);
+
+  signals:
+    void objectActivated(const QString& objectId);
+
+  protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
   private:
     void rebuildActors();
+    void activateObjectAt(const QPoint& position);
 
     IDOSRenderViewPrivate* m_privateData;
 };

@@ -24,6 +24,9 @@ class RENDER_EXPORT IDOSWellRenderObject : public IDOSRenderObject
     QVector3D wellHeadPosition() const;
     void setWellHeadPosition(const QVector3D& position);
 
+    bool isInjector() const;
+    void setInjector(bool injector);
+
     const QVector<QVector3D>& points() const;
     void setPoints(const QVector<QVector3D>& points);
     void appendPoint(const QVector3D& point);
@@ -35,6 +38,7 @@ class RENDER_EXPORT IDOSWellRenderObject : public IDOSRenderObject
   private:
     QVector3D m_wellHeadPosition;
     bool m_hasWellHead;
+    bool m_injector;
     QVector<QVector3D> m_points;
 };
 

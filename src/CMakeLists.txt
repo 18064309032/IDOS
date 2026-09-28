@@ -27,6 +27,15 @@ target_link_libraries(idos PRIVATE
     Qt5::Network
 )
 
+add_dependencies(idos translations)
+
+add_custom_command(TARGET idos POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_BINARY_DIR}/i18n/idos_zh_CN.qm"
+        "$<TARGET_FILE_DIR:idos>"
+    COMMENT "Deploying IDOS translation..."
+)
+
 # VTK 不链接 exe：只由 idos_render 持有（根 CMake 中已设 PRIVATE），
 # exe 用不到 VTK 头/库；运行期 VTK DLL 由下方 POST_BUILD 拷贝部署。
 

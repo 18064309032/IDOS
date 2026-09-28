@@ -449,6 +449,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工况</translation>
     </message>
     <message>
+        <source>Properties</source>
+        <translation>属性</translation>
+    </message>
+    <message>
         <source>Unsaved Project</source>
         <translation>工程尚未保存</translation>
     </message>
@@ -467,6 +471,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>3D View - %1</source>
         <translation type="vanished">三维视图 - %1</translation>
+    </message>
+    <message>
+        <source>Well Log Tracks - %1</source>
+        <translation>测井曲线轨道 - %1</translation>
     </message>
 </context>
 <context>
@@ -837,6 +845,82 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>不是有效的 LAS 文件</translation>
     </message>
     <message>
+        <source>Line %1: invalid NULL value.</source>
+        <translation>第 %1 行：NULL 值无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid well coordinate.</source>
+        <translation>第 %1 行：井坐标无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid well elevation.</source>
+        <translation>第 %1 行：井口高程无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid KB value.</source>
+        <translation>第 %1 行：KB 值无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid start depth.</source>
+        <translation>第 %1 行：起始深度无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid stop depth.</source>
+        <translation>第 %1 行：终止深度无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid reference depth.</source>
+        <translation>第 %1 行：参考深度无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: curve mnemonic is empty.</source>
+        <translation>第 %1 行：曲线代号为空。</translation>
+    </message>
+    <message>
+        <source>Line %1: repeated curve mnemonic: %2.</source>
+        <translation>第 %1 行：曲线代号重复：%2。</translation>
+    </message>
+    <message>
+        <source>Line %1: ASCII data appears before curve definitions.</source>
+        <translation>第 %1 行：ASCII 数据出现在曲线定义之前。</translation>
+    </message>
+    <message>
+        <source>Line %1: expected %2 curve values, got %3.</source>
+        <translation>第 %1 行：应有 %2 个曲线值，实际为 %3 个。</translation>
+    </message>
+    <message>
+        <source>Line %1: invalid sample for curve %2.</source>
+        <translation>第 %1 行：曲线 %2 的样本值无效。</translation>
+    </message>
+    <message>
+        <source>Line %1: repeated depth sample.</source>
+        <translation>第 %1 行：深度样本重复。</translation>
+    </message>
+    <message>
+        <source>Line %1: depth samples are not monotonic.</source>
+        <translation>第 %1 行：深度样本不单调。</translation>
+    </message>
+    <message>
+        <source>Line %1: depth sample cannot be NULL.</source>
+        <translation>第 %1 行：深度样本不能为 NULL。</translation>
+    </message>
+    <message>
+        <source>LAS file is missing the Well section.</source>
+        <translation>LAS 文件缺少 Well 段。</translation>
+    </message>
+    <message>
+        <source>LAS file must define a depth curve and at least one log curve.</source>
+        <translation>LAS 文件必须定义一条深度曲线和至少一条测井曲线。</translation>
+    </message>
+    <message>
+        <source>LAS file is missing the ASCII data section.</source>
+        <translation>LAS 文件缺少 ASCII 数据段。</translation>
+    </message>
+    <message>
+        <source>LAS file contains no curve samples.</source>
+        <translation>LAS 文件不包含曲线样本。</translation>
+    </message>
+    <message>
         <source>Expected seven well header columns: WellName, X-Coord, Y-Coord, Top_Depth, Bottom Depth, KB, Symbol.</source>
         <translation>井头文件应包含七列：WellName、X-Coord、Y-Coord、Top_Depth、Bottom Depth、KB、Symbol。</translation>
     </message>
@@ -949,8 +1033,8 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>轨迹（%1 个点）</translation>
     </message>
     <message>
-        <source>Well Logs (%1 channels)</source>
-        <translation>测井（%1 条通道）</translation>
+        <source>Well Log Curves (%1 channels)</source>
+        <translation>测井曲线（%1 条）</translation>
     </message>
     <message>
         <source>Completions (%1)</source>
@@ -959,6 +1043,136 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Markers (%1)</source>
         <translation>层位（%1 个）</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSWellLogTrackView</name>
+    <message>
+        <source>No well log curves are available.</source>
+        <translation>没有可显示的测井曲线。</translation>
+    </message>
+    <message>
+        <source>The selected curves contain no valid samples.</source>
+        <translation>所选测井曲线不包含有效样本。</translation>
+    </message>
+    <message>
+        <source>Depth</source>
+        <translation>深度</translation>
+    </message>
+    <message>
+        <source>Fit all depths</source>
+        <translation>适应全井深度</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPropertyWidget</name>
+    <message>
+        <source>Selection</source>
+        <translation>选择</translation>
+    </message>
+    <message>
+        <source>No object selected</source>
+        <translation>未选择对象</translation>
+    </message>
+    <message>
+        <source>Object Type</source>
+        <translation>对象类型</translation>
+    </message>
+    <message>
+        <source>Well</source>
+        <translation>井</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Well Type</source>
+        <translation>井类型</translation>
+    </message>
+    <message>
+        <source>Grid Location</source>
+        <translation>网格位置</translation>
+    </message>
+    <message>
+        <source>Reference Depth</source>
+        <translation>参考深度</translation>
+    </message>
+    <message>
+        <source>Trajectory</source>
+        <translation>井轨迹</translation>
+    </message>
+    <message>
+        <source>%1 points</source>
+        <translation>%1 个测点</translation>
+    </message>
+    <message>
+        <source>Not available</source>
+        <translation>无数据</translation>
+    </message>
+    <message>
+        <source>Well Log Curves</source>
+        <translation>测井曲线</translation>
+    </message>
+    <message>
+        <source>%1 channels</source>
+        <translation>%1 条通道</translation>
+    </message>
+    <message>
+        <source>Surface X</source>
+        <translation>井口 X 坐标</translation>
+    </message>
+    <message>
+        <source>Surface Y</source>
+        <translation>井口 Y 坐标</translation>
+    </message>
+    <message>
+        <source>Surface Elevation</source>
+        <translation>井口高程</translation>
+    </message>
+    <message>
+        <source>KB</source>
+        <translation>KB</translation>
+    </message>
+    <message>
+        <source>Well Trajectory</source>
+        <translation>井轨迹</translation>
+    </message>
+    <message>
+        <source>Point Count</source>
+        <translation>测点数</translation>
+    </message>
+    <message>
+        <source>Channel Count</source>
+        <translation>曲线数</translation>
+    </message>
+    <message>
+        <source>Depth Range</source>
+        <translation>深度范围</translation>
+    </message>
+    <message>
+        <source>The selected curve is no longer available.</source>
+        <translation>所选曲线已不存在。</translation>
+    </message>
+    <message>
+        <source>Well Log Curve</source>
+        <translation>测井曲线</translation>
+    </message>
+    <message>
+        <source>Unit</source>
+        <translation>单位</translation>
+    </message>
+    <message>
+        <source>Sample Count</source>
+        <translation>样本数</translation>
+    </message>
+    <message>
+        <source>Injector</source>
+        <translation>注入井</translation>
+    </message>
+    <message>
+        <source>Producer</source>
+        <translation>生产井</translation>
     </message>
 </context>
 </TS>

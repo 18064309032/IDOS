@@ -14,7 +14,6 @@ set_tests_properties(project_dialog PROPERTIES
 
 add_executable(idos_well_import_tests well_import_test.h well_import_test.cpp)
 target_link_libraries(idos_well_import_tests PRIVATE idos_app Qt5::Test)
-add_dependencies(idos_well_import_tests idos_project_tests)
 add_test(NAME well_import COMMAND idos_well_import_tests)
 set_tests_properties(well_import PROPERTIES
     TIMEOUT 30

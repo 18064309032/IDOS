@@ -1,9 +1,11 @@
 #include "idoswellpathprovider.h"
 #include "idoswell.h"
+
 #include <QObject>
 #include <QFile>
 #include <QTextStream>
 #include <QRegularExpression>
+
 #include <cmath>
 
 QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
@@ -15,6 +17,7 @@ QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
         setLastError(QObject::tr("Cannot open file: %1").arg(file.errorString()));
         return {};
     }
+
     QTextStream stream(&file);
     stream.setCodec("UTF-8");
     QString wellName;
@@ -50,6 +53,7 @@ QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
             }
             continue;
         }
+
         const QStringList fields = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
         if (columns.isEmpty())
         {
@@ -76,6 +80,7 @@ QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
             setLastError(QObject::tr("Line %1: expected nine trajectory values.").arg(lineNumber));
             return {};
         }
+
         double values[9] = {};
         for (int i = 0; i < 9; ++i)
         {
@@ -95,16 +100,38 @@ QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
         points.append(IDOSWellPathPoint(values[0], values[1], values[2], values[3], values[4], values[5], values[6],
                                         values[7], values[8]));
     }
+
     if (wellName.isEmpty() || points.size() < 2)
     {
         setLastError(QObject::tr("A trajectory requires WELL NAME and at least two valid points."));
         return {};
     }
+
     IDOSWellPath path;
     path.setPoints(points);
     path.setSourceComments(comments);
+    path.setSpatialReference(spatialReferenceFromComments(comments));
     IDOSWell* well = new IDOSWell();
     well->setName(wellName);
     well->setPath(path);
     return {well};
+}
+
+IDOSWellSpatialReference IDOSWellPathProvider::spatialReferenceFromComments(const QStringList& comments) const
+{
+    const QRegularExpression declarationPattern(
+        QStringLiteral("MD\\s+AND\\s+TVD\\s+ARE\\s+REFERENCED\\s*\\(\\s*=\\s*0\\s*\\)\\s+AT\\s+KB"
+                       ".*INCREASE\\s+DOWNWARDS"),
+        QRegularExpression::CaseInsensitiveOption);
+    for (const QString& comment : comments)
+    {
+        if (declarationPattern.match(comment).hasMatch())
+        {
+            IDOSWellSpatialReference reference;
+            reference.setVerticalDatum(IDOSWellSpatialReference::VerticalDatum::KellyBushing);
+            reference.setDepthDirection(IDOSWellSpatialReference::DepthDirection::PositiveDown);
+            return reference;
+        }
+    }
+    return IDOSWellSpatialReference();
 }

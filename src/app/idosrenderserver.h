@@ -37,6 +37,7 @@ class APP_EXPORT IDOSRenderServer : public QObject
     void setActiveView(const QString& viewId);
     QString activeViewId() const;
     IDOSRenderView* activeView() const;
+    void setHighlightedObjectId(const QString& objectId);
 
     void addProvider(IDOSRenderObjectProvider* provider);
 
@@ -48,11 +49,14 @@ class APP_EXPORT IDOSRenderServer : public QObject
     void titleChanged(const QString& title);
 
   private slots:
+    void onObjectAdded(const QString& objectId);
+    void onObjectsAdded(const QStringList& objectIds);
     void onObjectRemoved(const QString& objectId);
     void onObjectsRemoved(const QStringList& objectIds);
 
   private:
     IDOSRenderObject* createObject(const IDOSDataObject* object) const;
+    bool addWellToScene(const IDOSDataObject* object);
     IDOSRenderView* firstView() const;
     void refreshViews();
     void resetViews();
@@ -68,6 +72,7 @@ class APP_EXPORT IDOSRenderServer : public QObject
     IDOSRenderScene* m_mainScene;
     QMap<QString, IDOSRenderView*> m_views;
     QString m_activeViewId;
+    QString m_highlightedObjectId;
     QList<IDOSRenderObjectProvider*> m_providers;
 };
 

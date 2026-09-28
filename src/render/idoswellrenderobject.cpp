@@ -3,6 +3,7 @@
 IDOSWellRenderObject::IDOSWellRenderObject()
     : m_wellHeadPosition()
     , m_hasWellHead(false)
+    , m_injector(false)
 {
 }
 
@@ -24,6 +25,16 @@ void IDOSWellRenderObject::setWellHeadPosition(const QVector3D& position)
 {
     m_wellHeadPosition = position;
     m_hasWellHead = true;
+}
+
+bool IDOSWellRenderObject::isInjector() const
+{
+    return m_injector;
+}
+
+void IDOSWellRenderObject::setInjector(bool injector)
+{
+    m_injector = injector;
 }
 
 const QVector<QVector3D>& IDOSWellRenderObject::points() const

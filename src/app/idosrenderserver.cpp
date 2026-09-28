@@ -9,6 +9,7 @@
 #include "idosrenderobjectprovider.h"
 #include "idosrenderscene.h"
 #include "idosrenderview.h"
+#include "idoswell.h"
 
 #include <QObject>
 #include <QtAlgorithms>
@@ -19,6 +20,7 @@ IDOSRenderServer::IDOSRenderServer(QObject* parent)
     , m_mainScene(new IDOSRenderScene())
     , m_views()
     , m_activeViewId()
+    , m_highlightedObjectId()
     , m_providers()
 {
 }
@@ -38,6 +40,8 @@ void IDOSRenderServer::setProject(IDOSProject* project)
 
     if (m_project != nullptr)
     {
+        disconnect(m_project, &IDOSProject::objectAdded, this, &IDOSRenderServer::onObjectAdded);
+        disconnect(m_project, &IDOSProject::objectsAdded, this, &IDOSRenderServer::onObjectsAdded);
         disconnect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
         disconnect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
     }
@@ -45,11 +49,27 @@ void IDOSRenderServer::setProject(IDOSProject* project)
     m_project = project;
     if (m_project != nullptr)
     {
+        connect(m_project, &IDOSProject::objectAdded, this, &IDOSRenderServer::onObjectAdded);
+        connect(m_project, &IDOSProject::objectsAdded, this, &IDOSRenderServer::onObjectsAdded);
         connect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
         connect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
     }
 
+    m_highlightedObjectId.clear();
     m_mainScene->clear();
+    if (m_project != nullptr)
+    {
+        const QList<IDOSDataObject*> objects = m_project->objects();
+        bool objectAdded = false;
+        for (const IDOSDataObject* object : objects)
+        {
+            objectAdded = addWellToScene(object) || objectAdded;
+        }
+        if (objectAdded)
+        {
+            resetViews();
+        }
+    }
     refreshViews();
 }
 
@@ -71,6 +91,7 @@ void IDOSRenderServer::addView(const QString& viewId, IDOSRenderView* view)
     }
     m_views.insert(viewId, view);
     view->setScene(m_mainScene);
+    view->setHighlightedObjectId(m_highlightedObjectId);
     if (m_activeViewId.isEmpty())
     {
         m_activeViewId = viewId;
@@ -123,6 +144,26 @@ IDOSRenderView* IDOSRenderServer::activeView() const
     return view(m_activeViewId);
 }
 
+void IDOSRenderServer::setHighlightedObjectId(const QString& objectId)
+{
+    if (m_highlightedObjectId == objectId)
+    {
+        return;
+    }
+
+    m_highlightedObjectId = objectId;
+    QMap<QString, IDOSRenderView*>::const_iterator iterator = m_views.constBegin();
+    while (iterator != m_views.constEnd())
+    {
+        IDOSRenderView* renderView = iterator.value();
+        if (renderView != nullptr)
+        {
+            renderView->setHighlightedObjectId(m_highlightedObjectId);
+        }
+        ++iterator;
+    }
+}
+
 void IDOSRenderServer::addProvider(IDOSRenderObjectProvider* provider)
 {
     if (provider == nullptr)
@@ -134,6 +175,15 @@ void IDOSRenderServer::addProvider(IDOSRenderObjectProvider* provider)
 
 void IDOSRenderServer::onItemCheckedChanged(const QString& objectId, bool checked)
 {
+    if (m_project != nullptr)
+    {
+        IDOSWell* well = qobject_cast<IDOSWell*>(m_project->objectById(objectId));
+        if (well != nullptr)
+        {
+            well->setVisible(checked);
+        }
+    }
+
     onItemStateChanged(objectId, checked ? IDOSItemState::Shown : IDOSItemState::Hidden);
 }
 
@@ -178,6 +228,32 @@ IDOSRenderObject* IDOSRenderServer::createObject(const IDOSDataObject* object) c
         }
     }
     return nullptr;
+}
+
+bool IDOSRenderServer::addWellToScene(const IDOSDataObject* object)
+{
+    const IDOSWell* well = qobject_cast<const IDOSWell*>(object);
+    if (well == nullptr || !well->hasPath() || !well->isVisible())
+    {
+        return false;
+    }
+
+    IDOSRenderObject* renderObject = m_mainScene->object(well->objectId());
+    if (renderObject != nullptr)
+    {
+        renderObject->setVisible(true);
+        return false;
+    }
+
+    renderObject = createObject(well);
+    if (renderObject == nullptr)
+    {
+        return false;
+    }
+
+    m_mainScene->addObject(renderObject);
+    emit titleChanged(QObject::tr("3D View - %1").arg(well->name()));
+    return true;
 }
 
 IDOSRenderView* IDOSRenderServer::firstView() const
@@ -366,6 +442,43 @@ void IDOSRenderServer::setItemHidden(const QString& objectId)
     refreshViews();
 }
 
+void IDOSRenderServer::onObjectAdded(const QString& objectId)
+{
+    if (m_project == nullptr || objectId.isEmpty())
+    {
+        return;
+    }
+
+    if (addWellToScene(m_project->objectById(objectId)))
+    {
+        refreshViews();
+        resetViews();
+    }
+}
+
+void IDOSRenderServer::onObjectsAdded(const QStringList& objectIds)
+{
+    if (m_project == nullptr)
+    {
+        return;
+    }
+
+    bool objectAdded = false;
+    for (const QString& objectId : objectIds)
+    {
+        if (!objectId.isEmpty())
+        {
+            objectAdded = addWellToScene(m_project->objectById(objectId)) || objectAdded;
+        }
+    }
+
+    if (objectAdded)
+    {
+        refreshViews();
+        resetViews();
+    }
+}
+
 void IDOSRenderServer::onObjectRemoved(const QString& objectId)
 {
     if (objectId.isEmpty())
@@ -397,8 +510,16 @@ void IDOSRenderServer::setItemSelectionState(const QString& objectId, IDOSItemSt
 
 void IDOSRenderServer::setItemHighlightState(const QString& objectId, IDOSItemState state)
 {
-    Q_UNUSED(objectId);
-    Q_UNUSED(state);
+    if (state == IDOSItemState::Highlighted)
+    {
+        setHighlightedObjectId(objectId);
+        return;
+    }
+
+    if (state == IDOSItemState::Unhighlighted && m_highlightedObjectId == objectId)
+    {
+        setHighlightedObjectId(QString());
+    }
 }
 
 

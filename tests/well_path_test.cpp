@@ -2,6 +2,8 @@
 #include "idosdataprovider.h"
 #include "idosproviderregistry.h"
 #include "idoswell.h"
+#include "idoswellgeometryresolver.h"
+
 #include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
@@ -26,8 +28,11 @@ void WellPathTest::onParseSample()
     QCOMPARE(point.z(), -1499.878992);
     QCOMPARE(point.tvd(), 1499.878992);
     QCOMPARE(point.azimuth(), 99.853422);
+    QCOMPARE(well->path().spatialReference().verticalDatum(), IDOSWellSpatialReference::VerticalDatum::KellyBushing);
+    QCOMPARE(well->path().spatialReference().depthDirection(), IDOSWellSpatialReference::DepthDirection::PositiveDown);
     QVERIFY(well->path().sourceComments().join(QLatin1Char('\n')).contains(QStringLiteral("MD IS NOT EXACT")));
     qDeleteAll(objects);
+
     const QString directory = qEnvironmentVariable("IDOS_TEST_WELL_PATH_DIR");
     if (!directory.isEmpty())
     {
@@ -70,6 +75,7 @@ void WellPathTest::onInvalidInput()
         QVERIFY(objects.isEmpty());
         QVERIFY(!reader->lastError().isEmpty());
     }
+
     QFile file(filePath);
     QVERIFY(file.open(QIODevice::WriteOnly));
     file.write("# WELL NAME: A10\nINCL AZIM DY DX TVD Z Y X MD\n10 -90 0 0 3 -3 2 1 10\n10 -90 1 1 4 -4 3 2 11\n");
@@ -81,6 +87,58 @@ void WellPathTest::onInvalidInput()
     QCOMPARE(well->name(), QStringLiteral("A10"));
     QCOMPARE(well->path().points().first().azimuth(), -90.0);
     QCOMPARE(well->path().points().last().md(), 11.0);
+    QCOMPARE(well->path().spatialReference().verticalDatum(), IDOSWellSpatialReference::VerticalDatum::Unknown);
     qDeleteAll(objects);
 }
+
+void WellPathTest::onResolveGeometry()
+{
+    IDOSWellGeometryResolver resolver;
+    IDOSWellHead head;
+    IDOSWellPath path;
+    QVector<IDOSWellPathPoint> points;
+    points.append(IDOSWellPathPoint(1500.0, 100.0, 200.0, -1500.0, 1500.0));
+    points.append(IDOSWellPathPoint(1600.0, 100.0, 200.0, -1600.0, 1600.0));
+    path.setPoints(points);
+
+    IDOSWellGeometryResolution resolution = resolver.resolve(head, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::TrajectoryStart);
+    QCOMPARE(resolution.startPoint(), QVector3D(100.0F, 200.0F, -1500.0F));
+
+    head.setSurfaceX(100.0);
+    head.setSurfaceY(200.0);
+    head.setSurfaceElevation(12.0);
+    IDOSWellSpatialReference reference;
+    reference.setVerticalDatum(IDOSWellSpatialReference::VerticalDatum::KellyBushing);
+    reference.setDepthDirection(IDOSWellSpatialReference::DepthDirection::PositiveDown);
+    head.setSpatialReference(reference);
+    path.setSpatialReference(reference);
+
+    resolution = resolver.resolve(head, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::TrajectoryStart);
+
+    points.clear();
+    points.append(IDOSWellPathPoint(0.0, 100.0, 200.0, 12.0, 0.0));
+    points.append(IDOSWellPathPoint(100.0, 100.0, 200.0, -88.0, 100.0));
+    path.setPoints(points);
+    resolution = resolver.resolve(head, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::Wellhead);
+    QCOMPARE(resolution.startPoint(), QVector3D(100.0F, 200.0F, 12.0F));
+
+    IDOSWellSpatialReference incompatibleReference;
+    incompatibleReference.setVerticalDatum(IDOSWellSpatialReference::VerticalDatum::MeanSeaLevel);
+    incompatibleReference.setDepthDirection(IDOSWellSpatialReference::DepthDirection::PositiveDown);
+    path.setSpatialReference(incompatibleReference);
+    resolution = resolver.resolve(head, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::TrajectoryStart);
+
+    path.clear();
+    resolution = resolver.resolve(head, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::Wellhead);
+
+    IDOSWellHead unknownHead;
+    resolution = resolver.resolve(unknownHead, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::Unknown);
+}
+
 QTEST_MAIN(WellPathTest)

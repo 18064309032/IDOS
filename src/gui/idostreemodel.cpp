@@ -129,6 +129,7 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
     }
 
     const bool checked = value.toInt() == Qt::Checked;
+    IDOSDataObject* currentObject = objectOfNode(node);
     node->setChecked(checked);
     emit dataChanged(index, index, QVector<int>() << Qt::CheckStateRole);
     emit checkStateChanged(index, checked);
@@ -137,7 +138,6 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
     // 避免渲染窗口多个属性颜色映射互相覆盖。
     if (checked)
     {
-        IDOSDataObject* currentObject = objectFromIndex(index);
         if (qobject_cast<const IDOSGridProperty*>(currentObject) != nullptr)
         {
             uncheckOtherProperties(node);
@@ -235,6 +235,12 @@ IDOSTreeNode* IDOSTreeModel::nodeFromIndex(const QModelIndex& index) const
 IDOSDataObject* IDOSTreeModel::objectFromIndex(const QModelIndex& index) const
 {
     return objectOfNode(nodeFromIndex(index));
+}
+
+QModelIndex IDOSTreeModel::indexFromObjectId(const QString& objectId) const
+{
+    IDOSObjectTreeNode* objectNode = findObjectNode(objectId);
+    return indexOfNode(objectNode);
 }
 
 IDOSDataObject* IDOSTreeModel::objectOfNode(IDOSTreeNode* node) const

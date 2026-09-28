@@ -5,16 +5,17 @@ project(IDOS VERSION 1.0.0 LANGUAGES CXX C)
 set(IDOS_QT_DIR ""
     CACHE PATH "Qt5 install root (contains lib/cmake/Qt5)")
 
+if(IDOS_QT_DIR STREQUAL "" AND DEFINED ENV{QTDIR})
+    set(IDOS_QT_DIR "$ENV{QTDIR}" CACHE PATH
+        "Qt5 install root (contains lib/cmake/Qt5)" FORCE)
+endif()
+
 set(VTK_DIR "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/lib/cmake/vtk-9.6"
     CACHE PATH "VTK cmake config dir")
 
 if(IDOS_QT_DIR STREQUAL "")
     message(FATAL_ERROR
-        "IDOS_QT_DIR is not set.\n"
-        "How to fix:\n"
-        "  1. Copy CMakeUserPresets.example.json to CMakeUserPresets.json\n"
-        "  2. Edit IDOS_QT_DIR to your Qt5 install path\n"
-        "  3. Or: cmake -DIDOS_QT_DIR=xxx --preset win-x64-debug"
+        "Qt5 was not found. Set IDOS_QT_DIR or the QTDIR environment variable."
     )
 endif()
 

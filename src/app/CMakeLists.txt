@@ -13,6 +13,10 @@ add_library(idos_app SHARED
     idosgridrenderobjectprovider.cpp
     idoswellrenderobjectprovider.h
     idoswellrenderobjectprovider.cpp
+    idoswelllogtrackview.h
+    idoswelllogtrackview.cpp
+    idospropertywidget.h
+    idospropertywidget.cpp
     idosmainwindow.h
     idosmainwindow.cpp
     idosrenderobjectprovider.h

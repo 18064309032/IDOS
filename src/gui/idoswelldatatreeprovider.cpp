@@ -35,6 +35,7 @@ void IDOSWellDataTreeProvider::buildTree(IDOSTreeBuilder& builder, const IDOSDat
     // 井节点可勾选触发 3D 渲染（井轨迹线）；仅带轨迹的井勾选才有意义，
     // 但统一开启勾选以保持交互一致，无轨迹井勾选时渲染层不创建 actor
     root->setCheckable(true);
+    root->setChecked(well->isVisible());
 
     // 懒构建：各数据 part 仅有数据时才出现，空 part 不占位
     IDOSTreeBuilder childBuilder = builder.childBuilder(root);
@@ -49,7 +50,7 @@ void IDOSWellDataTreeProvider::buildTree(IDOSTreeBuilder& builder, const IDOSDat
     {
         IDOSTreePartNode* logs = childBuilder.addPart(
             well, IDOSTreePartKey(QStringLiteral("idos.well.logs")),
-            QObject::tr("Well Logs (%1 channels)").arg(well->logs().channelCount()));
+            QObject::tr("Well Log Curves (%1 channels)").arg(well->logs().channelCount()));
         logs->setIcon(QIcon(QStringLiteral(":/images/gui-well-logs.svg")));
         IDOSTreeBuilder leafBuilder = childBuilder.childBuilder(logs);
         const QList<IDOSWellLogChannel> channels = well->logs().channels();
