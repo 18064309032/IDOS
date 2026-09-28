@@ -49,8 +49,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   public slots:
     void onNewProject();
-    void onNewWell();
-    void onImportWellData();
 
   private slots:
     void onProjectDestroyed();
@@ -60,11 +58,12 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   private:
     bool confirmDiscardProject();
-    QAction* m_actionNewProject; // 占位（SARibbon 接入后入 ribbon 面板）
+    QAction* m_actionNewProject;
     QAction* m_actionOpenProject;
     QAction* m_actionSaveProject;
-    QAction* m_actionImportWell;
-    QAction* m_actionImportGrid;
+	QAction* m_actionSaveProjectAs;
+	QAction* m_actionProjectSettings;
+
 
     IDOSProject* m_project;
     IDOSDataTreeModel* m_dataTreeModel;

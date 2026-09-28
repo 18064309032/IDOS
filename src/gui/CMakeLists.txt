@@ -47,10 +47,6 @@ add_library(idos_gui SHARED
     idostreeview.cpp
     idoswelldatatreeprovider.h
     idoswelldatatreeprovider.cpp
-    idoswellimportdialog.h
-    idoswellimportdialog.cpp
-    idoswellpathimportdialog.h
-    idoswellpathimportdialog.cpp
 )
 target_include_directories(idos_gui
     PUBLIC

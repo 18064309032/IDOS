@@ -7,10 +7,5 @@ class WellPathTest : public QObject
   private slots:
     void onParseSample();
     void onInvalidInput();
-    void onBatchImport();
-    void onPreview();
-
-  private:
-    bool m_cancel;
 };
 #endif

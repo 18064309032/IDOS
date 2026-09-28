@@ -4,6 +4,8 @@
 
 *.trae
 
+*.idea
+
 *.box-agent
 
 *.box-agent-scratch

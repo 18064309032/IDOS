@@ -79,6 +79,9 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
      */
     void rebuildObjectBranch(IDOSObjectTreeNode* objectNode, const IDOSDataObject* object);
 
+    /** 由节点反查 QModelIndex（用于联动逻辑更新勾选 UI）。 */
+    QModelIndex indexOfNode(IDOSTreeNode* node) const;
+
   private slots:
     void onObjectAdded(const QString& objectId);
     void onObjectRemoved(const QString& objectId);
@@ -99,7 +102,23 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
     void collectCheckedKeys(IDOSTreeNode* branch, QSet<QString>& checkedKeys) const;
     void applyCheckedKeys(IDOSTreeNode* branch, const QSet<QString>& checkedKeys) const;
     QString checkKeyOf(const IDOSTreeNode* node) const;
-    QModelIndex indexOfNode(IDOSTreeNode* node) const;
+
+    /**
+     * 勾选某属性节点时，取消整树中其他已勾选的网格属性节点（单选互斥）。
+     * 保证渲染窗口同一时刻只显示一个属性场，避免颜色映射互相覆盖。
+     * 仅对 IDOSGridProperty 叶子节点生效；几何对象（网格/井本体）勾选不受影响。
+     */
+    void uncheckOtherProperties(IDOSTreeNode* exceptNode);
+    void collectCheckedProperties(IDOSTreeNode* branch,
+                                  IDOSTreeNode* exceptNode,
+                                  QList<IDOSTreeNode*>& out) const;
+    /**
+     * @brief 统一获取节点关联的数据对象。
+     * 支持 IDOSObjectTreeNode（数据本体树，直接持 objectId）
+     * 与 IDOSTreeReferenceNode（工况引用树，通过 IDOSCaseItemRef 间接引用 objectId）。
+     * 用于互斥逻辑等需要按对象类型分派的场景。
+     */
+    IDOSDataObject* objectOfNode(IDOSTreeNode* node) const;
 
     IDOSProject* m_project;
     IDOSTreeNode* m_rootNode;

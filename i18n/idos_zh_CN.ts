@@ -86,16 +86,36 @@
         <source>Import Case...</source>
         <translation>导入工况…</translation>
     </message>
+    <message>
+        <source>Delete Case...</source>
+        <translation>删除工况…</translation>
+    </message>
+    <message>
+        <source>Delete Property...</source>
+        <translation>删除属性…</translation>
+    </message>
+    <message>
+        <source>Import Property...</source>
+        <translation>导入属性…</translation>
+    </message>
+    <message>
+        <source>Import Grid...</source>
+        <translation>导入网格…</translation>
+    </message>
+    <message>
+        <source>Delete Grid...</source>
+        <translation>删除网格…</translation>
+    </message>
 </context>
 <context>
     <name>IDOSDataObjectHandling</name>
     <message>
         <source>Select Well Header File</source>
-        <translation>选择井头文件</translation>
+        <translation type="vanished">选择井头文件</translation>
     </message>
     <message>
         <source>All Files (*);;Text Files (*.txt)</source>
-        <translation>所有文件 (*);;文本文件 (*.txt)</translation>
+        <translation type="vanished">所有文件 (*);;文本文件 (*.txt)</translation>
     </message>
     <message>
         <source>Import Well Data</source>
@@ -103,11 +123,11 @@
     </message>
     <message>
         <source>The well header reader is unavailable.</source>
-        <translation>井头读取器不可用。</translation>
+        <translation type="vanished">井头读取器不可用。</translation>
     </message>
     <message>
         <source>Created %1 wells. Skipped %2 duplicate rows.</source>
-        <translation>已创建 %1 口井，跳过 %2 条重复记录。</translation>
+        <translation type="vanished">已创建 %1 口井，跳过 %2 条重复记录。</translation>
     </message>
     <message>
         <source>New Well</source>
@@ -135,35 +155,35 @@
     </message>
     <message>
         <source>Data type:</source>
-        <translation>数据类型：</translation>
+        <translation type="vanished">数据类型：</translation>
     </message>
     <message>
         <source>Well Headers</source>
-        <translation>井头</translation>
+        <translation type="vanished">井头</translation>
     </message>
     <message>
         <source>Well Trajectories (.dev)</source>
-        <translation>井轨迹（.dev）</translation>
+        <translation type="vanished">井轨迹（.dev）</translation>
     </message>
     <message>
         <source>Next</source>
-        <translation>下一步</translation>
+        <translation type="vanished">下一步</translation>
     </message>
     <message>
         <source>Select Well Trajectory Files</source>
-        <translation>选择井轨迹文件</translation>
+        <translation type="vanished">选择井轨迹文件</translation>
     </message>
     <message>
         <source>Well Trajectories (*.dev *.DEV);;All Files (*)</source>
-        <translation>井轨迹文件 (*.dev *.DEV);;所有文件 (*)</translation>
+        <translation type="vanished">井轨迹文件 (*.dev *.DEV);;所有文件 (*)</translation>
     </message>
     <message>
         <source>The trajectory reader is unavailable.</source>
-        <translation>井轨迹读取器不可用。</translation>
+        <translation type="vanished">井轨迹读取器不可用。</translation>
     </message>
     <message>
         <source>Imported %1 trajectories. Skipped %2 files.</source>
-        <translation>已导入 %1 条井轨迹，跳过 %2 个文件。</translation>
+        <translation type="vanished">已导入 %1 条井轨迹，跳过 %2 个文件。</translation>
     </message>
     <message>
         <source>New Case</source>
@@ -189,6 +209,104 @@
         <source>The simulation case reader is unavailable.</source>
         <translation>模拟工况读取器不可用。</translation>
     </message>
+    <message>
+        <source>Delete Case</source>
+        <translation>删除工况</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete case &quot;%1&quot;?
+Referenced data objects (grids/properties) will be kept.</source>
+        <translation type="vanished">确认删除工况“%1”吗？
+被引用的数据本体（网格/属性）将保留。</translation>
+    </message>
+    <message>
+        <source>Delete Property</source>
+        <translation>删除属性</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete property &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确认删除属性“%1”吗？
+将从所有引用该属性的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Import Grid Property</source>
+        <translation>导入网格属性</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
+        <translation>ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Imported %1 properties.</source>
+        <translation>已导入 %1 个属性。</translation>
+    </message>
+    <message>
+        <source>Well Headers and Trajectories (*.txt *.TXT *.dev *.DEV);;All Files (*)</source>
+        <translation type="vanished">井头与轨迹 (*.txt *.TXT *.dev *.DEV);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Reader unavailable for %1</source>
+        <translation>%1 读取器不可用</translation>
+    </message>
+    <message>
+        <source>Well Trajectories and Logs (*.dev *.DEV *.las *.LAS);;All Files (*)</source>
+        <translation type="vanished">井轨迹与测井 (*.dev *.DEV *.las *.LAS);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The reader is unavailable.</source>
+        <translation>读取器不可用。</translation>
+    </message>
+    <message>
+        <source>Delete Well</source>
+        <translation>删除井</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete well &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确定删除井 &quot;%1&quot; 吗？
+它将从所有引用它的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Delete Grid</source>
+        <translation>删除网格</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete grid &quot;%1&quot;?
+It will also delete %2 propert(ies) under this grid and remove all case references.</source>
+        <translation type="vanished">确定删除网格 &quot;%1&quot; 吗？
+它将同时删除该网格下的 %2 个属性，并从所有工况中移除引用。</translation>
+    </message>
+    <message>
+        <source>Well Data (*.txt *.TXT *.dev *.DEV *.las *.LAS);;All Files (*.*)</source>
+        <translation>井数据 (*.txt *.TXT *.dev *.DEV *.las *.LAS);;所有文件 (*.*)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete grid &quot;%1&quot;?
+It will also delete %2 propert(ies) under this grid and remove it from its case.</source>
+        <translation>确定要删除网格&quot;%1&quot;吗？
+该网格下的 %2 个属性将一并删除，并从所属工况移除。</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete case &quot;%1&quot;?
+Its %2 grid(s) and %3 propert(ies) will also be deleted. Referenced wells are kept.</source>
+        <translation>确定要删除工况&quot;%1&quot;吗？
+其下 %2 个网格和 %3 个属性将一并删除，引用的井保留。</translation>
+    </message>
+    <message>
+        <source>Import Grid</source>
+        <translation>导入网格</translation>
+    </message>
+    <message>
+        <source>Case &quot;%1&quot; already has grid &quot;%2&quot;.
+Importing a new grid will delete it along with %3 propert(ies). Continue?</source>
+        <translation>工况&quot;%1&quot;已包含网格&quot;%2&quot;。
+导入新网格将删除旧网格及其 %3 个属性，是否继续？</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
+        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
+    </message>
 </context>
 <context>
     <name>IDOSDataTreeMenuProvider</name>
@@ -199,6 +317,22 @@
     <message>
         <source>Import Well Data...</source>
         <translation>导入井数据…</translation>
+    </message>
+    <message>
+        <source>Import Data...</source>
+        <translation>导入数据…</translation>
+    </message>
+    <message>
+        <source>Delete Well...</source>
+        <translation>删除井…</translation>
+    </message>
+    <message>
+        <source>Delete Grid...</source>
+        <translation type="vanished">删除网格…</translation>
+    </message>
+    <message>
+        <source>Delete Property...</source>
+        <translation type="vanished">删除属性…</translation>
     </message>
 </context>
 <context>
@@ -332,7 +466,7 @@
     </message>
     <message>
         <source>3D View - %1</source>
-        <translation>三维视图 - %1</translation>
+        <translation type="vanished">三维视图 - %1</translation>
     </message>
 </context>
 <context>
@@ -454,149 +588,149 @@
     <name>IDOSWellImportDialog</name>
     <message>
         <source>Import Well Data - Well Headers</source>
-        <translation>导入井数据 - 井头</translation>
+        <translation type="vanished">导入井数据 - 井头</translation>
     </message>
     <message>
         <source>File: %1</source>
-        <translation>文件：%1</translation>
+        <translation type="vanished">文件：%1</translation>
     </message>
     <message>
         <source>Existing wells and repeated names are skipped (case-insensitive). KB and Symbol are preserved as source values; units and datum are not converted.</source>
-        <translation>已有井和重复井名将跳过（不区分大小写）。KB 和符号编号保留原值，不进行单位或基准转换。</translation>
+        <translation type="vanished">已有井和重复井名将跳过（不区分大小写）。KB 和符号编号保留原值，不进行单位或基准转换。</translation>
     </message>
     <message>
         <source>Well Name</source>
-        <translation>井名</translation>
+        <translation type="vanished">井名</translation>
     </message>
     <message>
         <source>X Coordinate</source>
-        <translation>X 坐标</translation>
+        <translation type="vanished">X 坐标</translation>
     </message>
     <message>
         <source>Y Coordinate</source>
-        <translation>Y 坐标</translation>
+        <translation type="vanished">Y 坐标</translation>
     </message>
     <message>
         <source>Top Depth</source>
-        <translation>顶深</translation>
+        <translation type="vanished">顶深</translation>
     </message>
     <message>
         <source>Bottom Depth</source>
-        <translation>底深</translation>
+        <translation type="vanished">底深</translation>
     </message>
     <message>
         <source>KB (source value)</source>
-        <translation>KB（原始值）</translation>
+        <translation type="vanished">KB（原始值）</translation>
     </message>
     <message>
         <source>Symbol</source>
-        <translation>符号编号</translation>
+        <translation type="vanished">符号编号</translation>
     </message>
     <message>
         <source>Action</source>
-        <translation>处理方式</translation>
+        <translation type="vanished">处理方式</translation>
     </message>
     <message>
         <source>Skip duplicate</source>
-        <translation>跳过重复井</translation>
+        <translation type="vanished">跳过重复井</translation>
     </message>
     <message>
         <source>Create well</source>
-        <translation>创建井</translation>
+        <translation type="vanished">创建井</translation>
     </message>
     <message>
         <source>%1 rows: %2 wells to create, %3 duplicates to skip.</source>
-        <translation>共 %1 条记录：将创建 %2 口井，跳过 %3 条重复记录。</translation>
+        <translation type="vanished">共 %1 条记录：将创建 %2 口井，跳过 %3 条重复记录。</translation>
     </message>
     <message>
         <source>Import</source>
-        <translation>导入</translation>
+        <translation type="vanished">导入</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>取消</translation>
+        <translation type="vanished">取消</translation>
     </message>
 </context>
 <context>
     <name>IDOSWellPathImportDialog</name>
     <message>
         <source>Import Well Data - Trajectories</source>
-        <translation>导入井数据 - 井轨迹</translation>
+        <translation type="vanished">导入井数据 - 井轨迹</translation>
     </message>
     <message>
         <source>Match existing wells by WELL NAME (case-insensitive). Missing, ambiguous or repeated wells and existing trajectories are skipped. Source coordinates are preserved; no unit conversion or wellhead segment is added.</source>
-        <translation>按文件头井名匹配已有井（不区分大小写）。找不到井、匹配不唯一、重复文件及已有轨迹均跳过。保留原始坐标，不转换单位，不补接井口段。</translation>
+        <translation type="vanished">按文件头井名匹配已有井（不区分大小写）。找不到井、匹配不唯一、重复文件及已有轨迹均跳过。保留原始坐标，不转换单位，不补接井口段。</translation>
     </message>
     <message>
         <source>File</source>
-        <translation>文件</translation>
+        <translation type="vanished">文件</translation>
     </message>
     <message>
         <source>Well Name</source>
-        <translation>井名</translation>
+        <translation type="vanished">井名</translation>
     </message>
     <message>
         <source>Points</source>
-        <translation>轨迹点数</translation>
+        <translation type="vanished">轨迹点数</translation>
     </message>
     <message>
         <source>Start MD</source>
-        <translation>起始测深</translation>
+        <translation type="vanished">起始测深</translation>
     </message>
     <message>
         <source>End MD</source>
-        <translation>结束测深</translation>
+        <translation type="vanished">结束测深</translation>
     </message>
     <message>
         <source>Action / Reason</source>
-        <translation>处理方式 / 原因</translation>
+        <translation type="vanished">处理方式 / 原因</translation>
     </message>
     <message>
         <source>Skip: empty trajectory</source>
-        <translation>跳过：轨迹为空</translation>
+        <translation type="vanished">跳过：轨迹为空</translation>
     </message>
     <message>
         <source>Skip: well not found</source>
-        <translation>跳过：找不到对应井</translation>
+        <translation type="vanished">跳过：找不到对应井</translation>
     </message>
     <message>
         <source>Skip: multiple wells match</source>
-        <translation>跳过：匹配到多口同名井</translation>
+        <translation type="vanished">跳过：匹配到多口同名井</translation>
     </message>
     <message>
         <source>Skip: trajectory already exists</source>
-        <translation>跳过：已有轨迹</translation>
+        <translation type="vanished">跳过：已有轨迹</translation>
     </message>
     <message>
         <source>Skip: repeated well in selection</source>
-        <translation>跳过：本批次井名重复</translation>
+        <translation type="vanished">跳过：本批次井名重复</translation>
     </message>
     <message>
         <source>Import trajectory</source>
-        <translation>导入轨迹</translation>
+        <translation type="vanished">导入轨迹</translation>
     </message>
     <message>
         <source>Skip: no valid trajectory</source>
-        <translation>跳过：没有有效轨迹</translation>
+        <translation type="vanished">跳过：没有有效轨迹</translation>
     </message>
     <message>
         <source>%1 files: %2 trajectories to import, %3 files to skip.</source>
-        <translation>共 %1 个文件：将导入 %2 条井轨迹，跳过 %3 个文件。</translation>
+        <translation type="vanished">共 %1 个文件：将导入 %2 条井轨迹，跳过 %3 个文件。</translation>
     </message>
     <message>
         <source>Import</source>
-        <translation>导入</translation>
+        <translation type="vanished">导入</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation>取消</translation>
+        <translation type="vanished">取消</translation>
     </message>
 </context>
 <context>
     <name>QObject</name>
     <message>
         <source>Trajectory</source>
-        <translation>井轨迹</translation>
+        <translation type="vanished">井轨迹</translation>
     </message>
     <message>
         <source>Geometry</source>
@@ -632,15 +766,15 @@
     </message>
     <message>
         <source>Well Logs</source>
-        <translation>测井曲线</translation>
+        <translation type="vanished">测井曲线</translation>
     </message>
     <message>
         <source>Completions</source>
-        <translation>完井集合</translation>
+        <translation type="vanished">完井集合</translation>
     </message>
     <message>
         <source>Zones</source>
-        <translation>井顶与分层</translation>
+        <translation type="vanished">井顶与分层</translation>
     </message>
     <message>
         <source>ECLIPSE Simulation Case</source>
@@ -792,7 +926,7 @@
     </message>
     <message>
         <source>Active Cell Flag (ACTNUM)</source>
-        <translation>有效单元标记（ACTNUM）</translation>
+        <translation type="vanished">有效单元标记（ACTNUM）</translation>
     </message>
     <message>
         <source>Regions</source>
@@ -805,6 +939,26 @@
     <message>
         <source>Grid Render Object Provider</source>
         <translation>网格渲染对象提供器</translation>
+    </message>
+    <message>
+        <source>3D View - %1</source>
+        <translation>三维视图 - %1</translation>
+    </message>
+    <message>
+        <source>Trajectory (%1 points)</source>
+        <translation>轨迹（%1 个点）</translation>
+    </message>
+    <message>
+        <source>Well Logs (%1 channels)</source>
+        <translation>测井（%1 条通道）</translation>
+    </message>
+    <message>
+        <source>Completions (%1)</source>
+        <translation>射孔（%1 段）</translation>
+    </message>
+    <message>
+        <source>Markers (%1)</source>
+        <translation>层位（%1 个）</translation>
     </message>
 </context>
 </TS>

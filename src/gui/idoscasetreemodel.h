@@ -3,6 +3,8 @@
 
 #include "idostreemodel.h"
 
+#include <QList>
+
 class IDOSTreeProviderRegistry;
 
 /**
@@ -35,6 +37,13 @@ class GUI_EXPORT IDOSCaseTreeModel : public IDOSTreeModel
 
   private:
     IDOSTreeProviderRegistry* m_treeProviderRegistry;
+
+    // 父子联动：属性依附网格几何
+    /** 勾选属性时，自动勾选其所属网格节点（保证网格 renderObject 存在且 UI 一致）。 */
+    void autoCheckParentGrid(IDOSTreeNode* propertyNode);
+    /** 取消勾选网格时，连带取消其下所有已勾选属性节点。 */
+    void uncheckChildProperties(IDOSTreeNode* gridNode);
+    void collectCheckedGridProperties(IDOSTreeNode* branch, QList<IDOSTreeNode*>& out) const;
 };
 
 #endif // IDOS_CASE_TREE_MODEL_H

@@ -85,6 +85,12 @@ bool IDOSRenderMesh::hasCellScalars() const
     return !m_cellScalarName.isEmpty() && m_cellScalars.size() == hexahedronCount();
 }
 
+void IDOSRenderMesh::clearCellScalars()
+{
+    m_cellScalarName.clear();
+    m_cellScalars.clear();
+}
+
 void IDOSRenderMesh::clear()
 {
     m_points.clear();

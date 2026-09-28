@@ -1,6 +1,7 @@
 #include "idosmainwindow.h"
 #include "idosdataobjecthandling.h"
 #include "idosgridrenderobjectprovider.h"
+#include "idoswellrenderobjectprovider.h"
 #include "idosrenderserver.h"
 #include "idosdatatreemodel.h"
 #include "idosdatatreemenuprovider.h"
@@ -34,8 +35,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionNewProject(nullptr)
     , m_actionOpenProject(nullptr)
     , m_actionSaveProject(nullptr)
-    , m_actionImportWell(nullptr)
-    , m_actionImportGrid(nullptr)
     , m_project(nullptr)
     , m_dataTreeModel(new IDOSDataTreeModel(this))
     , m_caseTreeModel(new IDOSCaseTreeModel(this))
@@ -53,9 +52,9 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     m_dataTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
     m_caseTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
     m_renderServer->addProvider(new IDOSGridRenderObjectProvider());
+    m_renderServer->addProvider(new IDOSWellRenderObjectProvider());
 
     setWindowTitle(tr("IDOS"));
-    resize(1280, 800);
 
     m_actionNewProject = new QAction(QIcon(QStringLiteral(":/images/app-project-new.svg")), tr("New Project"), this);
     m_actionNewProject->setObjectName(QStringLiteral("newProjectAction"));
@@ -65,9 +64,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     SARibbonCategory* projectPage = ribbonBar()->addCategoryPage(tr("Project"));
     projectPage->addPanel(tr("Project Management"))->addLargeAction(m_actionNewProject);
 
-    // CDockManager 作为 central widget，ADS 接管整个中央区域的停靠管理
     m_dockManager = new ads::CDockManager(this);
-    // 清空 ADS 内部 stylesheet，避免覆盖 SARibbon 主题
     m_dockManager->setStyleSheet(QString());
     setCentralWidget(m_dockManager);
 
@@ -84,6 +81,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     // ---- 数据树 ----
     m_dataTreeView = new IDOSDataTreeView(this);
     m_dataTreeView->setModel(m_dataTreeModel);
+    connect(m_dataTreeModel, &IDOSDataTreeModel::itemCheckedChanged, m_renderServer, &IDOSRenderServer::onItemCheckedChanged);
     IDOSDataTreeMenuProvider* provider = new IDOSDataTreeMenuProvider(m_dataTreeView);
     m_dataTreeView->setMenuProvider(provider);
     ads::CDockWidget* dataDock = new ads::CDockWidget(m_dockManager, tr("Data"));
@@ -96,8 +94,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     // ---- 工况树 ----
     m_caseTreeView = new IDOSCaseTreeView(this);
     m_caseTreeView->setModel(m_caseTreeModel);
-    connect(m_caseTreeModel, &IDOSCaseTreeModel::itemCheckedChanged, m_renderServer,
-            &IDOSRenderServer::onItemCheckedChanged);
+    connect(m_caseTreeModel, &IDOSCaseTreeModel::itemCheckedChanged, m_renderServer, &IDOSRenderServer::onItemCheckedChanged);
     connect(m_renderServer, &IDOSRenderServer::titleChanged, m_renderDock, &ads::CDockWidget::setWindowTitle);
     IDOSCaseTreeMenuProvider* caseMenu = new IDOSCaseTreeMenuProvider(m_caseTreeView);
     m_caseTreeView->setMenuProvider(caseMenu);
@@ -188,7 +185,6 @@ void IDOSMainWindow::onNewProject()
         return;
     }
     IDOSProject* project = new IDOSProject(this);
-    // 当前阶段只创建空容器并初始化树，不应用对话框中的工程信息。
     IDOSProject* previous = m_project;
     setProject(project);
     m_dataTreeView->expandToDepth(0);
@@ -216,22 +212,5 @@ void IDOSMainWindow::onProjectDestroyed()
     m_renderServer->setProject(nullptr);
     m_project = nullptr;
 }
-
-void IDOSMainWindow::onNewWell()
-{
-    if (IDOSDataObjectHandling::newWell(m_project, this))
-    {
-        m_dataTreeView->expandToDepth(1);
-    }
-}
-
-void IDOSMainWindow::onImportWellData()
-{
-    if (IDOSDataObjectHandling::importWellData(m_project, this) > 0)
-    {
-        m_dataTreeView->expandToDepth(1);
-    }
-}
-
 
 

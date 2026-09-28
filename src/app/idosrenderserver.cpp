@@ -31,7 +31,24 @@ IDOSRenderServer::~IDOSRenderServer()
 
 void IDOSRenderServer::setProject(IDOSProject* project)
 {
+    if (m_project == project)
+    {
+        return;
+    }
+
+    if (m_project != nullptr)
+    {
+        disconnect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
+        disconnect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
+    }
+
     m_project = project;
+    if (m_project != nullptr)
+    {
+        connect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
+        connect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
+    }
+
     m_mainScene->clear();
     refreshViews();
 }
@@ -248,8 +265,15 @@ bool IDOSRenderServer::hideGridProperty(const IDOSGridProperty* property)
         return false;
     }
 
-    m_mainScene->setObjectVisible(property->gridId(), false);
-    refreshViews();
+    // 清除属性着色，网格保持可见并回退到默认色；
+    // 不隐藏整个 grid renderObject（取消属性 ≠ 取消网格）
+    IDOSRenderObject* renderObject = m_mainScene->object(property->gridId());
+    IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(renderObject);
+    if (mesh != nullptr)
+    {
+        mesh->clearCellScalars();
+        refreshViews();
+    }
     return true;
 }
 
@@ -339,6 +363,29 @@ void IDOSRenderServer::setItemHidden(const QString& objectId)
     }
 
     m_mainScene->setObjectVisible(objectId, false);
+    refreshViews();
+}
+
+void IDOSRenderServer::onObjectRemoved(const QString& objectId)
+{
+    if (objectId.isEmpty())
+    {
+        return;
+    }
+
+    m_mainScene->removeObject(objectId);
+    refreshViews();
+}
+
+void IDOSRenderServer::onObjectsRemoved(const QStringList& objectIds)
+{
+    for (const QString& objectId : objectIds)
+    {
+        if (!objectId.isEmpty())
+        {
+            m_mainScene->removeObject(objectId);
+        }
+    }
     refreshViews();
 }
 

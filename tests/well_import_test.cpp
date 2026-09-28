@@ -2,10 +2,7 @@
 #include "idosproviderregistry.h"
 #include "idosdataprovider.h"
 #include "idoswell.h"
-#include "idoswellimportdialog.h"
 #include <QFile>
-#include <QPushButton>
-#include <QTableWidget>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -80,34 +77,5 @@ void WellImportTest::onReorderedColumns()
     QCOMPARE(well->wellHead().symbol(), 7);
     QCOMPARE(well->wellHead().surfaceX(), 1.0);
     qDeleteAll(objects);
-}
-void WellImportTest::onPreviewDuplicatesAndCancel()
-{
-    IDOSWell first;
-    first.setName(QStringLiteral("A10"));
-    IDOSWell duplicate;
-    duplicate.setName(QStringLiteral("a10"));
-    IDOSWell next;
-    next.setName(QStringLiteral("B1"));
-    const QList<IDOSDataObject*> objects = {&first, &duplicate, &next};
-    IDOSWellImportDialog dialog(QStringLiteral("sample"), objects, {QStringLiteral("b1")});
-    QCOMPARE(dialog.selectedRows(), QList<int>{0});
-    QTableWidget* table = dialog.findChild<QTableWidget*>(QStringLiteral("wellImportPreview"));
-    QVERIFY(table != nullptr);
-    QCOMPARE(table->rowCount(), 3);
-    dialog.show();
-    QTest::qWait(100);
-    const QString screenshotRoot = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
-    if (!screenshotRoot.isEmpty())
-    {
-        QVERIFY(dialog.grab().save(screenshotRoot + QStringLiteral("/well-import.png")));
-    }
-    dialog.reject();
-    QCOMPARE(dialog.result(), int(QDialog::Rejected));
-    QVERIFY(first.parent() == nullptr);
-    IDOSWellImportDialog allDuplicates(QStringLiteral("sample"), objects,
-                                       {QStringLiteral("A10"), QStringLiteral("B1")});
-    QVERIFY(allDuplicates.selectedRows().isEmpty());
-    QVERIFY(!allDuplicates.findChild<QPushButton*>(QStringLiteral("confirmWellImport"))->isEnabled());
 }
 QTEST_MAIN(WellImportTest)

@@ -1,6 +1,7 @@
 #include "idosrenderview.h"
 #include "idosrendermesh.h"
 #include "idosrenderscene.h"
+#include "idoswellrenderobject.h"
 
 #include <QVBoxLayout>
 #include <QVTKOpenGLNativeWidget.h>
@@ -8,6 +9,7 @@
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCellData.h>
+#include <vtkCellArray.h>
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
@@ -16,6 +18,8 @@
 #include <vtkLookupTable.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkPoints.h>
+#include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkUnstructuredGrid.h>
@@ -27,6 +31,7 @@ class IDOSRenderViewPrivate
     ~IDOSRenderViewPrivate();
 
     vtkSmartPointer<vtkActor> createMeshActor(const IDOSRenderMesh* mesh);
+    vtkSmartPointer<vtkActor> createWellActor(const IDOSWellRenderObject* well);
     void applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper, const IDOSRenderMesh* mesh) const;
     void clearActivePipeline();
 
@@ -160,6 +165,57 @@ void IDOSRenderViewPrivate::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataS
     mapper->SetScalarModeToUseCellData();
     mapper->SetInterpolateScalarsBeforeMapping(false);
     mapper->ScalarVisibilityOn();
+}
+
+vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellActor(const IDOSWellRenderObject* well)
+{
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+
+    if (well->hasWellHead())
+    {
+        const QVector3D wellHeadPosition = well->wellHeadPosition();
+        const vtkIdType wellHeadId = points->InsertNextPoint(
+            wellHeadPosition.x(), wellHeadPosition.y(), wellHeadPosition.z());
+        vertices->InsertNextCell(1, &wellHeadId);
+    }
+
+    const QVector<QVector3D>& wellPoints = well->points();
+    for (int pointIndex = 0; pointIndex < wellPoints.size(); ++pointIndex)
+    {
+        const QVector3D& point = wellPoints.at(pointIndex);
+        points->InsertNextPoint(point.x(), point.y(), point.z());
+    }
+
+    if (wellPoints.size() >= 2)
+    {
+        // 井口顶点单独存储，因此轨迹折线从当前 points 的尾部索引开始。
+        vtkSmartPointer<vtkIdList> pointIds = vtkSmartPointer<vtkIdList>::New();
+        const vtkIdType firstTrajectoryPointId = well->hasWellHead() ? 1 : 0;
+        for (int pointIndex = 0; pointIndex < wellPoints.size(); ++pointIndex)
+        {
+            pointIds->InsertNextId(firstTrajectoryPointId + pointIndex);
+        }
+        lines->InsertNextCell(pointIds);
+    }
+
+    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
+    polyData->SetPoints(points);
+    polyData->SetVerts(vertices);
+    polyData->SetLines(lines);
+
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(polyData);
+
+    vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+    // 井口与轨迹使用同一颜色和可见性；井口即使无轨迹也应可见。
+    actor->GetProperty()->SetColor(1.0, 0.55, 0.0);
+    actor->GetProperty()->SetLineWidth(2.0);
+    actor->GetProperty()->SetPointSize(10.0);
+    actor->SetVisibility(well->visible());
+    return actor;
 }
 
 void IDOSRenderViewPrivate::clearActivePipeline()
@@ -327,12 +383,18 @@ void IDOSRenderView::rebuildActors()
     const QList<IDOSRenderObject*>& objects = m_privateData->scene->objects();
     for (int index = 0; index < objects.size(); ++index)
     {
-        IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(objects.at(index));
-        if (mesh == nullptr)
+        IDOSRenderObject* object = objects.at(index);
+        IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(object);
+        if (mesh != nullptr)
         {
+            m_privateData->renderer->AddActor(m_privateData->createMeshActor(mesh));
             continue;
         }
-        m_privateData->renderer->AddActor(m_privateData->createMeshActor(mesh));
+        IDOSWellRenderObject* well = dynamic_cast<IDOSWellRenderObject*>(object);
+        if (well != nullptr)
+        {
+            m_privateData->renderer->AddActor(m_privateData->createWellActor(well));
+        }
     }
 
     m_privateData->renderWindow->Render();

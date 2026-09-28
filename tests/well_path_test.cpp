@@ -1,17 +1,10 @@
 #include "well_path_test.h"
-#include "idosdataobjecthandling.h"
 #include "idosdataprovider.h"
 #include "idosproviderregistry.h"
-#include "idosproject.h"
 #include "idoswell.h"
-#include "idoswellpathimportdialog.h"
 #include <QDir>
 #include <QFile>
-#include <QPushButton>
-#include <QMessageBox>
 #include <QTemporaryDir>
-#include <QTimer>
-#include <QSignalSpy>
 #include <QtTest>
 
 void WellPathTest::onParseSample()
@@ -89,77 +82,5 @@ void WellPathTest::onInvalidInput()
     QCOMPARE(well->path().points().first().azimuth(), -90.0);
     QCOMPARE(well->path().points().last().md(), 11.0);
     qDeleteAll(objects);
-}
-
-void WellPathTest::onBatchImport()
-{
-    IDOSProject project;
-    IDOSWell* well = new IDOSWell();
-    well->setName(QStringLiteral("a10"));
-    IDOSWellHead head;
-    head.setKb(125.0);
-    well->setWellHead(head);
-    project.addObject(well);
-    const QString id = well->objectId();
-    const QString sample = QFINDTESTDATA("data/A10.dev");
-    QTemporaryDir directory;
-    const QString duplicate = directory.filePath(QStringLiteral("different-name.dev"));
-    QVERIFY(QFile::copy(sample, duplicate));
-    const QStringList files = {sample, duplicate, directory.filePath(QStringLiteral("missing.dev"))};
-    QSignalSpy changed(&project, &IDOSProject::objectChanged);
-    QTimer timer;
-    connect(&timer, &QTimer::timeout, this, &WellPathTest::onPreview);
-    timer.start(20);
-    m_cancel = true;
-    QCOMPARE(IDOSDataObjectHandling::importWellPaths(&project, files, nullptr), 0);
-    QVERIFY(!well->hasPath());
-    QCOMPARE(changed.count(), 0);
-    m_cancel = false;
-    QCOMPARE(IDOSDataObjectHandling::importWellPaths(&project, files, nullptr), 1);
-    QCOMPARE(project.objects().size(), 1);
-    QCOMPARE(project.objectById(id), well);
-    QCOMPARE(well->wellHead().kb(), 125.0);
-    QCOMPARE(well->path().pointCount(), 3);
-    QCOMPARE(changed.count(), 1);
-    QCOMPARE(IDOSDataObjectHandling::importWellPaths(&project, files, nullptr), 0);
-    QCOMPARE(changed.count(), 1);
-    IDOSProject empty;
-    QCOMPARE(IDOSDataObjectHandling::importWellPaths(&empty, files, nullptr), 0);
-    QVERIFY(empty.objects().isEmpty());
-    IDOSWell* ambiguous = new IDOSWell();
-    ambiguous->setName(QStringLiteral("A10"));
-    project.addObject(ambiguous);
-    QCOMPARE(IDOSDataObjectHandling::importWellPaths(&project, files, nullptr), 0);
-    QVERIFY(!ambiguous->hasPath());
-    timer.stop();
-}
-
-void WellPathTest::onPreview()
-{
-    QMessageBox* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
-    if (message != nullptr)
-    {
-        message->accept();
-        return;
-    }
-    IDOSWellPathImportDialog* dialog = qobject_cast<IDOSWellPathImportDialog*>(QApplication::activeModalWidget());
-    if (dialog == nullptr)
-    {
-        return;
-    }
-    const QString screenshotRoot = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
-    if (!screenshotRoot.isEmpty() && m_cancel)
-    {
-        dialog->grab().save(screenshotRoot + QStringLiteral("/well-path-import.png"));
-    }
-    QPushButton* confirm = dialog->findChild<QPushButton*>(QStringLiteral("confirmPathImport"));
-    if (m_cancel || !confirm->isEnabled())
-    {
-        dialog->reject();
-    }
-    else
-    {
-        confirm->click();
-    }
 }
 QTEST_MAIN(WellPathTest)

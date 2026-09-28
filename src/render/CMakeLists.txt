@@ -4,6 +4,8 @@ add_library(idos_render SHARED
     idosrenderobject.cpp
     idosrendermesh.h
     idosrendermesh.cpp
+    idoswellrenderobject.h
+    idoswellrenderobject.cpp
     idosrenderscene.h
     idosrenderscene.cpp
     idosrendertypes.h
@@ -18,6 +20,9 @@ target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)
     target_compile_definitions(idos_render PUBLIC IDOS_ENABLE_RENDER)
+    target_include_directories(idos_render PRIVATE
+        "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/include/vtk-9.6"
+    )
     target_link_libraries(idos_render PRIVATE
         VTK::CommonCore
         VTK::CommonDataModel

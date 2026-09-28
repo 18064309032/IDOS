@@ -32,6 +32,9 @@ class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
     void setCellScalars(const QString& name, const QVector<double>& values);
     bool hasCellScalars() const;
 
+    /** 清除属性着色，网格回退到默认色（保持可见）。 */
+    void clearCellScalars();
+
     void clear();
 
   private:

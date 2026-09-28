@@ -1,7 +1,9 @@
 #include "idostreemodel.h"
 #include "idosobjecttreenode.h"
+#include "idostreereferencenode.h"
 #include "idosproject.h"
 #include "idosdataobject.h"
+#include "idosgridproperty.h"
 
 IDOSTreeModel::IDOSTreeModel(QObject* parent)
     : QAbstractItemModel(parent)
@@ -130,7 +132,75 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
     node->setChecked(checked);
     emit dataChanged(index, index, QVector<int>() << Qt::CheckStateRole);
     emit checkStateChanged(index, checked);
+
+    // 勾选网格属性节点时，取消其他已勾选属性（单选互斥），
+    // 避免渲染窗口多个属性颜色映射互相覆盖。
+    if (checked)
+    {
+        IDOSDataObject* currentObject = objectFromIndex(index);
+        if (qobject_cast<const IDOSGridProperty*>(currentObject) != nullptr)
+        {
+            uncheckOtherProperties(node);
+        }
+    }
     return true;
+}
+
+void IDOSTreeModel::uncheckOtherProperties(IDOSTreeNode* exceptNode)
+{
+    if (m_rootNode == nullptr)
+    {
+        return;
+    }
+
+    QList<IDOSTreeNode*> toUncheck;
+    collectCheckedProperties(m_rootNode, exceptNode, toUncheck);
+
+    for (IDOSTreeNode* node : toUncheck)
+    {
+        node->setChecked(false);
+        QModelIndex idx = indexOfNode(node);
+        if (idx.isValid())
+        {
+            // 仅更新树 UI 的勾选显示；不向渲染服务器发 hide 信号。
+            // 原因：网格属性共用同一 grid renderObject，hide 旧属性会
+            // 把整个 grid renderObject 隐藏，导致新勾选属性也看不见。
+            // 新属性颜色已通过 showGridProperty 覆盖到 renderObject，
+            // 旧属性无需单独 hide。
+            emit dataChanged(idx, idx, QVector<int>() << Qt::CheckStateRole);
+        }
+    }
+}
+
+void IDOSTreeModel::collectCheckedProperties(IDOSTreeNode* branch,
+                                                     IDOSTreeNode* exceptNode,
+                                                     QList<IDOSTreeNode*>& out) const
+{
+    if (branch == nullptr)
+    {
+        return;
+    }
+
+    for (int i = 0; i < branch->childCount(); ++i)
+    {
+        IDOSTreeNode* child = branch->child(i);
+        if (child == nullptr)
+        {
+            continue;
+        }
+
+        // 命中已勾选、非当前节点、且对应网格属性的节点
+        if (child != exceptNode && child->isCheckable() && child->isChecked())
+        {
+            IDOSDataObject* obj = objectOfNode(child);
+            if (qobject_cast<const IDOSGridProperty*>(obj) != nullptr)
+            {
+                out.append(child);
+            }
+        }
+
+        collectCheckedProperties(child, exceptNode, out);
+    }
 }
 
 QVariant IDOSTreeModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -164,12 +234,28 @@ IDOSTreeNode* IDOSTreeModel::nodeFromIndex(const QModelIndex& index) const
 
 IDOSDataObject* IDOSTreeModel::objectFromIndex(const QModelIndex& index) const
 {
-    if (m_project == nullptr)
+    return objectOfNode(nodeFromIndex(index));
+}
+
+IDOSDataObject* IDOSTreeModel::objectOfNode(IDOSTreeNode* node) const
+{
+    if (m_project == nullptr || node == nullptr)
     {
         return nullptr;
     }
-    IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(nodeFromIndex(index));
-    return objectNode != nullptr ? m_project->objectById(objectNode->objectId()) : nullptr;
+    // 数据本体树：ObjectTreeNode 直接持 objectId
+    IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(node);
+    if (objectNode != nullptr)
+    {
+        return m_project->objectById(objectNode->objectId());
+    }
+    // 工况引用树：ReferenceNode 通过 IDOSCaseItemRef 间接引用 objectId
+    IDOSTreeReferenceNode* refNode = dynamic_cast<IDOSTreeReferenceNode*>(node);
+    if (refNode != nullptr)
+    {
+        return m_project->objectById(refNode->itemRef().objectId());
+    }
+    return nullptr;
 }
 
 void IDOSTreeModel::rebuildTree()

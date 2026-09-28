@@ -21,9 +21,18 @@ class PROVIDERS_EXPORT IDOSDataLoadService
 
     /**
      * @brief 从文件加载数据到工程。
+     * @param targetGridId 非空时进入属性定向导入模式：只保留 provider 返回的
+     *                    IDOSGridProperty 对象，将其 gridId 覆盖为该值后挂到目标网格；
+     *                    provider 顺带创建的网格/工况对象丢弃不导入。
+     * @param targetCaseId 非空且 targetGridId 为空时进入网格定向导入模式：只接收网格
+     *                    及其属性，网格以 "case.grid"、属性以 "case.gridProperty" 角色
+     *                    加入该工况引用集；工况等附带对象丢弃。属性定向导入模式下仅
+     *                    追加 "case.gridProperty" 引用。
      * @return 新加入工程的 objectId 列表；失败返回空并可通过 lastError() 获取错误信息。
      */
-    QStringList loadFile(const QString& filePath, IDOSProject* project);
+    QStringList loadFile(const QString& filePath, IDOSProject* project,
+                         const QString& targetGridId = QString(),
+                         const QString& targetCaseId = QString());
 
     QString lastError() const;
 

@@ -1,6 +1,8 @@
 # idos_app: 程序组装
 add_library(idos_app SHARED
     idos_app.h
+    idosapplication.cpp
+    idosapplication.h
     idoscasetreemenuprovider.h
     idoscasetreemenuprovider.cpp
     idosdatatreemenuprovider.h
@@ -9,6 +11,8 @@ add_library(idos_app SHARED
     idosdataobjecthandling.cpp
     idosgridrenderobjectprovider.h
     idosgridrenderobjectprovider.cpp
+    idoswellrenderobjectprovider.h
+    idoswellrenderobjectprovider.cpp
     idosmainwindow.h
     idosmainwindow.cpp
     idosrenderobjectprovider.h

@@ -47,6 +47,10 @@ class APP_EXPORT IDOSRenderServer : public QObject
   signals:
     void titleChanged(const QString& title);
 
+  private slots:
+    void onObjectRemoved(const QString& objectId);
+    void onObjectsRemoved(const QStringList& objectIds);
+
   private:
     IDOSRenderObject* createObject(const IDOSDataObject* object) const;
     IDOSRenderView* firstView() const;

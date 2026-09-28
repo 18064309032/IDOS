@@ -50,12 +50,48 @@ bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value,
                 childNode->setChecked(false);
                 const QModelIndex childIndex = IDOSTreeModel::index(row, 0, parentIndex);
                 emit dataChanged(childIndex, childIndex, QVector<int>() << Qt::CheckStateRole);
+
+                // 网格属性互斥只更新 UI，不发 hide 信号：属性共用同一 grid renderObject，
+                // hide 会让整个网格消失一帧再被 showGridProperty 重建 = 闪烁；
+                // 新属性颜色由 showGridProperty 直接覆盖到 renderObject，无需先 hide 旧属性。
+                const IDOSDataObject* childObject =
+                    project() != nullptr ? project()->objectById(childReferenceNode->itemRef().objectId()) : nullptr;
+                if (qobject_cast<const IDOSGridProperty*>(childObject) != nullptr)
+                {
+                    continue;
+                }
                 emit itemCheckedChanged(childReferenceNode->itemRef().objectId(), false);
             }
         }
     }
 
-    return IDOSTreeModel::setData(index, value, role);
+    const bool ok = IDOSTreeModel::setData(index, value, role);
+    if (!ok)
+    {
+        return false;
+    }
+
+    // 父子联动（属性依附网格几何）：属性渲染以网格 renderObject 为载体，
+    // 勾选属性须保证网格已显示；取消网格则依附其上的属性一并消失。
+    if (index.isValid() && role == Qt::CheckStateRole)
+    {
+        const bool willCheck = value.toInt() == Qt::Checked;
+        IDOSTreeNode* node = nodeFromIndex(index);
+        IDOSTreeReferenceNode* referenceNode = dynamic_cast<IDOSTreeReferenceNode*>(node);
+        if (referenceNode != nullptr)
+        {
+            const QString refRole = referenceNode->itemRef().role();
+            if (willCheck && refRole == QStringLiteral("case.gridProperty"))
+            {
+                autoCheckParentGrid(node);
+            }
+            else if (!willCheck && refRole == QStringLiteral("case.grid"))
+            {
+                uncheckChildProperties(node);
+            }
+        }
+    }
+    return true;
 }
 
 bool IDOSCaseTreeModel::shouldShowObject(const IDOSDataObject* object) const
@@ -158,6 +194,83 @@ void IDOSCaseTreeModel::onCheckStateChanged(const QModelIndex& index, bool check
     if (referenceNode != nullptr)
     {
         emit itemCheckedChanged(referenceNode->itemRef().objectId(), checked);
+    }
+}
+
+void IDOSCaseTreeModel::autoCheckParentGrid(IDOSTreeNode* propertyNode)
+{
+    if (propertyNode == nullptr)
+    {
+        return;
+    }
+    // 向上遍历父节点链，找首个 role=="case.grid" 的引用节点即所属网格
+    for (IDOSTreeNode* parent = propertyNode->parent(); parent != nullptr; parent = parent->parent())
+    {
+        IDOSTreeReferenceNode* gridRef = dynamic_cast<IDOSTreeReferenceNode*>(parent);
+        if (gridRef == nullptr || gridRef->itemRef().role() != QStringLiteral("case.grid"))
+        {
+            continue;
+        }
+        if (!gridRef->isChecked() && gridRef->isCheckable())
+        {
+            gridRef->setChecked(true);
+            const QModelIndex idx = indexOfNode(gridRef);
+            if (idx.isValid())
+            {
+                emit dataChanged(idx, idx, QVector<int>() << Qt::CheckStateRole);
+            }
+            // 通知渲染服务器显示网格几何（showGridProperty 已隐式创建 renderObject，
+            // 此处补发网格 shown 使树 UI 与渲染状态一致）
+            emit itemCheckedChanged(gridRef->itemRef().objectId(), true);
+        }
+        break;
+    }
+}
+
+void IDOSCaseTreeModel::uncheckChildProperties(IDOSTreeNode* gridNode)
+{
+    if (gridNode == nullptr)
+    {
+        return;
+    }
+    QList<IDOSTreeNode*> toUncheck;
+    collectCheckedGridProperties(gridNode, toUncheck);
+    for (IDOSTreeNode* node : toUncheck)
+    {
+        node->setChecked(false);
+        const QModelIndex idx = indexOfNode(node);
+        if (idx.isValid())
+        {
+            emit dataChanged(idx, idx, QVector<int>() << Qt::CheckStateRole);
+        }
+        IDOSTreeReferenceNode* ref = dynamic_cast<IDOSTreeReferenceNode*>(node);
+        if (ref != nullptr)
+        {
+            emit itemCheckedChanged(ref->itemRef().objectId(), false);
+        }
+    }
+}
+
+void IDOSCaseTreeModel::collectCheckedGridProperties(IDOSTreeNode* branch, QList<IDOSTreeNode*>& out) const
+{
+    if (branch == nullptr)
+    {
+        return;
+    }
+    for (int i = 0; i < branch->childCount(); ++i)
+    {
+        IDOSTreeNode* child = branch->child(i);
+        if (child == nullptr)
+        {
+            continue;
+        }
+        IDOSTreeReferenceNode* ref = dynamic_cast<IDOSTreeReferenceNode*>(child);
+        if (ref != nullptr && child->isCheckable() && child->isChecked() &&
+            ref->itemRef().role() == QStringLiteral("case.gridProperty"))
+        {
+            out.append(child);
+        }
+        collectCheckedGridProperties(child, out);
     }
 }
 

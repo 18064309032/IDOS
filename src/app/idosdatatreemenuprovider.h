@@ -15,7 +15,9 @@ class APP_EXPORT IDOSDataTreeMenuProvider : public IDOSTreeMenuProvider
 
   private slots:
     void onNewWellTriggered();
-    void onImportWellTriggered();
+    void onImportWellDataTriggered();
+    void onImportWellDataSingleTriggered();
+    void onDeleteWellTriggered();
 
   private:
     IDOSDataTreeView* m_view;

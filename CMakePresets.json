@@ -14,7 +14,7 @@
                 "value": "x64",
                 "strategy": "set"
             },
-            "binaryDir": "${sourceDir}/../build/${presetName}",
+            "binaryDir": "${sourceDir}/../IDOS-Build/${presetName}",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": { "type": "STRING", "value": "Debug" }
             }

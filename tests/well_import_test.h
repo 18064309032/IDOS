@@ -8,6 +8,5 @@ class WellImportTest : public QObject
     void onSampleFiles();
     void onInvalidRows();
     void onReorderedColumns();
-    void onPreviewDuplicatesAndCancel();
 };
 #endif
