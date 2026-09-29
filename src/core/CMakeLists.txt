@@ -1,7 +1,17 @@
 # idos_core: business data and type registry
-# Dependency chain: no custom module dependencies, only Qt5::Core and Qt5::Gui
+# Dependency chain: no custom module dependencies, only Qt5::Core, Qt5::Gui, and Qt5::Widgets
 add_library(idos_core SHARED
     idos_core.h
+    command/idoscommand.h
+    command/idoscommand.cpp
+    command/idoscommandmanager.h
+    command/idoscommandmanager.cpp
+    command/idoscreatewellcommand.h
+    command/idoscreatewellcommand.cpp
+    command/idoscommandmetadata.h
+    command/idoscommandmetadata.cpp
+    command/idoscommandregistry.h
+    command/idoscommandregistry.cpp
     idoscaseitemref.h
     idoscaseitemref.cpp
     idoscaseobject.h
@@ -55,7 +65,7 @@ target_include_directories(idos_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui)
+target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_core PRIVATE IDOS_CORE_LIB)
 
 get_target_property(_idos_sources idos_core SOURCES)

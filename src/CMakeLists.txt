@@ -16,6 +16,40 @@ add_subdirectory(providers)
 # 可执行目标
 add_executable(idos WIN32 main.cpp)
 
+if(WIN32)
+    file(GLOB _idos_assistant_runtime_files CONFIGURE_DEPENDS
+        "${PROJECT_SOURCE_DIR}/resources/assistant/runtime/*")
+
+    foreach(_idos_assistant_runtime_file IN LISTS _idos_assistant_runtime_files)
+        add_custom_command(TARGET idos POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:idos>/assistant/runtime"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_idos_assistant_runtime_file}"
+                "$<TARGET_FILE_DIR:idos>/assistant/runtime"
+            COMMENT "Deploying local model runtime..."
+        )
+    endforeach()
+
+    add_custom_command(TARGET idos POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:idos>/assistant/models"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/resources/assistant/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+            "$<TARGET_FILE_DIR:idos>/assistant/models"
+        COMMENT "Deploying local model..."
+    )
+
+    add_custom_command(TARGET idos POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:idos>/assistant"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/resources/assistant/local-ai.json"
+            "$<TARGET_FILE_DIR:idos>/assistant"
+        COMMENT "Deploying local model configuration..."
+    )
+endif()
+
 # CMAKE_DEBUG_POSTFIX 只初始化库目标的 <CONFIG>_POSTFIX（CMake 文档明确
 # except executables），可执行文件需显式设置 → Debug 产物为 idosd.exe
 set_target_properties(idos PROPERTIES DEBUG_POSTFIX "d")
@@ -45,6 +79,13 @@ if(WIN32)
     add_custom_command(TARGET idos POST_BUILD
         COMMAND "${IDOS_QT_DIR}/bin/windeployqt.exe" --compiler-runtime $<TARGET_FILE:idos>
         COMMENT "Deploying Qt DLLs via windeployqt..."
+    )
+
+    add_custom_command(TARGET idos POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<IF:$<CONFIG:Debug>,${IDOS_QT_DIR}/bin/Qt5Networkd.dll,${IDOS_QT_DIR}/bin/Qt5Network.dll>"
+            "$<TARGET_FILE_DIR:idos>"
+        COMMENT "Deploying Qt Network DLL..."
     )
 
     # windeployqt 不部署 Debug 版 VC 运行时（vcruntime140d.dll 等），

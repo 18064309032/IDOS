@@ -9,6 +9,8 @@
         <file>app-project-open.svg</file>
         <file>app-project-save.svg</file>
         <file>app-project-settings.svg</file>
+        <file>app-undo.svg</file>
+        <file>app-redo.svg</file>
         <file>assistant-chat.svg</file>
         <file>assistant-tools.svg</file>
         <file>core-object.svg</file>

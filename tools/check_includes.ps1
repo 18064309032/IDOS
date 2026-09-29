@@ -1,4 +1,4 @@
-﻿# 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
+# 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
 # 公共头在模块根目录；app/plugin 是方案明确规定的插件 SDK 例外。
 # 检查直接 include 和已知内部类型引用，不替代 C++ 编译器的语义分析。
 param([string]$SourceRoot = "")
@@ -11,7 +11,7 @@ $headers = @($files | Where-Object { $_.Extension -in '.h','.hpp' })
 $violations = New-Object 'System.Collections.Generic.List[string]'
 $allowed = @{
     core = @()
-    gui = @('core','render_core','render_qt','render_adapters')
+    gui = @('core','render_core','render_qt','render_adapters','assistant')
     providers = @('core')
     render = @()
     render_core = @()
@@ -23,7 +23,7 @@ $allowed = @{
     app = @('core','gui','providers','render','render_core','render_qt','render_adapters','analysis','python','assistant')
 }
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
-function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' }
+function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^core/command/[^/]+\.h(pp)?$' -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' }
 function WithoutComments($content) {
     [regex]::Replace($content, '(?s)/\*.*?\*/|(?m)//[^\r\n]*', { param($m) [regex]::Replace($m.Value, '[^\r\n]', ' ') })
 }
@@ -45,8 +45,10 @@ foreach ($header in $headers) {
     $rel = RelativePath $header.FullName
     if (!(IsPublic $rel)) {
         $content = WithoutComments ([IO.File]::ReadAllText($header.FullName))
-        foreach ($match in [regex]::Matches($content, '\b(?:class|struct)\s+(?:\w+_EXPORT\s+)?(IDOS\w+)\s*(?:final\s*)?(?::[^;{]+)?\{')) {
-            $internalTypes[$match.Groups[1].Value] = $rel
+        $typePattern = '\b(?:class|struct)\s+(?:\w+_EXPORT\s+)?(IDOS\w+)\s*(?:final\s*)?'
+        foreach ($match in [regex]::Matches($content, $typePattern)) {
+            $typeName = $match.Groups[1].Value
+            $internalTypes[$typeName] = $rel
         }
     }
 }
@@ -119,8 +121,8 @@ foreach ($file in $files) {
 }
 if ($violations.Count) {
     $violations | ForEach-Object { Write-Host $_ -ForegroundColor Red }
-    Write-Host "check_includes: $($violations.Count) 处违规"
+    Write-Host "check_includes: $($violations.Count) violation(s)"
     exit 1
 }
-Write-Host "check_includes: 架构边界检查通过 ($($files.Count) 个源文件)"
+Write-Host "check_includes: passed ($($files.Count) source file(s))"
 exit 0

@@ -1,6 +1,8 @@
 # idos_gui: 带 UI 的部分
 add_library(idos_gui SHARED
     idos_gui.h
+    idosassistantwidget.h
+    idosassistantwidget.cpp
     idoscasedialog.h
     idoscasedialog.cpp
     idoscasetreemodel.h
@@ -53,7 +55,7 @@ target_include_directories(idos_gui
         # 公共类的头文件与实现文件成对放在模块根目录。
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)
+target_link_libraries(idos_gui PUBLIC idos_core idos_assistant Qt5::Widgets)
 target_compile_definitions(idos_gui PRIVATE IDOS_GUI_LIB)
 
 get_target_property(_idos_sources idos_gui SOURCES)

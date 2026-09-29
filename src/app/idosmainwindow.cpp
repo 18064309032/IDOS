@@ -4,6 +4,7 @@
 #include "idoswellrenderobjectprovider.h"
 #include "idoswelllogtrackview.h"
 #include "idospropertywidget.h"
+#include "idosassistantwidget.h"
 #include "idosrenderserver.h"
 #include "idosdatatreemodel.h"
 #include "idosdatatreemenuprovider.h"
@@ -18,6 +19,7 @@
 #include "idostreepartnode.h"
 #include "idostreeproviderregistry.h"
 #include "idosproject.h"
+#include "command/idoscommandmanager.h"
 #include "idosnewprojectdialog.h"
 #include "idosrenderview.h"
 #include "idoswell.h"
@@ -28,8 +30,10 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QKeySequence>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QToolButton>
 #include <QItemSelectionModel>
 #include <QTreeView>
 #include <QIcon>
@@ -44,6 +48,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionSaveProject(nullptr)
     , m_actionSaveProjectAs(nullptr)
     , m_actionProjectSettings(nullptr)
+    , m_actionUndo(nullptr)
+    , m_actionRedo(nullptr)
     , m_project(nullptr)
     , m_dataTreeModel(new IDOSDataTreeModel(this))
     , m_caseTreeModel(new IDOSCaseTreeModel(this))
@@ -55,6 +61,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_propertyWidget(nullptr)
     , m_dockManager(nullptr)
     , m_renderDock(nullptr)
+    , m_assistantDock(nullptr)
 {
     m_treeProviderRegistry->registerDataProvider(new IDOSWellDataTreeProvider());
     m_treeProviderRegistry->registerDataProvider(new IDOSGridDataTreeProvider());
@@ -73,6 +80,39 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     connect(m_actionNewProject, &QAction::triggered, this, &IDOSMainWindow::onNewProject);
     SARibbonCategory* projectPage = ribbonBar()->addCategoryPage(tr("Project"));
     projectPage->addPanel(tr("Project Management"))->addLargeAction(m_actionNewProject);
+
+    m_actionUndo = new QAction(QIcon(QStringLiteral(":/images/app-undo.svg")),
+                               tr("Undo"),
+                               this);
+    m_actionUndo->setObjectName(QStringLiteral("undoAction"));
+    m_actionUndo->setShortcut(QKeySequence::Undo);
+    m_actionUndo->setEnabled(false);
+    addAction(m_actionUndo);
+    connect(m_actionUndo, &QAction::triggered, this, &IDOSMainWindow::onUndoTriggered);
+
+    m_actionRedo = new QAction(QIcon(QStringLiteral(":/images/app-redo.svg")),
+                               tr("Redo"),
+                               this);
+    m_actionRedo->setObjectName(QStringLiteral("redoAction"));
+    m_actionRedo->setShortcut(QKeySequence::Redo);
+    m_actionRedo->setEnabled(false);
+    addAction(m_actionRedo);
+    connect(m_actionRedo, &QAction::triggered, this, &IDOSMainWindow::onRedoTriggered);
+    SARibbonCategory* editPage = ribbonBar()->addCategoryPage(tr("Edit"));
+    SARibbonPanel* editPanel = editPage->addPanel(tr("History"));
+    editPanel->addLargeAction(m_actionUndo);
+    editPanel->addLargeAction(m_actionRedo);
+
+    QMenu* applicationMenu = new QMenu(this);
+    applicationMenu->addAction(m_actionUndo);
+    applicationMenu->addAction(m_actionRedo);
+    QToolButton* applicationButton =
+        qobject_cast<QToolButton*>(ribbonBar()->applicationButton());
+    if (applicationButton != nullptr)
+    {
+        applicationButton->setMenu(applicationMenu);
+        applicationButton->setPopupMode(QToolButton::InstantPopup);
+    }
 
     m_dockManager = new ads::CDockManager(this);
     m_dockManager->setStyleSheet(QString());
@@ -113,6 +153,15 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     propertyDock->setWidget(m_propertyWidget, ads::CDockWidget::ForceNoScrollArea);
     propertyDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidget(ads::RightDockWidgetArea, propertyDock);
+
+    IDOSAssistantWidget* assistantWidget = new IDOSAssistantWidget(this);
+    m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
+    m_assistantDock->setObjectName(QStringLiteral("assistantDock"));
+    m_assistantDock->setWidget(assistantWidget, ads::CDockWidget::ForceNoScrollArea);
+    m_assistantDock->setFeatures(ads::CDockWidget::DockWidgetClosable |
+                                 ads::CDockWidget::DockWidgetMovable |
+                                 ads::CDockWidget::DockWidgetFloatable);
+    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_assistantDock, propertyDock->dockAreaWidget());
 
     // ---- 工况树 ----
     m_caseTreeView = new IDOSCaseTreeView(this);
@@ -170,7 +219,11 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     if (project)
     {
         connect(project, &QObject::destroyed, this, &IDOSMainWindow::onProjectDestroyed);
+        connect(project->commandManager(), &IDOSCommandManager::stateChanged,
+                this, &IDOSMainWindow::onCommandStateChanged);
     }
+
+    onCommandStateChanged();
 }
 
 IDOSDataTreeModel* IDOSMainWindow::dataTreeModel() const
@@ -218,6 +271,33 @@ void IDOSMainWindow::onNewProject()
     {
         previous->deleteLater();
     }
+}
+
+void IDOSMainWindow::onUndoTriggered()
+{
+    if (m_project != nullptr)
+    {
+        m_project->commandManager()->undo();
+    }
+}
+
+void IDOSMainWindow::onRedoTriggered()
+{
+    if (m_project != nullptr)
+    {
+        m_project->commandManager()->redo();
+    }
+}
+
+void IDOSMainWindow::onCommandStateChanged()
+{
+    IDOSCommandManager* commandManager =
+        m_project != nullptr ? m_project->commandManager() : nullptr;
+
+    m_actionUndo->setEnabled(commandManager != nullptr && commandManager->canUndo());
+    m_actionRedo->setEnabled(commandManager != nullptr && commandManager->canRedo());
+    m_actionUndo->setText(commandManager != nullptr ? commandManager->undoText() : tr("Undo"));
+    m_actionRedo->setText(commandManager != nullptr ? commandManager->redoText() : tr("Redo"));
 }
 
 void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous)
@@ -352,4 +432,5 @@ void IDOSMainWindow::onProjectDestroyed()
     m_renderServer->setHighlightedObjectId(QString());
     m_renderServer->setProject(nullptr);
     m_project = nullptr;
+    onCommandStateChanged();
 }

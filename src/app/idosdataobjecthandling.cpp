@@ -6,6 +6,8 @@
 #include "idosgridproperty.h"
 #include "idoscasedialog.h"
 #include "idoswell.h"
+#include "command/idoscommandmanager.h"
+#include "command/idoscreatewellcommand.h"
 #include "idosproviderregistry.h"
 #include "idosdataprovider.h"
 #include "idosdataloadservice.h"
@@ -304,10 +306,13 @@ bool IDOSDataObjectHandling::newWell(IDOSProject* project, QWidget* parent)
             dialog.setLabelText(tr("A well named \"%1\" already exists. Please enter a different name.").arg(name));
             continue;
         }
-        IDOSWell* well = new IDOSWell();
-        well->setName(name);
-        targetProject->addObject(well);
-        return true;
+        IDOSCommandManager* commandManager = targetProject->commandManager();
+        if (commandManager == nullptr)
+        {
+            return false;
+        }
+
+        return commandManager->execute(new IDOSCreateWellCommand(*targetProject, name));
     }
     return false;
 }

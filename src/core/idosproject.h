@@ -11,7 +11,9 @@
 #include <QString>
 #include <QStringList>
 
+class IDOSCommandManager;
 class IDOSProjectUpdateGuard;
+class QUndoStack;
 
 /**
  * @brief 工程根对象。
@@ -36,10 +38,18 @@ class CORE_EXPORT IDOSProject : public QObject
 
     const IDOSProjectMetadata& metadata() const;
     bool setMetadata(const IDOSProjectMetadata& metadata);
+    QUndoStack* undoStack() const;
+    IDOSCommandManager* commandManager() const;
     Q_SIGNAL void metadataChanged();
 
     /** 将数据对象加入工程，接管所有权。已存在同 objectId 则替换。 */
     void addObject(IDOSDataObject* object);
+
+    /**
+     * @brief Detach a data object without deleting it.
+     * @return Detached object, or nullptr when no matching object exists.
+     */
+    IDOSDataObject* takeObject(const QString& objectId);
 
     /** 按 objectId 移除数据对象。成功返回 true。 */
     bool removeObject(const QString& objectId);
@@ -94,8 +104,10 @@ class CORE_EXPORT IDOSProject : public QObject
     void connectObject(IDOSDataObject* object);
     void disconnectObject(IDOSDataObject* object);
 
-    QHash<QString, IDOSDataObject*> m_objects; // 所有数据对象，Qt 父子所有权
+    QHash<QString, IDOSDataObject*> m_objects; // All data objects use Qt parent-child ownership.
     IDOSProjectMetadata m_metadata;
+    QUndoStack* m_undoStack;
+    IDOSCommandManager* m_commandManager;
     int m_updateDepth;
     QSet<QString> m_pendingAdded;
     QSet<QString> m_pendingRemoved;

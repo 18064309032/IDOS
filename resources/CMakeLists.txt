@@ -1,1 +1,1 @@
-# resources: 程序动态可加载资源
+# resources: runtime resources are deployed by the idos executable target.

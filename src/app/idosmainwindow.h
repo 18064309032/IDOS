@@ -8,6 +8,7 @@
 class QAction;
 class QCloseEvent;
 class QModelIndex;
+class IDOSCommandManager;
 class IDOSProject;
 class IDOSDataTreeModel;
 class IDOSCaseTreeModel;
@@ -19,6 +20,7 @@ class IDOSRenderView;
 class IDOSWell;
 class IDOSWellLogTrackView;
 class IDOSPropertyWidget;
+class IDOSAssistantWidget;
 
 namespace ads
 {
@@ -55,6 +57,9 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   private slots:
     void onProjectDestroyed();
+    void onUndoTriggered();
+    void onRedoTriggered();
+    void onCommandStateChanged();
     void onDataTreeItemActivated(const QModelIndex& index);
     void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
     void onRenderObjectActivated(const QString& objectId);
@@ -71,6 +76,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionSaveProject;
     QAction* m_actionSaveProjectAs;
     QAction* m_actionProjectSettings;
+    QAction* m_actionUndo;
+    QAction* m_actionRedo;
 
     IDOSProject* m_project;
     IDOSDataTreeModel* m_dataTreeModel;
@@ -84,6 +91,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
     ads::CDockManager* m_dockManager;
     ads::CDockWidget* m_renderDock;
+    ads::CDockWidget* m_assistantDock;
 };
 
 #endif // IDOS_MAIN_WINDOW_H

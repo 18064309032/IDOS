@@ -1,7 +1,13 @@
 #include "idosproject.h"
 
+#include <QUndoStack>
+
+#include "command/idoscommandmanager.h"
+
 IDOSProject::IDOSProject(QObject* parent)
     : QObject(parent)
+    , m_undoStack(new QUndoStack(this))
+    , m_commandManager(new IDOSCommandManager(*this, this))
     , m_updateDepth(0)
 {
 }
@@ -13,6 +19,16 @@ IDOSProject::~IDOSProject()
 const IDOSProjectMetadata& IDOSProject::metadata() const
 {
     return m_metadata;
+}
+
+QUndoStack* IDOSProject::undoStack() const
+{
+    return m_undoStack;
+}
+
+IDOSCommandManager* IDOSProject::commandManager() const
+{
+    return m_commandManager;
 }
 
 bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
@@ -64,19 +80,31 @@ void IDOSProject::addObject(IDOSDataObject* object)
     notifyAdded(id);
 }
 
-bool IDOSProject::removeObject(const QString& objectId)
+IDOSDataObject* IDOSProject::takeObject(const QString& objectId)
 {
     IDOSDataObject* object = m_objects.value(objectId, nullptr);
+    if (object == nullptr)
+    {
+        return nullptr;
+    }
+
+    disconnectObject(object);
+    m_objects.remove(objectId);
+    object->setParent(nullptr);
+
+    notifyRemoved(objectId);
+    return object;
+}
+
+bool IDOSProject::removeObject(const QString& objectId)
+{
+    IDOSDataObject* object = takeObject(objectId);
     if (object == nullptr)
     {
         return false;
     }
 
-    disconnectObject(object);
-    m_objects.remove(objectId);
     object->deleteLater();
-
-    notifyRemoved(objectId);
     return true;
 }
 

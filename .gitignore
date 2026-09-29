@@ -1,5 +1,3 @@
-仓库令牌.txt
-
 *.vs
 
 *.trae
@@ -12,7 +10,7 @@
 
 .vscode
 
-CMakeUserPresets.json
+/resources/assistant/
 
-/build/
+CMakeUserPresets.json
 

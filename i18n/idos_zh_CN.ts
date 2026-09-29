@@ -437,6 +437,22 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工程管理</translation>
     </message>
     <message>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation>重做</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>编辑</translation>
+    </message>
+    <message>
+        <source>History</source>
+        <translation>历史记录</translation>
+    </message>
+    <message>
         <source>3D View</source>
         <translation>三维视图</translation>
     </message>
@@ -475,6 +491,57 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Well Log Tracks - %1</source>
         <translation>测井曲线轨道 - %1</translation>
+    </message>
+    <message>
+        <source>Assistant</source>
+        <translation>助手</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSAssistantWidget</name>
+    <message>
+        <source>Start</source>
+        <translation>启动</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
+    <message>
+        <source>Stopped</source>
+        <translation>已停止</translation>
+    </message>
+    <message>
+        <source>Starting</source>
+        <translation>启动中</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <source>Enter a message</source>
+        <translation>请输入消息</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation>你</translation>
+    </message>
+    <message>
+        <source>Assistant</source>
+        <translation>助手</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>系统</translation>
     </message>
 </context>
 <context>
@@ -1044,6 +1111,30 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>Markers (%1)</source>
         <translation>层位（%1 个）</translation>
     </message>
+    <message>
+        <source>Create well</source>
+        <translation>创建井</translation>
+    </message>
+    <message>
+        <source>Please enter a well name.</source>
+        <translation>请输入井名。</translation>
+    </message>
+    <message>
+        <source>A well named &quot;%1&quot; already exists. Please enter a different name.</source>
+        <translation>已存在名为“%1”的井，请输入其他井名。</translation>
+    </message>
+    <message>
+        <source>The target project is unavailable.</source>
+        <translation>目标工程不可用。</translation>
+    </message>
+    <message>
+        <source>The well is already attached to a project.</source>
+        <translation>该井已关联到工程。</translation>
+    </message>
+    <message>
+        <source>The target well is unavailable.</source>
+        <translation>目标井不可用。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSWellLogTrackView</name>
@@ -1173,6 +1264,13 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Producer</source>
         <translation>生产井</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSCommandManager</name>
+    <message>
+        <source>The command target project does not match the manager project.</source>
+        <translation>命令的目标工程与命令管理器的工程不匹配。</translation>
     </message>
 </context>
 </TS>
