@@ -139,6 +139,13 @@ void WellPathTest::onResolveGeometry()
     IDOSWellHead unknownHead;
     resolution = resolver.resolve(unknownHead, path);
     QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::Unknown);
+
+    IDOSWellHead positionedHead;
+    positionedHead.setSurfaceX(456510.4055);
+    positionedHead.setSurfaceY(6784012.02);
+    resolution = resolver.resolve(positionedHead, path);
+    QCOMPARE(resolution.startPointType(), IDOSWellGeometryResolution::StartPointType::Wellhead);
+    QCOMPARE(resolution.startPoint(), QVector3D(456510.4055F, 6784012.02F, 0.0F));
 }
 
 QTEST_MAIN(WellPathTest)

@@ -53,11 +53,12 @@ IDOSWellGeometryResolution IDOSWellGeometryResolver::resolve(const IDOSWellHead&
         return resolution;
     }
 
-    if (head.hasSurfacePosition() && head.hasSurfaceElevation()
-        && head.spatialReference().hasKnownVerticalReference())
+    // 独立井口只作为平面位置标记，不与轨迹深度做拼接；缺少高程或垂直基准时按 z=0 显示。
+    if (head.hasSurfacePosition())
     {
+        const double surfaceElevation = head.hasSurfaceElevation() ? head.surfaceElevation() : 0.0;
         resolution.setStartPoint(IDOSWellGeometryResolution::StartPointType::Wellhead,
-                                 QVector3D(head.surfaceX(), head.surfaceY(), head.surfaceElevation()));
+                                 QVector3D(head.surfaceX(), head.surfaceY(), surfaceElevation));
     }
     return resolution;
 }

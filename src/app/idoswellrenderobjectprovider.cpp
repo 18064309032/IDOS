@@ -62,6 +62,12 @@ IDOSRenderObject* IDOSWellRenderObjectProvider::createObject(const IDOSDataObjec
         }
     }
 
+    if (!resolution.hasStartPoint() && renderObject->pointCount() < 2)
+    {
+        delete renderObject;
+        return nullptr;
+    }
+
     renderObject->setVisible(true);
     return renderObject;
 }

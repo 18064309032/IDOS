@@ -233,7 +233,7 @@ IDOSRenderObject* IDOSRenderServer::createObject(const IDOSDataObject* object) c
 bool IDOSRenderServer::addWellToScene(const IDOSDataObject* object)
 {
     const IDOSWell* well = qobject_cast<const IDOSWell*>(object);
-    if (well == nullptr || !well->hasPath() || !well->isVisible())
+    if (well == nullptr || !well->isVisible())
     {
         return false;
     }

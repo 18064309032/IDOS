@@ -7,10 +7,10 @@
 class IDOSWell;
 
 /**
- * @brief 井渲染对象提供器：按 typeId 分派，把 IDOSWell（带轨迹）转为 IDOSWellRenderObject。
+ * @brief 井渲染对象提供器：按 typeId 分派，把 IDOSWell 转为 IDOSWellRenderObject。
  *
  * 遵循渲染对象注册制（IDOSRenderObjectProvider），与 IDOSGridRenderObjectProvider 同级。
- * 仅处理 hasPath() 的井；无轨迹的井不创建渲染对象。
+ * 处理具有可显示井口或井轨迹的井，缺少可渲染几何时返回空指针。
  */
 class APP_EXPORT IDOSWellRenderObjectProvider : public IDOSRenderObjectProvider
 {

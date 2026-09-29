@@ -32,8 +32,7 @@ void IDOSWellDataTreeProvider::buildTree(IDOSTreeBuilder& builder, const IDOSDat
         return;
     }
     root->setIcon(QIcon(QStringLiteral(":/images/gui-well.svg")));
-    // 井节点可勾选触发 3D 渲染（井轨迹线）；仅带轨迹的井勾选才有意义，
-    // 但统一开启勾选以保持交互一致，无轨迹井勾选时渲染层不创建 actor
+    // 井节点可勾选触发 3D 渲染：有轨迹时显示轨迹线，仅有井口时显示井口点。
     root->setCheckable(true);
     root->setChecked(well->isVisible());
 
