@@ -12,58 +12,75 @@ add_library(idos_core SHARED
     command/idoscommandmetadata.cpp
     command/idoscommandregistry.h
     command/idoscommandregistry.cpp
-    idoscaseitemref.h
-    idoscaseitemref.cpp
-    idoscaseobject.h
-    idoscaseobject.cpp
+    case/idoscaseitemref.h
+    case/idoscaseitemref.cpp
+    case/idoscaseobject.h
+    case/idoscaseobject.cpp
     idosdataobject.h
     idosdataobject.cpp
     idosgrid.h
     idosgrid.cpp
-    idosgridcell.h
-    idosgridcell.cpp
-    idosgridproperty.h
-    idosgridproperty.cpp
+    grid/idosgridcell.h
+    grid/idosgridcell.cpp
+    grid/idosgridproperty.h
+    grid/idosgridproperty.cpp
     idosobject.h
     idosobject.cpp
     idosproject.h
     idosproject.cpp
     idosprojectmetadata.h
     idosprojectmetadata.cpp
-    idossimulationcaseobject.h
-    idossimulationcaseobject.cpp
+    case/idossimulationcaseobject.h
+    case/idossimulationcaseobject.cpp
     idostyperegistry.h
     idostyperegistry.cpp
+    log/idosconsoletarget.h
+    log/idosconsoletarget.cpp
+    log/idosfiletarget.h
+    log/idosfiletarget.cpp
+    log/idoslogger.h
+    log/idoslogger.cpp
+    log/idosloglevel.h
+    log/idosloglevel.cpp
+    log/idoslogrecord.h
+    log/idoslogrecord.cpp
+    log/idoslogtarget.h
+    log/idosmsvctarget.h
+    log/idosmsvctarget.cpp
     idoswell.h
     idoswell.cpp
-    idoswellcompletion.h
-    idoswellcompletion.cpp
-    idoswellcontrol.h
-    idoswellcontrol.cpp
-    idoswellgeometryresolver.h
-    idoswellgeometryresolver.cpp
-    idoswellhead.h
-    idoswellhead.cpp
-    idoswelllogchannel.h
-    idoswelllogchannel.cpp
-    idoswelllogset.h
-    idoswelllogset.cpp
-    idoswellmarker.h
-    idoswellmarker.cpp
-    idoswellmarkerset.h
-    idoswellmarkerset.cpp
-    idoswellpath.h
-    idoswellpath.cpp
-    idoswellpathpoint.h
-    idoswellpathpoint.cpp
-    idoswellsegment.h
-    idoswellsegment.cpp
-    idoswellspatialreference.h
-    idoswellspatialreference.cpp
+    well/idoswellcompletion.h
+    well/idoswellcompletion.cpp
+    well/idoswellcontrol.h
+    well/idoswellcontrol.cpp
+    well/idoswellgeometryresolver.h
+    well/idoswellgeometryresolver.cpp
+    well/idoswellhead.h
+    well/idoswellhead.cpp
+    well/idoswelllogchannel.h
+    well/idoswelllogchannel.cpp
+    well/idoswelllogset.h
+    well/idoswelllogset.cpp
+    well/idoswellmarker.h
+    well/idoswellmarker.cpp
+    well/idoswellmarkerset.h
+    well/idoswellmarkerset.cpp
+    well/idoswellpath.h
+    well/idoswellpath.cpp
+    well/idoswellpathpoint.h
+    well/idoswellpathpoint.cpp
+    well/idoswellsegment.h
+    well/idoswellsegment.cpp
+    well/idoswellspatialreference.h
+    well/idoswellspatialreference.cpp
 )
 target_include_directories(idos_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/case
+        ${CMAKE_CURRENT_SOURCE_DIR}/command
+        ${CMAKE_CURRENT_SOURCE_DIR}/grid
+        ${CMAKE_CURRENT_SOURCE_DIR}/well
 )
 target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_core PRIVATE IDOS_CORE_LIB)

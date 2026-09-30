@@ -102,7 +102,8 @@ foreach ($file in $files) {
         $targetRel = RelativePath $target.FullName
         $targetModule = ($targetRel -split '/')[0]
         if ($module -ne $targetModule) {
-            if ($module -ne 'main.cpp' -and (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module])) {
+            if ($module -ne 'main.cpp' -and
+                (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module])) {
                 $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
             }
             if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }

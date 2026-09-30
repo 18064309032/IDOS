@@ -7,6 +7,7 @@
 add_subdirectory(core)
 add_subdirectory(python)
 add_subdirectory(render)
+
 add_subdirectory(gui)
 add_subdirectory(app)
 add_subdirectory(assistant)

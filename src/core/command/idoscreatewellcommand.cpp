@@ -7,7 +7,7 @@
 #include "idoswell.h"
 
 IDOSCreateWellCommand::IDOSCreateWellCommand(
-    IDOSProject& project,
+    IDOSProject* project,
     QString name,
     QUndoCommand* parent)
     : IDOSCommand(QStringLiteral("well.create"),

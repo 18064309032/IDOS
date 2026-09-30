@@ -1,59 +1,64 @@
-# idos_gui: 带 UI 的部分
+# idos_gui: user interface features
 add_library(idos_gui SHARED
     idos_gui.h
     idosassistantwidget.h
     idosassistantwidget.cpp
-    idoscasedialog.h
-    idoscasedialog.cpp
-    idoscasetreemodel.h
-    idoscasetreemodel.cpp
-    idoscasetreeprovider.h
-    idoscasetreeprovider.cpp
-    idoscasetreeview.h
-    idoscasetreeview.cpp
-    idosdatatreemodel.h
-    idosdatatreemodel.cpp
-    idosdatatreeprovider.h
-    idosdatatreeprovider.cpp
-    idosdatatreeview.h
-    idosdatatreeview.cpp
-    idosgriddatatreeprovider.h
-    idosgriddatatreeprovider.cpp
+    idosdebuginfowidget.h
+    idosdebuginfowidget.cpp
+    idosruntimeinfowidget.h
+    idosruntimeinfowidget.cpp
     idosnewprojectdialog.h
     idosnewprojectdialog.cpp
-    idosobjecttreenode.h
-    idosobjecttreenode.cpp
-    idossimulationcasetreeprovider.h
-    idossimulationcasetreeprovider.cpp
-    idostreebuilder.h
-    idostreebuilder.cpp
-    idostreegroupnode.h
-    idostreegroupnode.cpp
-    idostreemenuprovider.h
-    idostreemenuprovider.cpp
-    idostreemodel.h
-    idostreemodel.cpp
-    idostreenode.h
-    idostreenode.cpp
-    idostreepartkey.h
-    idostreepartkey.cpp
-    idostreepartnode.h
-    idostreepartnode.cpp
-    idostreeprovider.h
-    idostreeprovider.cpp
-    idostreeproviderregistry.h
-    idostreeproviderregistry.cpp
-    idostreereferencenode.h
-    idostreereferencenode.cpp
-    idostreeview.h
-    idostreeview.cpp
-    idoswelldatatreeprovider.h
-    idoswelldatatreeprovider.cpp
+    case/idoscasedialog.h
+    case/idoscasedialog.cpp
+    tree/idoscasetreemodel.h
+    tree/idoscasetreemodel.cpp
+    tree/idoscasetreeprovider.h
+    tree/idoscasetreeprovider.cpp
+    tree/idoscasetreeview.h
+    tree/idoscasetreeview.cpp
+    tree/idosdatatreemodel.h
+    tree/idosdatatreemodel.cpp
+    tree/idosdatatreeprovider.h
+    tree/idosdatatreeprovider.cpp
+    tree/idosdatatreeview.h
+    tree/idosdatatreeview.cpp
+    tree/idosgriddatatreeprovider.h
+    tree/idosgriddatatreeprovider.cpp
+    tree/idosobjecttreenode.h
+    tree/idosobjecttreenode.cpp
+    tree/idossimulationcasetreeprovider.h
+    tree/idossimulationcasetreeprovider.cpp
+    tree/idostreebuilder.h
+    tree/idostreebuilder.cpp
+    tree/idostreegroupnode.h
+    tree/idostreegroupnode.cpp
+    tree/idostreemenuprovider.h
+    tree/idostreemenuprovider.cpp
+    tree/idostreemodel.h
+    tree/idostreemodel.cpp
+    tree/idostreenode.h
+    tree/idostreenode.cpp
+    tree/idostreepartkey.h
+    tree/idostreepartkey.cpp
+    tree/idostreepartnode.h
+    tree/idostreepartnode.cpp
+    tree/idostreeprovider.h
+    tree/idostreeprovider.cpp
+    tree/idostreeproviderregistry.h
+    tree/idostreeproviderregistry.cpp
+    tree/idostreereferencenode.h
+    tree/idostreereferencenode.cpp
+    tree/idostreeview.h
+    tree/idostreeview.cpp
+    tree/idoswelldatatreeprovider.h
+    tree/idoswelldatatreeprovider.cpp
 )
 target_include_directories(idos_gui
     PUBLIC
-        # 公共类的头文件与实现文件成对放在模块根目录。
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/case
+        ${CMAKE_CURRENT_SOURCE_DIR}/tree
 )
 target_link_libraries(idos_gui PUBLIC idos_core idos_assistant Qt5::Widgets)
 target_compile_definitions(idos_gui PRIVATE IDOS_GUI_LIB)
@@ -64,4 +69,3 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${_idos_sources})
 target_sources(idos_gui PRIVATE
     "${PROJECT_SOURCE_DIR}/images/images.qrc"
 )
-

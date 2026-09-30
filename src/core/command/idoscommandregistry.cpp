@@ -26,7 +26,7 @@ bool IDOSCommandRegistry::remove(const QString& name)
 std::unique_ptr<IDOSCommand> IDOSCommandRegistry::create(
     const QString& name,
     const QJsonObject& arguments,
-    IDOSProject& project) const
+    IDOSProject* project) const
 {
     const IDOSCommandMetadata* commandMetadata = find(name);
 

@@ -13,7 +13,7 @@ class IDOSWell;
 class CORE_EXPORT IDOSCreateWellCommand : public IDOSCommand
 {
 public:
-    IDOSCreateWellCommand(IDOSProject& project,
+    IDOSCreateWellCommand(IDOSProject* project,
                           QString name,
                           QUndoCommand* parent = nullptr);
     ~IDOSCreateWellCommand() override;

@@ -1,30 +1,35 @@
-# idos_app: 程序组装
+# idos_app: application composition
 add_library(idos_app SHARED
     idos_app.h
     idosapplication.cpp
     idosapplication.h
-    idoscasetreemenuprovider.h
-    idoscasetreemenuprovider.cpp
-    idosdatatreemenuprovider.h
-    idosdatatreemenuprovider.cpp
+    tree/idoscasetreemenuprovider.h
+    tree/idoscasetreemenuprovider.cpp
+    tree/idosdatatreemenuprovider.h
+    tree/idosdatatreemenuprovider.cpp
     idosdataobjecthandling.h
     idosdataobjecthandling.cpp
-    idosgridrenderobjectprovider.h
-    idosgridrenderobjectprovider.cpp
-    idoswellrenderobjectprovider.h
-    idoswellrenderobjectprovider.cpp
+    render/idosgridrenderobjectprovider.h
+    render/idosgridrenderobjectprovider.cpp
+    render/idoswellrenderobjectprovider.h
+    render/idoswellrenderobjectprovider.cpp
     idoswelllogtrackview.h
     idoswelllogtrackview.cpp
     idospropertywidget.h
     idospropertywidget.cpp
     idosmainwindow.h
     idosmainwindow.cpp
-    idosrenderobjectprovider.h
-    idosrenderobjectprovider.cpp
-    idosrenderserver.h
-    idosrenderserver.cpp
+    render/idosrenderobjectprovider.h
+    render/idosrenderobjectprovider.cpp
+    render/idosrenderserver.h
+    render/idosrenderserver.cpp
 )
-target_include_directories(idos_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(idos_app
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/render
+        ${CMAKE_CURRENT_SOURCE_DIR}/tree
+)
 target_link_libraries(idos_app PUBLIC
     idos_core
     idos_gui
@@ -41,5 +46,3 @@ target_compile_definitions(idos_app PRIVATE IDOS_APP_LIB)
 
 target_link_libraries(idos_app PRIVATE ADS::ADS)
 
-get_target_property(_idos_sources idos_app SOURCES)
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${_idos_sources})

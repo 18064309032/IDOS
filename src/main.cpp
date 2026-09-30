@@ -5,6 +5,11 @@
 
 int main(int argc, char* argv[])
 {
+    IDOSApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    IDOSApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    IDOSApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+    IDOSApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
     IDOSApplication application(argc, argv);
 
     QTranslator* translator = new QTranslator(&application);

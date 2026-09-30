@@ -21,6 +21,8 @@ class IDOSWell;
 class IDOSWellLogTrackView;
 class IDOSPropertyWidget;
 class IDOSAssistantWidget;
+class IDOSDebugInfoWidget;
+class IDOSRuntimeInfoWidget;
 
 namespace ads
 {
@@ -88,9 +90,14 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSRenderServer* m_renderServer;
     IDOSRenderView* m_renderView;
     IDOSPropertyWidget* m_propertyWidget;
+    IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
+    IDOSDebugInfoWidget* m_debugInfoWidget;
+    IDOSAssistantWidget* m_assistantWidget;
 
     ads::CDockManager* m_dockManager;
     ads::CDockWidget* m_renderDock;
+    ads::CDockWidget* m_outputDock;
+    ads::CDockWidget* m_debugDock;
     ads::CDockWidget* m_assistantDock;
 };
 

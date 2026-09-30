@@ -312,7 +312,7 @@ bool IDOSDataObjectHandling::newWell(IDOSProject* project, QWidget* parent)
             return false;
         }
 
-        return commandManager->execute(new IDOSCreateWellCommand(*targetProject, name));
+        return commandManager->execute(new IDOSCreateWellCommand(targetProject, name));
     }
     return false;
 }

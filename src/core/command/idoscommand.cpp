@@ -6,13 +6,13 @@
 
 IDOSCommand::IDOSCommand(QString name,
                          Type type,
-                         IDOSProject& project,
+                         IDOSProject* project,
                          QString text,
                          QUndoCommand* parent)
     : QUndoCommand(std::move(text), parent)
     , m_name(std::move(name))
     , m_type(type)
-    , m_project(&project)
+    , m_project(project)
 {
 }
 

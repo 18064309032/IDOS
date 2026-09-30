@@ -29,7 +29,7 @@ public:
     QJsonObject toJson() const;
     virtual QJsonObject schema() const = 0;
     virtual IDOSCommand* create(const QJsonObject& arguments,
-                                IDOSProject& project) const = 0;
+                                IDOSProject* project) const = 0;
 
 private:
     QString m_name;

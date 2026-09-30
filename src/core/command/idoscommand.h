@@ -23,7 +23,7 @@ public:
 
     IDOSCommand(QString name,
                 Type type,
-                IDOSProject& project,
+                IDOSProject* project,
                 QString text = QString(),
                 QUndoCommand* parent = nullptr);
     ~IDOSCommand() override;

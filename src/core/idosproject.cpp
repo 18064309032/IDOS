@@ -7,7 +7,7 @@
 IDOSProject::IDOSProject(QObject* parent)
     : QObject(parent)
     , m_undoStack(new QUndoStack(this))
-    , m_commandManager(new IDOSCommandManager(*this, this))
+    , m_commandManager(new IDOSCommandManager(this, this))
     , m_updateDepth(0)
 {
 }

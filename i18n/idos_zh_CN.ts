@@ -496,6 +496,52 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>Assistant</source>
         <translation>助手</translation>
     </message>
+    <message>
+        <source>Output</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Debug</source>
+        <translation>调试</translation>
+    </message>
+    <message>
+        <source>Runtime output will appear here.</source>
+        <translation>运行输出将显示在这里。</translation>
+    </message>
+    <message>
+        <source>Debug information will appear here.</source>
+        <translation>调试信息将显示在这里。</translation>
+    </message>
+    <message>
+        <source>Application started.</source>
+        <translation>应用程序已启动。</translation>
+    </message>
+    <message>
+        <source>Application</source>
+        <translation>应用程序</translation>
+    </message>
+    <message>
+        <source>New project created.</source>
+        <translation>已新建工程。</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSRuntimeInfoWidget</name>
+    <message>
+        <source>Clear</source>
+        <translation>清空</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSDebugInfoWidget</name>
+    <message>
+        <source>Clear</source>
+        <translation>清空</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
 </context>
 <context>
     <name>IDOSAssistantWidget</name>

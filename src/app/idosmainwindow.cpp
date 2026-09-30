@@ -23,10 +23,15 @@
 #include "idosnewprojectdialog.h"
 #include "idosrenderview.h"
 #include "idoswell.h"
+#include "idosapplication.h"
+#include "idosdebuginfowidget.h"
+#include "idosruntimeinfowidget.h"
+#include "log/idoslogger.h"
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 #include <SARibbonSystemButtonBar.h>
+#include <SARibbonQuickAccessBar.h>
 #include <QAction>
 #include <QCloseEvent>
 #include <QKeySequence>
@@ -59,8 +64,13 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_renderServer(new IDOSRenderServer(this))
     , m_renderView(nullptr)
     , m_propertyWidget(nullptr)
+    , m_runtimeInfoWidget(nullptr)
+    , m_debugInfoWidget(nullptr)
+    , m_assistantWidget(nullptr)
     , m_dockManager(nullptr)
     , m_renderDock(nullptr)
+    , m_outputDock(nullptr)
+    , m_debugDock(nullptr)
     , m_assistantDock(nullptr)
 {
     m_treeProviderRegistry->registerDataProvider(new IDOSWellDataTreeProvider());
@@ -98,21 +108,9 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     m_actionRedo->setEnabled(false);
     addAction(m_actionRedo);
     connect(m_actionRedo, &QAction::triggered, this, &IDOSMainWindow::onRedoTriggered);
-    SARibbonCategory* editPage = ribbonBar()->addCategoryPage(tr("Edit"));
-    SARibbonPanel* editPanel = editPage->addPanel(tr("History"));
-    editPanel->addLargeAction(m_actionUndo);
-    editPanel->addLargeAction(m_actionRedo);
-
-    QMenu* applicationMenu = new QMenu(this);
-    applicationMenu->addAction(m_actionUndo);
-    applicationMenu->addAction(m_actionRedo);
-    QToolButton* applicationButton =
-        qobject_cast<QToolButton*>(ribbonBar()->applicationButton());
-    if (applicationButton != nullptr)
-    {
-        applicationButton->setMenu(applicationMenu);
-        applicationButton->setPopupMode(QToolButton::InstantPopup);
-    }
+    SARibbonQuickAccessBar* quickAccessBar = ribbonBar()->quickAccessBar();
+    quickAccessBar->addAction(m_actionUndo);
+    quickAccessBar->addAction(m_actionRedo);
 
     m_dockManager = new ads::CDockManager(this);
     m_dockManager->setStyleSheet(QString());
@@ -133,11 +131,10 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     // ---- 数据树 ----
     m_dataTreeView = new IDOSDataTreeView(this);
     m_dataTreeView->setModel(m_dataTreeModel);
-    connect(m_dataTreeView, &QTreeView::doubleClicked,
-            this, &IDOSMainWindow::onDataTreeItemActivated);
-    connect(m_dataTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
-            this, &IDOSMainWindow::onDataTreeCurrentChanged);
+    connect(m_dataTreeView, &QTreeView::doubleClicked, this, &IDOSMainWindow::onDataTreeItemActivated);
+    connect(m_dataTreeView->selectionModel(), &QItemSelectionModel::currentChanged,this, &IDOSMainWindow::onDataTreeCurrentChanged);
     connect(m_dataTreeModel, &IDOSDataTreeModel::itemCheckedChanged, m_renderServer, &IDOSRenderServer::onItemCheckedChanged);
+
     IDOSDataTreeMenuProvider* provider = new IDOSDataTreeMenuProvider(m_dataTreeView);
     m_dataTreeView->setMenuProvider(provider);
     ads::CDockWidget* dataDock = new ads::CDockWidget(m_dockManager, tr("Data"));
@@ -154,14 +151,26 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     propertyDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidget(ads::RightDockWidgetArea, propertyDock);
 
-    IDOSAssistantWidget* assistantWidget = new IDOSAssistantWidget(this);
+    m_runtimeInfoWidget = new IDOSRuntimeInfoWidget(this);
+    m_outputDock = new ads::CDockWidget(m_dockManager, tr("Output"));
+    m_outputDock->setObjectName(QStringLiteral("outputDock"));
+    m_outputDock->setWidget(m_runtimeInfoWidget, ads::CDockWidget::ForceNoScrollArea);
+    m_outputDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    ads::CDockAreaWidget* outputArea = m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_outputDock, m_renderDock->dockAreaWidget());
+
+    m_debugInfoWidget = new IDOSDebugInfoWidget(this);
+    m_debugDock = new ads::CDockWidget(m_dockManager, tr("Debug"));
+    m_debugDock->setObjectName(QStringLiteral("debugDock"));
+    m_debugDock->setWidget(m_debugInfoWidget, ads::CDockWidget::ForceNoScrollArea);
+    m_debugDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    m_dockManager->addDockWidgetTabToArea(m_debugDock, outputArea);
+
+    m_assistantWidget = new IDOSAssistantWidget(this);
     m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
     m_assistantDock->setObjectName(QStringLiteral("assistantDock"));
-    m_assistantDock->setWidget(assistantWidget, ads::CDockWidget::ForceNoScrollArea);
-    m_assistantDock->setFeatures(ads::CDockWidget::DockWidgetClosable |
-                                 ads::CDockWidget::DockWidgetMovable |
-                                 ads::CDockWidget::DockWidgetFloatable);
-    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_assistantDock, propertyDock->dockAreaWidget());
+    m_assistantDock->setWidget(m_assistantWidget, ads::CDockWidget::ForceNoScrollArea);
+    m_assistantDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
+    m_dockManager->addDockWidgetTabToArea(m_assistantDock, outputArea);
 
     // ---- 工况树 ----
     m_caseTreeView = new IDOSCaseTreeView(this);
@@ -176,6 +185,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     caseDock->setWidget(m_caseTreeView);
     caseDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
+
+    IDOS_MESSAGE(tr("Application started."), IDOSLogLevel::Info);
 }
 
 IDOSMainWindow::~IDOSMainWindow()
@@ -267,6 +278,7 @@ void IDOSMainWindow::onNewProject()
     IDOSProject* previous = m_project;
     setProject(project);
     m_dataTreeView->expandToDepth(0);
+    IDOS_MESSAGE(tr("New project created."), IDOSLogLevel::Info);
     if (previous && previous->parent() == this)
     {
         previous->deleteLater();

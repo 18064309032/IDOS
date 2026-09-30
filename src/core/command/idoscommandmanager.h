@@ -18,7 +18,7 @@ class CORE_EXPORT IDOSCommandManager : public QObject
     Q_OBJECT
 
 public:
-    explicit IDOSCommandManager(IDOSProject& project,
+    explicit IDOSCommandManager(IDOSProject* project,
                                 QObject* parent = nullptr);
     ~IDOSCommandManager() override;
 

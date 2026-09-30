@@ -32,7 +32,7 @@ public:
 
     std::unique_ptr<IDOSCommand> create(const QString& name,
                                         const QJsonObject& arguments,
-                                        IDOSProject& project) const;
+                                        IDOSProject* project) const;
 
     const IDOSCommandMetadata* find(const QString& name) const;
     QList<const IDOSCommandMetadata*> metadata() const;

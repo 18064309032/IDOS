@@ -6,11 +6,11 @@
 #include "idosproject.h"
 
 IDOSCommandManager::IDOSCommandManager(
-    IDOSProject& project,
+    IDOSProject* project,
     QObject* parent)
     : QObject(parent)
-    , m_project(&project)
-    , m_stack(project.undoStack())
+    , m_project(project)
+    , m_stack(project != nullptr ? project->undoStack() : nullptr)
 {
     connect(m_stack,
             &QUndoStack::canUndoChanged,
