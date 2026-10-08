@@ -1,6 +1,8 @@
 #ifndef IDOS_MAIN_WINDOW_H
 #define IDOS_MAIN_WINDOW_H
 
+#include <QString>
+
 #include <SARibbonMainWindow.h>
 
 #include "idos_app.h"
@@ -24,6 +26,7 @@ class IDOSPropertyWidget;
 class IDOSAssistantWidget;
 class IDOSDebugInfoWidget;
 class IDOSRuntimeInfoWidget;
+class SARibbonPanel;
 
 namespace ads
 {
@@ -73,6 +76,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void closeEvent(QCloseEvent* event) override;
 
   private:
+    QAction* createPlaceholderAction(SARibbonPanel* panel, const QString& text, const QString& objectName,
+                                    const QString& iconPath, bool useLargeButton);
     bool confirmDiscardProject();
     IDOSWellLogTrackView* findOrCreateWellLogTrackView(IDOSWell* well);
 

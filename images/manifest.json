@@ -30,6 +30,12 @@
     "color": "#3566B8"
   },
   {
+    "file": "app-logo.svg",
+    "module": "app",
+    "purpose": "IDOS application icon",
+    "color": "#3566B8"
+  },
+  {
     "file": "app-export.svg",
     "module": "app",
     "purpose": "Export data",
@@ -321,6 +327,114 @@
     "file": "render-scene.svg",
     "module": "render",
     "purpose": "Render scene",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-annotation.svg",
+    "module": "render",
+    "purpose": "Add a scene annotation",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-box-select.svg",
+    "module": "render",
+    "purpose": "Select objects in a box",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-clear-selection.svg",
+    "module": "render",
+    "purpose": "Clear scene selection",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-color-map.svg",
+    "module": "render",
+    "purpose": "Color objects by a property",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-coordinate.svg",
+    "module": "render",
+    "purpose": "Read scene coordinates",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-fit.svg",
+    "module": "render",
+    "purpose": "Fit the scene in the viewport",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-legend.svg",
+    "module": "render",
+    "purpose": "Display a color legend",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-measure.svg",
+    "module": "render",
+    "purpose": "Measure distance in the scene",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-pan.svg",
+    "module": "render",
+    "purpose": "Pan the 3D view",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-range.svg",
+    "module": "render",
+    "purpose": "Adjust a property color range",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-rotate.svg",
+    "module": "render",
+    "purpose": "Rotate the 3D view",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-section.svg",
+    "module": "render",
+    "purpose": "Create a section plane",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-section-position.svg",
+    "module": "render",
+    "purpose": "Move the section plane",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-select.svg",
+    "module": "render",
+    "purpose": "Select a scene object",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-standard-views.svg",
+    "module": "render",
+    "purpose": "Set a standard camera view",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-transparency.svg",
+    "module": "render",
+    "purpose": "Adjust object transparency",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-wireframe.svg",
+    "module": "render",
+    "purpose": "Show wireframe geometry",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-zoom.svg",
+    "module": "render",
+    "purpose": "Zoom the 3D view",
     "color": "#437AAA"
   },
   {

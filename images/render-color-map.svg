@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Color by property</title>
+  <defs><linearGradient id="g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3266B5"/><stop offset=".28" stop-color="#2AA6A0"/><stop offset=".55" stop-color="#7DB84A"/><stop offset=".78" stop-color="#E7B542"/><stop offset="1" stop-color="#D95B4A"/></linearGradient></defs>
+  <g fill="none" stroke="#437AAA" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18H5z" fill="url(#g)"/><path d="M19 7h2m-2 5h2m-2 5h2"/></g>
+</svg>

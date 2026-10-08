@@ -5,6 +5,7 @@
         <file>analysis-run.svg</file>
         <file>app-export.svg</file>
         <file>app-import.svg</file>
+        <file>app-logo.svg</file>
         <file>app-project-new.svg</file>
         <file>app-project-open.svg</file>
         <file>app-project-save.svg</file>
@@ -59,9 +60,27 @@
         <file>providers-load.svg</file>
         <file>python-console.svg</file>
         <file>python-script.svg</file>
+        <file>render-annotation.svg</file>
+        <file>render-box-select.svg</file>
+        <file>render-clear-selection.svg</file>
+        <file>render-color-map.svg</file>
+        <file>render-coordinate.svg</file>
+        <file>render-fit.svg</file>
         <file>render-hidden.svg</file>
+        <file>render-legend.svg</file>
+        <file>render-measure.svg</file>
+        <file>render-pan.svg</file>
+        <file>render-range.svg</file>
+        <file>render-rotate.svg</file>
         <file>render-scene.svg</file>
+        <file>render-section.svg</file>
+        <file>render-section-position.svg</file>
+        <file>render-select.svg</file>
+        <file>render-standard-views.svg</file>
+        <file>render-transparency.svg</file>
         <file>render-view.svg</file>
         <file>render-visible.svg</file>
+        <file>render-wireframe.svg</file>
+        <file>render-zoom.svg</file>
     </qresource>
 </RCC>

@@ -433,8 +433,180 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工程</translation>
     </message>
     <message>
-        <source>Project Management</source>
-        <translation>工程管理</translation>
+        <source>Home</source>
+        <translation>主页</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>文件</translation>
+    </message>
+    <message>
+        <source>Exit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <source>3D</source>
+        <translation>三维</translation>
+    </message>
+    <message>
+        <source>Open Project</source>
+        <translation>打开工程</translation>
+    </message>
+    <message>
+        <source>Save Project</source>
+        <translation>保存工程</translation>
+    </message>
+    <message>
+        <source>Save Project As</source>
+        <translation>工程另存为</translation>
+    </message>
+    <message>
+        <source>Project Settings</source>
+        <translation>工程设置</translation>
+    </message>
+    <message>
+        <source>Data Import</source>
+        <translation>数据导入</translation>
+    </message>
+    <message>
+        <source>Import Well Data</source>
+        <translation>导入井数据</translation>
+    </message>
+    <message>
+        <source>Import Grid</source>
+        <translation>导入网格</translation>
+    </message>
+    <message>
+        <source>Import Case</source>
+        <translation>导入工况</translation>
+    </message>
+    <message>
+        <source>Import Property</source>
+        <translation>导入属性</translation>
+    </message>
+    <message>
+        <source>View Navigation</source>
+        <translation>视图导航</translation>
+    </message>
+    <message>
+        <source>Rotate View</source>
+        <translation>旋转视图</translation>
+    </message>
+    <message>
+        <source>Pan View</source>
+        <translation>平移视图</translation>
+    </message>
+    <message>
+        <source>Zoom View</source>
+        <translation>缩放视图</translation>
+    </message>
+    <message>
+        <source>Zoom to Fit</source>
+        <translation>缩放至全部对象</translation>
+    </message>
+    <message>
+        <source>Standard Views</source>
+        <translation>标准视图</translation>
+    </message>
+    <message>
+        <source>Selection</source>
+        <translation>选择</translation>
+    </message>
+    <message>
+        <source>Select Object</source>
+        <translation>选择对象</translation>
+    </message>
+    <message>
+        <source>Box Selection</source>
+        <translation>框选对象</translation>
+    </message>
+    <message>
+        <source>Clear Selection</source>
+        <translation>清除选择</translation>
+    </message>
+    <message>
+        <source>Display</source>
+        <translation>显示</translation>
+    </message>
+    <message>
+        <source>Show Grid</source>
+        <translation>显示网格</translation>
+    </message>
+    <message>
+        <source>Wireframe</source>
+        <translation>线框</translation>
+    </message>
+    <message>
+        <source>Show Wellheads</source>
+        <translation>显示井口</translation>
+    </message>
+    <message>
+        <source>Show Trajectories</source>
+        <translation>显示井轨迹</translation>
+    </message>
+    <message>
+        <source>Transparency</source>
+        <translation>透明度</translation>
+    </message>
+    <message>
+        <source>Property Visualization</source>
+        <translation>属性可视化</translation>
+    </message>
+    <message>
+        <source>Color by Property</source>
+        <translation>按属性着色</translation>
+    </message>
+    <message>
+        <source>Color Legend</source>
+        <translation>色标图例</translation>
+    </message>
+    <message>
+        <source>Color Range</source>
+        <translation>颜色范围</translation>
+    </message>
+    <message>
+        <source>Measurement</source>
+        <translation>测量</translation>
+    </message>
+    <message>
+        <source>Distance</source>
+        <translation>距离测量</translation>
+    </message>
+    <message>
+        <source>Well Length</source>
+        <translation>井段长度</translation>
+    </message>
+    <message>
+        <source>Read Coordinates</source>
+        <translation>读取坐标</translation>
+    </message>
+    <message>
+        <source>Section</source>
+        <translation>剖切</translation>
+    </message>
+    <message>
+        <source>Create Section</source>
+        <translation>创建剖切</translation>
+    </message>
+    <message>
+        <source>Section Position</source>
+        <translation>剖切位置</translation>
+    </message>
+    <message>
+        <source>Clear Section</source>
+        <translation>清除剖切</translation>
+    </message>
+    <message>
+        <source>Annotation and Export</source>
+        <translation>标注与导出</translation>
+    </message>
+    <message>
+        <source>Add Annotation</source>
+        <translation>添加标注</translation>
+    </message>
+    <message>
+        <source>Export Image</source>
+        <translation>导出图像</translation>
     </message>
     <message>
         <source>Undo</source>

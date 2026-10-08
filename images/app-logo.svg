@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <title>IDOS application</title>
+  <g fill="none" stroke="#3566B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4 9 12-6 12 6v14l-12 6-12-6Z"/>
+    <path d="m4 9 12 6 12-6M16 15v14M10 6l12 6v14M4 16l12 6 12-6"/>
+  </g>
+  <path d="M11 12v9c0 2 1.4 3.2 3.4 2.2l5.8-3" fill="none" stroke="#23865A" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="11" cy="12" r="2" fill="#D95B4A"/>
+</svg>

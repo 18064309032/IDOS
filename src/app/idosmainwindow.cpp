@@ -1,5 +1,6 @@
 #include <memory>
 
+#include <QAbstractButton>
 #include <QAction>
 #include <QCloseEvent>
 #include <QIcon>
@@ -97,14 +98,66 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     m_renderServer->addProvider(new IDOSWellRenderObjectProvider());
 
     setWindowTitle(tr("IDOS"));
+    const QIcon applicationIcon(QStringLiteral(":/images/app-logo.svg"));
+    setWindowIcon(applicationIcon);
 
     m_actionNewProject = new QAction(QIcon(QStringLiteral(":/images/app-project-new.svg")), tr("New Project"), this);
     m_actionNewProject->setObjectName(QStringLiteral("newProjectAction"));
     m_actionNewProject->setShortcut(QKeySequence::New);
     addAction(m_actionNewProject);
     connect(m_actionNewProject, &QAction::triggered, this, &IDOSMainWindow::onNewProject);
-    SARibbonCategory* projectPage = ribbonBar()->addCategoryPage(tr("Project"));
-    projectPage->addPanel(tr("Project Management"))->addLargeAction(m_actionNewProject);
+    SARibbonCategory* projectPage = ribbonBar()->addCategoryPage(tr("Home"));
+    SARibbonPanel* projectPanel = projectPage->addPanel(tr("Project"));
+    projectPanel->addLargeAction(m_actionNewProject);
+    m_actionOpenProject = createPlaceholderAction(projectPanel, tr("Open Project"),
+                                                  QStringLiteral("openProjectAction"),
+                                                  QStringLiteral(":/images/app-project-open.svg"), true);
+    m_actionSaveProject = createPlaceholderAction(projectPanel, tr("Save Project"),
+                                                 QStringLiteral("saveProjectAction"),
+                                                 QStringLiteral(":/images/app-project-save.svg"), false);
+    m_actionSaveProjectAs = createPlaceholderAction(projectPanel, tr("Save Project As"),
+                                                    QStringLiteral("saveProjectAsAction"),
+                                                    QStringLiteral(":/images/app-project-save.svg"), false);
+    m_actionProjectSettings = createPlaceholderAction(projectPanel, tr("Project Settings"),
+                                                      QStringLiteral("projectSettingsAction"),
+                                                      QStringLiteral(":/images/app-project-settings.svg"), false);
+
+    QMenu* fileMenu = new QMenu(this);
+    fileMenu->addAction(m_actionNewProject);
+    fileMenu->addAction(m_actionOpenProject);
+    fileMenu->addSeparator();
+    fileMenu->addAction(m_actionSaveProject);
+    fileMenu->addAction(m_actionSaveProjectAs);
+    fileMenu->addSeparator();
+    fileMenu->addAction(m_actionProjectSettings);
+    fileMenu->addSeparator();
+    QAction* exitAction = fileMenu->addAction(tr("Exit"));
+    exitAction->setObjectName(QStringLiteral("exitAction"));
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+
+    QAbstractButton* applicationButton = ribbonBar()->applicationButton();
+    if (applicationButton != nullptr)
+    {
+        applicationButton->setIcon(applicationIcon);
+        applicationButton->setText(tr("File"));
+    }
+    QToolButton* fileButton = qobject_cast<QToolButton*>(applicationButton);
+    if (fileButton != nullptr)
+    {
+        fileButton->setMenu(fileMenu);
+        fileButton->setPopupMode(QToolButton::InstantPopup);
+        fileButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    }
+
+    SARibbonPanel* importPanel = projectPage->addPanel(tr("Data Import"));
+    createPlaceholderAction(importPanel, tr("Import Well Data"), QStringLiteral("importWellDataAction"),
+                            QStringLiteral(":/images/gui-well-import.svg"), true);
+    createPlaceholderAction(importPanel, tr("Import Grid"), QStringLiteral("importGridAction"),
+                            QStringLiteral(":/images/gui-grid.svg"), false);
+    createPlaceholderAction(importPanel, tr("Import Case"), QStringLiteral("importCaseAction"),
+                            QStringLiteral(":/images/gui-case.svg"), false);
+    createPlaceholderAction(importPanel, tr("Import Property"), QStringLiteral("importPropertyAction"),
+                            QStringLiteral(":/images/gui-grid-static-properties.svg"), false);
 
     m_actionUndo = new QAction(QIcon(QStringLiteral(":/images/app-undo.svg")),
                                tr("Undo"),
@@ -126,6 +179,9 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     SARibbonQuickAccessBar* quickAccessBar = ribbonBar()->quickAccessBar();
     quickAccessBar->addAction(m_actionUndo);
     quickAccessBar->addAction(m_actionRedo);
+    SARibbonPanel* historyPanel = projectPage->addPanel(tr("History"));
+    historyPanel->addSmallAction(m_actionUndo);
+    historyPanel->addSmallAction(m_actionRedo);
 
     m_dockManager = new ads::CDockManager(this);
     m_dockManager->setStyleSheet(QString());
@@ -140,6 +196,68 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     m_dockManager->setCentralWidget(m_renderDock);
     m_renderServer->addView(QStringLiteral("main3d"), m_renderView);
     m_renderServer->setActiveView(QStringLiteral("main3d"));
+    SARibbonCategory* threeDPage = ribbonBar()->addCategoryPage(tr("3D"));
+    SARibbonPanel* navigationPanel = threeDPage->addPanel(tr("View Navigation"));
+    createPlaceholderAction(navigationPanel, tr("Rotate View"), QStringLiteral("threeDRotateViewAction"),
+                            QStringLiteral(":/images/render-rotate.svg"), false);
+    createPlaceholderAction(navigationPanel, tr("Pan View"), QStringLiteral("threeDPanViewAction"),
+                            QStringLiteral(":/images/render-pan.svg"), false);
+    createPlaceholderAction(navigationPanel, tr("Zoom View"), QStringLiteral("threeDZoomViewAction"),
+                            QStringLiteral(":/images/render-zoom.svg"), false);
+    createPlaceholderAction(navigationPanel, tr("Zoom to Fit"), QStringLiteral("threeDZoomToFitAction"),
+                            QStringLiteral(":/images/render-fit.svg"), true);
+    createPlaceholderAction(navigationPanel, tr("Standard Views"), QStringLiteral("threeDStandardViewsAction"),
+                            QStringLiteral(":/images/render-standard-views.svg"), false);
+
+    SARibbonPanel* selectionPanel = threeDPage->addPanel(tr("Selection"));
+    createPlaceholderAction(selectionPanel, tr("Select Object"), QStringLiteral("threeDSelectObjectAction"),
+                            QStringLiteral(":/images/render-select.svg"), true);
+    createPlaceholderAction(selectionPanel, tr("Box Selection"), QStringLiteral("threeDBoxSelectionAction"),
+                            QStringLiteral(":/images/render-box-select.svg"), false);
+    createPlaceholderAction(selectionPanel, tr("Clear Selection"), QStringLiteral("threeDClearSelectionAction"),
+                            QStringLiteral(":/images/render-clear-selection.svg"), false);
+
+    SARibbonPanel* displayPanel = threeDPage->addPanel(tr("Display"));
+    createPlaceholderAction(displayPanel, tr("Show Grid"), QStringLiteral("threeDShowGridAction"),
+                            QStringLiteral(":/images/gui-grid-geometry.svg"), false);
+    createPlaceholderAction(displayPanel, tr("Wireframe"), QStringLiteral("threeDWireframeAction"),
+                            QStringLiteral(":/images/render-wireframe.svg"), false);
+    createPlaceholderAction(displayPanel, tr("Show Wellheads"), QStringLiteral("threeDShowWellheadsAction"),
+                            QStringLiteral(":/images/gui-wellhead.svg"), false);
+    createPlaceholderAction(displayPanel, tr("Show Trajectories"), QStringLiteral("threeDShowTrajectoriesAction"),
+                            QStringLiteral(":/images/gui-well-trajectory.svg"), false);
+    createPlaceholderAction(displayPanel, tr("Transparency"), QStringLiteral("threeDTransparencyAction"),
+                            QStringLiteral(":/images/render-transparency.svg"), false);
+
+    SARibbonPanel* visualizationPanel = threeDPage->addPanel(tr("Property Visualization"));
+    createPlaceholderAction(visualizationPanel, tr("Color by Property"), QStringLiteral("threeDColorByPropertyAction"),
+                            QStringLiteral(":/images/render-color-map.svg"), true);
+    createPlaceholderAction(visualizationPanel, tr("Color Legend"), QStringLiteral("threeDColorLegendAction"),
+                            QStringLiteral(":/images/render-legend.svg"), false);
+    createPlaceholderAction(visualizationPanel, tr("Color Range"), QStringLiteral("threeDColorRangeAction"),
+                            QStringLiteral(":/images/render-range.svg"), false);
+
+    SARibbonPanel* measurementPanel = threeDPage->addPanel(tr("Measurement"));
+    createPlaceholderAction(measurementPanel, tr("Distance"), QStringLiteral("threeDMeasureDistanceAction"),
+                            QStringLiteral(":/images/render-measure.svg"), true);
+    createPlaceholderAction(measurementPanel, tr("Well Length"), QStringLiteral("threeDMeasureWellLengthAction"),
+                            QStringLiteral(":/images/gui-well-trajectory.svg"), false);
+    createPlaceholderAction(measurementPanel, tr("Read Coordinates"), QStringLiteral("threeDReadCoordinatesAction"),
+                            QStringLiteral(":/images/render-coordinate.svg"), false);
+
+    SARibbonPanel* sectionPanel = threeDPage->addPanel(tr("Section"));
+    createPlaceholderAction(sectionPanel, tr("Create Section"), QStringLiteral("threeDCreateSectionAction"),
+                            QStringLiteral(":/images/render-section.svg"), true);
+    createPlaceholderAction(sectionPanel, tr("Section Position"), QStringLiteral("threeDSectionPositionAction"),
+                            QStringLiteral(":/images/render-section-position.svg"), false);
+    createPlaceholderAction(sectionPanel, tr("Clear Section"), QStringLiteral("threeDClearSectionAction"),
+                            QStringLiteral(":/images/render-clear-selection.svg"), false);
+
+    SARibbonPanel* output3DPanel = threeDPage->addPanel(tr("Annotation and Export"));
+    createPlaceholderAction(output3DPanel, tr("Add Annotation"), QStringLiteral("threeDAddAnnotationAction"),
+                            QStringLiteral(":/images/render-annotation.svg"), false);
+    createPlaceholderAction(output3DPanel, tr("Export Image"), QStringLiteral("threeDExportImageAction"),
+                            QStringLiteral(":/images/app-export.svg"), true);
     connect(m_renderView, &IDOSRenderView::objectActivated,
             this, &IDOSMainWindow::onRenderObjectActivated);
 
@@ -228,6 +346,24 @@ IDOSMainWindow::~IDOSMainWindow()
         disconnect(m_project, nullptr, this, nullptr);
     }
     delete m_treeProviderRegistry;
+}
+
+QAction* IDOSMainWindow::createPlaceholderAction(SARibbonPanel* panel, const QString& text,
+                                                 const QString& objectName, const QString& iconPath,
+                                                 bool useLargeButton)
+{
+    QAction* action = new QAction(QIcon(iconPath), text, this);
+    action->setObjectName(objectName);
+    action->setEnabled(false);
+    if (useLargeButton)
+    {
+        panel->addLargeAction(action);
+    }
+    else
+    {
+        panel->addSmallAction(action);
+    }
+    return action;
 }
 
 IDOSDataTreeView* IDOSMainWindow::dataTreeView() const
