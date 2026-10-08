@@ -6,8 +6,20 @@ add_library(idos_core SHARED
     command/idoscommand.cpp
     command/idoscommandmanager.h
     command/idoscommandmanager.cpp
+    command/idoscreatecasecommand.h
+    command/idoscreatecasecommand.cpp
     command/idoscreatewellcommand.h
     command/idoscreatewellcommand.cpp
+    command/idosdeletecasecommand.h
+    command/idosdeletecasecommand.cpp
+    command/idosdeletegridcommand.h
+    command/idosdeletegridcommand.cpp
+    command/idosdeletepropertycommand.h
+    command/idosdeletepropertycommand.cpp
+    command/idosdeletewellcommand.h
+    command/idosdeletewellcommand.cpp
+    command/idosrenameobjectcommand.h
+    command/idosrenameobjectcommand.cpp
     command/idoscommandmetadata.h
     command/idoscommandmetadata.cpp
     command/idoscommandregistry.h

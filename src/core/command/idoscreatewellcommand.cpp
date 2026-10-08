@@ -1,5 +1,7 @@
 #include "command/idoscreatewellcommand.h"
 
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QObject>
 #include <utility>
 
@@ -115,4 +117,41 @@ bool IDOSCreateWellCommand::revert(QString& error)
     }
 
     return true;
+}
+
+IDOSCreateWellCommandMetadata::IDOSCreateWellCommandMetadata()
+    : IDOSCommandMetadata(QStringLiteral("well.create"),
+                          QObject::tr("Create well"),
+                          QObject::tr("Create a new well in the current project."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSCreateWellCommandMetadata::~IDOSCreateWellCommandMetadata() = default;
+
+QJsonObject IDOSCreateWellCommandMetadata::schema() const
+{
+    QJsonObject nameProperty;
+    nameProperty.insert(QStringLiteral("type"), QStringLiteral("string"));
+    nameProperty.insert(QStringLiteral("description"),
+                        QObject::tr("Name of the new well."));
+
+    QJsonObject properties;
+    properties.insert(QStringLiteral("name"), nameProperty);
+
+    QJsonArray required;
+    required.append(QStringLiteral("name"));
+
+    QJsonObject schemaObject;
+    schemaObject.insert(QStringLiteral("type"), QStringLiteral("object"));
+    schemaObject.insert(QStringLiteral("properties"), properties);
+    schemaObject.insert(QStringLiteral("required"), required);
+    return schemaObject;
+}
+
+IDOSCommand* IDOSCreateWellCommandMetadata::create(const QJsonObject& arguments,
+                                                   IDOSProject* project) const
+{
+    const QString name = arguments.value(QStringLiteral("name")).toString();
+    return new IDOSCreateWellCommand(project, name);
 }

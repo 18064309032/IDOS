@@ -1,4 +1,20 @@
 find_package(Qt5 COMPONENTS Test REQUIRED)
+add_executable(idos_command_registry_tests command_registry_test.h command_registry_test.cpp)
+target_link_libraries(idos_command_registry_tests PRIVATE idos_app Qt5::Test)
+add_test(NAME command_registry COMMAND idos_command_registry_tests)
+set_tests_properties(command_registry PROPERTIES
+    TIMEOUT 30
+    ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+)
+
+add_executable(idos_assistant_widget_tests assistant_widget_test.h assistant_widget_test.cpp)
+target_link_libraries(idos_assistant_widget_tests PRIVATE idos_app Qt5::Test)
+add_test(NAME assistant_widget COMMAND idos_assistant_widget_tests)
+set_tests_properties(assistant_widget PROPERTIES
+    TIMEOUT 30
+    ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+)
+
 add_executable(idos_project_tests project_dialog_test.cpp)
 target_link_libraries(idos_project_tests PRIVATE idos_app Qt5::Test)
 add_dependencies(idos_project_tests idos translations)

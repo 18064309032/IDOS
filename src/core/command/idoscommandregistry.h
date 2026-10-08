@@ -37,6 +37,7 @@ public:
     const IDOSCommandMetadata* find(const QString& name) const;
     QList<const IDOSCommandMetadata*> metadata() const;
     QJsonArray toJson() const;
+    QJsonArray toToolJson() const;
 
 private:
     std::map<QString, std::unique_ptr<IDOSCommandMetadata>> m_metadata;

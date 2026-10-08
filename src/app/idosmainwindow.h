@@ -5,6 +5,7 @@
 
 #include <SARibbonMainWindow.h>
 
+class IDOSProjectMetadata;
 class QAction;
 class QCloseEvent;
 class QModelIndex;
@@ -46,6 +47,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
     /** 设置工程，同时喂给数据树与工况树两个模型实例。 */
     void setProject(IDOSProject* project);
+    bool createProject(const IDOSProjectMetadata& metadata,
+                       bool confirmDiscard);
 
     // ===== 面板访问器 =====
 

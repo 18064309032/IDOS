@@ -4,6 +4,7 @@
 #include <QPointer>
 
 #include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 
 class IDOSWell;
 
@@ -27,6 +28,20 @@ protected:
 private:
     QString m_wellName;
     QPointer<IDOSWell> m_well;
+};
+
+/**
+ * @brief AI-callable metadata for creating wells.
+ */
+class CORE_EXPORT IDOSCreateWellCommandMetadata : public IDOSCommandMetadata
+{
+public:
+    IDOSCreateWellCommandMetadata();
+    ~IDOSCreateWellCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
 };
 
 #endif // IDOS_CREATE_WELL_COMMAND_H

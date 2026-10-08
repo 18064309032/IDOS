@@ -75,3 +75,25 @@ QJsonArray IDOSCommandRegistry::toJson() const
 
     return json;
 }
+
+QJsonArray IDOSCommandRegistry::toToolJson() const
+{
+    QJsonArray json;
+
+    for (const std::pair<const QString, std::unique_ptr<IDOSCommandMetadata>>& entry : m_metadata)
+    {
+        const IDOSCommandMetadata* commandMetadata = entry.second.get();
+
+        QJsonObject functionObject;
+        functionObject.insert(QStringLiteral("name"), commandMetadata->name());
+        functionObject.insert(QStringLiteral("description"), commandMetadata->description());
+        functionObject.insert(QStringLiteral("parameters"), commandMetadata->schema());
+
+        QJsonObject toolObject;
+        toolObject.insert(QStringLiteral("type"), QStringLiteral("function"));
+        toolObject.insert(QStringLiteral("function"), functionObject);
+        json.append(toolObject);
+    }
+
+    return json;
+}

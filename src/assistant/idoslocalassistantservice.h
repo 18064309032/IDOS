@@ -1,6 +1,7 @@
 #ifndef IDOS_LOCAL_ASSISTANT_SERVICE_H
 #define IDOS_LOCAL_ASSISTANT_SERVICE_H
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QObject>
@@ -31,7 +32,8 @@ public:
     bool isReady() const;
 
     QNetworkReply* chat(const QString& message,
-                        const QString& systemMessage = QString());
+                        const QString& systemMessage = QString(),
+                        const QJsonArray& tools = QJsonArray());
     void cancel(QNetworkReply* reply);
 
 signals:

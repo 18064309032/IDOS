@@ -3,6 +3,8 @@ add_library(idos_app SHARED
     idos_app.h
     idosapplication.cpp
     idosapplication.h
+    command/idosimportcommands.h
+    command/idosimportcommands.cpp
     tree/idoscasetreemenuprovider.h
     tree/idoscasetreemenuprovider.cpp
     tree/idosdatatreemenuprovider.h
@@ -27,6 +29,7 @@ add_library(idos_app SHARED
 target_include_directories(idos_app
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/command
         ${CMAKE_CURRENT_SOURCE_DIR}/render
         ${CMAKE_CURRENT_SOURCE_DIR}/tree
 )
@@ -45,4 +48,3 @@ target_link_libraries(idos_app PUBLIC
 target_compile_definitions(idos_app PRIVATE IDOS_APP_LIB)
 
 target_link_libraries(idos_app PRIVATE ADS::ADS)
-

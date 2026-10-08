@@ -66,12 +66,8 @@ class APP_EXPORT IDOSDataObjectHandling
     /** 按去空白且不区分大小写的井名查找工程内的井。 */
     static IDOSWell* wellByName(const IDOSProject* project, const QString& name);
     static bool caseNameExists(const IDOSProject* project, const QString& name);
-    /** 从所有工况的 itemRefs 中移除指定 objectId 的引用（按 objectId 过滤，不区分 role）。 */
-    static void removeCaseReferences(IDOSProject* project, const QString& objectId);
     /** 收集某网格下的所有属性 objectId（containerId 等于 gridId 的属性）。 */
     static QStringList collectGridPropertyIds(const IDOSProject* project, const QString& gridId);
-    /** 无交互级联删除网格：删其全部属性本体、断开所有工况引用，最后删网格本体。 */
-    static void removeGridCascade(IDOSProject* project, const QString& gridId);
     /** 取工况以 "case.grid" 角色引用的网格 objectId；无则返回空串。 */
     static QString referencedGridId(const IDOSCaseObject* caseObj);
 };

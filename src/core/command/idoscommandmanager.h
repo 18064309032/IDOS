@@ -3,10 +3,12 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QJsonObject>
 
 #include "idos_core.h"
 
 class IDOSCommand;
+class IDOSCommandRegistry;
 class IDOSProject;
 class QUndoStack;
 
@@ -29,6 +31,9 @@ public:
     QUndoStack* stack() const;
 
     bool execute(IDOSCommand* command);
+    QJsonObject execute(const IDOSCommandRegistry* registry,
+                        const QString& name,
+                        const QJsonObject& arguments);
     void undo();
     void redo();
     void clear();

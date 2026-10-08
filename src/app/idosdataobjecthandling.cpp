@@ -7,47 +7,23 @@
 #include "idoscasedialog.h"
 #include "idoswell.h"
 #include "command/idoscommandmanager.h"
+#include "command/idoscreatecasecommand.h"
 #include "command/idoscreatewellcommand.h"
+#include "command/idosdeletecasecommand.h"
+#include "command/idosdeletegridcommand.h"
+#include "command/idosdeletepropertycommand.h"
+#include "command/idosdeletewellcommand.h"
+#include "command/idosimportcommands.h"
 #include "idosproviderregistry.h"
 #include "idosdataprovider.h"
-#include "idosdataloadservice.h"
 
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QInputDialog>
 #include <QIcon>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QPointer>
-
-void IDOSDataObjectHandling::removeCaseReferences(IDOSProject* project, const QString& objectId)
-{
-    if (project == nullptr || objectId.isEmpty())
-    {
-        return;
-    }
-    for (IDOSDataObject* object : project->objects())
-    {
-        IDOSCaseObject* caseObj = qobject_cast<IDOSCaseObject*>(object);
-        if (caseObj == nullptr)
-        {
-            continue;
-        }
-        QList<IDOSCaseItemRef> refs = caseObj->itemRefs();
-        bool changed = false;
-        for (int i = refs.size() - 1; i >= 0; --i)
-        {
-            if (refs[i].objectId() == objectId)
-            {
-                refs.removeAt(i);
-                changed = true;
-            }
-        }
-        if (changed)
-        {
-            caseObj->setItemRefs(refs);
-        }
-    }
-}
 
 QStringList IDOSDataObjectHandling::collectGridPropertyIds(const IDOSProject* project, const QString& gridId)
 {
@@ -82,22 +58,6 @@ QString IDOSDataObjectHandling::referencedGridId(const IDOSCaseObject* caseObj)
         }
     }
     return QString();
-}
-
-void IDOSDataObjectHandling::removeGridCascade(IDOSProject* project, const QString& gridId)
-{
-    if (project == nullptr || gridId.isEmpty())
-    {
-        return;
-    }
-    const QStringList propertyIds = collectGridPropertyIds(project, gridId);
-    for (const QString& propertyId : propertyIds)
-    {
-        removeCaseReferences(project, propertyId);
-        project->removeObject(propertyId);
-    }
-    removeCaseReferences(project, gridId);
-    project->removeObject(gridId);
 }
 
 int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent)
@@ -340,12 +300,13 @@ bool IDOSDataObjectHandling::deleteWell(IDOSProject* project, const QString& wel
     {
         return false;
     }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        removeCaseReferences(target.data(), wellId);
-        target->removeObject(wellId);
+        return false;
     }
-    return true;
+
+    return commandManager->execute(new IDOSDeleteWellCommand(target, wellId));
 }
 
 bool IDOSDataObjectHandling::deleteGrid(IDOSProject* project, const QString& gridId, QWidget* parent)
@@ -374,11 +335,13 @@ bool IDOSDataObjectHandling::deleteGrid(IDOSProject* project, const QString& gri
     {
         return false;
     }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        removeGridCascade(target.data(), gridId);
+        return false;
     }
-    return true;
+
+    return commandManager->execute(new IDOSDeleteGridCommand(target, gridId));
 }
 
 IDOSWell* IDOSDataObjectHandling::wellByName(const IDOSProject* project, const QString& name)
@@ -430,10 +393,13 @@ bool IDOSDataObjectHandling::newCase(IDOSProject* project, QWidget* parent)
         QMessageBox::warning(parent, tr("New Case"), tr("A case with this name already exists."));
         return false;
     }
-    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
-    simulationCase->setName(dialog.caseName());
-    target->addObject(simulationCase);
-    return true;
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSCreateCaseCommand(target, dialog.caseName()));
 }
 
 bool IDOSDataObjectHandling::importCase(IDOSProject* project, QWidget* parent)
@@ -492,23 +458,28 @@ bool IDOSDataObjectHandling::importCase(IDOSProject* project, const QString& fil
         QMessageBox::warning(parent, tr("Import Case"), tr("A case with this name already exists."));
         return false;
     }
-    simulationCase->setName(dialog.caseName());
+    qDeleteAll(objects);
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        // 网格/属性/井与工况在同一批加入，工况分支只在最后统一构建一次
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        for (IDOSDataObject* object : objects)
-        {
-            if (object == nullptr || object == simulationCase)
-            {
-                continue;
-            }
-            target->addObject(object);
-        }
-        simulationCase->resolveReferences(target);
-        target->addObject(simulationCase);
+        return false;
     }
-    objects.clear();
-    return true;
+
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target,
+                                     QStringLiteral("case.import"),
+                                     filePath,
+                                     IDOSImportObjectsCommand::Mode::Case,
+                                     QString(),
+                                     QString(),
+                                     dialog.caseName());
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(parent, tr("Import Case"), command->errorString());
+    }
+    return success;
 }
 
 bool IDOSDataObjectHandling::deleteCase(IDOSProject* project, const QString& caseId, QWidget* parent)
@@ -549,28 +520,13 @@ bool IDOSDataObjectHandling::deleteCase(IDOSProject* project, const QString& cas
     {
         return false;
     }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        for (const QString& gridId : gridIds)
-        {
-            if (target.isNull())
-            {
-                break;
-            }
-            // 工况本身即将删除，无需逐个断工况引用；直接删属性与网格本体
-            const QStringList propertyIds = collectGridPropertyIds(target.data(), gridId);
-            for (const QString& propertyId : propertyIds)
-            {
-                target->removeObject(propertyId);
-            }
-            target->removeObject(gridId);
-        }
-        if (!target.isNull())
-        {
-            target->removeObject(caseId);
-        }
+        return false;
     }
-    return true;
+
+    return commandManager->execute(new IDOSDeleteCaseCommand(target, caseId));
 }
 
 bool IDOSDataObjectHandling::importGrid(IDOSProject* project, const QString& targetCaseId, QWidget* parent)
@@ -614,19 +570,28 @@ bool IDOSDataObjectHandling::importGrid(IDOSProject* project, const QString& tar
     {
         return false;
     }
-    IDOSDataLoadService loadService;
-    IDOSProjectUpdateGuard updateGuard(target.data());
-    if (replacing && !target.isNull())
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        removeGridCascade(target.data(), existingGridId);
-    }
-    const QStringList loadedIds = loadService.loadFile(file, target, QString(), targetCaseId);
-    if (loadedIds.isEmpty())
-    {
-        QMessageBox::warning(parent, tr("Import Grid"), loadService.lastError());
         return false;
     }
-    return true;
+
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target,
+                                     QStringLiteral("grid.import"),
+                                     file,
+                                     IDOSImportObjectsCommand::Mode::Grid,
+                                     QString(),
+                                     targetCaseId,
+                                     QString(),
+                                     replacing);
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(parent, tr("Import Grid"), command->errorString());
+    }
+    return success;
 }
 
 bool IDOSDataObjectHandling::deleteProperty(IDOSProject* project, const QString& propertyId, QWidget* parent)
@@ -651,13 +616,13 @@ bool IDOSDataObjectHandling::deleteProperty(IDOSProject* project, const QString&
     {
         return false;
     }
-    // 先断开所有工况对该属性的引用（数据删除先断案例引用原则）
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        removeCaseReferences(target.data(), propertyId);
-        target->removeObject(propertyId);
+        return false;
     }
-    return true;
+
+    return commandManager->execute(new IDOSDeletePropertyCommand(target, propertyId));
 }
 
 bool IDOSDataObjectHandling::importProperty(IDOSProject* project, const QString& targetGridId,
@@ -677,15 +642,30 @@ bool IDOSDataObjectHandling::importProperty(IDOSProject* project, const QString&
     {
         return false;
     }
-    IDOSDataLoadService loadService;
-    const QStringList loadedIds = loadService.loadFile(file, target, targetGridId, targetCaseId);
-    if (loadedIds.isEmpty())
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
     {
-        QMessageBox::warning(parent, tr("Import Grid Property"), loadService.lastError());
         return false;
     }
+
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target,
+                                     QStringLiteral("property.import"),
+                                     file,
+                                     IDOSImportObjectsCommand::Mode::Property,
+                                     targetGridId,
+                                     targetCaseId);
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(parent, tr("Import Grid Property"), command->errorString());
+        return false;
+    }
+
+    const int importedCount = command->result().value(QStringLiteral("objectCount")).toInt();
     QMessageBox::information(parent, tr("Import Grid Property"),
-                             tr("Imported %1 properties.").arg(loadedIds.size()));
+                             tr("Imported %1 properties.").arg(importedCount));
     return true;
 }
 

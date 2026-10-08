@@ -140,7 +140,7 @@ class ProjectDialogTest : public QObject
         QVERIFY(original);
         QCOMPARE(window.caseTreeModel()->project(), original);
         QCOMPARE(window.windowTitle(), QStringLiteral("IDOS"));
-        QVERIFY(original->metadata().name().isEmpty());
+        QCOMPARE(original->metadata().name(), QStringLiteral("Project One"));
         QVERIFY(original->objects().isEmpty());
         IDOSDataTreeModel* model = window.dataTreeModel();
         QCOMPARE(model->rowCount(QModelIndex()), 14);

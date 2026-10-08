@@ -27,7 +27,8 @@ QUrl IDOSLocalModelService::baseUrl() const
 }
 
 QNetworkReply* IDOSLocalModelService::chat(const QString& message,
-                                           const QString& systemMessage)
+                                           const QString& systemMessage,
+                                           const QJsonArray& tools)
 {
     QJsonArray messages;
     if (!systemMessage.isEmpty())
@@ -46,6 +47,11 @@ QNetworkReply* IDOSLocalModelService::chat(const QString& message,
     QJsonObject requestObject;
     requestObject.insert(QStringLiteral("messages"), messages);
     requestObject.insert(QStringLiteral("stream"), false);
+    if (!tools.isEmpty())
+    {
+        requestObject.insert(QStringLiteral("tools"), tools);
+        requestObject.insert(QStringLiteral("tool_choice"), QStringLiteral("auto"));
+    }
 
     const QUrl requestUrl = m_baseUrl.resolved(QUrl(QStringLiteral("/v1/chat/completions")));
     QNetworkReply* reply = m_networkManager->post(

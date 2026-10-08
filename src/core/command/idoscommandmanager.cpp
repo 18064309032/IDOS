@@ -1,8 +1,11 @@
 #include "command/idoscommandmanager.h"
 
+#include <memory>
+
 #include <QUndoStack>
 
 #include "command/idoscommand.h"
+#include "command/idoscommandregistry.h"
 #include "idosproject.h"
 
 IDOSCommandManager::IDOSCommandManager(
@@ -100,6 +103,65 @@ bool IDOSCommandManager::execute(IDOSCommand* command)
 
     emit commandExecuted(name);
     return true;
+}
+
+QJsonObject IDOSCommandManager::execute(const IDOSCommandRegistry* registry,
+                                        const QString& name,
+                                        const QJsonObject& arguments)
+{
+    QJsonObject response;
+    response.insert(QStringLiteral("command"), name);
+
+    if (registry == nullptr)
+    {
+        response.insert(QStringLiteral("success"), false);
+        response.insert(QStringLiteral("errorCode"), QStringLiteral("registry_unavailable"));
+        response.insert(QStringLiteral("error"), tr("The command registry is unavailable."));
+        return response;
+    }
+
+    if (!m_project)
+    {
+        response.insert(QStringLiteral("success"), false);
+        response.insert(QStringLiteral("errorCode"), QStringLiteral("project_unavailable"));
+        response.insert(QStringLiteral("error"), tr("The target project is unavailable."));
+        return response;
+    }
+
+    std::unique_ptr<IDOSCommand> command = registry->create(name, arguments, m_project);
+    if (!command)
+    {
+        response.insert(QStringLiteral("success"), false);
+        response.insert(QStringLiteral("errorCode"), QStringLiteral("command_unavailable"));
+        response.insert(QStringLiteral("error"), tr("The requested command is unavailable."));
+        return response;
+    }
+
+    IDOSCommand* commandPointer = command.release();
+    const IDOSCommand::Type commandType = commandPointer->type();
+    const bool successful = execute(commandPointer);
+
+    response.insert(QStringLiteral("success"), successful);
+    if (successful)
+    {
+        if (commandType == IDOSCommand::Type::Action)
+        {
+            response.insert(QStringLiteral("result"), commandPointer->result());
+        }
+        return response;
+    }
+
+    if (commandType == IDOSCommand::Type::Action)
+    {
+        response.insert(QStringLiteral("errorCode"), commandPointer->errorCode());
+        response.insert(QStringLiteral("error"), commandPointer->errorString());
+    }
+    else
+    {
+        response.insert(QStringLiteral("errorCode"), QStringLiteral("command_failed"));
+        response.insert(QStringLiteral("error"), tr("The command failed."));
+    }
+    return response;
 }
 
 void IDOSCommandManager::undo()

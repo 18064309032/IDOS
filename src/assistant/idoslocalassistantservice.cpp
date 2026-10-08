@@ -113,7 +113,8 @@ bool IDOSLocalAssistantService::isReady() const
 }
 
 QNetworkReply* IDOSLocalAssistantService::chat(const QString& message,
-                                               const QString& systemMessage)
+                                               const QString& systemMessage,
+                                               const QJsonArray& tools)
 {
     if (!m_ready)
     {
@@ -121,7 +122,7 @@ QNetworkReply* IDOSLocalAssistantService::chat(const QString& message,
         return nullptr;
     }
 
-    return m_modelService->chat(message, systemMessage);
+    return m_modelService->chat(message, systemMessage, tools);
 }
 
 void IDOSLocalAssistantService::cancel(QNetworkReply* reply)

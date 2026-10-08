@@ -19,6 +19,7 @@
 #include "idostreepartnode.h"
 #include "idostreeproviderregistry.h"
 #include "idosproject.h"
+#include "idosprojectmetadata.h"
 #include "command/idoscommandmanager.h"
 #include "idosnewprojectdialog.h"
 #include "idosrenderview.h"
@@ -27,6 +28,17 @@
 #include "idosdebuginfowidget.h"
 #include "idosruntimeinfowidget.h"
 #include "log/idoslogger.h"
+#include "command/idoscommandmetadata.h"
+#include "command/idoscommandregistry.h"
+#include "command/idoscreatecasecommand.h"
+#include "command/idoscreatewellcommand.h"
+#include "command/idosdeletecasecommand.h"
+#include "command/idosdeletegridcommand.h"
+#include "command/idosdeletepropertycommand.h"
+#include "command/idosdeletewellcommand.h"
+#include "command/idosrenameobjectcommand.h"
+#include "command/idosimportcommands.h"
+#include <memory>
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
@@ -166,6 +178,21 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     m_dockManager->addDockWidgetTabToArea(m_debugDock, outputArea);
 
     m_assistantWidget = new IDOSAssistantWidget(this);
+    IDOSCommandRegistry* commandRegistry = m_assistantWidget->commandRegistry();
+    if (commandRegistry != nullptr)
+    {
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateCaseCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateWellCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteCaseCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteGridCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePropertyCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteWellCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSRenameObjectCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportCaseCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportGridCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportPropertyCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+    }
     m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
     m_assistantDock->setObjectName(QStringLiteral("assistantDock"));
     m_assistantDock->setWidget(m_assistantWidget, ads::CDockWidget::ForceNoScrollArea);
@@ -223,6 +250,7 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     }
     m_project = project;
     m_renderServer->setProject(project);
+    m_assistantWidget->setProject(project);
     m_propertyWidget->clear();
     m_renderServer->setHighlightedObjectId(QString());
     m_dataTreeModel->setProject(project);
@@ -245,6 +273,35 @@ IDOSDataTreeModel* IDOSMainWindow::dataTreeModel() const
 IDOSCaseTreeModel* IDOSMainWindow::caseTreeModel() const
 {
     return m_caseTreeModel;
+}
+
+bool IDOSMainWindow::createProject(const IDOSProjectMetadata& metadata,
+                                   bool confirmDiscard)
+{
+    if (confirmDiscard && !confirmDiscardProject())
+    {
+        return false;
+    }
+
+    IDOSProject* project = new IDOSProject(this);
+    if (!project->setMetadata(metadata))
+    {
+        delete project;
+        QMessageBox::warning(this,
+                             tr("New Project"),
+                             tr("Project metadata is invalid."));
+        return false;
+    }
+
+    IDOSProject* previous = m_project;
+    setProject(project);
+    m_dataTreeView->expandToDepth(0);
+    IDOS_MESSAGE(tr("New project created."), IDOSLogLevel::Info);
+    if (previous && previous->parent() == this)
+    {
+        previous->deleteLater();
+    }
+    return true;
 }
 
 bool IDOSMainWindow::confirmDiscardProject()
@@ -270,19 +327,7 @@ void IDOSMainWindow::onNewProject()
     {
         return;
     }
-    if (!confirmDiscardProject())
-    {
-        return;
-    }
-    IDOSProject* project = new IDOSProject(this);
-    IDOSProject* previous = m_project;
-    setProject(project);
-    m_dataTreeView->expandToDepth(0);
-    IDOS_MESSAGE(tr("New project created."), IDOSLogLevel::Info);
-    if (previous && previous->parent() == this)
-    {
-        previous->deleteLater();
-    }
+    createProject(dialog.projectMetadata(), true);
 }
 
 void IDOSMainWindow::onUndoTriggered()
@@ -443,6 +488,7 @@ void IDOSMainWindow::onProjectDestroyed()
     m_propertyWidget->clear();
     m_renderServer->setHighlightedObjectId(QString());
     m_renderServer->setProject(nullptr);
+    m_assistantWidget->setProject(nullptr);
     m_project = nullptr;
     onCommandStateChanged();
 }

@@ -524,6 +524,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>New project created.</source>
         <translation>已新建工程。</translation>
     </message>
+    <message>
+        <source>Project metadata is invalid.</source>
+        <translation>工程元数据无效。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSRuntimeInfoWidget</name>
@@ -588,6 +592,34 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>System</source>
         <translation>系统</translation>
+    </message>
+    <message>
+        <source>No response content.</source>
+        <translation>没有响应内容。</translation>
+    </message>
+    <message>
+        <source>No project is available for command execution.</source>
+        <translation>没有可用于执行命令的工程。</translation>
+    </message>
+    <message>
+        <source>No command registry is available.</source>
+        <translation>没有可用的命令注册表。</translation>
+    </message>
+    <message>
+        <source>The assistant requested an unnamed command.</source>
+        <translation>助手请求了未命名的命令。</translation>
+    </message>
+    <message>
+        <source>The assistant provided invalid command arguments.</source>
+        <translation>助手提供了无效的命令参数。</translation>
+    </message>
+    <message>
+        <source>No command manager is available.</source>
+        <translation>没有可用的命令管理器。</translation>
+    </message>
+    <message>
+        <source>Tool</source>
+        <translation>工具</translation>
     </message>
 </context>
 <context>
@@ -1162,6 +1194,14 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>创建井</translation>
     </message>
     <message>
+        <source>Create a new well in the current project.</source>
+        <translation>在当前工程中新建一口井。</translation>
+    </message>
+    <message>
+        <source>Name of the new well.</source>
+        <translation>新井名称。</translation>
+    </message>
+    <message>
         <source>Please enter a well name.</source>
         <translation>请输入井名。</translation>
     </message>
@@ -1180,6 +1220,226 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>The target well is unavailable.</source>
         <translation>目标井不可用。</translation>
+    </message>
+    <message>
+        <source>Create case</source>
+        <translation>创建工况</translation>
+    </message>
+    <message>
+        <source>Please enter a case name.</source>
+        <translation>请输入工况名称。</translation>
+    </message>
+    <message>
+        <source>A case with this name already exists.</source>
+        <translation>已存在同名工况。</translation>
+    </message>
+    <message>
+        <source>The case is already attached to a project.</source>
+        <translation>该工况已关联到工程。</translation>
+    </message>
+    <message>
+        <source>The target case is unavailable.</source>
+        <translation>目标工况不可用。</translation>
+    </message>
+    <message>
+        <source>Create a new simulation case in the current project.</source>
+        <translation>在当前工程中新建一个模拟工况。</translation>
+    </message>
+    <message>
+        <source>Name of the new simulation case.</source>
+        <translation>新模拟工况名称。</translation>
+    </message>
+    <message>
+        <source>Delete well</source>
+        <translation>删除井</translation>
+    </message>
+    <message>
+        <source>The target object is not a well.</source>
+        <translation>目标对象不是井。</translation>
+    </message>
+    <message>
+        <source>The target well is already attached to a project.</source>
+        <translation>目标井已关联到工程。</translation>
+    </message>
+    <message>
+        <source>Delete a well from the current project.</source>
+        <translation>从当前工程中删除一口井。</translation>
+    </message>
+    <message>
+        <source>Object ID of the well to delete.</source>
+        <translation>要删除的井对象 ID。</translation>
+    </message>
+    <message>
+        <source>Delete property</source>
+        <translation>删除属性</translation>
+    </message>
+    <message>
+        <source>The target property is unavailable.</source>
+        <translation>目标属性不可用。</translation>
+    </message>
+    <message>
+        <source>The target object is not a property.</source>
+        <translation>目标对象不是属性。</translation>
+    </message>
+    <message>
+        <source>The target property is already attached to a project.</source>
+        <translation>目标属性已关联到工程。</translation>
+    </message>
+    <message>
+        <source>Delete a grid property from the current project.</source>
+        <translation>从当前工程中删除一个网格属性。</translation>
+    </message>
+    <message>
+        <source>Object ID of the property to delete.</source>
+        <translation>要删除的属性对象 ID。</translation>
+    </message>
+    <message>
+        <source>Delete grid</source>
+        <translation>删除网格</translation>
+    </message>
+    <message>
+        <source>The target grid is unavailable.</source>
+        <translation>目标网格不可用。</translation>
+    </message>
+    <message>
+        <source>The target object is not a grid.</source>
+        <translation>目标对象不是网格。</translation>
+    </message>
+    <message>
+        <source>The target grid is already attached to a project.</source>
+        <translation>目标网格已关联到工程。</translation>
+    </message>
+    <message>
+        <source>Delete a grid and its properties from the current project.</source>
+        <translation>从当前工程中删除一个网格及其属性。</translation>
+    </message>
+    <message>
+        <source>Object ID of the grid to delete.</source>
+        <translation>要删除的网格对象 ID。</translation>
+    </message>
+    <message>
+        <source>Delete case</source>
+        <translation>删除工况</translation>
+    </message>
+    <message>
+        <source>The target object is not a case.</source>
+        <translation>目标对象不是工况。</translation>
+    </message>
+    <message>
+        <source>The target case is already attached to a project.</source>
+        <translation>目标工况已关联到工程。</translation>
+    </message>
+    <message>
+        <source>Delete a simulation case and its private grid data.</source>
+        <translation>删除一个模拟工况及其私有网格数据。</translation>
+    </message>
+    <message>
+        <source>Object ID of the case to delete.</source>
+        <translation>要删除的工况对象 ID。</translation>
+    </message>
+    <message>
+        <source>Rename object</source>
+        <translation>重命名对象</translation>
+    </message>
+    <message>
+        <source>The target object is unavailable.</source>
+        <translation>目标对象不可用。</translation>
+    </message>
+    <message>
+        <source>Please enter an object name.</source>
+        <translation>请输入对象名称。</translation>
+    </message>
+    <message>
+        <source>Rename an object in the current project.</source>
+        <translation>重命名当前工程中的对象。</translation>
+    </message>
+    <message>
+        <source>Object ID of the object to rename.</source>
+        <translation>要重命名的对象 ID。</translation>
+    </message>
+    <message>
+        <source>New object name.</source>
+        <translation>新的对象名称。</translation>
+    </message>
+    <message>
+        <source>Import data</source>
+        <translation>导入数据</translation>
+    </message>
+    <message>
+        <source>The import file is unavailable.</source>
+        <translation>导入文件不可用。</translation>
+    </message>
+    <message>
+        <source>The target case already has a grid.</source>
+        <translation>目标工况已有关联网格。</translation>
+    </message>
+    <message>
+        <source>No provider matches file: %1</source>
+        <translation>没有可处理该文件的读取器：%1</translation>
+    </message>
+    <message>
+        <source>Failed to create provider for: %1</source>
+        <translation>无法创建文件读取器：%1</translation>
+    </message>
+    <message>
+        <source>The import file did not contain supported objects.</source>
+        <translation>导入文件不包含支持的数据对象。</translation>
+    </message>
+    <message>
+        <source>A well named &quot;%1&quot; already exists. Well data merge is not undoable yet.</source>
+        <translation>已存在名为“%1”的井，井数据合并尚不能可靠撤销。</translation>
+    </message>
+    <message>
+        <source>Path of the file to import.</source>
+        <translation>要导入的文件路径。</translation>
+    </message>
+    <message>
+        <source>Import case</source>
+        <translation>导入工况</translation>
+    </message>
+    <message>
+        <source>Import a simulation case file into the current project.</source>
+        <translation>将模拟工况文件导入当前工程。</translation>
+    </message>
+    <message>
+        <source>Optional imported case name.</source>
+        <translation>可选的导入工况名称。</translation>
+    </message>
+    <message>
+        <source>Import grid</source>
+        <translation>导入网格</translation>
+    </message>
+    <message>
+        <source>Import a grid file into a simulation case.</source>
+        <translation>将网格文件导入模拟工况。</translation>
+    </message>
+    <message>
+        <source>Object ID of the target case.</source>
+        <translation>目标工况对象 ID。</translation>
+    </message>
+    <message>
+        <source>Replace the existing grid in the target case.</source>
+        <translation>替换目标工况中的已有网格。</translation>
+    </message>
+    <message>
+        <source>Import property</source>
+        <translation>导入属性</translation>
+    </message>
+    <message>
+        <source>Import grid properties into a grid.</source>
+        <translation>将网格属性导入网格。</translation>
+    </message>
+    <message>
+        <source>Object ID of the target grid.</source>
+        <translation>目标网格对象 ID。</translation>
+    </message>
+    <message>
+        <source>Import well data</source>
+        <translation>导入井数据</translation>
+    </message>
+    <message>
+        <source>Import well data as new wells.</source>
+        <translation>将井数据作为新井导入。</translation>
     </message>
 </context>
 <context>
@@ -1317,6 +1577,22 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>The command target project does not match the manager project.</source>
         <translation>命令的目标工程与命令管理器的工程不匹配。</translation>
+    </message>
+    <message>
+        <source>The command registry is unavailable.</source>
+        <translation>命令注册表不可用。</translation>
+    </message>
+    <message>
+        <source>The target project is unavailable.</source>
+        <translation>目标工程不可用。</translation>
+    </message>
+    <message>
+        <source>The requested command is unavailable.</source>
+        <translation>请求的命令不可用。</translation>
+    </message>
+    <message>
+        <source>The command failed.</source>
+        <translation>命令执行失败。</translation>
     </message>
 </context>
 </TS>
