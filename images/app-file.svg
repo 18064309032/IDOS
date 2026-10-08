@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>File menu</title>
+  <g fill="none" stroke="#3566B8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6h7l2 2h9v12H3Z"/>
+    <path d="M3 10h18M7 14h10m-10 3h7"/>
+  </g>
+</svg>
