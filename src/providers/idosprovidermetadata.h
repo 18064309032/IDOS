@@ -1,11 +1,12 @@
 #ifndef IDOS_PROVIDER_METADATA_H
 #define IDOS_PROVIDER_METADATA_H
 
-#include "idos_providers.h"
+#include <memory>
 
 #include <QString>
 #include <QStringList>
-#include <memory>
+
+#include "idos_providers.h"
 
 class IDOSDataProvider;
 

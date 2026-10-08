@@ -1,10 +1,11 @@
 #ifndef IDOS_GRID_H
 #define IDOS_GRID_H
 
-#include "idosdataobject.h"
-#include "idosgridcell.h"
 #include <QVector>
 #include <QVector3D>
+
+#include "idosdataobject.h"
+#include "idosgridcell.h"
 
 /**
  * @brief 网格数据对象。

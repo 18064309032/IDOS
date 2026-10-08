@@ -1,10 +1,11 @@
 #ifndef IDOS_TREE_NODE_H
 #define IDOS_TREE_NODE_H
 
-#include "idos_gui.h"
-#include <QVector>
-#include <QString>
 #include <QIcon>
+#include <QString>
+#include <QVector>
+
+#include "idos_gui.h"
 
 /**
  * @brief 树节点基类。

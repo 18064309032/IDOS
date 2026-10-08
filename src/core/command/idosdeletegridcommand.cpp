@@ -1,14 +1,15 @@
-#include "command/idosdeletegridcommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
 #include "idoscaseobject.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
+
+#include "command/idosdeletegridcommand.h"
 
 IDOSDeleteGridCommand::IDOSDeleteGridCommand(
     IDOSProject* project,

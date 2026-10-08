@@ -1,14 +1,15 @@
-#include "well_import_test.h"
+#include <QFile>
+#include <QTemporaryDir>
+#include <QtGlobal>
+#include <QtTest>
+
 #include "idosdataprovider.h"
 #include "idosproviderregistry.h"
 #include "idoswell.h"
 #include "idoswelllogchannel.h"
 #include "idoswelllogset.h"
 
-#include <QFile>
-#include <QTemporaryDir>
-#include <QtGlobal>
-#include <QtTest>
+#include "well_import_test.h"
 
 void WellImportTest::onSampleFiles()
 {

@@ -1,14 +1,14 @@
 #ifndef IDOS_WELL_LOG_TRACK_VIEW_H
 #define IDOS_WELL_LOG_TRACK_VIEW_H
 
-#include "idos_app.h"
-#include "idoswelllogchannel.h"
-
 #include <QList>
-#include <QPointer>
 #include <QPoint>
+#include <QPointer>
 #include <QString>
 #include <QWidget>
+
+#include "idos_app.h"
+#include "idoswelllogchannel.h"
 
 class QColor;
 class IDOSWell;

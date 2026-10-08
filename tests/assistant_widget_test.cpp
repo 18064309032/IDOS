@@ -1,7 +1,14 @@
-#include "assistant_widget_test.h"
+#include <memory>
 
-#include "command/idoscommandmetadata.h"
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QMetaObject>
+#include <QTextEdit>
+#include <QtTest>
+
 #include "command/idoscommandmanager.h"
+#include "command/idoscommandmetadata.h"
 #include "command/idoscommandregistry.h"
 #include "command/idoscreatecasecommand.h"
 #include "command/idoscreatewellcommand.h"
@@ -15,14 +22,7 @@
 #include "idosproject.h"
 #include "idoswell.h"
 
-#include <memory>
-
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonValue>
-#include <QMetaObject>
-#include <QTextEdit>
-#include <QtTest>
+#include "assistant_widget_test.h"
 
 void AssistantWidgetTest::onToolCallCreatesWell()
 {
@@ -208,10 +208,16 @@ QJsonObject AssistantWidgetTest::createTextResponse(const QString& text) const
 
 QString AssistantWidgetTest::transcriptText(IDOSAssistantWidget* widget) const
 {
-    QVERIFY(widget != nullptr);
+    if (widget == nullptr)
+    {
+        return QString();
+    }
 
     QTextEdit* transcript = widget->findChild<QTextEdit*>();
-    QVERIFY(transcript != nullptr);
+    if (transcript == nullptr)
+    {
+        return QString();
+    }
     return transcript->toPlainText();
 }
 

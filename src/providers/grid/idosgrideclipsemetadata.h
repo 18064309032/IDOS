@@ -1,6 +1,7 @@
-#include <QObject>
 #ifndef IDOS_GRID_ECLIPSE_METADATA_H
 #define IDOS_GRID_ECLIPSE_METADATA_H
+
+#include <QObject>
 
 #include "idosprovidermetadata.h"
 

@@ -1,6 +1,8 @@
 # idos_assistant: local model process and HTTP service
 add_library(idos_assistant SHARED
     idos_assistant.h
+    idosassistantwidget.h
+    idosassistantwidget.cpp
     idoslocalmodelprocess.h
     idoslocalmodelprocess.cpp
     idoslocalmodelservice.h
@@ -14,6 +16,7 @@ target_link_libraries(idos_assistant PUBLIC
     idos_core
     Qt5::Core
     Qt5::Network
+    Qt5::Widgets
 )
 target_compile_definitions(idos_assistant PRIVATE IDOS_ASSISTANT_LIB)
 

@@ -1,6 +1,6 @@
-#include "command/idoscommandmetadata.h"
-
 #include <utility>
+
+#include "command/idoscommandmetadata.h"
 
 IDOSCommandMetadata::IDOSCommandMetadata(QString name,
                                          QString title,

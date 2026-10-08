@@ -1,17 +1,3 @@
-#include "case_workflow_test.h"
-#include "idosmainwindow.h"
-#include "idosproject.h"
-#include "idoswell.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idossimulationcaseobject.h"
-#include "idoscasetreemodel.h"
-#include "idoscasetreeview.h"
-#include "idoscasetreemenuprovider.h"
-#include "idoscasedialog.h"
-#include "idosdataobjecthandling.h"
-#include "idosproviderregistry.h"
-#include "idosdataprovider.h"
 #include <QFile>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -20,13 +6,30 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
-#include "idosgridrenderobjectprovider.h"
-#include "idosrendermesh.h"
-#include "idosrenderview.h"
-#include <opm/input/eclipse/Parser/Parser.hpp>
+
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+
+#include "idoscasedialog.h"
+#include "idoscasetreemenuprovider.h"
+#include "idoscasetreemodel.h"
+#include "idoscasetreeview.h"
+#include "idosdataobjecthandling.h"
+#include "idosdataprovider.h"
+#include "idosgrid.h"
+#include "idosgridproperty.h"
+#include "idosgridrenderobjectprovider.h"
+#include "idosmainwindow.h"
+#include "idosproject.h"
+#include "idosproviderregistry.h"
+#include "idosrendermesh.h"
+#include "idosrenderview.h"
+#include "idossimulationcaseobject.h"
+#include "idoswell.h"
+
+#include "case_workflow_test.h"
 
 void CaseWorkflowTest::onProvider()
 {

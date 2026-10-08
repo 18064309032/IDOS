@@ -1,5 +1,3 @@
-#include "idosassistantwidget.h"
-
 #include <QCoreApplication>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -18,6 +16,8 @@
 #include "command/idoscommandregistry.h"
 #include "idoslocalassistantservice.h"
 #include "idosproject.h"
+
+#include "idosassistantwidget.h"
 
 IDOSAssistantWidget::IDOSAssistantWidget(QWidget* parent)
     : QWidget(parent)

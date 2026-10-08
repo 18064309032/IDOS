@@ -1,9 +1,9 @@
 #ifndef IDOS_MAIN_WINDOW_H
 #define IDOS_MAIN_WINDOW_H
 
-#include "idos_app.h"
-
 #include <SARibbonMainWindow.h>
+
+#include "idos_app.h"
 
 class IDOSProjectMetadata;
 class QAction;

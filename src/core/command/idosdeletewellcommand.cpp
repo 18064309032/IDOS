@@ -1,13 +1,14 @@
-#include "command/idosdeletewellcommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
 #include "idoscaseobject.h"
 #include "idosproject.h"
 #include "idoswell.h"
+
+#include "command/idosdeletewellcommand.h"
 
 IDOSDeleteWellCommand::IDOSDeleteWellCommand(
     IDOSProject* project,

@@ -2,6 +2,7 @@
 #define IDOS_GRID_DATA_TREE_PROVIDER_H
 
 #include "idosdatatreeprovider.h"
+
 /**
  * @brief 网格对象的数据树 Provider。
  */

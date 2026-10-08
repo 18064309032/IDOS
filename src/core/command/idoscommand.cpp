@@ -1,8 +1,8 @@
-#include "command/idoscommand.h"
-
 #include <utility>
 
 #include "idosproject.h"
+
+#include "command/idoscommand.h"
 
 IDOSCommand::IDOSCommand(QString name,
                          Type type,

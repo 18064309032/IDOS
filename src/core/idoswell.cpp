@@ -1,7 +1,8 @@
-#include "idoswell.h"
-#include "idoswellpath.h"
 #include "idoswelllogset.h"
 #include "idoswellmarkerset.h"
+#include "idoswellpath.h"
+
+#include "idoswell.h"
 
 IDOSWell::IDOSWell(QObject* parent)
     : IDOSDataObject(parent)

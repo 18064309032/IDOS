@@ -1,9 +1,9 @@
 #ifndef IDOS_SIMULATION_CASE_OBJECT_H
 #define IDOS_SIMULATION_CASE_OBJECT_H
 
-#include "idoscaseobject.h"
-
 #include <QStringList>
+
+#include "idoscaseobject.h"
 
 /**
  * @brief 模拟工况对象。

@@ -1,9 +1,10 @@
 #ifndef IDOS_GRID_PROPERTY_H
 #define IDOS_GRID_PROPERTY_H
 
-#include "idosdataobject.h"
-#include "idos_core.h"
 #include <QVector>
+
+#include "idos_core.h"
+#include "idosdataobject.h"
 
 /**
  * @brief 网格属性数据对象（PERMX/PORO 等三维属性场）。

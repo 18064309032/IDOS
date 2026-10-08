@@ -1,9 +1,9 @@
 #ifndef IDOS_RENDER_OBJECT_H
 #define IDOS_RENDER_OBJECT_H
 
-#include "idos_render.h"
-
 #include <QString>
+
+#include "idos_render.h"
 
 class RENDER_EXPORT IDOSRenderObject
 {

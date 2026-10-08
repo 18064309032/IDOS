@@ -1,8 +1,10 @@
-#include "idostreeview.h"
+#include <QContextMenuEvent>
+#include <QMenu>
+
 #include "idostreemenuprovider.h"
 #include "idostreenode.h"
-#include <QMenu>
-#include <QContextMenuEvent>
+
+#include "idostreeview.h"
 
 IDOSTreeView::IDOSTreeView(QWidget* parent)
     : QTreeView(parent)

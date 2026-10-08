@@ -1,15 +1,16 @@
-#include "idoswelllasprovider.h"
-#include "idoswell.h"
-#include "idoswellhead.h"
-#include "idoswelllogchannel.h"
-#include "idoswelllogset.h"
+#include <cmath>
 
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QTextStream>
 
-#include <cmath>
+#include "idoswell.h"
+#include "idoswellhead.h"
+#include "idoswelllogchannel.h"
+#include "idoswelllogset.h"
+
+#include "idoswelllasprovider.h"
 
 IDOSWellLasProvider::CurveDefinition::CurveDefinition()
     : name()

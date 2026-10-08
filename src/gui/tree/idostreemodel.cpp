@@ -1,9 +1,10 @@
-#include "idostreemodel.h"
-#include "idosobjecttreenode.h"
-#include "idostreereferencenode.h"
-#include "idosproject.h"
 #include "idosdataobject.h"
 #include "idosgridproperty.h"
+#include "idosobjecttreenode.h"
+#include "idosproject.h"
+#include "idostreereferencenode.h"
+
+#include "idostreemodel.h"
 
 IDOSTreeModel::IDOSTreeModel(QObject* parent)
     : QAbstractItemModel(parent)

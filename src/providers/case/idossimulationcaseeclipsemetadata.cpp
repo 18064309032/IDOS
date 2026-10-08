@@ -1,5 +1,6 @@
-#include "idossimulationcaseeclipsemetadata.h"
 #include "idossimulationcaseeclipseprovider.h"
+
+#include "idossimulationcaseeclipsemetadata.h"
 
 std::unique_ptr<IDOSDataProvider> IDOSSimulationCaseEclipseMetadata::createProvider() const
 {

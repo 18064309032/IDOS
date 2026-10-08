@@ -1,8 +1,8 @@
 #ifndef IDOS_WELL_RENDER_OBJECT_PROVIDER_H
 #define IDOS_WELL_RENDER_OBJECT_PROVIDER_H
 
-#include "idosrenderobjectprovider.h"
 #include "idos_app.h"
+#include "idosrenderobjectprovider.h"
 
 class IDOSWell;
 

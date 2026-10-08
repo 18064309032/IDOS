@@ -1,9 +1,9 @@
 #ifndef IDOS_CASE_TREE_MODEL_H
 #define IDOS_CASE_TREE_MODEL_H
 
-#include "idostreemodel.h"
-
 #include <QList>
+
+#include "idostreemodel.h"
 
 class IDOSTreeProviderRegistry;
 

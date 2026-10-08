@@ -1,9 +1,9 @@
 #ifndef IDOS_TREE_PROVIDER_H
 #define IDOS_TREE_PROVIDER_H
 
-#include "idos_gui.h"
-
 #include <QString>
+
+#include "idos_gui.h"
 
 /**
  * @brief 树 Provider 基类。

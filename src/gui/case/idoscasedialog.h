@@ -1,8 +1,11 @@
 #ifndef IDOS_CASE_DIALOG_H
 #define IDOS_CASE_DIALOG_H
-#include "idos_gui.h"
+
 #include <QDialog>
 #include <QStringList>
+
+#include "idos_gui.h"
+
 class QLineEdit;
 class QLabel;
 class QPushButton;

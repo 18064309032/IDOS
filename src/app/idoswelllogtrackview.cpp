@@ -1,18 +1,18 @@
-#include "idoswelllogtrackview.h"
+#include <QColor>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPaintEvent>
+#include <QPen>
+#include <QResizeEvent>
+#include <QStyle>
+#include <QtGlobal>
+#include <QToolButton>
+#include <QWheelEvent>
 
 #include "idoswell.h"
 #include "idoswelllogset.h"
 
-#include <QColor>
-#include <QMouseEvent>
-#include <QPaintEvent>
-#include <QPainter>
-#include <QPen>
-#include <QResizeEvent>
-#include <QStyle>
-#include <QToolButton>
-#include <QWheelEvent>
-#include <QtGlobal>
+#include "idoswelllogtrackview.h"
 
 IDOSWellLogTrackView::IDOSWellLogTrackView(QWidget* parent)
     : QWidget(parent)

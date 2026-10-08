@@ -1,14 +1,14 @@
-#include "idospropertywidget.h"
+#include <QFormLayout>
+#include <QLabel>
+#include <QLayoutItem>
+#include <QtGlobal>
 
 #include "idoswell.h"
 #include "idoswelllogchannel.h"
 #include "idoswelllogset.h"
 #include "idoswellpath.h"
 
-#include <QFormLayout>
-#include <QLabel>
-#include <QLayoutItem>
-#include <QtGlobal>
+#include "idospropertywidget.h"
 
 IDOSPropertyWidget::IDOSPropertyWidget(QWidget* parent)
     : QWidget(parent)

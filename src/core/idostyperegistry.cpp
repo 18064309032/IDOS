@@ -1,10 +1,12 @@
-#include "idostyperegistry.h"
-#include "idossimulationcaseobject.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idoswell.h"
 #include <QDebug>
 #include <QObject>
+
+#include "idosgrid.h"
+#include "idosgridproperty.h"
+#include "idossimulationcaseobject.h"
+#include "idoswell.h"
+
+#include "idostyperegistry.h"
 
 /**
  * @brief 默认模板实现：create 直接 new T(parent)。

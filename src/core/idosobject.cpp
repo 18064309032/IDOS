@@ -1,6 +1,6 @@
-#include "idosobject.h"
-
 #include <QUuid>
+
+#include "idosobject.h"
 
 IDOSObject::IDOSObject(QObject* parent)
     : QObject(parent)

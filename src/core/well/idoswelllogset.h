@@ -1,11 +1,11 @@
 #ifndef IDOS_WELL_LOG_SET_H
 #define IDOS_WELL_LOG_SET_H
 
-#include "idos_core.h"
-#include "idoswelllogchannel.h"
-
 #include <QList>
 #include <QString>
+
+#include "idos_core.h"
+#include "idoswelllogchannel.h"
 
 /**
  * @brief 一口井的全部测井曲线集合（"Well Logs" 树节点）。

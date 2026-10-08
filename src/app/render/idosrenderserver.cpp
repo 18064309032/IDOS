@@ -1,4 +1,6 @@
-#include "idosrenderserver.h"
+#include <QObject>
+#include <QtAlgorithms>
+
 #include "idosdataobject.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
@@ -11,8 +13,7 @@
 #include "idosrenderview.h"
 #include "idoswell.h"
 
-#include <QObject>
-#include <QtAlgorithms>
+#include "idosrenderserver.h"
 
 IDOSRenderServer::IDOSRenderServer(QObject* parent)
     : QObject(parent)

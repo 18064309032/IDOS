@@ -1,4 +1,6 @@
-#include "idoswellrenderobjectprovider.h"
+#include <QObject>
+#include <QVector3D>
+
 #include "idoswell.h"
 #include "idoswellgeometryresolver.h"
 #include "idoswellhead.h"
@@ -6,8 +8,7 @@
 #include "idoswellpathpoint.h"
 #include "idoswellrenderobject.h"
 
-#include <QObject>
-#include <QVector3D>
+#include "idoswellrenderobjectprovider.h"
 
 IDOSWellRenderObjectProvider::IDOSWellRenderObjectProvider()
 {

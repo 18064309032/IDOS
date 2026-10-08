@@ -1,9 +1,9 @@
 #ifndef IDOS_CASE_ITEM_REF_H
 #define IDOS_CASE_ITEM_REF_H
 
-#include "idos_core.h"
-
 #include <QString>
+
+#include "idos_core.h"
 
 /**
  * @brief 工况中的数据引用项。

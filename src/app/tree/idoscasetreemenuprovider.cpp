@@ -1,17 +1,19 @@
-#include "idoscasetreemenuprovider.h"
-#include "idoscasetreeview.h"
-#include "idoscasetreemodel.h"
+#include <QAction>
+#include <QSet>
+#include <QStyle>
+
 #include "idoscaseobject.h"
+#include "idoscasetreemodel.h"
+#include "idoscasetreeview.h"
+#include "idosdataobjecthandling.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
+#include "idosobjecttreenode.h"
 #include "idosproject.h"
-#include "idosdataobjecthandling.h"
 #include "idostreegroupnode.h"
 #include "idostreereferencenode.h"
-#include "idosobjecttreenode.h"
-#include <QAction>
-#include <QStyle>
-#include <QSet>
+
+#include "idoscasetreemenuprovider.h"
 
 IDOSCaseTreeMenuProvider::IDOSCaseTreeMenuProvider(IDOSCaseTreeView* view)
     : IDOSTreeMenuProvider(view)

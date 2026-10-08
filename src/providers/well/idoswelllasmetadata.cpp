@@ -1,5 +1,6 @@
-#include "idoswelllasmetadata.h"
 #include "idoswelllasprovider.h"
+
+#include "idoswelllasmetadata.h"
 
 std::unique_ptr<IDOSDataProvider> IDOSWellLasMetadata::createProvider() const
 {

@@ -1,12 +1,13 @@
-#include "idossimulationcasetreeprovider.h"
+#include <QObject>
+
 #include "idoscaseobject.h"
-#include "idossimulationcaseobject.h"
-#include "idosproject.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
+#include "idosproject.h"
+#include "idossimulationcaseobject.h"
 #include "idostreebuilder.h"
 
-#include <QObject>
+#include "idossimulationcasetreeprovider.h"
 
 QString IDOSSimulationCaseTreeProvider::providerId() const
 {

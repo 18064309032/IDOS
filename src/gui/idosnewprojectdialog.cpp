@@ -1,16 +1,16 @@
-#include "idosnewprojectdialog.h"
-
 #include <QComboBox>
-#include <QIcon>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+#include "idosnewprojectdialog.h"
 
 IDOSNewProjectDialog::IDOSNewProjectDialog(QWidget* parent)
     : QDialog(parent)

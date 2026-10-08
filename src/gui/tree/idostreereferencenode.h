@@ -1,8 +1,8 @@
 #ifndef IDOS_TREE_REFERENCE_NODE_H
 #define IDOS_TREE_REFERENCE_NODE_H
 
-#include "idostreenode.h"
 #include "idoscaseitemref.h"
+#include "idostreenode.h"
 
 /**
  * @brief 工况树中的引用节点。

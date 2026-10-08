@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_PATH_METADATA_H
 #define IDOS_WELL_PATH_METADATA_H
+
 #include "idosprovidermetadata.h"
+
 class PROVIDERS_EXPORT IDOSWellPathMetadata : public IDOSProviderMetadata
 {
   public:

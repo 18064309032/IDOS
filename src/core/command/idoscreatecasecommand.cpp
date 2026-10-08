@@ -1,12 +1,13 @@
-#include "command/idoscreatecasecommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
-#include "idossimulationcaseobject.h"
 #include "idosproject.h"
+#include "idossimulationcaseobject.h"
+
+#include "command/idoscreatecasecommand.h"
 
 IDOSCreateCaseCommand::IDOSCreateCaseCommand(
     IDOSProject* project,

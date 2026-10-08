@@ -1,10 +1,10 @@
 #ifndef IDOS_WELL_LAS_PROVIDER_H
 #define IDOS_WELL_LAS_PROVIDER_H
 
-#include "idosdataprovider.h"
-
 #include <QString>
 #include <QStringList>
+
+#include "idosdataprovider.h"
 
 /**
  * @brief LAS 2.0 / 3.0 well log provider.

@@ -1,10 +1,10 @@
 #ifndef IDOS_CASE_OBJECT_H
 #define IDOS_CASE_OBJECT_H
 
-#include "idosdataobject.h"
-#include "idoscaseitemref.h"
-
 #include <QList>
+
+#include "idoscaseitemref.h"
+#include "idosdataobject.h"
 
 /**
  * @brief 工况对象基类。

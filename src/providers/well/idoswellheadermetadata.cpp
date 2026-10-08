@@ -1,7 +1,8 @@
-#include "idoswellheadermetadata.h"
+#include <QFileInfo>
+
 #include "idoswellheaderprovider.h"
 
-#include <QFileInfo>
+#include "idoswellheadermetadata.h"
 
 bool IDOSWellHeaderMetadata::canHandle(const QString& filePath) const
 {

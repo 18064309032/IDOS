@@ -1,6 +1,6 @@
-#include "idosprovidermetadata.h"
-
 #include <QFileInfo>
+
+#include "idosprovidermetadata.h"
 
 bool IDOSProviderMetadata::canHandle(const QString& filePath) const
 {

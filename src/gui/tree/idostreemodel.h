@@ -1,13 +1,13 @@
 #ifndef IDOS_TREE_MODEL_H
 #define IDOS_TREE_MODEL_H
 
-#include "idos_gui.h"
-#include "idostreenode.h"
-
 #include <QAbstractItemModel>
 #include <QSet>
 #include <QString>
 #include <QStringList>
+
+#include "idos_gui.h"
+#include "idostreenode.h"
 
 class IDOSDataObject;
 class IDOSObjectTreeNode;

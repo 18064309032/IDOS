@@ -1,12 +1,13 @@
-#include "idoswelldatatreeprovider.h"
+#include <QList>
+#include <QObject>
+
 #include "idostreebuilder.h"
 #include "idostreepartkey.h"
 #include "idoswell.h"
 #include "idoswelllogchannel.h"
 #include "idoswellmarker.h"
 
-#include <QList>
-#include <QObject>
+#include "idoswelldatatreeprovider.h"
 
 QString IDOSWellDataTreeProvider::providerId() const
 {

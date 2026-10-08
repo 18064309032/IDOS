@@ -1,12 +1,13 @@
-#include "command/idoscreatewellcommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
 #include "idosproject.h"
 #include "idoswell.h"
+
+#include "command/idoscreatewellcommand.h"
 
 IDOSCreateWellCommand::IDOSCreateWellCommand(
     IDOSProject* project,

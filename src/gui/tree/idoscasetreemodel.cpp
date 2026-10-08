@@ -1,13 +1,14 @@
-#include "idoscasetreemodel.h"
 #include "idoscaseitemref.h"
 #include "idoscaseobject.h"
+#include "idoscasetreeprovider.h"
 #include "idosgridproperty.h"
 #include "idosobjecttreenode.h"
 #include "idosproject.h"
 #include "idostreebuilder.h"
-#include "idoscasetreeprovider.h"
 #include "idostreeproviderregistry.h"
 #include "idostreereferencenode.h"
+
+#include "idoscasetreemodel.h"
 
 IDOSCaseTreeModel::IDOSCaseTreeModel(QObject* parent)
     : IDOSTreeModel(parent)

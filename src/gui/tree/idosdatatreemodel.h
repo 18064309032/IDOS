@@ -1,8 +1,9 @@
 #ifndef IDOS_DATA_TREE_MODEL_H
 #define IDOS_DATA_TREE_MODEL_H
 
-#include "idostreemodel.h"
 #include <QHash>
+
+#include "idostreemodel.h"
 
 class IDOSTreeProviderRegistry;
 class IDOSTreeBuilder;

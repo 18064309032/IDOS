@@ -1,10 +1,11 @@
-#include "idosdatatreemodel.h"
 #include "idoscaseobject.h"
+#include "idosdatatreeprovider.h"
 #include "idosgrid.h"
 #include "idostreebuilder.h"
 #include "idostreegroupnode.h"
-#include "idosdatatreeprovider.h"
 #include "idostreeproviderregistry.h"
+
+#include "idosdatatreemodel.h"
 
 IDOSDataTreeModel::IDOSDataTreeModel(QObject* parent)
     : IDOSTreeModel(parent)

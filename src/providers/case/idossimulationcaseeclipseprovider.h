@@ -1,11 +1,12 @@
 #ifndef IDOS_SIMULATION_CASE_ECLIPSE_PROVIDER_H
 #define IDOS_SIMULATION_CASE_ECLIPSE_PROVIDER_H
 
-#include "idosdataprovider.h"
-#include "idosgridproperty.h"
+#include <vector>
 
 #include <QVector>
-#include <vector>
+
+#include "idosdataprovider.h"
+#include "idosgridproperty.h"
 
 class IDOSGrid;
 class IDOSSimulationCaseObject;

@@ -1,10 +1,10 @@
 #ifndef IDOS_DATA_OBJECT_H
 #define IDOS_DATA_OBJECT_H
 
-#include "idosobject.h"
-#include "idos_core.h"
-
 #include <QStringList>
+
+#include "idos_core.h"
+#include "idosobject.h"
 
 class IDOSProject;
 

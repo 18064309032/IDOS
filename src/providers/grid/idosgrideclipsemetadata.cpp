@@ -1,5 +1,6 @@
-#include "idosgrideclipsemetadata.h"
 #include "idosgrideclipseprovider.h"
+
+#include "idosgrideclipsemetadata.h"
 
 std::unique_ptr<IDOSDataProvider> IDOSGridEclipseMetadata::createProvider() const
 {

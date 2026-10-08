@@ -1,7 +1,7 @@
-#include "command/idoscommandregistry.h"
-
 #include "command/idoscommand.h"
 #include "command/idoscommandmetadata.h"
+
+#include "command/idoscommandregistry.h"
 
 IDOSCommandRegistry::IDOSCommandRegistry() = default;
 

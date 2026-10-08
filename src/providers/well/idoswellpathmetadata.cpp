@@ -1,6 +1,9 @@
-#include "idoswellpathmetadata.h"
-#include "idoswellpathprovider.h"
 #include <QObject>
+
+#include "idoswellpathprovider.h"
+
+#include "idoswellpathmetadata.h"
+
 QString IDOSWellPathMetadata::id() const
 {
     return QStringLiteral("idos.well.path");

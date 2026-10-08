@@ -1,5 +1,3 @@
-#include "command/idoscommandmanager.h"
-
 #include <memory>
 
 #include <QUndoStack>
@@ -7,6 +5,8 @@
 #include "command/idoscommand.h"
 #include "command/idoscommandregistry.h"
 #include "idosproject.h"
+
+#include "command/idoscommandmanager.h"
 
 IDOSCommandManager::IDOSCommandManager(
     IDOSProject* project,

@@ -2,6 +2,7 @@
 #define IDOS_CORE_H
 
 #include <qglobal.h>
+
 #if defined(IDOS_CORE_LIB)
 #define CORE_EXPORT Q_DECL_EXPORT
 #else

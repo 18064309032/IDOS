@@ -1,11 +1,11 @@
 #ifndef IDOS_WELL_RENDER_OBJECT_H
 #define IDOS_WELL_RENDER_OBJECT_H
 
-#include "idos_render.h"
-#include "idosrenderobject.h"
-
 #include <QVector>
 #include <QVector3D>
+
+#include "idos_render.h"
+#include "idosrenderobject.h"
 
 /**
  * @brief 井渲染对象。

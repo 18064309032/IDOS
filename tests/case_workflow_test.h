@@ -1,7 +1,9 @@
 #ifndef CASE_WORKFLOW_TEST_H
 #define CASE_WORKFLOW_TEST_H
+
 #include <QObject>
 #include <QString>
+
 class CaseWorkflowTest : public QObject
 {
     Q_OBJECT

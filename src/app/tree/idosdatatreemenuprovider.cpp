@@ -1,13 +1,15 @@
-#include "idosdatatreemenuprovider.h"
+#include <QAction>
+
+#include "idosdataobject.h"
 #include "idosdataobjecthandling.h"
 #include "idosdatatreemodel.h"
 #include "idosdatatreeview.h"
 #include "idostreegroupnode.h"
-#include "idostreenode.h"
 #include "idostreemodel.h"
-#include "idosdataobject.h"
+#include "idostreenode.h"
 #include "idoswell.h"
-#include <QAction>
+
+#include "idosdatatreemenuprovider.h"
 
 IDOSDataTreeMenuProvider::IDOSDataTreeMenuProvider(IDOSDataTreeView* view)
     : IDOSTreeMenuProvider(view)

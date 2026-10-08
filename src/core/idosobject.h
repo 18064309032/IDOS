@@ -1,9 +1,10 @@
 #ifndef IDOS_OBJECT_H
 #define IDOS_OBJECT_H
 
-#include "idos_core.h"
 #include <QObject>
 #include <QString>
+
+#include "idos_core.h"
 
 /**
  * @brief 所有领域对象的基类。

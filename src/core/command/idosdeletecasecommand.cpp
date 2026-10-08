@@ -1,15 +1,16 @@
-#include "command/idosdeletecasecommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
 #include "idoscaseitemref.h"
 #include "idoscaseobject.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
+
+#include "command/idosdeletecasecommand.h"
 
 IDOSDeleteCaseCommand::IDOSDeleteCaseCommand(
     IDOSProject* project,

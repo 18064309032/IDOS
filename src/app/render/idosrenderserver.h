@@ -1,13 +1,13 @@
 #ifndef IDOS_RENDER_SERVER_H
 #define IDOS_RENDER_SERVER_H
 
-#include "idos_app.h"
-#include "idosrendertypes.h"
-
 #include <QList>
 #include <QMap>
 #include <QObject>
 #include <QString>
+
+#include "idos_app.h"
+#include "idosrendertypes.h"
 
 class IDOSDataObject;
 class IDOSGridProperty;

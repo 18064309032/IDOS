@@ -1,16 +1,18 @@
+#include <memory>
+
 #include <QObject>
-#include "idosdataloadservice.h"
-#include "idosdataprovider.h"
-#include "idosprovidermetadata.h"
-#include "idosproviderregistry.h"
+
+#include "idoscaseitemref.h"
+#include "idoscaseobject.h"
 #include "idosdataobject.h"
-#include "idosproject.h"
+#include "idosdataprovider.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
-#include "idoscaseobject.h"
-#include "idoscaseitemref.h"
+#include "idosproject.h"
+#include "idosprovidermetadata.h"
+#include "idosproviderregistry.h"
 
-#include <memory>
+#include "idosdataloadservice.h"
 
 QStringList IDOSDataLoadService::loadFile(const QString& filePath, IDOSProject* project,
                                           const QString& targetGridId, const QString& targetCaseId)

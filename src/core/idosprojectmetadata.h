@@ -1,9 +1,9 @@
 #ifndef IDOS_PROJECT_METADATA_H
 #define IDOS_PROJECT_METADATA_H
 
-#include "idos_core.h"
-
 #include <QString>
+
+#include "idos_core.h"
 
 // 工程元信息。单位制为工程偏好，不表示已转换导入数据。
 class CORE_EXPORT IDOSProjectMetadata

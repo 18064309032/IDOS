@@ -1,9 +1,10 @@
-#include "idostreebuilder.h"
-#include "idostreegroupnode.h"
+#include "idosdataobject.h"
 #include "idosobjecttreenode.h"
+#include "idostreegroupnode.h"
 #include "idostreepartnode.h"
 #include "idostreereferencenode.h"
-#include "idosdataobject.h"
+
+#include "idostreebuilder.h"
 
 IDOSTreeBuilder::IDOSTreeBuilder(IDOSTreeNode* parentNode)
     : m_parentNode(parentNode)

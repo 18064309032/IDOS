@@ -1,13 +1,14 @@
 #ifndef IDOS_PROVIDER_REGISTRY_H
 #define IDOS_PROVIDER_REGISTRY_H
 
-#include "idos_providers.h"
-#include "idosprovidermetadata.h"
+#include <memory>
 
+#include <QList>
 #include <QString>
 #include <QStringList>
-#include <QList>
-#include <memory>
+
+#include "idos_providers.h"
+#include "idosprovidermetadata.h"
 
 class IDOSProviderMetadata;
 

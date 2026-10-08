@@ -1,28 +1,29 @@
-#include <QObject>
-#include "idossimulationcaseeclipseprovider.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idossimulationcaseobject.h"
-
-#include <opm/input/eclipse/Parser/Parser.hpp>
-#include <opm/input/eclipse/Parser/ParseContext.hpp>
-#include <opm/input/eclipse/Parser/ErrorGuard.hpp>
-#include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/input/eclipse/Deck/DeckRecord.hpp>
-#include <opm/input/eclipse/Deck/DeckItem.hpp>
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
-
-#include <QFileInfo>
-#include <QString>
-#include <QStringList>
-#include <QVector>
 #include <exception>
 #include <utility>
 #include <vector>
 
+#include <QFileInfo>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QVector>
+
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Deck/DeckItem.hpp>
+#include <opm/input/eclipse/Deck/DeckKeyword.hpp>
+#include <opm/input/eclipse/Deck/DeckRecord.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
+#include <opm/input/eclipse/Parser/ErrorGuard.hpp>
+#include <opm/input/eclipse/Parser/ParseContext.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+
+#include "idosgrid.h"
+#include "idosgridproperty.h"
+#include "idossimulationcaseobject.h"
+
+#include "idossimulationcaseeclipseprovider.h"
 
 bool IDOSSimulationCaseEclipseProvider::convertEclipseGrid(const Opm::EclipseGrid& eclipseGrid, QVector<double>* coord,
                                                            QVector<double>* zcorn, QVector<int>* actnum,

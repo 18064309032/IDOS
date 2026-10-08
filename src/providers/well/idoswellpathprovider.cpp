@@ -1,12 +1,13 @@
-#include "idoswellpathprovider.h"
+#include <cmath>
+
+#include <QFile>
+#include <QObject>
+#include <QRegularExpression>
+#include <QTextStream>
+
 #include "idoswell.h"
 
-#include <QObject>
-#include <QFile>
-#include <QTextStream>
-#include <QRegularExpression>
-
-#include <cmath>
+#include "idoswellpathprovider.h"
 
 QList<IDOSDataObject*> IDOSWellPathProvider::read(const QString& filePath)
 {

@@ -1,10 +1,10 @@
 #ifndef IDOS_GRID_RENDER_OBJECT_PROVIDER_H
 #define IDOS_GRID_RENDER_OBJECT_PROVIDER_H
 
-#include "idosrenderobjectprovider.h"
-
 #include <QHash>
 #include <QString>
+
+#include "idosrenderobjectprovider.h"
 
 class IDOSGrid;
 class IDOSGridProperty;

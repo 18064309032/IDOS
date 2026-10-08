@@ -1,7 +1,8 @@
-#include "idossimulationcaseobject.h"
 #include "idoscaseitemref.h"
 #include "idosproject.h"
 #include "idoswell.h"
+
+#include "idossimulationcaseobject.h"
 
 IDOSSimulationCaseObject::IDOSSimulationCaseObject(QObject* parent)
     : IDOSCaseObject(parent)

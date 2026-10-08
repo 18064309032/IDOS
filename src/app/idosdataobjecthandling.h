@@ -1,9 +1,10 @@
 #ifndef IDOS_DATA_OBJECT_HANDLING_H
 #define IDOS_DATA_OBJECT_HANDLING_H
 
-#include "idos_app.h"
 #include <QCoreApplication>
 #include <QStringList>
+
+#include "idos_app.h"
 
 class IDOSProject;
 class IDOSCaseObject;

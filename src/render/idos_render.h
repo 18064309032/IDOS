@@ -2,6 +2,7 @@
 #define IDOS_RENDER_H
 
 #include <qglobal.h>
+
 #if defined(IDOS_RENDER_LIB)
 #define RENDER_EXPORT Q_DECL_EXPORT
 #else

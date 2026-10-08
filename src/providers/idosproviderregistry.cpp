@@ -1,15 +1,17 @@
+#include <vector>
+
+#include <QFileInfo>
+#include <QHash>
 #include <QObject>
-#include "idosproviderregistry.h"
-#include "idosdataprovider.h"
+
 #include "case/idossimulationcaseeclipsemetadata.h"
 #include "grid/idosgrideclipsemetadata.h"
+#include "idosdataprovider.h"
 #include "well/idoswellheadermetadata.h"
 #include "well/idoswelllasmetadata.h"
 #include "well/idoswellpathmetadata.h"
 
-#include <QFileInfo>
-#include <QHash>
-#include <vector>
+#include "idosproviderregistry.h"
 
 class IDOSProviderRegistry::Impl
 {

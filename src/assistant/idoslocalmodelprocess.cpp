@@ -1,11 +1,11 @@
-#include "idoslocalmodelprocess.h"
-
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDir>
-#include <QFileInfo>
+
+#include "idoslocalmodelprocess.h"
 
 IDOSLocalModelProcess::IDOSLocalModelProcess(QObject* parent)
     : QObject(parent)

@@ -1,8 +1,8 @@
 #ifndef IDOS_OBJECT_TREE_NODE_H
 #define IDOS_OBJECT_TREE_NODE_H
 
-#include "idostreenode.h"
 #include "idos_core.h"
+#include "idostreenode.h"
 
 /**
  * @brief 绑定领域对象的树节点。

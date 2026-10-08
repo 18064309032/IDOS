@@ -8,7 +8,7 @@
 #include <QPointer>
 #include <QWidget>
 
-#include "idos_gui.h"
+#include "idos_assistant.h"
 
 class IDOSCommandRegistry;
 class IDOSLocalAssistantService;
@@ -19,7 +19,7 @@ class QTextEdit;
 class QNetworkReply;
 class QLabel;
 
-class GUI_EXPORT IDOSAssistantWidget : public QWidget
+class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
 {
     Q_OBJECT
 

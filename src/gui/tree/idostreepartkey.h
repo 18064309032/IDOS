@@ -1,9 +1,9 @@
 #ifndef IDOS_TREE_PART_KEY_H
 #define IDOS_TREE_PART_KEY_H
 
-#include "idos_gui.h"
-
 #include <QString>
+
+#include "idos_gui.h"
 
 /**
  * @brief 树上对象子项的稳定语义键。

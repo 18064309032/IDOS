@@ -1,8 +1,8 @@
 #ifndef IDOS_DATA_TREE_MENU_PROVIDER_H
 #define IDOS_DATA_TREE_MENU_PROVIDER_H
 
-#include "idostreemenuprovider.h"
 #include "idos_app.h"
+#include "idostreemenuprovider.h"
 
 class IDOSDataTreeView;
 

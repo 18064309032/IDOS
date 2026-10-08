@@ -1,13 +1,14 @@
-#include "well_path_test.h"
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
+#include <QtTest>
+
 #include "idosdataprovider.h"
 #include "idosproviderregistry.h"
 #include "idoswell.h"
 #include "idoswellgeometryresolver.h"
 
-#include <QDir>
-#include <QFile>
-#include <QTemporaryDir>
-#include <QtTest>
+#include "well_path_test.h"
 
 void WellPathTest::onParseSample()
 {

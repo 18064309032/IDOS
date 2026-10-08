@@ -1,12 +1,12 @@
 #ifndef IDOS_WELL_PATH_H
 #define IDOS_WELL_PATH_H
 
+#include <QStringList>
+#include <QVector>
+
 #include "idos_core.h"
 #include "idoswellpathpoint.h"
 #include "idoswellspatialreference.h"
-
-#include <QVector>
-#include <QStringList>
 
 /**
  * @brief Wellbore trajectory, owned by IDOSWell.

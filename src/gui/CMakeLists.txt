@@ -1,8 +1,6 @@
 # idos_gui: user interface features
 add_library(idos_gui SHARED
     idos_gui.h
-    idosassistantwidget.h
-    idosassistantwidget.cpp
     idosdebuginfowidget.h
     idosdebuginfowidget.cpp
     idosruntimeinfowidget.h
@@ -60,7 +58,7 @@ target_include_directories(idos_gui
         ${CMAKE_CURRENT_SOURCE_DIR}/case
         ${CMAKE_CURRENT_SOURCE_DIR}/tree
 )
-target_link_libraries(idos_gui PUBLIC idos_core idos_assistant Qt5::Widgets)
+target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)
 target_compile_definitions(idos_gui PRIVATE IDOS_GUI_LIB)
 
 get_target_property(_idos_sources idos_gui SOURCES)

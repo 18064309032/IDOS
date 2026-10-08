@@ -1,15 +1,15 @@
 #ifndef IDOS_PROPERTY_WIDGET_H
 #define IDOS_PROPERTY_WIDGET_H
 
+#include <QPointer>
+#include <QString>
+#include <QWidget>
+
 #include "idos_app.h"
 #include "idoswellhead.h"
 #include "idoswelllogchannel.h"
 #include "idoswelllogset.h"
 #include "idoswellpath.h"
-
-#include <QPointer>
-#include <QString>
-#include <QWidget>
 
 class IDOSWell;
 class IDOSWellLogSet;

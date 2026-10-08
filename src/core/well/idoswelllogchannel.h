@@ -1,10 +1,10 @@
 #ifndef IDOS_WELL_LOG_CHANNEL_H
 #define IDOS_WELL_LOG_CHANNEL_H
 
-#include "idos_core.h"
-
 #include <QString>
 #include <QVector>
+
+#include "idos_core.h"
 
 /**
  * @brief 一根测井曲线通道（Gamma / Perm / Porosity ...）。

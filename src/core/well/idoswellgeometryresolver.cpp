@@ -1,7 +1,8 @@
-#include "idoswellgeometryresolver.h"
 #include "idoswellhead.h"
 #include "idoswellpath.h"
 #include "idoswellpathpoint.h"
+
+#include "idoswellgeometryresolver.h"
 
 IDOSWellGeometryResolution::IDOSWellGeometryResolution()
     : m_startPointType(StartPointType::Unknown)

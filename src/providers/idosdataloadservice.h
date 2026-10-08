@@ -1,10 +1,10 @@
 #ifndef IDOS_DATA_LOAD_SERVICE_H
 #define IDOS_DATA_LOAD_SERVICE_H
 
-#include "idos_providers.h"
-
 #include <QString>
 #include <QStringList>
+
+#include "idos_providers.h"
 
 class IDOSProject;
 

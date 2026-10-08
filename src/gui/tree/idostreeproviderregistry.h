@@ -1,10 +1,10 @@
 #ifndef IDOS_TREE_PROVIDER_REGISTRY_H
 #define IDOS_TREE_PROVIDER_REGISTRY_H
 
-#include "idos_gui.h"
-
 #include <QHash>
 #include <QString>
+
+#include "idos_gui.h"
 
 class IDOSCaseTreeProvider;
 class IDOSDataTreeProvider;

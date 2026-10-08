@@ -1,9 +1,9 @@
 #ifndef IDOS_WELL_MARKER_H
 #define IDOS_WELL_MARKER_H
 
-#include "idos_core.h"
-
 #include <QString>
+
+#include "idos_core.h"
 
 /**
  * @brief 井层位标记点（Well Tops，对应 .prn 文件一行）。

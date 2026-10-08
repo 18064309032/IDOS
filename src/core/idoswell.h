@@ -1,15 +1,16 @@
 #ifndef IDOS_WELL_H
 #define IDOS_WELL_H
 
+#include <QList>
+
 #include "idosdataobject.h"
 #include "idoswellcompletion.h"
-#include "idoswellsegment.h"
 #include "idoswellcontrol.h"
 #include "idoswellhead.h"
-#include "idoswellpath.h"
 #include "idoswelllogset.h"
 #include "idoswellmarkerset.h"
-#include <QList>
+#include "idoswellpath.h"
+#include "idoswellsegment.h"
 
 /**
  * @brief 油井数据对象。

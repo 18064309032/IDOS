@@ -8,7 +8,7 @@ set_tests_properties(command_registry PROPERTIES
 )
 
 add_executable(idos_assistant_widget_tests assistant_widget_test.h assistant_widget_test.cpp)
-target_link_libraries(idos_assistant_widget_tests PRIVATE idos_app Qt5::Test)
+target_link_libraries(idos_assistant_widget_tests PRIVATE idos_app idos_assistant Qt5::Test)
 add_test(NAME assistant_widget COMMAND idos_assistant_widget_tests)
 set_tests_properties(assistant_widget PROPERTIES
     TIMEOUT 30

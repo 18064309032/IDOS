@@ -1,11 +1,11 @@
-#include "idosdataobjecthandling.h"
-#include "idosproject.h"
-#include "idoscaseobject.h"
-#include "idossimulationcaseobject.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idoscasedialog.h"
-#include "idoswell.h"
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QIcon>
+#include <QInputDialog>
+#include <QJsonObject>
+#include <QMessageBox>
+#include <QPointer>
+
 #include "command/idoscommandmanager.h"
 #include "command/idoscreatecasecommand.h"
 #include "command/idoscreatewellcommand.h"
@@ -14,16 +14,17 @@
 #include "command/idosdeletepropertycommand.h"
 #include "command/idosdeletewellcommand.h"
 #include "command/idosimportcommands.h"
-#include "idosproviderregistry.h"
+#include "idoscasedialog.h"
+#include "idoscaseobject.h"
 #include "idosdataprovider.h"
+#include "idosgrid.h"
+#include "idosgridproperty.h"
+#include "idosproject.h"
+#include "idosproviderregistry.h"
+#include "idossimulationcaseobject.h"
+#include "idoswell.h"
 
-#include <QFileDialog>
-#include <QFileInfo>
-#include <QInputDialog>
-#include <QIcon>
-#include <QJsonObject>
-#include <QMessageBox>
-#include <QPointer>
+#include "idosdataobjecthandling.h"
 
 QStringList IDOSDataObjectHandling::collectGridPropertyIds(const IDOSProject* project, const QString& gridId)
 {

@@ -1,4 +1,8 @@
-#include "command_registry_test.h"
+#include <memory>
+
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QtTest>
 
 #include "command/idoscommandmanager.h"
 #include "command/idoscommandmetadata.h"
@@ -9,8 +13,8 @@
 #include "command/idosdeletegridcommand.h"
 #include "command/idosdeletepropertycommand.h"
 #include "command/idosdeletewellcommand.h"
-#include "command/idosrenameobjectcommand.h"
 #include "command/idosimportcommands.h"
+#include "command/idosrenameobjectcommand.h"
 #include "idoscaseitemref.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
@@ -18,11 +22,7 @@
 #include "idossimulationcaseobject.h"
 #include "idoswell.h"
 
-#include <memory>
-
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QtTest>
+#include "command_registry_test.h"
 
 void CommandRegistryTest::onDefaultRegistryContainsCreateWell()
 {

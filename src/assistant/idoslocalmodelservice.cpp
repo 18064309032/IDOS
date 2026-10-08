@@ -1,9 +1,9 @@
-#include "idoslocalmodelservice.h"
-
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+
+#include "idoslocalmodelservice.h"
 
 IDOSLocalModelService::IDOSLocalModelService(QObject* parent)
     : QObject(parent)

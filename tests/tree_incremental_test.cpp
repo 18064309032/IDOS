@@ -1,19 +1,20 @@
-#include "tree_incremental_test.h"
-#include "idosmainwindow.h"
-#include "idosproject.h"
-#include "idoswell.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idossimulationcaseobject.h"
-#include "idoscaseitemref.h"
-#include "idosdatatreemodel.h"
-#include "idoscasetreemodel.h"
-#include "idosdatatreeview.h"
-#include "idoscasetreeview.h"
-
-#include <QtTest>
 #include <QSignalSpy>
 #include <QStringList>
+#include <QtTest>
+
+#include "idoscaseitemref.h"
+#include "idoscasetreemodel.h"
+#include "idoscasetreeview.h"
+#include "idosdatatreemodel.h"
+#include "idosdatatreeview.h"
+#include "idosgrid.h"
+#include "idosgridproperty.h"
+#include "idosmainwindow.h"
+#include "idosproject.h"
+#include "idossimulationcaseobject.h"
+#include "idoswell.h"
+
+#include "tree_incremental_test.h"
 
 // 测试替身：objectId 正常构造后不可外部修改（protected，仅供恢复加载），
 // 子类开放一个赋值入口以构造 Project::addObject 的同 id 替换场景

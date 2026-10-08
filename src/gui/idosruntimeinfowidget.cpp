@@ -1,5 +1,3 @@
-#include "idosruntimeinfowidget.h"
-
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QPlainTextEdit>
@@ -10,6 +8,8 @@
 #include <QVBoxLayout>
 
 #include "log/idoslogger.h"
+
+#include "idosruntimeinfowidget.h"
 
 IDOSRuntimeInfoWidget::IDOSRuntimeInfoWidget(QWidget* parent)
     : QWidget(parent)

@@ -1,11 +1,11 @@
 #ifndef IDOS_RENDER_SCENE_H
 #define IDOS_RENDER_SCENE_H
 
-#include "idos_render.h"
-
-#include <QMap>
 #include <QList>
+#include <QMap>
 #include <QString>
+
+#include "idos_render.h"
 
 class IDOSRenderObject;
 

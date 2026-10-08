@@ -1,15 +1,15 @@
 #ifndef IDOS_TREE_BUILDER_H
 #define IDOS_TREE_BUILDER_H
 
+#include <QString>
+
 #include "idos_gui.h"
-#include "idostreepartkey.h"
 #include "idoscaseitemref.h"
 #include "idosobjecttreenode.h"
 #include "idostreegroupnode.h"
+#include "idostreepartkey.h"
 #include "idostreepartnode.h"
 #include "idostreereferencenode.h"
-
-#include <QString>
 
 class IDOSDataObject;
 class IDOSTreeGroupNode;

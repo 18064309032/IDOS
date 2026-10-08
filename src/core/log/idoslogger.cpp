@@ -1,8 +1,8 @@
-#include "idoslogger.h"
-
 #include "idosconsoletarget.h"
 #include "idosfiletarget.h"
 #include "idoslogrecord.h"
+
+#include "idoslogger.h"
 
 IDOSLogger::IDOSLogger()
     : QObject(nullptr)

@@ -1,22 +1,23 @@
-#include "idosnewprojectdialog.h"
-#include "idosmainwindow.h"
-#include "idosdatatreemodel.h"
-#include "idoscasetreemodel.h"
-#include "idosproject.h"
-#include "idoswell.h"
-#include "idosdatatreeview.h"
-#include "idosdatatreemenuprovider.h"
-#include <QInputDialog>
-#include <QScopedPointer>
 #include <QComboBox>
+#include <QInputDialog>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScopedPointer>
 #include <QTimer>
-#include <QMessageBox>
 #include <QToolButton>
 #include <QTranslator>
 #include <QtTest>
+
+#include "idoscasetreemodel.h"
+#include "idosdatatreemenuprovider.h"
+#include "idosdatatreemodel.h"
+#include "idosdatatreeview.h"
+#include "idosmainwindow.h"
+#include "idosnewprojectdialog.h"
+#include "idosproject.h"
+#include "idoswell.h"
 
 class ProjectDialogTest : public QObject
 {

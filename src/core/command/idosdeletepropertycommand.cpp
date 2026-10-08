@@ -1,13 +1,14 @@
-#include "command/idosdeletepropertycommand.h"
+#include <utility>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <utility>
 
 #include "idoscaseobject.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
+
+#include "command/idosdeletepropertycommand.h"
 
 IDOSDeletePropertyCommand::IDOSDeletePropertyCommand(
     IDOSProject* project,

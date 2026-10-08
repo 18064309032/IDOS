@@ -1,11 +1,11 @@
-#include "idosmsvctarget.h"
-
-#ifdef Q_OS_WIN
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
 #include "idosloglevel.h"
 #include "idoslogrecord.h"
+
+#include "idosmsvctarget.h"
 
 IDOSMSVCTarget::IDOSMSVCTarget()
 {

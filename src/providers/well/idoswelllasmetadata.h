@@ -1,6 +1,7 @@
-#include <QObject>
 #ifndef IDOS_WELL_LAS_METADATA_H
 #define IDOS_WELL_LAS_METADATA_H
+
+#include <QObject>
 
 #include "idosprovidermetadata.h"
 

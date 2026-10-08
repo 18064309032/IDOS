@@ -1,9 +1,12 @@
 #ifndef IDOS_CASE_TREE_MENU_PROVIDER_H
 #define IDOS_CASE_TREE_MENU_PROVIDER_H
-#include "idos_app.h"
-#include "idostreemenuprovider.h"
+
 #include <QPair>
 #include <QString>
+
+#include "idos_app.h"
+#include "idostreemenuprovider.h"
+
 class IDOSCaseTreeView;
 class IDOSTreeGroupNode;
 class APP_EXPORT IDOSCaseTreeMenuProvider : public IDOSTreeMenuProvider

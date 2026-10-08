@@ -1,9 +1,9 @@
 #ifndef IDOS_COMMAND_MANAGER_H
 #define IDOS_COMMAND_MANAGER_H
 
+#include <QJsonObject>
 #include <QObject>
 #include <QPointer>
-#include <QJsonObject>
 
 #include "idos_core.h"
 

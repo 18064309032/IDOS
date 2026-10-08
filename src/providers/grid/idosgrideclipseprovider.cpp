@@ -1,14 +1,15 @@
+#include <exception>
+
+#include <QFileInfo>
 #include <QObject>
-#include "idosgrideclipseprovider.h"
-#include "idosgrid.h"
+#include <QString>
+#include <QVector>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-#include <QFileInfo>
-#include <QString>
-#include <QVector>
-#include <exception>
+#include "idosgrid.h"
 
+#include "idosgrideclipseprovider.h"
 
 QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
 {

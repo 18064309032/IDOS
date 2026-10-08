@@ -1,8 +1,9 @@
-#include "idostreeproviderregistry.h"
+#include <QtAlgorithms>
+
 #include "idoscasetreeprovider.h"
 #include "idosdatatreeprovider.h"
 
-#include <QtAlgorithms>
+#include "idostreeproviderregistry.h"
 
 IDOSTreeProviderRegistry::IDOSTreeProviderRegistry()
 {

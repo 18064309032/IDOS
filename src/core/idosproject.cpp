@@ -1,8 +1,8 @@
-#include "idosproject.h"
-
 #include <QUndoStack>
 
 #include "command/idoscommandmanager.h"
+
+#include "idosproject.h"
 
 IDOSProject::IDOSProject(QObject* parent)
     : QObject(parent)

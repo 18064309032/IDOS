@@ -1,16 +1,15 @@
-#include "idosconsoletarget.h"
-
 #include <iostream>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include <QByteArray>
 #include <QString>
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-#endif
-
 #include "idosloglevel.h"
 #include "idoslogrecord.h"
+
+#include "idosconsoletarget.h"
 
 #if defined(ERROR)
 #undef ERROR

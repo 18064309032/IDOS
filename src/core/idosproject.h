@@ -1,15 +1,16 @@
 #ifndef IDOS_PROJECT_H
 #define IDOS_PROJECT_H
 
-#include "idos_core.h"
-#include "idosdataobject.h"
-#include "idosprojectmetadata.h"
-#include <QObject>
-#include <QList>
 #include <QHash>
+#include <QList>
+#include <QObject>
 #include <QSet>
 #include <QString>
 #include <QStringList>
+
+#include "idos_core.h"
+#include "idosdataobject.h"
+#include "idosprojectmetadata.h"
 
 class IDOSCommandManager;
 class IDOSProjectUpdateGuard;

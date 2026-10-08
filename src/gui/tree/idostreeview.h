@@ -1,10 +1,11 @@
 #ifndef IDOS_TREE_VIEW_H
 #define IDOS_TREE_VIEW_H
 
-#include "idos_gui.h"
-#include <QTreeView>
 #include <QSet>
 #include <QString>
+#include <QTreeView>
+
+#include "idos_gui.h"
 
 class IDOSTreeMenuProvider;
 class QMenu;

@@ -1,5 +1,3 @@
-#include "command/idosrenameobjectcommand.h"
-
 #include <utility>
 
 #include <QJsonArray>
@@ -8,6 +6,8 @@
 
 #include "idosdataobject.h"
 #include "idosproject.h"
+
+#include "command/idosrenameobjectcommand.h"
 
 class IDOSRenameObjectCommandJsonHelpers
 {

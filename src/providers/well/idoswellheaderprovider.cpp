@@ -1,11 +1,14 @@
-#include "idoswellheaderprovider.h"
-#include "idoswell.h"
-#include "idoswellhead.h"
-#include <QObject>
+#include <cmath>
+
 #include <QFile>
+#include <QObject>
 #include <QRegularExpression>
 #include <QTextStream>
-#include <cmath>
+
+#include "idoswell.h"
+#include "idoswellhead.h"
+
+#include "idoswellheaderprovider.h"
 
 QList<IDOSDataObject*> IDOSWellHeaderProvider::read(const QString& filePath)
 {

@@ -1,5 +1,6 @@
-#include "idosgridproperty.h"
 #include <QDebug>
+
+#include "idosgridproperty.h"
 
 IDOSGridProperty::IDOSGridProperty(QObject* parent)
     : IDOSDataObject(parent)

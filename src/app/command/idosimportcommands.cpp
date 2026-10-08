@@ -1,15 +1,14 @@
-#include "command/idosimportcommands.h"
+#include <memory>
+#include <utility>
 
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QSet>
-#include <memory>
-#include <utility>
 
-#include "idoscaseobject.h"
 #include "idoscaseitemref.h"
+#include "idoscaseobject.h"
 #include "idosdataprovider.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
@@ -18,6 +17,8 @@
 #include "idosproviderregistry.h"
 #include "idossimulationcaseobject.h"
 #include "idoswell.h"
+
+#include "command/idosimportcommands.h"
 
 class IDOSImportCommandJsonHelpers
 {

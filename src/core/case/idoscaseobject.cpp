@@ -1,6 +1,6 @@
-#include "idoscaseobject.h"
-
 #include <QSet>
+
+#include "idoscaseobject.h"
 
 IDOSCaseObject::IDOSCaseObject(QObject* parent)
     : IDOSDataObject(parent)

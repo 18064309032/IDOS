@@ -1,10 +1,11 @@
-#include "idosgridrenderobjectprovider.h"
+#include <QObject>
+#include <QVector3D>
+
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosrendermesh.h"
 
-#include <QObject>
-#include <QVector3D>
+#include "idosgridrenderobjectprovider.h"
 
 IDOSGridRenderObjectProvider::IDOSGridRenderObjectProvider()
 {

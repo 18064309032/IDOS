@@ -1,11 +1,11 @@
 #ifndef IDOS_WELL_MARKER_SET_H
 #define IDOS_WELL_MARKER_SET_H
 
-#include "idos_core.h"
-#include "idoswellmarker.h"
-
 #include <QList>
 #include <QString>
+
+#include "idos_core.h"
+#include "idoswellmarker.h"
 
 /**
  * @brief 一口井的层位 pick 集合（"Well Tops" 树节点）。

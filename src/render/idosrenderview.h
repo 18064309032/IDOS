@@ -1,11 +1,11 @@
 #ifndef IDOS_RENDER_VIEW_H
 #define IDOS_RENDER_VIEW_H
 
-#include "idos_render.h"
-
 #include <QString>
 #include <QVector>
 #include <QWidget>
+
+#include "idos_render.h"
 
 class IDOSRenderObject;
 class IDOSRenderScene;

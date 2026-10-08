@@ -1,5 +1,6 @@
 #include <QLocale>
 #include <QTranslator>
+
 #include "idosapplication.h"
 #include "idosmainwindow.h"
 

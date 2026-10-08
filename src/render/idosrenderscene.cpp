@@ -1,7 +1,8 @@
-#include "idosrenderscene.h"
+#include <QtAlgorithms>
+
 #include "idosrenderobject.h"
 
-#include <QtAlgorithms>
+#include "idosrenderscene.h"
 
 IDOSRenderScene::IDOSRenderScene()
 {

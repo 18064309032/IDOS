@@ -1,9 +1,10 @@
-#include "idosgriddatatreeprovider.h"
+#include <QObject>
+
+#include "idosgrid.h"
 #include "idostreebuilder.h"
 #include "idostreepartkey.h"
-#include "idosgrid.h"
 
-#include <QObject>
+#include "idosgriddatatreeprovider.h"
 
 QString IDOSGridDataTreeProvider::providerId() const
 {

@@ -6,9 +6,9 @@
 #include <QPointer>
 #include <QStringList>
 
-#include "idos_app.h"
 #include "command/idoscommand.h"
 #include "command/idoscommandmetadata.h"
+#include "idos_app.h"
 #include "idoscaseitemref.h"
 
 class IDOSCaseObject;

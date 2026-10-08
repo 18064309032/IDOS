@@ -1,11 +1,11 @@
-#include "idoslocalassistantservice.h"
-
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 
 #include "idoslocalmodelprocess.h"
 #include "idoslocalmodelservice.h"
+
+#include "idoslocalassistantservice.h"
 
 IDOSLocalAssistantService::IDOSLocalAssistantService(QObject* parent)
     : QObject(parent)

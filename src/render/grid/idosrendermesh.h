@@ -1,11 +1,11 @@
 #ifndef IDOS_RENDER_MESH_H
 #define IDOS_RENDER_MESH_H
 
-#include "idosrenderobject.h"
-
 #include <QString>
 #include <QVector>
 #include <QVector3D>
+
+#include "idosrenderobject.h"
 
 class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
 {

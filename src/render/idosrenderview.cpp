@@ -1,18 +1,13 @@
-#include "idosrenderview.h"
-#include "idosrendermesh.h"
-#include "idosrenderscene.h"
-#include "idoswellrenderobject.h"
-
 #include <QEvent>
 #include <QHash>
 #include <QMouseEvent>
 #include <QVBoxLayout>
-#include <QVTKOpenGLNativeWidget.h>
 
+#include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
-#include <vtkCellData.h>
 #include <vtkCellArray.h>
+#include <vtkCellData.h>
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
 #include <vtkGenericOpenGLRenderWindow.h>
@@ -28,6 +23,12 @@
 #include <vtkRenderer.h>
 #include <vtkStringOutputWindow.h>
 #include <vtkUnstructuredGrid.h>
+
+#include "idosrendermesh.h"
+#include "idosrenderscene.h"
+#include "idoswellrenderobject.h"
+
+#include "idosrenderview.h"
 
 class IDOSRenderViewPrivate
 {

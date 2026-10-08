@@ -1,10 +1,10 @@
-#include "idosfiletarget.h"
-
 #include <QDir>
 #include <QFileInfo>
 
 #include "idosloglevel.h"
 #include "idoslogrecord.h"
+
+#include "idosfiletarget.h"
 
 IDOSFileTarget::IDOSFileTarget(const QString& filePath, qint64 maxSize, int maxBackups)
     : m_filePath(filePath)

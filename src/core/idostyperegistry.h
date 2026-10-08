@@ -1,12 +1,14 @@
 #ifndef IDOS_TYPE_REGISTRY_H
 #define IDOS_TYPE_REGISTRY_H
 
-#include "idos_core.h"
-#include "idosobject.h"
+#include <memory>
+
 #include <QHash>
 #include <QList>
 #include <QString>
-#include <memory>
+
+#include "idos_core.h"
+#include "idosobject.h"
 
 class IDOSDataObject;
 

@@ -1,7 +1,3 @@
-#include "idoscasedialog.h"
-#include "idoscaseobject.h"
-#include "idosproject.h"
-#include "idoswell.h"
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QHeaderView>
@@ -11,6 +7,12 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QVBoxLayout>
+
+#include "idoscaseobject.h"
+#include "idosproject.h"
+#include "idoswell.h"
+
+#include "idoscasedialog.h"
 
 IDOSCaseDialog::IDOSCaseDialog(const QString& initialName, const QString& sourceFile, const QStringList& wellNames,
                                const IDOSProject* project, QWidget* parent)

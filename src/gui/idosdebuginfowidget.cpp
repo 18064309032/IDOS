@@ -1,5 +1,3 @@
-#include "idosdebuginfowidget.h"
-
 #include <QApplication>
 #include <QClipboard>
 #include <QHBoxLayout>
@@ -11,6 +9,8 @@
 #include <QVBoxLayout>
 
 #include "log/idoslogger.h"
+
+#include "idosdebuginfowidget.h"
 
 IDOSDebugInfoWidget::IDOSDebugInfoWidget(QWidget* parent)
     : QWidget(parent)

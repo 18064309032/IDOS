@@ -2,6 +2,7 @@
 #define IDOS_WELL_DATA_TREE_PROVIDER_H
 
 #include "idosdatatreeprovider.h"
+
 /**
  * @brief 井对象的数据树 Provider。
  */

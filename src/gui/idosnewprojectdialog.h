@@ -1,9 +1,10 @@
 #ifndef IDOS_NEW_PROJECT_DIALOG_H
 #define IDOS_NEW_PROJECT_DIALOG_H
 
+#include <QDialog>
+
 #include "idos_gui.h"
 #include "idosprojectmetadata.h"
-#include <QDialog>
 
 class QLineEdit;
 class QPlainTextEdit;

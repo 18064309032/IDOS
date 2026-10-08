@@ -1,9 +1,9 @@
 #ifndef IDOS_RENDER_OBJECT_PROVIDER_H
 #define IDOS_RENDER_OBJECT_PROVIDER_H
 
-#include "idos_app.h"
-
 #include <QString>
+
+#include "idos_app.h"
 
 class IDOSDataObject;
 class IDOSRenderObject;

@@ -1,8 +1,8 @@
 #ifndef ASSISTANT_WIDGET_TEST_H
 #define ASSISTANT_WIDGET_TEST_H
 
-#include <QObject>
 #include <QJsonObject>
+#include <QObject>
 #include <QString>
 
 class IDOSAssistantWidget;

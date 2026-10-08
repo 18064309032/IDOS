@@ -1,10 +1,10 @@
 #ifndef IDOS_DATA_PROVIDER_H
 #define IDOS_DATA_PROVIDER_H
 
-#include "idos_providers.h"
-
-#include <QString>
 #include <QList>
+#include <QString>
+
+#include "idos_providers.h"
 
 class IDOSDataObject;
 

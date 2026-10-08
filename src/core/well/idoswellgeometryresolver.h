@@ -1,9 +1,9 @@
 #ifndef IDOS_WELL_GEOMETRY_RESOLVER_H
 #define IDOS_WELL_GEOMETRY_RESOLVER_H
 
-#include "idos_core.h"
-
 #include <QVector3D>
+
+#include "idos_core.h"
 
 class IDOSWellHead;
 class IDOSWellPath;

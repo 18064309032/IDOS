@@ -1,6 +1,6 @@
-#include "idosapplication.h"
-
 #include "log/idoslogger.h"
+
+#include "idosapplication.h"
 
 IDOSApplication::IDOSApplication(int& argc, char** argv)
     : QApplication(argc, argv)
