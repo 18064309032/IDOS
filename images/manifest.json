@@ -42,12 +42,6 @@
     "color": "#3566B8"
   },
   {
-    "file": "app-file.svg",
-    "module": "app",
-    "purpose": "Open the file menu",
-    "color": "#3566B8"
-  },
-  {
     "file": "core-project.svg",
     "module": "core",
     "purpose": "Project container",

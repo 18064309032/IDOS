@@ -99,7 +99,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
 
     setWindowTitle(tr("IDOS"));
     const QIcon applicationIcon(QStringLiteral(":/images/app-logo.svg"));
-    const QIcon fileIcon(QStringLiteral(":/images/app-file.svg"));
     setWindowIcon(applicationIcon);
 
     m_actionNewProject = new QAction(QIcon(QStringLiteral(":/images/app-project-new.svg")), tr("New Project"), this);
@@ -139,9 +138,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     QAbstractButton* applicationButton = ribbonBar()->applicationButton();
     if (applicationButton != nullptr)
     {
-        applicationButton->setIcon(fileIcon);
-        applicationButton->setText(QString());
-        applicationButton->setToolTip(tr("File"));
+        applicationButton->setText(tr("File"));
         applicationButton->setAccessibleName(tr("File"));
     }
     QToolButton* fileButton = qobject_cast<QToolButton*>(applicationButton);
@@ -149,7 +146,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     {
         fileButton->setMenu(fileMenu);
         fileButton->setPopupMode(QToolButton::InstantPopup);
-        fileButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        fileButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     }
 
     SARibbonPanel* importPanel = projectPage->addPanel(tr("Data Import"));
