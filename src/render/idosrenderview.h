@@ -6,6 +6,7 @@
 #include <QWidget>
 
 #include "idos_render.h"
+#include "idosrendertypes.h"
 
 class IDOSRenderObject;
 class IDOSRenderScene;
@@ -29,6 +30,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void clear();
     void refresh();
     void resetCamera();
+    void setOrientation(IDOSOrientation orientation);
     void setHighlightedObjectId(const QString& objectId);
 
   signals:

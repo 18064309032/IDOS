@@ -6,6 +6,7 @@
 #include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
+#include <vtkCamera.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDataSetMapper.h>
@@ -43,6 +44,7 @@ class IDOSRenderViewPrivate
     void applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper, const IDOSRenderMesh* mesh) const;
     void configureVtkOutputWindow();
     void clearActivePipeline();
+    void applyDisplayMode(vtkActor* actor, const IDOSRenderMesh* mesh) const;
 
     QVTKOpenGLNativeWidget* vtkWidget;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
@@ -114,24 +116,47 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createMeshActor(const IDOSRende
 
     vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
     actor->SetMapper(mapper);
-    if (mesh->hasCellScalars())
+    if (!mesh->hasCellScalars())
     {
-        actor->GetProperty()->SetRepresentationToSurface();
-        actor->GetProperty()->EdgeVisibilityOff();
-        actor->GetProperty()->SetInterpolationToFlat();
-    }
-    else
-    {
-        actor->GetProperty()->SetRepresentationToSurface();
         actor->GetProperty()->SetColor(0.35, 0.72, 1.0);
-        actor->GetProperty()->SetInterpolationToFlat();
     }
     actor->GetProperty()->SetLineWidth(1.0);
+    applyDisplayMode(actor, mesh);
     actor->SetVisibility(mesh->visible());
+    actor->GetProperty()->SetOpacity(mesh->opacity());
     activeActor = actor;
     activeGrid = grid;
     activeMapper = mapper;
     return actor;
+}
+
+void IDOSRenderViewPrivate::applyDisplayMode(vtkActor* actor, const IDOSRenderMesh* mesh) const
+{
+    if (mesh->displayMode() == IDOSDisplayMode::Wireframe)
+    {
+        actor->GetProperty()->SetRepresentationToWireframe();
+        actor->GetProperty()->EdgeVisibilityOff();
+    }
+    else if (mesh->displayMode() == IDOSDisplayMode::SurfaceWithEdges)
+    {
+        actor->GetProperty()->SetRepresentationToSurface();
+        actor->GetProperty()->SetEdgeVisibility(true);
+        actor->GetProperty()->SetEdgeColor(0.08, 0.12, 0.18);
+    }
+    else if (mesh->displayMode() == IDOSDisplayMode::Points)
+    {
+        actor->GetProperty()->SetRepresentationToPoints();
+        actor->GetProperty()->SetPointSize(3.0);
+    }
+    else
+    {
+        actor->GetProperty()->SetRepresentationToSurface();
+        actor->GetProperty()->EdgeVisibilityOff();
+    }
+    if (mesh->hasCellScalars() && mesh->displayMode() != IDOSDisplayMode::Wireframe)
+    {
+        actor->GetProperty()->SetInterpolationToFlat();
+    }
 }
 
 void IDOSRenderViewPrivate::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper,
@@ -203,6 +228,7 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellHeadActor(const IDOSW
     actor->SetMapper(mapper);
     applyWellStyle(actor, well);
     actor->GetProperty()->SetPointSize(12.0);
+    actor->GetProperty()->SetOpacity(well->opacity());
     actor->SetVisibility(well->visible());
     return actor;
 }
@@ -237,6 +263,7 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellTrajectoryActor(const
     actor->SetMapper(mapper);
     applyWellStyle(actor, well);
     actor->GetProperty()->SetLineWidth(2.5);
+    actor->GetProperty()->SetOpacity(well->opacity());
     actor->SetVisibility(well->visible());
     return actor;
 }
@@ -412,6 +439,64 @@ void IDOSRenderView::resetCamera()
     m_privateData->renderWindow->Render();
 }
 
+void IDOSRenderView::setOrientation(IDOSOrientation orientation)
+{
+    vtkCamera* camera = m_privateData->renderer->GetActiveCamera();
+    double focalPoint[3];
+    camera->GetFocalPoint(focalPoint);
+    const double distance = camera->GetDistance();
+    double direction[3] = {1.0, 1.0, 0.8};
+    double viewUp[3] = {0.0, 0.0, 1.0};
+    switch (orientation)
+    {
+    case IDOSOrientation::Top:
+        direction[0] = 0.0;
+        direction[1] = 0.0;
+        direction[2] = 1.0;
+        viewUp[0] = 0.0;
+        viewUp[1] = 1.0;
+        viewUp[2] = 0.0;
+        break;
+    case IDOSOrientation::Bottom:
+        direction[0] = 0.0;
+        direction[1] = 0.0;
+        direction[2] = -1.0;
+        viewUp[0] = 0.0;
+        viewUp[1] = 1.0;
+        viewUp[2] = 0.0;
+        break;
+    case IDOSOrientation::Front:
+        direction[0] = 0.0;
+        direction[1] = -1.0;
+        direction[2] = 0.0;
+        break;
+    case IDOSOrientation::Back:
+        direction[0] = 0.0;
+        direction[1] = 1.0;
+        direction[2] = 0.0;
+        break;
+    case IDOSOrientation::Left:
+        direction[0] = -1.0;
+        direction[1] = 0.0;
+        direction[2] = 0.0;
+        break;
+    case IDOSOrientation::Right:
+        direction[0] = 1.0;
+        direction[1] = 0.0;
+        direction[2] = 0.0;
+        break;
+    case IDOSOrientation::Perspective:
+        break;
+    }
+    camera->SetFocalPoint(focalPoint);
+    camera->SetPosition(focalPoint[0] + direction[0] * distance,
+                        focalPoint[1] + direction[1] * distance,
+                        focalPoint[2] + direction[2] * distance);
+    camera->SetViewUp(viewUp);
+    camera->OrthogonalizeViewUp();
+    m_privateData->renderWindow->Render();
+}
+
 void IDOSRenderView::setHighlightedObjectId(const QString& objectId)
 {
     if (m_privateData->highlightedObjectId == objectId)
@@ -486,7 +571,15 @@ void IDOSRenderView::rebuildActors()
         IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(object);
         if (mesh != nullptr)
         {
-            m_privateData->renderer->AddActor(m_privateData->createMeshActor(mesh));
+            vtkSmartPointer<vtkActor> meshActor = m_privateData->createMeshActor(mesh);
+            m_privateData->actorObjectIds.insert(meshActor, mesh->id());
+            if (mesh->id() == m_privateData->highlightedObjectId)
+            {
+                meshActor->GetProperty()->SetEdgeVisibility(true);
+                meshActor->GetProperty()->SetEdgeColor(1.0, 0.95, 0.15);
+                meshActor->GetProperty()->SetLineWidth(2.5);
+            }
+            m_privateData->renderer->AddActor(meshActor);
             continue;
         }
         IDOSWellRenderObject* well = dynamic_cast<IDOSWellRenderObject*>(object);

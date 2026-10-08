@@ -6,11 +6,15 @@
 #include <QIcon>
 #include <QItemSelectionModel>
 #include <QKeySequence>
+#include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalBlocker>
+#include <QSlider>
 #include <QToolButton>
 #include <QTreeView>
+#include <QVBoxLayout>
 
 #include <DockManager.h>
 #include <DockWidget.h>
@@ -33,6 +37,7 @@
 #include "command/idosrenameobjectcommand.h"
 #include "idosapplication.h"
 #include "idosassistantwidget.h"
+#include "idosdataobject.h"
 #include "idoscasetreemenuprovider.h"
 #include "idoscasetreemodel.h"
 #include "idoscasetreeview.h"
@@ -79,6 +84,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_treeProviderRegistry(new IDOSTreeProviderRegistry())
     , m_renderServer(new IDOSRenderServer(this))
     , m_renderView(nullptr)
+    , m_wireframeAction(nullptr)
+    , m_transparencySlider(nullptr)
     , m_propertyWidget(nullptr)
     , m_runtimeInfoWidget(nullptr)
     , m_debugInfoWidget(nullptr)
@@ -149,16 +156,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
         fileButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     }
 
-    SARibbonPanel* importPanel = projectPage->addPanel(tr("Data Import"));
-    createPlaceholderAction(importPanel, tr("Import Well Data"), QStringLiteral("importWellDataAction"),
-                            QStringLiteral(":/images/gui-well-import.svg"), true);
-    createPlaceholderAction(importPanel, tr("Import Grid"), QStringLiteral("importGridAction"),
-                            QStringLiteral(":/images/gui-grid.svg"), false);
-    createPlaceholderAction(importPanel, tr("Import Case"), QStringLiteral("importCaseAction"),
-                            QStringLiteral(":/images/gui-case.svg"), false);
-    createPlaceholderAction(importPanel, tr("Import Property"), QStringLiteral("importPropertyAction"),
-                            QStringLiteral(":/images/gui-grid-static-properties.svg"), false);
-
     m_actionUndo = new QAction(QIcon(QStringLiteral(":/images/app-undo.svg")),
                                tr("Undo"),
                                this);
@@ -179,10 +176,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     SARibbonQuickAccessBar* quickAccessBar = ribbonBar()->quickAccessBar();
     quickAccessBar->addAction(m_actionUndo);
     quickAccessBar->addAction(m_actionRedo);
-    SARibbonPanel* historyPanel = projectPage->addPanel(tr("History"));
-    historyPanel->addSmallAction(m_actionUndo);
-    historyPanel->addSmallAction(m_actionRedo);
-
     m_dockManager = new ads::CDockManager(this);
     m_dockManager->setStyleSheet(QString());
     setCentralWidget(m_dockManager);
@@ -204,30 +197,63 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
                             QStringLiteral(":/images/render-pan.svg"), false);
     createPlaceholderAction(navigationPanel, tr("Zoom View"), QStringLiteral("threeDZoomViewAction"),
                             QStringLiteral(":/images/render-zoom.svg"), false);
-    createPlaceholderAction(navigationPanel, tr("Zoom to Fit"), QStringLiteral("threeDZoomToFitAction"),
+    QAction* zoomToFitAction = createPlaceholderAction(navigationPanel, tr("Zoom to Fit"), QStringLiteral("threeDZoomToFitAction"),
                             QStringLiteral(":/images/render-fit.svg"), true);
-    createPlaceholderAction(navigationPanel, tr("Standard Views"), QStringLiteral("threeDStandardViewsAction"),
-                            QStringLiteral(":/images/render-standard-views.svg"), false);
+    zoomToFitAction->setEnabled(true);
+    connect(zoomToFitAction, &QAction::triggered, m_renderServer, &IDOSRenderServer::resetActiveViewCamera);
+    QMenu* standardViewsMenu = new QMenu(tr("Standard Views"), this);
+    standardViewsMenu->menuAction()->setObjectName(QStringLiteral("threeDStandardViewsAction"));
+    QAction* topViewAction = standardViewsMenu->addAction(tr("Top View"));
+    topViewAction->setData(static_cast<int>(IDOSOrientation::Top));
+    QAction* bottomViewAction = standardViewsMenu->addAction(tr("Bottom View"));
+    bottomViewAction->setData(static_cast<int>(IDOSOrientation::Bottom));
+    QAction* frontViewAction = standardViewsMenu->addAction(tr("Front View"));
+    frontViewAction->setData(static_cast<int>(IDOSOrientation::Front));
+    QAction* backViewAction = standardViewsMenu->addAction(tr("Back View"));
+    backViewAction->setData(static_cast<int>(IDOSOrientation::Back));
+    QAction* leftViewAction = standardViewsMenu->addAction(tr("Left View"));
+    leftViewAction->setData(static_cast<int>(IDOSOrientation::Left));
+    QAction* rightViewAction = standardViewsMenu->addAction(tr("Right View"));
+    rightViewAction->setData(static_cast<int>(IDOSOrientation::Right));
+    connect(standardViewsMenu, &QMenu::triggered, this, &IDOSMainWindow::onStandardViewTriggered);
+    navigationPanel->addSmallMenu(standardViewsMenu);
 
     SARibbonPanel* selectionPanel = threeDPage->addPanel(tr("Selection"));
     createPlaceholderAction(selectionPanel, tr("Select Object"), QStringLiteral("threeDSelectObjectAction"),
                             QStringLiteral(":/images/render-select.svg"), true);
     createPlaceholderAction(selectionPanel, tr("Box Selection"), QStringLiteral("threeDBoxSelectionAction"),
                             QStringLiteral(":/images/render-box-select.svg"), false);
-    createPlaceholderAction(selectionPanel, tr("Clear Selection"), QStringLiteral("threeDClearSelectionAction"),
+    QAction* clearSelectionAction = createPlaceholderAction(selectionPanel, tr("Clear Selection"), QStringLiteral("threeDClearSelectionAction"),
                             QStringLiteral(":/images/render-clear-selection.svg"), false);
+    clearSelectionAction->setEnabled(true);
+    connect(clearSelectionAction, &QAction::triggered, this, &IDOSMainWindow::onClearRenderSelection);
 
     SARibbonPanel* displayPanel = threeDPage->addPanel(tr("Display"));
-    createPlaceholderAction(displayPanel, tr("Show Grid"), QStringLiteral("threeDShowGridAction"),
-                            QStringLiteral(":/images/gui-grid-geometry.svg"), false);
-    createPlaceholderAction(displayPanel, tr("Wireframe"), QStringLiteral("threeDWireframeAction"),
+    m_wireframeAction = createPlaceholderAction(displayPanel, tr("Wireframe"), QStringLiteral("threeDWireframeAction"),
                             QStringLiteral(":/images/render-wireframe.svg"), false);
-    createPlaceholderAction(displayPanel, tr("Show Wellheads"), QStringLiteral("threeDShowWellheadsAction"),
-                            QStringLiteral(":/images/gui-wellhead.svg"), false);
-    createPlaceholderAction(displayPanel, tr("Show Trajectories"), QStringLiteral("threeDShowTrajectoriesAction"),
-                            QStringLiteral(":/images/gui-well-trajectory.svg"), false);
-    createPlaceholderAction(displayPanel, tr("Transparency"), QStringLiteral("threeDTransparencyAction"),
-                            QStringLiteral(":/images/render-transparency.svg"), false);
+    m_wireframeAction->setCheckable(true);
+    connect(m_wireframeAction, &QAction::toggled, this, &IDOSMainWindow::onWireframeToggled);
+    connect(m_renderServer, &IDOSRenderServer::selectedGridDisplayModeChanged,
+            this, &IDOSMainWindow::onSelectedGridDisplayModeChanged);
+    QWidget* opacityWidget = new QWidget(this);
+    QVBoxLayout* opacityLayout = new QVBoxLayout(opacityWidget);
+    opacityLayout->setContentsMargins(2, 0, 2, 0);
+    QLabel* opacityLabel = new QLabel(tr("Grid Opacity"), opacityWidget);
+    m_transparencySlider = new QSlider(Qt::Horizontal, opacityWidget);
+    m_transparencySlider->setObjectName(QStringLiteral("threeDObjectOpacitySlider"));
+    m_transparencySlider->setRange(0, 100);
+    m_transparencySlider->setValue(100);
+    m_transparencySlider->setFixedWidth(120);
+    m_transparencySlider->setAccessibleName(tr("Selected Grid Opacity"));
+    m_transparencySlider->setToolTip(tr("Opacity of the selected grid"));
+    m_transparencySlider->setEnabled(false);
+    opacityLayout->addWidget(opacityLabel);
+    opacityLayout->addWidget(m_transparencySlider);
+    displayPanel->addWidget(opacityWidget, SARibbonPanelItem::Large);
+    connect(m_transparencySlider, &QSlider::valueChanged,
+            m_renderServer, &IDOSRenderServer::setSelectedObjectOpacityPercent);
+    connect(m_renderServer, &IDOSRenderServer::selectedObjectOpacityChanged,
+            this, &IDOSMainWindow::onSelectedObjectOpacityChanged);
 
     SARibbonPanel* visualizationPanel = threeDPage->addPanel(tr("Property Visualization"));
     createPlaceholderAction(visualizationPanel, tr("Color by Property"), QStringLiteral("threeDColorByPropertyAction"),
@@ -323,6 +349,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     // ---- 工况树 ----
     m_caseTreeView = new IDOSCaseTreeView(this);
     m_caseTreeView->setModel(m_caseTreeModel);
+    connect(m_caseTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
+            this, &IDOSMainWindow::onCaseTreeCurrentChanged);
     connect(m_caseTreeModel, &IDOSCaseTreeModel::itemCheckedChanged, m_renderServer, &IDOSRenderServer::onItemCheckedChanged);
     connect(m_renderServer, &IDOSRenderServer::titleChanged, m_renderDock, &ads::CDockWidget::setWindowTitle);
     IDOSCaseTreeMenuProvider* caseMenu = new IDOSCaseTreeMenuProvider(m_caseTreeView);
@@ -389,6 +417,7 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     }
     m_project = project;
     m_renderServer->setProject(project);
+    m_renderServer->setSelectedObjectId(QString());
     m_assistantWidget->setProject(project);
     m_propertyWidget->clear();
     m_renderServer->setHighlightedObjectId(QString());
@@ -503,7 +532,7 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     if (m_project == nullptr || !current.isValid())
     {
         m_propertyWidget->clear();
-        m_renderServer->setHighlightedObjectId(QString());
+        m_renderServer->setSelectedObjectId(QString());
         return;
     }
 
@@ -516,7 +545,7 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
         {
             m_propertyWidget->setWell(well);
             m_propertyWidget->setWellPart(QString(), QString());
-            m_renderServer->setHighlightedObjectId(well->objectId());
+            m_renderServer->setSelectedObjectId(well->objectId());
             return;
         }
     }
@@ -529,26 +558,76 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
         {
             m_propertyWidget->setWell(well);
             m_propertyWidget->setWellPart(partNode->partKey().toString(), partNode->itemKey());
-            m_renderServer->setHighlightedObjectId(well->objectId());
+            m_renderServer->setSelectedObjectId(well->objectId());
             return;
         }
     }
 
     m_propertyWidget->clear();
-    m_renderServer->setHighlightedObjectId(QString());
+    IDOSDataObject* selectedObject = m_dataTreeModel->objectFromIndex(current);
+    m_renderServer->setSelectedObjectId(selectedObject != nullptr ? selectedObject->objectId() : QString());
 }
 
 void IDOSMainWindow::onRenderObjectActivated(const QString& objectId)
 {
-    const QModelIndex index = m_dataTreeModel->indexFromObjectId(objectId);
+    QModelIndex index = m_dataTreeModel->indexFromObjectId(objectId);
+    QTreeView* targetView = m_dataTreeView;
+    if (!index.isValid())
+    {
+        index = m_caseTreeModel->indexFromReferencedObjectId(objectId);
+        targetView = m_caseTreeView;
+    }
     if (!index.isValid())
     {
         return;
     }
 
-    m_dataTreeView->setCurrentIndex(index);
-    m_dataTreeView->expand(index.parent());
-    m_dataTreeView->scrollTo(index);
+    targetView->setCurrentIndex(index);
+    targetView->expand(index.parent());
+    targetView->scrollTo(index);
+}
+
+void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous)
+{
+    Q_UNUSED(previous)
+    IDOSDataObject* object = m_caseTreeModel->objectFromIndex(current);
+    m_renderServer->setSelectedObjectId(object != nullptr ? object->objectId() : QString());
+}
+
+void IDOSMainWindow::onStandardViewTriggered(QAction* action)
+{
+    if (action != nullptr)
+    {
+        m_renderServer->setActiveViewOrientation(static_cast<IDOSOrientation>(action->data().toInt()));
+    }
+}
+
+void IDOSMainWindow::onClearRenderSelection()
+{
+    m_dataTreeView->selectionModel()->clearSelection();
+    m_dataTreeView->setCurrentIndex(QModelIndex());
+    m_caseTreeView->selectionModel()->clearSelection();
+    m_caseTreeView->setCurrentIndex(QModelIndex());
+    m_renderServer->setSelectedObjectId(QString());
+}
+
+void IDOSMainWindow::onWireframeToggled(bool enabled)
+{
+    m_renderServer->setSelectedGridDisplayMode(enabled ? IDOSDisplayMode::Wireframe : IDOSDisplayMode::Surface);
+}
+
+void IDOSMainWindow::onSelectedObjectOpacityChanged(int opacityPercent, bool enabled)
+{
+    const QSignalBlocker signalBlocker(m_transparencySlider);
+    m_transparencySlider->setValue(opacityPercent);
+    m_transparencySlider->setEnabled(enabled);
+}
+
+void IDOSMainWindow::onSelectedGridDisplayModeChanged(IDOSDisplayMode mode, bool enabled)
+{
+    const QSignalBlocker signalBlocker(m_wireframeAction);
+    m_wireframeAction->setChecked(mode == IDOSDisplayMode::Wireframe);
+    m_wireframeAction->setEnabled(enabled);
 }
 
 void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)

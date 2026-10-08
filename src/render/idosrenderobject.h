@@ -19,11 +19,14 @@ class RENDER_EXPORT IDOSRenderObject
 
     bool visible() const;
     void setVisible(bool visible);
+    double opacity() const;
+    void setOpacity(double opacity);
 
   private:
     QString m_id;
     QString m_name;
     bool m_visible;
+    double m_opacity;
 };
 
 #endif // IDOS_RENDER_OBJECT_H

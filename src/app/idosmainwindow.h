@@ -11,6 +11,7 @@ class IDOSProjectMetadata;
 class QAction;
 class QCloseEvent;
 class QModelIndex;
+class QSlider;
 class IDOSCommandManager;
 class IDOSProject;
 class IDOSDataTreeModel;
@@ -27,6 +28,7 @@ class IDOSAssistantWidget;
 class IDOSDebugInfoWidget;
 class IDOSRuntimeInfoWidget;
 class SARibbonPanel;
+enum class IDOSDisplayMode;
 
 namespace ads
 {
@@ -71,6 +73,12 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onDataTreeItemActivated(const QModelIndex& index);
     void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
     void onRenderObjectActivated(const QString& objectId);
+    void onCaseTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+    void onStandardViewTriggered(QAction* action);
+    void onClearRenderSelection();
+    void onWireframeToggled(bool enabled);
+    void onSelectedObjectOpacityChanged(int opacityPercent, bool enabled);
+    void onSelectedGridDisplayModeChanged(IDOSDisplayMode mode, bool enabled);
 
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -97,6 +105,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSTreeProviderRegistry* m_treeProviderRegistry;
     IDOSRenderServer* m_renderServer;
     IDOSRenderView* m_renderView;
+    QAction* m_wireframeAction;
+    QSlider* m_transparencySlider;
     IDOSPropertyWidget* m_propertyWidget;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
     IDOSDebugInfoWidget* m_debugInfoWidget;

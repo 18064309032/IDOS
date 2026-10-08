@@ -465,10 +465,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工程设置</translation>
     </message>
     <message>
-        <source>Data Import</source>
-        <translation>数据导入</translation>
-    </message>
-    <message>
         <source>Import Well Data</source>
         <translation>导入井数据</translation>
     </message>
@@ -509,6 +505,30 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>标准视图</translation>
     </message>
     <message>
+        <source>Top View</source>
+        <translation>顶视图</translation>
+    </message>
+    <message>
+        <source>Bottom View</source>
+        <translation>底视图</translation>
+    </message>
+    <message>
+        <source>Front View</source>
+        <translation>前视图</translation>
+    </message>
+    <message>
+        <source>Back View</source>
+        <translation>后视图</translation>
+    </message>
+    <message>
+        <source>Left View</source>
+        <translation>左视图</translation>
+    </message>
+    <message>
+        <source>Right View</source>
+        <translation>右视图</translation>
+    </message>
+    <message>
         <source>Selection</source>
         <translation>选择</translation>
     </message>
@@ -537,12 +557,16 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>线框</translation>
     </message>
     <message>
-        <source>Show Wellheads</source>
-        <translation>显示井口</translation>
+        <source>Grid Opacity</source>
+        <translation>网格不透明度</translation>
     </message>
     <message>
-        <source>Show Trajectories</source>
-        <translation>显示井轨迹</translation>
+        <source>Selected Grid Opacity</source>
+        <translation>所选网格不透明度</translation>
+    </message>
+    <message>
+        <source>Opacity of the selected grid</source>
+        <translation>调整树中当前选中网格的不透明度</translation>
     </message>
     <message>
         <source>Transparency</source>
@@ -619,10 +643,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Edit</source>
         <translation>编辑</translation>
-    </message>
-    <message>
-        <source>History</source>
-        <translation>历史记录</translation>
     </message>
     <message>
         <source>3D View</source>
