@@ -22,6 +22,7 @@ class GUI_EXPORT IDOSCaseTreeModel : public IDOSTreeModel
 
     void setTreeProviderRegistry(IDOSTreeProviderRegistry* registry);
     bool setData(const QModelIndex& index, const QVariant& value, int role) override;
+    QModelIndex indexFromReferencedObjectId(const QString& objectId) const;
 
     Q_SIGNAL void itemCheckedChanged(const QString& objectId, bool checked);
 

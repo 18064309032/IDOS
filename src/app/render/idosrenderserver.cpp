@@ -22,6 +22,9 @@ IDOSRenderServer::IDOSRenderServer(QObject* parent)
     , m_views()
     , m_activeViewId()
     , m_highlightedObjectId()
+    , m_selectedGridId()
+    , m_opacityPercentByObjectId()
+    , m_displayModeByGridId()
     , m_providers()
 {
 }
@@ -57,6 +60,11 @@ void IDOSRenderServer::setProject(IDOSProject* project)
     }
 
     m_highlightedObjectId.clear();
+    m_selectedGridId.clear();
+    m_opacityPercentByObjectId.clear();
+    m_displayModeByGridId.clear();
+    emit selectedObjectOpacityChanged(100, false);
+    emit selectedGridDisplayModeChanged(IDOSDisplayMode::Surface, false);
     m_mainScene->clear();
     if (m_project != nullptr)
     {
@@ -199,6 +207,98 @@ void IDOSRenderServer::setHighlightedObjectId(const QString& objectId)
     }
 }
 
+void IDOSRenderServer::setSelectedObjectId(const QString& objectId)
+{
+    QString renderObjectId;
+    QString selectedGridId;
+    QString highlightedObjectId;
+    if (m_project != nullptr && !objectId.isEmpty())
+    {
+        const IDOSDataObject* object = m_project->objectById(objectId);
+        bool hasProvider = false;
+        for (int index = 0; object != nullptr && index < m_providers.size(); ++index)
+        {
+            if (m_providers.at(index)->canCreate(object))
+            {
+                hasProvider = true;
+                break;
+            }
+        }
+        if (hasProvider && object != nullptr)
+        {
+            renderObjectId = object->objectId();
+            highlightedObjectId = renderObjectId;
+            if (qobject_cast<const IDOSGrid*>(object) != nullptr)
+            {
+                selectedGridId = renderObjectId;
+            }
+        }
+    }
+    m_selectedGridId = selectedGridId;
+    setHighlightedObjectId(highlightedObjectId);
+    emit selectedObjectOpacityChanged(selectedObjectOpacityPercent(), !m_selectedGridId.isEmpty());
+    emit selectedGridDisplayModeChanged(selectedGridDisplayMode(), !m_selectedGridId.isEmpty());
+}
+
+int IDOSRenderServer::selectedObjectOpacityPercent() const
+{
+    return m_opacityPercentByObjectId.value(m_selectedGridId, 100);
+}
+
+void IDOSRenderServer::setSelectedObjectOpacityPercent(int opacityPercent)
+{
+    if (m_selectedGridId.isEmpty())
+    {
+        return;
+    }
+    const int clampedOpacity = qBound(0, opacityPercent, 100);
+    m_opacityPercentByObjectId.insert(m_selectedGridId, clampedOpacity);
+    IDOSRenderObject* renderObject = m_mainScene->object(m_selectedGridId);
+    if (renderObject != nullptr)
+    {
+        renderObject->setOpacity(static_cast<double>(clampedOpacity) / 100.0);
+        refreshViews();
+    }
+}
+
+void IDOSRenderServer::resetActiveViewCamera()
+{
+    IDOSRenderView* renderView = activeView();
+    if (renderView != nullptr)
+    {
+        renderView->resetCamera();
+    }
+}
+
+void IDOSRenderServer::setActiveViewOrientation(IDOSOrientation orientation)
+{
+    IDOSRenderView* renderView = activeView();
+    if (renderView != nullptr)
+    {
+        renderView->setOrientation(orientation);
+    }
+}
+
+IDOSDisplayMode IDOSRenderServer::selectedGridDisplayMode() const
+{
+    return m_displayModeByGridId.value(m_selectedGridId, IDOSDisplayMode::Surface);
+}
+
+void IDOSRenderServer::setSelectedGridDisplayMode(IDOSDisplayMode mode)
+{
+    if (m_selectedGridId.isEmpty())
+    {
+        return;
+    }
+    m_displayModeByGridId.insert(m_selectedGridId, mode);
+    IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(m_mainScene->object(m_selectedGridId));
+    if (mesh != nullptr)
+    {
+        mesh->setDisplayMode(mode);
+        refreshViews();
+    }
+}
+
 void IDOSRenderServer::addProvider(IDOSRenderObjectProvider* provider)
 {
     if (provider == nullptr)
@@ -259,7 +359,18 @@ IDOSRenderObject* IDOSRenderServer::createObject(const IDOSDataObject* object) c
         IDOSRenderObjectProvider* provider = m_providers.at(index);
         if (provider->canCreate(object))
         {
-            return provider->createObject(object);
+            IDOSRenderObject* renderObject = provider->createObject(object);
+            if (renderObject != nullptr && m_opacityPercentByObjectId.contains(renderObject->id()))
+            {
+                renderObject->setOpacity(static_cast<double>(m_opacityPercentByObjectId.value(renderObject->id()))
+                                         / 100.0);
+            }
+            IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(renderObject);
+            if (mesh != nullptr && m_displayModeByGridId.contains(mesh->id()))
+            {
+                mesh->setDisplayMode(m_displayModeByGridId.value(mesh->id()));
+            }
+            return renderObject;
         }
     }
     return nullptr;

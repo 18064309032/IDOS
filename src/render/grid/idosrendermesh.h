@@ -6,6 +6,7 @@
 #include <QVector3D>
 
 #include "idosrenderobject.h"
+#include "idosrendertypes.h"
 
 class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
 {
@@ -32,6 +33,9 @@ class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
     void setCellScalars(const QString& name, const QVector<double>& values);
     bool hasCellScalars() const;
 
+    IDOSDisplayMode displayMode() const;
+    void setDisplayMode(IDOSDisplayMode mode);
+
     /** 清除属性着色，网格回退到默认色（保持可见）。 */
     void clearCellScalars();
 
@@ -43,6 +47,7 @@ class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
     QVector<int> m_cellGlobalIndices;
     QString m_cellScalarName;
     QVector<double> m_cellScalars;
+    IDOSDisplayMode m_displayMode;
 };
 
 #endif // IDOS_RENDER_MESH_H

@@ -26,6 +26,33 @@ void IDOSCaseTreeModel::setTreeProviderRegistry(IDOSTreeProviderRegistry* regist
     m_treeProviderRegistry = registry;
 }
 
+QModelIndex IDOSCaseTreeModel::indexFromReferencedObjectId(const QString& objectId) const
+{
+    if (objectId.isEmpty())
+    {
+        return QModelIndex();
+    }
+    QList<QModelIndex> pending;
+    for (int row = 0; row < rowCount(QModelIndex()); ++row)
+    {
+        pending.append(index(row, 0, QModelIndex()));
+    }
+    while (!pending.isEmpty())
+    {
+        const QModelIndex current = pending.takeLast();
+        IDOSTreeReferenceNode* referenceNode = dynamic_cast<IDOSTreeReferenceNode*>(nodeFromIndex(current));
+        if (referenceNode != nullptr && referenceNode->itemRef().objectId() == objectId)
+        {
+            return current;
+        }
+        for (int row = 0; row < rowCount(current); ++row)
+        {
+            pending.append(index(row, 0, current));
+        }
+    }
+    return QModelIndex();
+}
+
 bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
     if (index.isValid() && role == Qt::CheckStateRole && value.toInt() == Qt::Checked)

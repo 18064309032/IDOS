@@ -1,6 +1,7 @@
 #include "idosrendermesh.h"
 
 IDOSRenderMesh::IDOSRenderMesh()
+    : m_displayMode(IDOSDisplayMode::Surface)
 {
 }
 
@@ -85,6 +86,16 @@ bool IDOSRenderMesh::hasCellScalars() const
     return !m_cellScalarName.isEmpty() && m_cellScalars.size() == hexahedronCount();
 }
 
+IDOSDisplayMode IDOSRenderMesh::displayMode() const
+{
+    return m_displayMode;
+}
+
+void IDOSRenderMesh::setDisplayMode(IDOSDisplayMode mode)
+{
+    m_displayMode = mode;
+}
+
 void IDOSRenderMesh::clearCellScalars()
 {
     m_cellScalarName.clear();
@@ -98,5 +109,6 @@ void IDOSRenderMesh::clear()
     m_cellGlobalIndices.clear();
     m_cellScalarName.clear();
     m_cellScalars.clear();
+    m_displayMode = IDOSDisplayMode::Surface;
 }
 

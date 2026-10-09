@@ -38,6 +38,13 @@ class APP_EXPORT IDOSRenderServer : public QObject
     QString activeViewId() const;
     IDOSRenderView* activeView() const;
     void setHighlightedObjectId(const QString& objectId);
+    void setSelectedObjectId(const QString& objectId);
+    int selectedObjectOpacityPercent() const;
+    void setSelectedObjectOpacityPercent(int opacityPercent);
+    void resetActiveViewCamera();
+    void setActiveViewOrientation(IDOSOrientation orientation);
+    IDOSDisplayMode selectedGridDisplayMode() const;
+    void setSelectedGridDisplayMode(IDOSDisplayMode mode);
 
     void addProvider(IDOSRenderObjectProvider* provider);
 
@@ -48,6 +55,8 @@ class APP_EXPORT IDOSRenderServer : public QObject
   signals:
     void currentViewChanged(const QString& viewId);
     void titleChanged(const QString& title);
+    void selectedObjectOpacityChanged(int opacityPercent, bool enabled);
+    void selectedGridDisplayModeChanged(IDOSDisplayMode mode, bool enabled);
 
   private slots:
     void onViewActivated();
@@ -75,6 +84,9 @@ class APP_EXPORT IDOSRenderServer : public QObject
     QMap<QString, IDOSRenderView*> m_views;
     QString m_activeViewId;
     QString m_highlightedObjectId;
+    QString m_selectedGridId;
+    QMap<QString, int> m_opacityPercentByObjectId;
+    QMap<QString, IDOSDisplayMode> m_displayModeByGridId;
     QList<IDOSRenderObjectProvider*> m_providers;
 };
 
