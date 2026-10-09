@@ -275,7 +275,32 @@ void IDOSRenderServer::setActiveViewOrientation(IDOSOrientation orientation)
     IDOSRenderView* renderView = activeView();
     if (renderView != nullptr)
     {
-        renderView->setOrientation(orientation);
+        IDOSRenderView::ViewPreset viewPreset = IDOSRenderView::ViewPreset::Isometric;
+        switch (orientation)
+        {
+        case IDOSOrientation::Perspective:
+            viewPreset = IDOSRenderView::ViewPreset::Isometric;
+            break;
+        case IDOSOrientation::Top:
+            viewPreset = IDOSRenderView::ViewPreset::Top;
+            break;
+        case IDOSOrientation::Bottom:
+            viewPreset = IDOSRenderView::ViewPreset::Bottom;
+            break;
+        case IDOSOrientation::Front:
+            viewPreset = IDOSRenderView::ViewPreset::Front;
+            break;
+        case IDOSOrientation::Back:
+            viewPreset = IDOSRenderView::ViewPreset::Back;
+            break;
+        case IDOSOrientation::Left:
+            viewPreset = IDOSRenderView::ViewPreset::Left;
+            break;
+        case IDOSOrientation::Right:
+            viewPreset = IDOSRenderView::ViewPreset::Right;
+            break;
+        }
+        renderView->setViewPreset(viewPreset);
     }
 }
 
