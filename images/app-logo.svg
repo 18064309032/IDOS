@@ -1,9 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <title>IDOS application</title>
-  <g fill="none" stroke="#3566B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m4 9 12-6 12 6v14l-12 6-12-6Z"/>
-    <path d="m4 9 12 6 12-6M16 15v14M10 6l12 6v14M4 16l12 6 12-6"/>
-  </g>
-  <path d="M11 12v9c0 2 1.4 3.2 3.4 2.2l5.8-3" fill="none" stroke="#23865A" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="11" cy="12" r="2" fill="#D95B4A"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="16" y1="13" x2="48" y2="51" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset=".52" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#020617" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="54" height="54" rx="15" fill="url(#bg)"/>
+  <path d="M17 38.5 32 29l15 9.5-15 9.5z" fill="#0B1220" opacity=".38"/>
+  <path d="M17 28.5 32 19l15 9.5-15 9.5z" fill="url(#mark)" filter="url(#shadow)"/>
+  <path d="M17 28.5v10L32 48V38zM47 28.5v10L32 48V38z" fill="none" stroke="url(#mark)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22.5 28.5 32 34.4l9.5-5.9M32 19v29" fill="none" stroke="#ECFEFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".84"/>
+  <circle cx="48" cy="16" r="4.2" fill="#34D399"/>
+  <circle cx="48" cy="16" r="1.7" fill="#ECFEFF"/>
 </svg>

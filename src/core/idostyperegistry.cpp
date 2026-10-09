@@ -1,10 +1,10 @@
-#include <QDebug>
 #include <QObject>
 
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idossimulationcaseobject.h"
 #include "idoswell.h"
+#include "log/idoslogger.h"
 
 #include "idostyperegistry.h"
 
@@ -94,14 +94,15 @@ void IDOSTypeRegistry::registerType(std::unique_ptr<IDOSObjectTypeMetadata> meta
 {
     if (meta == nullptr)
     {
-        qWarning() << "IDOSTypeRegistry::registerType: null metadata";
+        IDOS_WARN(QObject::tr("IDOSTypeRegistry::registerType: null metadata"));
         return;
     }
 
     const QString typeId = meta->typeId();
     if (m_types.contains(typeId))
     {
-        qWarning() << "IDOSTypeRegistry::registerType: typeId" << typeId << "already registered, overwriting";
+        IDOS_WARN(QObject::tr("IDOSTypeRegistry::registerType: typeId %1 already registered, overwriting")
+                      .arg(typeId));
         delete m_types.take(typeId);
     }
     m_types.insert(typeId, meta.release());
@@ -112,7 +113,7 @@ IDOSDataObject* IDOSTypeRegistry::create(const QString& typeId, QObject* parent)
     QHash<QString, IDOSObjectTypeMetadata*>::const_iterator it = m_types.constFind(typeId);
     if (it == m_types.constEnd())
     {
-        qWarning() << "IDOSTypeRegistry::create: unknown typeId" << typeId;
+        IDOS_WARN(QObject::tr("IDOSTypeRegistry::create: unknown typeId %1").arg(typeId));
         return nullptr;
     }
     return it.value()->create(parent);

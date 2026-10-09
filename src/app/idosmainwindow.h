@@ -1,6 +1,7 @@
 #ifndef IDOS_MAIN_WINDOW_H
 #define IDOS_MAIN_WINDOW_H
 
+#include <QPointer>
 #include <QString>
 
 #include <SARibbonMainWindow.h>
@@ -26,7 +27,9 @@ class IDOSPropertyWidget;
 class IDOSAssistantWidget;
 class IDOSDebugInfoWidget;
 class IDOSRuntimeInfoWidget;
-class SARibbonPanel;
+class IDOSPluginRegistry;
+class IDOSPluginManagerWidget;
+class IDOSAppInterface;
 
 namespace ads
 {
@@ -71,13 +74,22 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onDataTreeItemActivated(const QModelIndex& index);
     void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
     void onRenderObjectActivated(const QString& objectId);
+    void onPluginManagerTriggered();
+    void onCurrentViewChanged(const QString& viewId);
+    void onViewPresetTriggered(QAction* action);
+    void onResetViewTriggered();
 
   protected:
     void closeEvent(QCloseEvent* event) override;
 
   private:
-    QAction* createPlaceholderAction(SARibbonPanel* panel, const QString& text, const QString& objectName,
-                                    const QString& iconPath, bool useLargeButton);
+    void initProviders();
+    void initMainWindow();
+    void initDockManager();
+    void initRenderView();
+    void initRibbonAction();
+    void initDockWidgets();
+    void initPluginManager();
     bool confirmDiscardProject();
     IDOSWellLogTrackView* findOrCreateWellLogTrackView(IDOSWell* well);
 
@@ -88,8 +100,12 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionProjectSettings;
     QAction* m_actionUndo;
     QAction* m_actionRedo;
+    QAction* m_actionPluginManager;
+    QAction* m_actionViewPresets;
+    QAction* m_actionResetView;
 
     IDOSProject* m_project;
+    QPointer<IDOSCommandManager> m_commandManager;
     IDOSDataTreeModel* m_dataTreeModel;
     IDOSCaseTreeModel* m_caseTreeModel;
     IDOSDataTreeView* m_dataTreeView;
@@ -99,6 +115,9 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSRenderView* m_renderView;
     IDOSPropertyWidget* m_propertyWidget;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
+    IDOSPluginRegistry* m_pluginRegistry;
+    IDOSPluginManagerWidget* m_pluginManagerWidget;
+    IDOSAppInterface* m_appInterface;
     IDOSDebugInfoWidget* m_debugInfoWidget;
     IDOSAssistantWidget* m_assistantWidget;
 

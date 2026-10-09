@@ -1,4 +1,4 @@
-#include <QDebug>
+#include "log/idoslogger.h"
 
 #include "idosgridproperty.h"
 
@@ -114,8 +114,10 @@ bool IDOSGridProperty::setValues(const QVector<double>& values)
     const int expected = totalCellCount();
     if (values.size() != expected)
     {
-        qWarning() << "IDOSGridProperty::setValues: size mismatch for" << m_keyword << "- expected" << expected << "got"
-                   << values.size();
+        IDOS_WARN(tr("IDOSGridProperty::setValues: size mismatch for %1 - expected %2, got %3")
+                      .arg(m_keyword)
+                      .arg(expected)
+                      .arg(values.size()));
         return false;
     }
 
@@ -135,7 +137,10 @@ void IDOSGridProperty::setValueAt(int i, int j, int k, double value)
     const int index = cellIndex(i, j, k, m_nx, m_ny);
     if (index < 0 || index >= m_values.size())
     {
-        qWarning() << "IDOSGridProperty::setValueAt: index out of range" << i << j << k;
+        IDOS_WARN(tr("IDOSGridProperty::setValueAt: index out of range (%1, %2, %3)")
+                      .arg(i)
+                      .arg(j)
+                      .arg(k));
         return;
     }
 

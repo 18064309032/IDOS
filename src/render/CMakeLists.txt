@@ -25,7 +25,7 @@ target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)
     target_compile_definitions(idos_render PUBLIC IDOS_ENABLE_RENDER)
-    target_include_directories(idos_render PRIVATE
+    target_include_directories(idos_render PUBLIC
         "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/include/vtk-9.6"
     )
     target_link_libraries(idos_render PRIVATE

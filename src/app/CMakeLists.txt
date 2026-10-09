@@ -19,6 +19,19 @@ add_library(idos_app SHARED
     idoswelllogtrackview.cpp
     idospropertywidget.h
     idospropertywidget.cpp
+    idosappinterface.h
+    idosappinterface.cpp
+    plugin/idosplugin.h
+    plugin/idospluginmetadata.h
+    plugin/idospluginmetadata.cpp
+    plugin/idosinterface.h
+    plugin/idosinterface.cpp
+    plugin/idospluginregistry.h
+    plugin/idospluginregistry.cpp
+    plugin/idospluginmanagerwidget.h
+    plugin/idospluginmanagerwidget.cpp
+    plugin/idospluginlistmodel.h
+    plugin/idospluginlistmodel.cpp
     idosmainwindow.h
     idosmainwindow.cpp
     render/idosrenderobjectprovider.h

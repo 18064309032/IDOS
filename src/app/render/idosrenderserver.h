@@ -46,9 +46,11 @@ class APP_EXPORT IDOSRenderServer : public QObject
     void onItemStateChanged(const QString& objectId, IDOSItemState state);
 
   signals:
+    void currentViewChanged(const QString& viewId);
     void titleChanged(const QString& title);
 
   private slots:
+    void onViewActivated();
     void onObjectAdded(const QString& objectId);
     void onObjectsAdded(const QStringList& objectIds);
     void onObjectRemoved(const QString& objectId);

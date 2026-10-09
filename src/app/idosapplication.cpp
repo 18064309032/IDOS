@@ -10,6 +10,7 @@ IDOSApplication::IDOSApplication(int& argc, char** argv)
 
 IDOSApplication::~IDOSApplication()
 {
+    IDOS_INFO(tr("Application shutdown is finishing."));
     qInstallMessageHandler(nullptr);
 }
 

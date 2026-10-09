@@ -13,9 +13,11 @@ add_subdirectory(app)
 add_subdirectory(assistant)
 add_subdirectory(analysis)
 add_subdirectory(providers)
+add_subdirectory(plugins)
 
 # 可执行目标
 add_executable(idos WIN32 main.cpp)
+add_dependencies(idos idossimulationplugin)
 
 if(WIN32)
     file(GLOB _idos_assistant_runtime_files CONFIGURE_DEPENDS
@@ -71,8 +73,9 @@ add_custom_command(TARGET idos POST_BUILD
     COMMENT "Deploying IDOS translation..."
 )
 
-# VTK 不链接 exe：只由 idos_render 持有（根 CMake 中已设 PRIVATE），
-# exe 用不到 VTK 头/库；运行期 VTK DLL 由下方 POST_BUILD 拷贝部署。
+# VTK 库不链接 exe：只由 idos_render 持有（根 CMake 中已设 PRIVATE）。
+# idos_render 的公共头包含 vtkSmartPointer，因此 VTK 头文件目录由 idos_render 传递给编译目标。
+# 运行期 VTK DLL 由下方 POST_BUILD 拷贝部署。
 
 if(WIN32)
     # Deploy Qt DLLs (windeployqt analyzes Qt dependencies)

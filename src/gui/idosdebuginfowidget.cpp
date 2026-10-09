@@ -40,13 +40,11 @@ IDOSDebugInfoWidget::IDOSDebugInfoWidget(QWidget* parent)
     connect(&logger,
             &IDOSLogger::recordAppended,
             this,
-            &IDOSDebugInfoWidget::onRecordAppended,
-            Qt::QueuedConnection);
+            &IDOSDebugInfoWidget::onRecordAppended);
     connect(&logger,
             &IDOSLogger::recordsCleared,
             this,
-            &IDOSDebugInfoWidget::onRecordsCleared,
-            Qt::QueuedConnection);
+            &IDOSDebugInfoWidget::onRecordsCleared);
 
     rebuild();
 }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Plugin manager</title>
+  <g fill="none" stroke="#3566B8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 3v3m8-3v3M5 9h14v10H5z"/>
+    <path d="M9 13h6m-3-3v6M3 11v6m18-6v6"/>
+    <path d="M8 19v2m8-2v2"/>
+  </g>
+</svg>

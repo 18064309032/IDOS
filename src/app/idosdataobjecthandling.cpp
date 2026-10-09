@@ -23,6 +23,7 @@
 #include "idosproviderregistry.h"
 #include "idossimulationcaseobject.h"
 #include "idoswell.h"
+#include "log/idoslogger.h"
 
 #include "idosdataobjecthandling.h"
 
@@ -73,8 +74,10 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
         tr("Well Data (*.txt *.TXT *.dev *.DEV *.las *.LAS);;All Files (*.*)"));
     if (files.isEmpty() || target.isNull())
     {
+        IDOS_DEBUG(tr("Well data import canceled or the target project was closed."));
         return 0;
     }
+    IDOS_INFO(tr("Importing well data from %1 selected file(s).").arg(files.size()));
     int createdWells = 0;
     int mergedData = 0;
     QStringList errors;
@@ -110,6 +113,7 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
                 IDOSProviderRegistry::instance().createProvider(providerId);
             if (!provider)
             {
+                IDOS_WARN(tr("No well data reader is available for file: %1").arg(file));
                 errors.append(tr("Reader unavailable for %1").arg(file));
                 continue;
             }
@@ -144,6 +148,8 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
             }
             if (!provider->lastError().isEmpty())
             {
+                IDOS_WARN(tr("Well data reader reported an error for %1: %2")
+                              .arg(file, provider->lastError()));
                 errors.append(provider->lastError());
             }
         }
@@ -152,6 +158,10 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
     {
         QMessageBox::warning(parent, tr("Import Well Data"), errors.join(QStringLiteral("\n")));
     }
+    IDOS_INFO(tr("Well data import finished: created=%1, merged=%2, errors=%3")
+                  .arg(createdWells)
+                  .arg(mergedData)
+                  .arg(errors.size()));
     return createdWells + mergedData;
 }
 
@@ -173,8 +183,11 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, const QString& 
         tr("Well Data (*.txt *.TXT *.dev *.DEV *.las *.LAS);;All Files (*.*)"));
     if (file.isEmpty() || target.isNull())
     {
+        IDOS_DEBUG(tr("Single-well data import canceled or the target project was closed."));
         return 0;
     }
+    IDOS_INFO(tr("Importing well data from file: %1 into well %2")
+                  .arg(file, targetWellId));
     const QString suffix = QFileInfo(file).suffix().toLower();
     QString providerId;
     if (suffix == QStringLiteral("txt"))
@@ -191,12 +204,14 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, const QString& 
     }
     else
     {
+        IDOS_WARN(tr("Unsupported well data file extension: %1").arg(QFileInfo(file).suffix()));
         return 0;
     }
     std::unique_ptr<IDOSDataProvider> provider =
         IDOSProviderRegistry::instance().createProvider(providerId);
     if (!provider)
     {
+        IDOS_ERROR(tr("The well data reader could not be created for provider %1.").arg(providerId));
         QMessageBox::warning(parent, tr("Import Well Data"), tr("The reader is unavailable."));
         return 0;
     }
@@ -213,6 +228,7 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, const QString& 
     }
     if (sourceWell == nullptr)
     {
+        IDOS_ERROR(tr("The well data reader returned no well data for file: %1").arg(file));
         qDeleteAll(objects);
         QMessageBox::warning(parent, tr("Import Well Data"), provider->lastError());
         return 0;
@@ -222,6 +238,7 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, const QString& 
         targetWell->mergeFrom(sourceWell);
     }
     qDeleteAll(objects);
+    IDOS_INFO(tr("Well data imported into well %1.").arg(targetWellId));
     return 1;
 }
 
@@ -426,6 +443,7 @@ bool IDOSDataObjectHandling::importCase(IDOSProject* project, const QString& fil
         IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
     if (!reader)
     {
+        IDOS_ERROR(tr("The simulation case reader is unavailable."));
         QMessageBox::warning(parent, tr("Import Case"), tr("The simulation case reader is unavailable."));
         return false;
     }
@@ -442,6 +460,8 @@ bool IDOSDataObjectHandling::importCase(IDOSProject* project, const QString& fil
     }
     if (simulationCase == nullptr)
     {
+        IDOS_ERROR(tr("Simulation case parsing failed for %1: %2")
+                       .arg(filePath, reader->lastError()));
         qDeleteAll(objects);
         QMessageBox::warning(parent, tr("Import Case"), reader->lastError());
         return false;
@@ -455,6 +475,8 @@ bool IDOSDataObjectHandling::importCase(IDOSProject* project, const QString& fil
     }
     if (caseNameExists(target, dialog.caseName()))
     {
+        IDOS_WARN(tr("Case import rejected because the name already exists: %1")
+                      .arg(dialog.caseName()));
         qDeleteAll(objects);
         QMessageBox::warning(parent, tr("Import Case"), tr("A case with this name already exists."));
         return false;

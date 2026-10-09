@@ -89,11 +89,6 @@ class CORE_EXPORT IDOSLogger : public QObject
     IDOSLogger& operator=(const IDOSLogger&) = delete;
 };
 
-CORE_EXPORT void idosInitLogger(IDOSLogLevel level = IDOSLogLevel::Info,
-                                const QString& logFile = QString());
-
-CORE_EXPORT void idosSetLogLevel(IDOSLogLevel level);
-
 #define IDOS_TRACE(msg)\
     IDOSLogger::instance().trace(msg, __FILE__, __LINE__, Q_FUNC_INFO)
 

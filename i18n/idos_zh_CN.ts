@@ -307,6 +307,58 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
         <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
     </message>
+    <message>
+        <source>Well data import canceled or the target project was closed.</source>
+        <translation>井数据导入已取消，或目标工程已关闭。</translation>
+    </message>
+    <message>
+        <source>Importing well data from %1 selected file(s).</source>
+        <translation>正在从选定的 %1 个文件导入井数据。</translation>
+    </message>
+    <message>
+        <source>No well data reader is available for file: %1</source>
+        <translation>没有可读取该井数据文件的读取器：%1</translation>
+    </message>
+    <message>
+        <source>Well data reader reported an error for %1: %2</source>
+        <translation>井数据读取器处理文件 %1 时报告错误：%2</translation>
+    </message>
+    <message>
+        <source>Well data import finished: created=%1, merged=%2, errors=%3</source>
+        <translation>井数据导入完成：新建=%1，合并=%2，错误=%3</translation>
+    </message>
+    <message>
+        <source>Single-well data import canceled or the target project was closed.</source>
+        <translation>单井数据导入已取消，或目标工程已关闭。</translation>
+    </message>
+    <message>
+        <source>Importing well data from file: %1 into well %2</source>
+        <translation>正在将文件 %1 的井数据导入井 %2</translation>
+    </message>
+    <message>
+        <source>Unsupported well data file extension: %1</source>
+        <translation>不支持的井数据文件扩展名：%1</translation>
+    </message>
+    <message>
+        <source>The well data reader could not be created for provider %1.</source>
+        <translation>无法创建井数据读取器，数据提供器：%1</translation>
+    </message>
+    <message>
+        <source>The well data reader returned no well data for file: %1</source>
+        <translation>井数据读取器未从文件中读出井数据：%1</translation>
+    </message>
+    <message>
+        <source>Well data imported into well %1.</source>
+        <translation>井数据已导入井 %1。</translation>
+    </message>
+    <message>
+        <source>Simulation case parsing failed for %1: %2</source>
+        <translation>解析模拟工况文件失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Case import rejected because the name already exists: %1</source>
+        <translation>工况名称已存在，拒绝导入：%1</translation>
+    </message>
 </context>
 <context>
     <name>IDOSDataTreeMenuProvider</name>
@@ -433,6 +485,86 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工程</translation>
     </message>
     <message>
+        <source>View</source>
+        <translation>视图</translation>
+    </message>
+    <message>
+        <source>Window</source>
+        <translation>窗口</translation>
+    </message>
+    <message>
+        <source>New 3D Window</source>
+        <translation>新建 3D 窗口</translation>
+    </message>
+    <message>
+        <source>New 2D Window</source>
+        <translation>新建 2D 窗口</translation>
+    </message>
+    <message>
+        <source>Window Layout</source>
+        <translation>窗口布局</translation>
+    </message>
+    <message>
+        <source>Single Window</source>
+        <translation>单窗口</translation>
+    </message>
+    <message>
+        <source>Side by Side</source>
+        <translation>左右并排</translation>
+    </message>
+    <message>
+        <source>Stack Windows</source>
+        <translation>上下并排</translation>
+    </message>
+    <message>
+        <source>Grid Layout</source>
+        <translation>网格排列</translation>
+    </message>
+    <message>
+        <source>1 × 2</source>
+        <translation>1 × 2</translation>
+    </message>
+    <message>
+        <source>2 × 1</source>
+        <translation>2 × 1</translation>
+    </message>
+    <message>
+        <source>2 × 2</source>
+        <translation>2 × 2</translation>
+    </message>
+    <message>
+        <source>2 × 3</source>
+        <translation>2 × 3</translation>
+    </message>
+    <message>
+        <source>3 × 2</source>
+        <translation>3 × 2</translation>
+    </message>
+    <message>
+        <source>3 × 3</source>
+        <translation>3 × 3</translation>
+    </message>
+    <message>
+        <source>Extensions</source>
+        <translation>扩展</translation>
+    </message>
+    <message>
+        <source>AI Assistant</source>
+        <translation>AI 助手</translation>
+    </message>
+    <message>
+        <source>Python Console</source>
+        <translation>Python 控制台</translation>
+    </message>
+    <message>
+        <source>Fit All</source>
+        <translation>适配全部对象</translation>
+    </message>
+    <message>
+        <source>Background Color</source>
+        <translation>背景颜色</translation>
+    </message>
+    <message>
         <source>Home</source>
         <translation>主页</translation>
     </message>
@@ -443,10 +575,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Exit</source>
         <translation>退出</translation>
-    </message>
-    <message>
-        <source>3D</source>
-        <translation>三维</translation>
     </message>
     <message>
         <source>Open Project</source>
@@ -465,148 +593,88 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>工程设置</translation>
     </message>
     <message>
+        <source>Plugin Manager</source>
+        <translation>插件管理器</translation>
+    </message>
+    <message>
+        <source>Plugins</source>
+        <translation>插件</translation>
+    </message>
+    <message>
         <source>Data Import</source>
-        <translation>数据导入</translation>
+        <translation type="vanished">数据导入</translation>
     </message>
     <message>
         <source>Import Well Data</source>
-        <translation>导入井数据</translation>
+        <translation type="vanished">导入井数据</translation>
     </message>
     <message>
         <source>Import Grid</source>
-        <translation>导入网格</translation>
+        <translation type="vanished">导入网格</translation>
     </message>
     <message>
         <source>Import Case</source>
-        <translation>导入工况</translation>
+        <translation type="vanished">导入工况</translation>
     </message>
     <message>
         <source>Import Property</source>
-        <translation>导入属性</translation>
+        <translation type="vanished">导入属性</translation>
     </message>
     <message>
         <source>View Navigation</source>
-        <translation>视图导航</translation>
+        <translation>场景导航</translation>
     </message>
     <message>
-        <source>Rotate View</source>
-        <translation>旋转视图</translation>
+        <source>View Presets</source>
+        <translation>视角预设</translation>
     </message>
     <message>
-        <source>Pan View</source>
-        <translation>平移视图</translation>
+        <source>Front</source>
+        <translation>前视图</translation>
     </message>
     <message>
-        <source>Zoom View</source>
-        <translation>缩放视图</translation>
+        <source>Back</source>
+        <translation>后视图</translation>
     </message>
     <message>
-        <source>Zoom to Fit</source>
-        <translation>缩放至全部对象</translation>
+        <source>Left</source>
+        <translation>左视图</translation>
     </message>
     <message>
-        <source>Standard Views</source>
-        <translation>标准视图</translation>
+        <source>Right</source>
+        <translation>右视图</translation>
     </message>
     <message>
-        <source>Selection</source>
-        <translation>选择</translation>
+        <source>Top</source>
+        <translation>俯视图</translation>
     </message>
     <message>
-        <source>Select Object</source>
-        <translation>选择对象</translation>
+        <source>Bottom</source>
+        <translation>仰视图</translation>
     </message>
     <message>
-        <source>Box Selection</source>
-        <translation>框选对象</translation>
+        <source>Isometric</source>
+        <translation>等轴测视图</translation>
     </message>
     <message>
-        <source>Clear Selection</source>
-        <translation>清除选择</translation>
+        <source>Reset View</source>
+        <translation>视图复位</translation>
     </message>
     <message>
-        <source>Display</source>
-        <translation>显示</translation>
+        <source>Output</source>
+        <translation>输出</translation>
     </message>
     <message>
-        <source>Show Grid</source>
-        <translation>显示网格</translation>
-    </message>
-    <message>
-        <source>Wireframe</source>
-        <translation>线框</translation>
-    </message>
-    <message>
-        <source>Show Wellheads</source>
-        <translation>显示井口</translation>
-    </message>
-    <message>
-        <source>Show Trajectories</source>
-        <translation>显示井轨迹</translation>
-    </message>
-    <message>
-        <source>Transparency</source>
-        <translation>透明度</translation>
-    </message>
-    <message>
-        <source>Property Visualization</source>
-        <translation>属性可视化</translation>
-    </message>
-    <message>
-        <source>Color by Property</source>
-        <translation>按属性着色</translation>
-    </message>
-    <message>
-        <source>Color Legend</source>
-        <translation>色标图例</translation>
-    </message>
-    <message>
-        <source>Color Range</source>
-        <translation>颜色范围</translation>
-    </message>
-    <message>
-        <source>Measurement</source>
-        <translation>测量</translation>
-    </message>
-    <message>
-        <source>Distance</source>
-        <translation>距离测量</translation>
-    </message>
-    <message>
-        <source>Well Length</source>
-        <translation>井段长度</translation>
-    </message>
-    <message>
-        <source>Read Coordinates</source>
-        <translation>读取坐标</translation>
-    </message>
-    <message>
-        <source>Section</source>
-        <translation>剖切</translation>
-    </message>
-    <message>
-        <source>Create Section</source>
-        <translation>创建剖切</translation>
-    </message>
-    <message>
-        <source>Section Position</source>
-        <translation>剖切位置</translation>
-    </message>
-    <message>
-        <source>Clear Section</source>
-        <translation>清除剖切</translation>
-    </message>
-    <message>
-        <source>Annotation and Export</source>
-        <translation>标注与导出</translation>
-    </message>
-    <message>
-        <source>Add Annotation</source>
-        <translation>添加标注</translation>
+        <source>Capture Screenshot</source>
+        <translation>截图</translation>
     </message>
     <message>
         <source>Export Image</source>
-        <translation>导出图像</translation>
+        <translation>导出图片</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>打印</translation>
     </message>
     <message>
         <source>Undo</source>
@@ -618,11 +686,11 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Edit</source>
-        <translation>编辑</translation>
+        <translation type="vanished">编辑</translation>
     </message>
     <message>
         <source>History</source>
-        <translation>历史记录</translation>
+        <translation type="vanished">历史记录</translation>
     </message>
     <message>
         <source>3D View</source>
@@ -669,20 +737,16 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>助手</translation>
     </message>
     <message>
-        <source>Output</source>
-        <translation>输出</translation>
-    </message>
-    <message>
         <source>Debug</source>
         <translation>调试</translation>
     </message>
     <message>
         <source>Runtime output will appear here.</source>
-        <translation>运行输出将显示在这里。</translation>
+        <translation type="vanished">运行输出将显示在这里。</translation>
     </message>
     <message>
         <source>Debug information will appear here.</source>
-        <translation>调试信息将显示在这里。</translation>
+        <translation type="vanished">调试信息将显示在这里。</translation>
     </message>
     <message>
         <source>Application started.</source>
@@ -690,7 +754,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Application</source>
-        <translation>应用程序</translation>
+        <translation type="vanished">应用程序</translation>
     </message>
     <message>
         <source>New project created.</source>
@@ -699,6 +763,66 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Project metadata is invalid.</source>
         <translation>工程元数据无效。</translation>
+    </message>
+    <message>
+        <source>Main window teardown started: ribbonBar=0x%1, categoryCount=%2</source>
+        <translation>主窗口开始析构：Ribbon 工具栏=0x%1，页面数=%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category before plugin unload: index=%1, objectName=%2, title=%3, category=0x%4, parent=0x%5</source>
+        <translation>插件卸载前的 Ribbon 页：序号=%1，对象名称=%2，标题=%3，页面=0x%4，父对象=0x%5</translation>
+    </message>
+    <message>
+        <source>Unloading all plugins during main window teardown.</source>
+        <translation>主窗口析构期间正在卸载所有插件。</translation>
+    </message>
+    <message>
+        <source>Plugin unload finished during main window teardown: remainingRibbonCategories=%1</source>
+        <translation>主窗口析构期间插件卸载完成：剩余 Ribbon 页=%1</translation>
+    </message>
+    <message>
+        <source>Ribbon category before base teardown: index=%1, objectName=%2, title=%3, category=0x%4, parent=0x%5</source>
+        <translation>基类析构前的 Ribbon 页：序号=%1，对象名称=%2，标题=%3，页面=0x%4，父对象=0x%5</translation>
+    </message>
+    <message>
+        <source>Changing active project: previous=0x%1, next=0x%2</source>
+        <translation>正在切换当前工程：原工程=0x%1，新工程=0x%2</translation>
+    </message>
+    <message>
+        <source>Active project changed.</source>
+        <translation>当前工程已切换。</translation>
+    </message>
+    <message>
+        <source>Project creation canceled by the user.</source>
+        <translation>用户取消了工程创建。</translation>
+    </message>
+    <message>
+        <source>Project creation failed because its metadata is invalid.</source>
+        <translation>工程元数据无效，创建失败。</translation>
+    </message>
+    <message>
+        <source>Opening the plugin manager.</source>
+        <translation>正在打开插件管理器。</translation>
+    </message>
+    <message>
+        <source>Main window close canceled because the project has unsaved changes.</source>
+        <translation>工程存在未保存的更改，已取消关闭主窗口。</translation>
+    </message>
+    <message>
+        <source>Main window close accepted.</source>
+        <translation>主窗口关闭请求已接受。</translation>
+    </message>
+    <message>
+        <source>Active project was destroyed before the main window.</source>
+        <translation>当前工程在主窗口之前被销毁。</translation>
+    </message>
+    <message>
+        <source>Main window teardown body completed.</source>
+        <translation>主窗口析构函数主体执行完成。</translation>
+    </message>
+    <message>
+        <source>Main window close event received.</source>
+        <translation>已收到主窗口关闭事件。</translation>
     </message>
 </context>
 <context>
@@ -1159,83 +1283,83 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Not a valid LAS file</source>
-        <translation>不是有效的 LAS 文件</translation>
+        <translation type="vanished">不是有效的 LAS 文件</translation>
     </message>
     <message>
         <source>Line %1: invalid NULL value.</source>
-        <translation>第 %1 行：NULL 值无效。</translation>
+        <translation type="vanished">第 %1 行：NULL 值无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid well coordinate.</source>
-        <translation>第 %1 行：井坐标无效。</translation>
+        <translation type="vanished">第 %1 行：井坐标无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid well elevation.</source>
-        <translation>第 %1 行：井口高程无效。</translation>
+        <translation type="vanished">第 %1 行：井口高程无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid KB value.</source>
-        <translation>第 %1 行：KB 值无效。</translation>
+        <translation type="vanished">第 %1 行：KB 值无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid start depth.</source>
-        <translation>第 %1 行：起始深度无效。</translation>
+        <translation type="vanished">第 %1 行：起始深度无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid stop depth.</source>
-        <translation>第 %1 行：终止深度无效。</translation>
+        <translation type="vanished">第 %1 行：终止深度无效。</translation>
     </message>
     <message>
         <source>Line %1: invalid reference depth.</source>
-        <translation>第 %1 行：参考深度无效。</translation>
+        <translation type="vanished">第 %1 行：参考深度无效。</translation>
     </message>
     <message>
         <source>Line %1: curve mnemonic is empty.</source>
-        <translation>第 %1 行：曲线代号为空。</translation>
+        <translation type="vanished">第 %1 行：曲线代号为空。</translation>
     </message>
     <message>
         <source>Line %1: repeated curve mnemonic: %2.</source>
-        <translation>第 %1 行：曲线代号重复：%2。</translation>
+        <translation type="vanished">第 %1 行：曲线代号重复：%2。</translation>
     </message>
     <message>
         <source>Line %1: ASCII data appears before curve definitions.</source>
-        <translation>第 %1 行：ASCII 数据出现在曲线定义之前。</translation>
+        <translation type="vanished">第 %1 行：ASCII 数据出现在曲线定义之前。</translation>
     </message>
     <message>
         <source>Line %1: expected %2 curve values, got %3.</source>
-        <translation>第 %1 行：应有 %2 个曲线值，实际为 %3 个。</translation>
+        <translation type="vanished">第 %1 行：应有 %2 个曲线值，实际为 %3 个。</translation>
     </message>
     <message>
         <source>Line %1: invalid sample for curve %2.</source>
-        <translation>第 %1 行：曲线 %2 的样本值无效。</translation>
+        <translation type="vanished">第 %1 行：曲线 %2 的样本值无效。</translation>
     </message>
     <message>
         <source>Line %1: repeated depth sample.</source>
-        <translation>第 %1 行：深度样本重复。</translation>
+        <translation type="vanished">第 %1 行：深度样本重复。</translation>
     </message>
     <message>
         <source>Line %1: depth samples are not monotonic.</source>
-        <translation>第 %1 行：深度样本不单调。</translation>
+        <translation type="vanished">第 %1 行：深度样本不单调。</translation>
     </message>
     <message>
         <source>Line %1: depth sample cannot be NULL.</source>
-        <translation>第 %1 行：深度样本不能为 NULL。</translation>
+        <translation type="vanished">第 %1 行：深度样本不能为 NULL。</translation>
     </message>
     <message>
         <source>LAS file is missing the Well section.</source>
-        <translation>LAS 文件缺少 Well 段。</translation>
+        <translation type="vanished">LAS 文件缺少 Well 段。</translation>
     </message>
     <message>
         <source>LAS file must define a depth curve and at least one log curve.</source>
-        <translation>LAS 文件必须定义一条深度曲线和至少一条测井曲线。</translation>
+        <translation type="vanished">LAS 文件必须定义一条深度曲线和至少一条测井曲线。</translation>
     </message>
     <message>
         <source>LAS file is missing the ASCII data section.</source>
-        <translation>LAS 文件缺少 ASCII 数据段。</translation>
+        <translation type="vanished">LAS 文件缺少 ASCII 数据段。</translation>
     </message>
     <message>
         <source>LAS file contains no curve samples.</source>
-        <translation>LAS 文件不包含曲线样本。</translation>
+        <translation type="vanished">LAS 文件不包含曲线样本。</translation>
     </message>
     <message>
         <source>Expected seven well header columns: WellName, X-Coord, Y-Coord, Top_Depth, Bottom Depth, KB, Symbol.</source>
@@ -1546,14 +1670,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>目标工况已有关联网格。</translation>
     </message>
     <message>
-        <source>No provider matches file: %1</source>
-        <translation>没有可处理该文件的读取器：%1</translation>
-    </message>
-    <message>
-        <source>Failed to create provider for: %1</source>
-        <translation>无法创建文件读取器：%1</translation>
-    </message>
-    <message>
         <source>The import file did not contain supported objects.</source>
         <translation>导入文件不包含支持的数据对象。</translation>
     </message>
@@ -1612,6 +1728,54 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Import well data as new wells.</source>
         <translation>将井数据作为新井导入。</translation>
+    </message>
+    <message>
+        <source>Well Render Object Provider</source>
+        <translation>井渲染对象提供器</translation>
+    </message>
+    <message>
+        <source>IDOSTypeRegistry::registerType: null metadata</source>
+        <translation>IDOSTypeRegistry::registerType：元数据为空。</translation>
+    </message>
+    <message>
+        <source>IDOSTypeRegistry::registerType: typeId %1 already registered, overwriting</source>
+        <translation>IDOSTypeRegistry::registerType：类型标识 %1 已注册，将覆盖原有类型。</translation>
+    </message>
+    <message>
+        <source>IDOSTypeRegistry::create: unknown typeId %1</source>
+        <translation>IDOSTypeRegistry::create：未知的类型标识 %1</translation>
+    </message>
+    <message>
+        <source>Application startup is beginning.</source>
+        <translation>应用程序正在启动。</translation>
+    </message>
+    <message>
+        <source>Application translation loaded.</source>
+        <translation>应用程序翻译已加载。</translation>
+    </message>
+    <message>
+        <source>Application translation could not be loaded.</source>
+        <translation>无法加载应用程序翻译。</translation>
+    </message>
+    <message>
+        <source>Log data row has an invalid column count.</source>
+        <translation>日志数据行的列数无效。</translation>
+    </message>
+    <message>
+        <source>Log data contains an invalid number.</source>
+        <translation>日志数据中包含无效数值。</translation>
+    </message>
+    <message>
+        <source>The LAS file contains no curve data.</source>
+        <translation>LAS 文件不包含曲线数据。</translation>
+    </message>
+    <message>
+        <source>The LAS file has no depth curve.</source>
+        <translation>LAS 文件缺少深度曲线。</translation>
+    </message>
+    <message>
+        <source>Application event loop ended with exit code %1.</source>
+        <translation>应用程序事件循环已结束，退出码为 %1。</translation>
     </message>
 </context>
 <context>
@@ -1765,6 +1929,451 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>The command failed.</source>
         <translation>命令执行失败。</translation>
+    </message>
+    <message>
+        <source>Cannot execute a null command.</source>
+        <translation>无法执行空命令。</translation>
+    </message>
+    <message>
+        <source>Executing project command: %1</source>
+        <translation>正在执行工程命令：%1</translation>
+    </message>
+    <message>
+        <source>Command execution rejected because the command targets a different project: %1</source>
+        <translation>命令目标与当前工程不匹配，拒绝执行：%1</translation>
+    </message>
+    <message>
+        <source>Query command completed: %1</source>
+        <translation>查询命令已完成：%1</translation>
+    </message>
+    <message>
+        <source>Query command failed: %1; %2</source>
+        <translation>查询命令失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Project command failed: %1; %2</source>
+        <translation>工程命令失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Project command completed: %1</source>
+        <translation>工程命令已完成：%1</translation>
+    </message>
+    <message>
+        <source>Undo command: %1</source>
+        <translation>撤销命令：%1</translation>
+    </message>
+    <message>
+        <source>Redo command: %1</source>
+        <translation>重做命令：%1</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSAppInterface</name>
+    <message>
+        <source>Ribbon category lookup rejected: mainWindow=%1, objectName=%2</source>
+        <translation>Ribbon 页查找被拒绝：主窗口=%1，对象名称=%2</translation>
+    </message>
+    <message>
+        <source>null</source>
+        <translation>空值</translation>
+    </message>
+    <message>
+        <source>valid</source>
+        <translation>有效</translation>
+    </message>
+    <message>
+        <source>Ribbon category lookup failed: ribbon main window or ribbon bar is null.</source>
+        <translation>Ribbon 页查找失败：Ribbon 主窗口或工具栏为空。</translation>
+    </message>
+    <message>
+        <source>Ribbon category lookup: objectName=%1, result=0x%2</source>
+        <translation>查找 Ribbon 页：对象名称=%1，结果=0x%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category creation rejected: objectName=%1, title=%2</source>
+        <translation>Ribbon 页创建被拒绝：对象名称=%1，标题=%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category creation failed: ribbon main window or ribbon bar is null.</source>
+        <translation>Ribbon 页创建失败：Ribbon 主窗口或工具栏为空。</translation>
+    </message>
+    <message>
+        <source>Ribbon category creation rejected: duplicate objectName=%1, existing=0x%2</source>
+        <translation>Ribbon 页创建被拒绝：对象名称重复，名称=%1，现有对象=0x%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category creation failed: objectName=%1, title=%2</source>
+        <translation>Ribbon 页创建失败：对象名称=%1，标题=%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category created: objectName=%1, title=%2, category=0x%3, parent=0x%4</source>
+        <translation>Ribbon 页已创建：对象名称=%1，标题=%2，页面=0x%3，父对象=0x%4</translation>
+    </message>
+    <message>
+        <source>Ribbon category removal rejected: mainWindow=%1, category=0x%2</source>
+        <translation>Ribbon 页移除被拒绝：主窗口=%1，页面=0x%2</translation>
+    </message>
+    <message>
+        <source>Ribbon category removal rejected: category is not owned by this interface, objectName=%1, category=0x%2, parent=0x%3</source>
+        <translation>Ribbon 页移除被拒绝：此接口不拥有该页面，对象名称=%1，页面=0x%2，父对象=0x%3</translation>
+    </message>
+    <message>
+        <source>Detaching ribbon category: objectName=%1, category=0x%2, parent=0x%3, stackedWidget=0x%4</source>
+        <translation>正在从 Ribbon 分离页面：对象名称=%1，页面=0x%2，父对象=0x%3，堆叠窗口=0x%4</translation>
+    </message>
+    <message>
+        <source>Ribbon category is owned but its ribbon bar is unavailable: objectName=%1, category=0x%2</source>
+        <translation>接口拥有 Ribbon 页，但工具栏不可用：对象名称=%1，页面=0x%2</translation>
+    </message>
+    <message>
+        <source>Deleting detached ribbon category before plugin unload: objectName=%1, category=0x%2, parent=0x%3</source>
+        <translation>正在插件卸载前销毁已分离的 Ribbon 页：对象名称=%1，页面=0x%2，父对象=0x%3</translation>
+    </message>
+    <message>
+        <source>Detached ribbon category deleted: objectName=%1, category=0x%2</source>
+        <translation>已销毁分离的 Ribbon 页：对象名称=%1，页面=0x%2</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSApplication</name>
+    <message>
+        <source>Application shutdown is finishing.</source>
+        <translation>应用程序正在完成关闭。</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSGridProperty</name>
+    <message>
+        <source>IDOSGridProperty::setValues: size mismatch for %1 - expected %2, got %3</source>
+        <translation>IDOSGridProperty::setValues：%1 的数据数量不匹配，预期 %2，实际 %3</translation>
+    </message>
+    <message>
+        <source>IDOSGridProperty::setValueAt: index out of range (%1, %2, %3)</source>
+        <translation>IDOSGridProperty::setValueAt：索引越界（%1，%2，%3）</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPluginListModel</name>
+    <message>
+        <source>Plugin</source>
+        <translation>插件</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Loaded</source>
+        <translation>已加载</translation>
+    </message>
+    <message>
+        <source>Load error</source>
+        <translation>加载失败</translation>
+    </message>
+    <message>
+        <source>Enabled</source>
+        <translation>已启用</translation>
+    </message>
+    <message>
+        <source>Disabled</source>
+        <translation>已禁用</translation>
+    </message>
+    <message>
+        <source>Plugin manager checkbox changed: key=%1, enabled=%2, path=%3</source>
+        <translation>插件管理器启用状态已更改：标识=%1，启用=%2，路径=%3</translation>
+    </message>
+    <message>
+        <source>Plugin manager checkbox handling finished: key=%1, enabled=%2, loaded=%3, error=%4</source>
+        <translation>插件管理器状态处理完成：标识=%1，启用=%2，已加载=%3，错误=%4</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPluginManagerWidget</name>
+    <message>
+        <source>Search plugins</source>
+        <translation type="vanished">搜索插件</translation>
+    </message>
+    <message>
+        <source>Plugin</source>
+        <translation type="vanished">插件</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation type="vanished">状态</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>刷新</translation>
+    </message>
+    <message>
+        <source>Loaded</source>
+        <translation type="vanished">已加载</translation>
+    </message>
+    <message>
+        <source>Load error</source>
+        <translation type="vanished">加载失败</translation>
+    </message>
+    <message>
+        <source>Enabled</source>
+        <translation type="vanished">已启用</translation>
+    </message>
+    <message>
+        <source>Disabled</source>
+        <translation type="vanished">已禁用</translation>
+    </message>
+    <message>
+        <source>Select a plugin</source>
+        <translation>选择一个插件</translation>
+    </message>
+    <message>
+        <source>Plugin Manager</source>
+        <translation>插件管理器</translation>
+    </message>
+    <message>
+        <source>No plugins found in the plugin directory.</source>
+        <translation>插件目录中没有找到插件。</translation>
+    </message>
+    <message>
+        <source>Category: %1</source>
+        <translation type="vanished">类别：%1</translation>
+    </message>
+    <message>
+        <source>Version: %1</source>
+        <translation type="vanished">版本：%1</translation>
+    </message>
+    <message>
+        <source>Status: %1</source>
+        <translation type="vanished">状态：%1</translation>
+    </message>
+    <message>
+        <source>No description is available.</source>
+        <translation>暂无描述。</translation>
+    </message>
+    <message>
+        <source>Plugin failed to load. See the application log for details.</source>
+        <translation>插件加载失败，详细信息请查看应用程序日志。</translation>
+    </message>
+    <message>
+        <source>Manage and inspect plugins installed in this application.</source>
+        <translation>管理并查看此应用程序中已安装的插件。</translation>
+    </message>
+    <message>
+        <source>Plugin Information</source>
+        <translation>插件信息</translation>
+    </message>
+    <message>
+        <source>Search by name, category, or description</source>
+        <translation>按名称、类别或描述搜索</translation>
+    </message>
+    <message>
+        <source>Installed Plugins</source>
+        <translation>已安装插件</translation>
+    </message>
+    <message>
+        <source>Use the checkbox to enable or disable a plugin.</source>
+        <translation>使用复选框启用或禁用插件。</translation>
+    </message>
+    <message>
+        <source>Category</source>
+        <translation>类别</translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation>版本</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>位置</translation>
+    </message>
+    <message>
+        <source>Description</source>
+        <translation>描述</translation>
+    </message>
+    <message>
+        <source>Not specified</source>
+        <translation>未指定</translation>
+    </message>
+    <message>
+        <source>No plugins match your search.</source>
+        <translation>没有符合搜索条件的插件。</translation>
+    </message>
+    <message>
+        <source>%1 plugins · %2 loaded</source>
+        <translation>共 %1 个插件 · 已加载 %2 个</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPluginRegistry</name>
+    <message>
+        <source>Cannot restore plugins without a host interface.</source>
+        <translation>缺少宿主接口，无法恢复插件。</translation>
+    </message>
+    <message>
+        <source>Cannot load plugin without a host interface.</source>
+        <translation>缺少宿主接口，无法加载插件。</translation>
+    </message>
+    <message>
+        <source>Failed to load plugin %1: %2</source>
+        <translation>加载插件失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Required exports name or classFactory are missing.</source>
+        <translation>插件缺少必需的 name 或 classFactory 导出函数。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 is missing required exports.</source>
+        <translation>插件 %1 缺少必需的导出函数。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 metadata failed: %2</source>
+        <translation>读取插件 %1 的元数据失败：%2</translation>
+    </message>
+    <message>
+        <source>The plugin metadata function threw an unknown exception.</source>
+        <translation>插件元数据函数抛出了未知异常。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 metadata failed with an unknown exception.</source>
+        <translation>读取插件 %1 的元数据时发生未知异常。</translation>
+    </message>
+    <message>
+        <source>The plugin returned an empty name.</source>
+        <translation>插件返回的名称为空。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 has invalid metadata.</source>
+        <translation>插件 %1 的元数据无效。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 factory failed: %2</source>
+        <translation>插件 %1 工厂函数失败：%2</translation>
+    </message>
+    <message>
+        <source>The plugin factory threw an unknown exception.</source>
+        <translation>插件工厂函数抛出了未知异常。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 factory failed with an unknown exception.</source>
+        <translation>插件 %1 工厂函数发生未知错误。</translation>
+    </message>
+    <message>
+        <source>The plugin factory returned null.</source>
+        <translation>插件工厂函数返回了空指针。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 factory returned null.</source>
+        <translation>插件 %1 工厂函数返回了空指针。</translation>
+    </message>
+    <message>
+        <source>Calling initGui for plugin %1: instance=0x%2, library=0x%3</source>
+        <translation>正在调用插件 %1 的 initGui：实例=0x%2，动态库=0x%3</translation>
+    </message>
+    <message>
+        <source>Plugin %1 initialization failed: %2</source>
+        <translation>插件 %1 初始化失败：%2</translation>
+    </message>
+    <message>
+        <source>The plugin initialization threw an unknown exception.</source>
+        <translation>插件初始化抛出了未知异常。</translation>
+    </message>
+    <message>
+        <source>Plugin %1 initialization failed with an unknown exception.</source>
+        <translation>插件 %1 初始化时发生未知异常。</translation>
+    </message>
+    <message>
+        <source>Plugin initGui completed: key=%1, instance=0x%2, library=0x%3</source>
+        <translation>插件 initGui 已完成：标识=%1，实例=0x%2，动态库=0x%3</translation>
+    </message>
+    <message>
+        <source>Plugin %1 loaded successfully.</source>
+        <translation>插件 %1 已成功加载。</translation>
+    </message>
+    <message>
+        <source>setPluginEnabled entered: key=%1, enabled=%2, loaded=%3, path=%4</source>
+        <translation>进入 setPluginEnabled：标识=%1，启用=%2，已加载=%3，路径=%4</translation>
+    </message>
+    <message>
+        <source>Enabling plugin through registry: key=%1</source>
+        <translation>正在通过注册表启用插件：%1</translation>
+    </message>
+    <message>
+        <source>Disabling plugin through registry: key=%1, loaded=%2</source>
+        <translation>正在通过注册表禁用插件：标识=%1，已加载=%2</translation>
+    </message>
+    <message>
+        <source>setPluginEnabled finished: key=%1, loaded=%2</source>
+        <translation>setPluginEnabled 已完成：标识=%1，已加载=%2</translation>
+    </message>
+    <message>
+        <source>Starting plugin unload: key=%1, instance=0x%2, library=0x%3</source>
+        <translation>开始卸载插件：标识=%1，实例=0x%2，动态库=0x%3</translation>
+    </message>
+    <message>
+        <source>Plugin instance destroyed: key=%1, library=0x%2</source>
+        <translation>插件实例已销毁：标识=%1，动态库=0x%2</translation>
+    </message>
+    <message>
+        <source>Plugin library unloaded: key=%1, library=0x%2</source>
+        <translation>插件动态库已卸载：标识=%1，动态库=0x%2</translation>
+    </message>
+    <message>
+        <source>Plugin library unload failed: key=%1, library=%2, error=%3</source>
+        <translation>卸载插件动态库失败：标识=%1，动态库=%2，错误=%3</translation>
+    </message>
+    <message>
+        <source>Calling plugin unload(): instance=0x%1, name=%2</source>
+        <translation>正在调用插件 unload()：实例=0x%1，名称=%2</translation>
+    </message>
+    <message>
+        <source>Plugin unload() returned: instance=0x%1, name=%2</source>
+        <translation>插件 unload() 已返回：实例=0x%1，名称=%2</translation>
+    </message>
+    <message>
+        <source>Plugin unload failed: %1</source>
+        <translation>插件卸载失败：%1</translation>
+    </message>
+    <message>
+        <source>Plugin unload failed with an unknown exception.</source>
+        <translation>插件卸载时发生未知异常。</translation>
+    </message>
+    <message>
+        <source>Deleting plugin object: instance=0x%1, name=%2</source>
+        <translation>正在销毁插件对象：实例=0x%1，名称=%2</translation>
+    </message>
+    <message>
+        <source>Plugin object deleted: instance=0x%1</source>
+        <translation>插件对象已销毁：实例=0x%1</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationPlugin</name>
+    <message>
+        <source>Reservoir Simulation</source>
+        <translation>数值模拟</translation>
+    </message>
+    <message>
+        <source>Reservoir simulation plugin</source>
+        <translation>油藏数值模拟插件</translation>
+    </message>
+    <message>
+        <source>Reservoir Engineering</source>
+        <translation>油藏工程</translation>
+    </message>
+    <message>
+        <source>Simulation plugin initGui entered: interface=0x%1, initialized=%2</source>
+        <translation>进入数值模拟插件 initGui：接口=0x%1，已初始化=%2</translation>
+    </message>
+    <message>
+        <source>Simulation plugin category initialization finished: category=0x%1, initialized=%2</source>
+        <translation>数值模拟插件 Ribbon 页初始化完成：页面=0x%1，已初始化=%2</translation>
+    </message>
+    <message>
+        <source>Simulation plugin unload entered: category=0x%1, initialized=%2</source>
+        <translation>进入数值模拟插件卸载：页面=0x%1，已初始化=%2</translation>
+    </message>
+    <message>
+        <source>Simulation plugin unload finished.</source>
+        <translation>数值模拟插件卸载完成。</translation>
     </message>
 </context>
 </TS>

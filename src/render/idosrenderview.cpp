@@ -1,11 +1,17 @@
 #include <QEvent>
 #include <QHash>
+#include <QList>
 #include <QMouseEvent>
+#include <QPoint>
+#include <QString>
+#include <QVector>
+#include <QVector3D>
 #include <QVBoxLayout>
 
 #include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
+#include <vtkCamera.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDataSetMapper.h>
@@ -21,6 +27,7 @@
 #include <vtkProperty.h>
 #include <vtkPropPicker.h>
 #include <vtkRenderer.h>
+#include <vtkSmartPointer.h>
 #include <vtkStringOutputWindow.h>
 #include <vtkUnstructuredGrid.h>
 
@@ -30,61 +37,7 @@
 
 #include "idosrenderview.h"
 
-class IDOSRenderViewPrivate
-{
-  public:
-    IDOSRenderViewPrivate();
-    ~IDOSRenderViewPrivate();
-
-    vtkSmartPointer<vtkActor> createMeshActor(const IDOSRenderMesh* mesh);
-    vtkSmartPointer<vtkActor> createWellHeadActor(const IDOSWellRenderObject* well);
-    vtkSmartPointer<vtkActor> createWellTrajectoryActor(const IDOSWellRenderObject* well);
-    void applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const;
-    void applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper, const IDOSRenderMesh* mesh) const;
-    void configureVtkOutputWindow();
-    void clearActivePipeline();
-
-    QVTKOpenGLNativeWidget* vtkWidget;
-    vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
-    vtkSmartPointer<vtkRenderer> renderer;
-    vtkSmartPointer<vtkAxesActor> axesActor;
-    vtkSmartPointer<vtkOrientationMarkerWidget> orientationMarker;
-    vtkSmartPointer<vtkActor> activeActor;
-    vtkSmartPointer<vtkUnstructuredGrid> activeGrid;
-    vtkSmartPointer<vtkDataSetMapper> activeMapper;
-    IDOSRenderScene* scene;
-    QHash<vtkActor*, QString> actorObjectIds;
-    QPoint pressedPosition;
-    QString highlightedObjectId;
-    bool ownsScene;
-};
-
-IDOSRenderViewPrivate::IDOSRenderViewPrivate()
-    : vtkWidget(nullptr)
-    , renderWindow(vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New())
-    , renderer(vtkSmartPointer<vtkRenderer>::New())
-    , axesActor(vtkSmartPointer<vtkAxesActor>::New())
-    , orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
-    , activeActor(nullptr)
-    , activeGrid(nullptr)
-    , activeMapper(nullptr)
-    , scene(new IDOSRenderScene())
-    , actorObjectIds()
-    , pressedPosition()
-    , highlightedObjectId()
-    , ownsScene(true)
-{
-}
-
-IDOSRenderViewPrivate::~IDOSRenderViewPrivate()
-{
-    if (ownsScene)
-    {
-        delete scene;
-    }
-}
-
-vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createMeshActor(const IDOSRenderMesh* mesh)
+vtkSmartPointer<vtkActor> IDOSRenderView::createMeshActor(const IDOSRenderMesh* mesh)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     const QVector<QVector3D>& renderPoints = mesh->points();
@@ -128,14 +81,14 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createMeshActor(const IDOSRende
     }
     actor->GetProperty()->SetLineWidth(1.0);
     actor->SetVisibility(mesh->visible());
-    activeActor = actor;
-    activeGrid = grid;
-    activeMapper = mapper;
+    m_activeActor = actor;
+    m_activeGrid = grid;
+    m_activeMapper = mapper;
     return actor;
 }
 
-void IDOSRenderViewPrivate::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper,
-                                             const IDOSRenderMesh* mesh) const
+void IDOSRenderView::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper,
+                                      const IDOSRenderMesh* mesh) const
 {
     if (!mesh->hasCellScalars())
     {
@@ -182,7 +135,7 @@ void IDOSRenderViewPrivate::applyCellScalars(vtkUnstructuredGrid* grid, vtkDataS
     mapper->ScalarVisibilityOn();
 }
 
-vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellHeadActor(const IDOSWellRenderObject* well)
+vtkSmartPointer<vtkActor> IDOSRenderView::createWellHeadActor(const IDOSWellRenderObject* well)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     const QVector3D wellHeadPosition = well->wellHeadPosition();
@@ -207,7 +160,7 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellHeadActor(const IDOSW
     return actor;
 }
 
-vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellTrajectoryActor(const IDOSWellRenderObject* well)
+vtkSmartPointer<vtkActor> IDOSRenderView::createWellTrajectoryActor(const IDOSWellRenderObject* well)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     const QVector<QVector3D>& wellPoints = well->points();
@@ -241,7 +194,7 @@ vtkSmartPointer<vtkActor> IDOSRenderViewPrivate::createWellTrajectoryActor(const
     return actor;
 }
 
-void IDOSRenderViewPrivate::applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const
+void IDOSRenderView::applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const
 {
     if (well->isInjector())
     {
@@ -252,97 +205,114 @@ void IDOSRenderViewPrivate::applyWellStyle(vtkActor* actor, const IDOSWellRender
     actor->GetProperty()->SetColor(0.95, 0.2, 0.15);
 }
 
-void IDOSRenderViewPrivate::configureVtkOutputWindow()
+void IDOSRenderView::configureVtkOutputWindow()
 {
     vtkStringOutputWindow* outputWindow = vtkStringOutputWindow::New();
     vtkOutputWindow::SetInstance(outputWindow);
     outputWindow->Delete();
 }
 
-void IDOSRenderViewPrivate::clearActivePipeline()
+void IDOSRenderView::clearActivePipeline()
 {
-    activeActor = nullptr;
-    activeGrid = nullptr;
-    activeMapper = nullptr;
+    m_activeActor = nullptr;
+    m_activeGrid = nullptr;
+    m_activeMapper = nullptr;
 }
 
 IDOSRenderView::IDOSRenderView(QWidget* parent)
-    : QWidget(parent)
-    , m_privateData(new IDOSRenderViewPrivate())
+    :
+    QWidget(parent)
+    , m_vtkWidget(nullptr)
+    , m_renderWindow(vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New())
+    , m_renderer(vtkSmartPointer<vtkRenderer>::New())
+    , m_axesActor(vtkSmartPointer<vtkAxesActor>::New())
+    , m_orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
+    , m_activeActor(nullptr)
+    , m_activeGrid(nullptr)
+    , m_activeMapper(nullptr)
+    , m_scene(new IDOSRenderScene())
+    , m_actorObjectIds()
+    , m_pressedPosition()
+    , m_highlightedObjectId()
+    , m_ownsScene(true)
 {
-    m_privateData->configureVtkOutputWindow();
-    m_privateData->vtkWidget = new QVTKOpenGLNativeWidget(this);
+    configureVtkOutputWindow();
+    m_vtkWidget = new QVTKOpenGLNativeWidget(this);
+    m_vtkWidget->setFocusPolicy(Qt::StrongFocus);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(m_privateData->vtkWidget);
+    layout->addWidget(m_vtkWidget);
 
-    m_privateData->vtkWidget->setRenderWindow(m_privateData->renderWindow);
-    m_privateData->renderWindow->AddRenderer(m_privateData->renderer);
-    m_privateData->renderer->SetBackground(0.08, 0.09, 0.11);
+    m_vtkWidget->setRenderWindow(m_renderWindow);
+    m_renderWindow->AddRenderer(m_renderer);
+    m_renderer->SetBackground(0.08, 0.09, 0.11);
 
-    m_privateData->orientationMarker->SetOrientationMarker(m_privateData->axesActor);
-    m_privateData->orientationMarker->SetInteractor(m_privateData->vtkWidget->interactor());
-    m_privateData->orientationMarker->SetViewport(0.0, 0.0, 0.18, 0.18);
-    m_privateData->orientationMarker->SetEnabled(1);
-    m_privateData->orientationMarker->InteractiveOff();
-    m_privateData->vtkWidget->installEventFilter(this);
+    m_orientationMarker->SetOrientationMarker(m_axesActor);
+    m_orientationMarker->SetInteractor(m_vtkWidget->interactor());
+    m_orientationMarker->SetViewport(0.0, 0.0, 0.18, 0.18);
+    m_orientationMarker->SetEnabled(1);
+    m_orientationMarker->InteractiveOff();
+    m_vtkWidget->installEventFilter(this);
 }
 
 IDOSRenderView::~IDOSRenderView()
 {
-    delete m_privateData;
+    if (m_ownsScene)
+    {
+        delete m_scene;
+    }
 }
 
 IDOSRenderScene* IDOSRenderView::scene() const
 {
-    return m_privateData->scene;
+    return m_scene;
 }
 
 void IDOSRenderView::setScene(IDOSRenderScene* scene)
 {
-    if (m_privateData->scene == scene)
+    if (m_scene == scene)
     {
         return;
     }
-    if (m_privateData->ownsScene)
+    if (m_ownsScene)
     {
-        delete m_privateData->scene;
+        delete m_scene;
     }
-    m_privateData->scene = scene;
-    m_privateData->ownsScene = false;
+    m_scene = scene;
+    m_ownsScene = false;
     rebuildActors();
     resetCamera();
 }
 
 void IDOSRenderView::addObject(IDOSRenderObject* object)
 {
-    if (m_privateData->scene == nullptr)
+    if (m_scene == nullptr)
     {
         return;
     }
-    m_privateData->scene->addObject(object);
+    m_scene->addObject(object);
     rebuildActors();
 }
 
 void IDOSRenderView::setObject(IDOSRenderObject* object)
 {
-    if (m_privateData->scene == nullptr)
+    if (m_scene == nullptr)
     {
         return;
     }
-    m_privateData->scene->setObject(object);
+    m_scene->setObject(object);
     rebuildActors();
     resetCamera();
 }
 
 QString IDOSRenderView::currentObjectId() const
 {
-    if (m_privateData->scene == nullptr)
+    if (m_scene == nullptr)
     {
         return QString();
     }
-    const QList<IDOSRenderObject*>& objects = m_privateData->scene->objects();
+    const QList<IDOSRenderObject*>& objects = m_scene->objects();
     if (objects.size() != 1 || objects.first() == nullptr)
     {
         return QString();
@@ -352,18 +322,18 @@ QString IDOSRenderView::currentObjectId() const
 
 bool IDOSRenderView::setCellScalars(const QString& name, const QVector<double>& values)
 {
-    if (m_privateData->scene == nullptr)
+    if (m_scene == nullptr)
     {
         return false;
     }
-    const QList<IDOSRenderObject*>& objects = m_privateData->scene->objects();
+    const QList<IDOSRenderObject*>& objects = m_scene->objects();
     if (objects.size() != 1)
     {
         return false;
     }
 
     IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(objects.first());
-    if (mesh == nullptr || m_privateData->activeGrid == nullptr || m_privateData->activeMapper == nullptr)
+    if (mesh == nullptr || m_activeGrid == nullptr || m_activeMapper == nullptr)
     {
         return false;
     }
@@ -385,18 +355,18 @@ bool IDOSRenderView::setCellScalars(const QString& name, const QVector<double>& 
     }
 
     mesh->setCellScalars(name, cellScalars);
-    m_privateData->applyCellScalars(m_privateData->activeGrid, m_privateData->activeMapper, mesh);
-    m_privateData->activeGrid->Modified();
-    m_privateData->activeMapper->Modified();
-    m_privateData->renderWindow->Render();
+    applyCellScalars(m_activeGrid, m_activeMapper, mesh);
+    m_activeGrid->Modified();
+    m_activeMapper->Modified();
+    m_renderWindow->Render();
     return true;
 }
 
 void IDOSRenderView::clear()
 {
-    if (m_privateData->scene != nullptr)
+    if (m_scene != nullptr)
     {
-        m_privateData->scene->clear();
+        m_scene->clear();
     }
     rebuildActors();
 }
@@ -408,38 +378,106 @@ void IDOSRenderView::refresh()
 
 void IDOSRenderView::resetCamera()
 {
-    m_privateData->renderer->ResetCamera();
-    m_privateData->renderWindow->Render();
+    m_renderer->ResetCamera();
+    m_renderWindow->Render();
+}
+
+bool IDOSRenderView::setViewPreset(ViewPreset preset)
+{
+    double bounds[6];
+    m_renderer->ComputeVisiblePropBounds(bounds);
+    if (bounds[0] > bounds[1] || bounds[2] > bounds[3] || bounds[4] > bounds[5])
+    {
+        return false;
+    }
+
+    double direction[3] = {0.0, 0.0, 0.0};
+    double viewUp[3] = {0.0, 0.0, 1.0};
+    switch (preset)
+    {
+    case ViewPreset::Front:
+        direction[1] = -1.0;
+        break;
+    case ViewPreset::Back:
+        direction[1] = 1.0;
+        break;
+    case ViewPreset::Left:
+        direction[0] = -1.0;
+        break;
+    case ViewPreset::Right:
+        direction[0] = 1.0;
+        break;
+    case ViewPreset::Top:
+        direction[2] = 1.0;
+        viewUp[1] = 1.0;
+        viewUp[2] = 0.0;
+        break;
+    case ViewPreset::Bottom:
+        direction[2] = -1.0;
+        viewUp[1] = -1.0;
+        viewUp[2] = 0.0;
+        break;
+    case ViewPreset::Isometric:
+        direction[0] = 1.0;
+        direction[1] = -1.0;
+        direction[2] = 1.0;
+        break;
+    default:
+        direction[0] = 1.0;
+        direction[1] = -1.0;
+        direction[2] = 1.0;
+        break;
+    }
+
+    double focalPoint[3] = {(bounds[0] + bounds[1]) * 0.5,
+                            (bounds[2] + bounds[3]) * 0.5,
+                            (bounds[4] + bounds[5]) * 0.5};
+    vtkCamera* camera = m_renderer->GetActiveCamera();
+    camera->SetFocalPoint(focalPoint);
+    camera->SetPosition(focalPoint[0] + direction[0],
+                        focalPoint[1] + direction[1],
+                        focalPoint[2] + direction[2]);
+    camera->SetViewUp(viewUp);
+    camera->OrthogonalizeViewUp();
+    m_renderer->ResetCamera();
+    m_renderWindow->Render();
+    return true;
 }
 
 void IDOSRenderView::setHighlightedObjectId(const QString& objectId)
 {
-    if (m_privateData->highlightedObjectId == objectId)
+    if (m_highlightedObjectId == objectId)
     {
         return;
     }
 
-    m_privateData->highlightedObjectId = objectId;
+    m_highlightedObjectId = objectId;
     rebuildActors();
 }
 
 bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
 {
-    if (watched == m_privateData->vtkWidget)
+    if (watched == m_vtkWidget)
     {
+        if (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress
+            || event->type() == QEvent::Wheel)
+        {
+            emit activated();
+        }
+
         if (event->type() == QEvent::MouseButtonPress)
         {
             QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton)
             {
-                m_privateData->pressedPosition = mouseEvent->pos();
+                m_pressedPosition = mouseEvent->pos();
             }
         }
         else if (event->type() == QEvent::MouseButtonRelease)
         {
             QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton
-                && (mouseEvent->pos() - m_privateData->pressedPosition).manhattanLength() < 4)
+                && (mouseEvent->pos() - m_pressedPosition).manhattanLength() < 4)
             {
                 activateObjectAt(mouseEvent->pos());
             }
@@ -451,74 +489,74 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
 void IDOSRenderView::activateObjectAt(const QPoint& position)
 {
     vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
-    const int picked = picker->Pick(position.x(), m_privateData->vtkWidget->height() - position.y() - 1,
-                                    0.0, m_privateData->renderer);
+    const int picked = picker->Pick(position.x(), m_vtkWidget->height() - position.y() - 1,
+                                    0.0, m_renderer);
     if (picked == 0)
     {
         return;
     }
 
     vtkActor* actor = picker->GetActor();
-    if (actor == nullptr || !m_privateData->actorObjectIds.contains(actor))
+    if (actor == nullptr || !m_actorObjectIds.contains(actor))
     {
         return;
     }
 
-    emit objectActivated(m_privateData->actorObjectIds.value(actor));
+    emit objectActivated(m_actorObjectIds.value(actor));
 }
 
 void IDOSRenderView::rebuildActors()
 {
-    m_privateData->renderer->RemoveAllViewProps();
-    m_privateData->clearActivePipeline();
-    m_privateData->actorObjectIds.clear();
+    m_renderer->RemoveAllViewProps();
+    clearActivePipeline();
+    m_actorObjectIds.clear();
 
-    if (m_privateData->scene == nullptr)
+    if (m_scene == nullptr)
     {
-        m_privateData->renderWindow->Render();
+        m_renderWindow->Render();
         return;
     }
 
-    const QList<IDOSRenderObject*>& objects = m_privateData->scene->objects();
+    const QList<IDOSRenderObject*>& objects = m_scene->objects();
     for (int index = 0; index < objects.size(); ++index)
     {
         IDOSRenderObject* object = objects.at(index);
         IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(object);
         if (mesh != nullptr)
         {
-            m_privateData->renderer->AddActor(m_privateData->createMeshActor(mesh));
+            m_renderer->AddActor(createMeshActor(mesh));
             continue;
         }
         IDOSWellRenderObject* well = dynamic_cast<IDOSWellRenderObject*>(object);
         if (well != nullptr)
         {
-            const bool highlighted = well->id() == m_privateData->highlightedObjectId;
+            const bool highlighted = well->id() == m_highlightedObjectId;
             if (well->hasWellHead())
             {
-                vtkSmartPointer<vtkActor> wellHeadActor = m_privateData->createWellHeadActor(well);
+                vtkSmartPointer<vtkActor> wellHeadActor = createWellHeadActor(well);
                 if (highlighted)
                 {
                     wellHeadActor->GetProperty()->SetColor(1.0, 0.95, 0.15);
                     wellHeadActor->GetProperty()->SetPointSize(18.0);
                 }
-                m_privateData->actorObjectIds.insert(wellHeadActor, well->id());
-                m_privateData->renderer->AddActor(wellHeadActor);
+                m_actorObjectIds.insert(wellHeadActor, well->id());
+                m_renderer->AddActor(wellHeadActor);
             }
             if (well->pointCount() >= 2)
             {
-                vtkSmartPointer<vtkActor> trajectoryActor = m_privateData->createWellTrajectoryActor(well);
+                vtkSmartPointer<vtkActor> trajectoryActor = createWellTrajectoryActor(well);
                 if (highlighted)
                 {
                     trajectoryActor->GetProperty()->SetColor(1.0, 0.95, 0.15);
                     trajectoryActor->GetProperty()->SetLineWidth(5.0);
                 }
-                m_privateData->actorObjectIds.insert(trajectoryActor, well->id());
-                m_privateData->renderer->AddActor(trajectoryActor);
+                m_actorObjectIds.insert(trajectoryActor, well->id());
+                m_renderer->AddActor(trajectoryActor);
             }
         }
     }
 
-    m_privateData->renderWindow->Render();
+    m_renderWindow->Render();
 }
 
 

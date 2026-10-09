@@ -1,5 +1,4 @@
 #include "idosconsoletarget.h"
-#include "idosfiletarget.h"
 #include "idoslogrecord.h"
 
 #include "idoslogger.h"
@@ -77,7 +76,7 @@ void IDOSLogger::log(IDOSLogLevel level,
         snapshot = m_targets;
     }
 
-    if (!enabled || static_cast<int>(level) >= static_cast<int>(currentLevel))
+    if (!enabled || static_cast<int>(level) < static_cast<int>(currentLevel))
     {
         return;
     }
@@ -192,22 +191,4 @@ void IDOSLogger::appendRecord(const IDOSLogRecord& record)
     {
         m_records.removeFirst();
     }
-}
-
-void idosInitLogger(IDOSLogLevel level, const QString& logFile)
-{
-    IDOSLogger& logger = IDOSLogger::instance();
-    logger.setLevel(level);
-    logger.clearTargets();
-    logger.addTarget(QSharedPointer<IDOSConsoleTarget>::create());
-
-    if (!logFile.isEmpty())
-    {
-        logger.addTarget(QSharedPointer<IDOSFileTarget>::create(logFile));
-    }
-}
-
-void idosSetLogLevel(IDOSLogLevel level)
-{
-    IDOSLogger::instance().setLevel(level);
 }

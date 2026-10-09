@@ -91,11 +91,16 @@ void IDOSRenderServer::addView(const QString& viewId, IDOSRenderView* view)
         return;
     }
     m_views.insert(viewId, view);
+    connect(view,
+            &IDOSRenderView::activated,
+            this,
+            &IDOSRenderServer::onViewActivated,
+            Qt::UniqueConnection);
     view->setScene(m_mainScene);
     view->setHighlightedObjectId(m_highlightedObjectId);
     if (m_activeViewId.isEmpty())
     {
-        m_activeViewId = viewId;
+        setActiveView(viewId);
     }
 }
 
@@ -108,6 +113,10 @@ void IDOSRenderServer::removeView(const QString& viewId)
     IDOSRenderView* renderView = m_views.value(viewId, nullptr);
     if (renderView != nullptr)
     {
+        disconnect(renderView,
+                   &IDOSRenderView::activated,
+                   this,
+                   &IDOSRenderServer::onViewActivated);
         renderView->setScene(nullptr);
     }
     m_views.remove(viewId);
@@ -116,7 +125,11 @@ void IDOSRenderServer::removeView(const QString& viewId)
         m_activeViewId.clear();
         if (!m_views.isEmpty())
         {
-            m_activeViewId = m_views.firstKey();
+            setActiveView(m_views.firstKey());
+        }
+        else
+        {
+            emit currentViewChanged(m_activeViewId);
         }
     }
 }
@@ -128,11 +141,12 @@ IDOSRenderView* IDOSRenderServer::view(const QString& viewId) const
 
 void IDOSRenderServer::setActiveView(const QString& viewId)
 {
-    if (!m_views.contains(viewId))
+    if (!m_views.contains(viewId) || m_activeViewId == viewId)
     {
         return;
     }
     m_activeViewId = viewId;
+    emit currentViewChanged(m_activeViewId);
 }
 
 QString IDOSRenderServer::activeViewId() const
@@ -143,6 +157,26 @@ QString IDOSRenderServer::activeViewId() const
 IDOSRenderView* IDOSRenderServer::activeView() const
 {
     return view(m_activeViewId);
+}
+
+void IDOSRenderServer::onViewActivated()
+{
+    IDOSRenderView* renderView = qobject_cast<IDOSRenderView*>(sender());
+    if (renderView == nullptr)
+    {
+        return;
+    }
+
+    QMap<QString, IDOSRenderView*>::const_iterator iterator = m_views.constBegin();
+    while (iterator != m_views.constEnd())
+    {
+        if (iterator.value() == renderView)
+        {
+            setActiveView(iterator.key());
+            return;
+        }
+        ++iterator;
+    }
 }
 
 void IDOSRenderServer::setHighlightedObjectId(const QString& objectId)

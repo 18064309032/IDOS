@@ -5,6 +5,7 @@
 #include "command/idoscommand.h"
 #include "command/idoscommandregistry.h"
 #include "idosproject.h"
+#include "log/idoslogger.h"
 
 #include "command/idoscommandmanager.h"
 
@@ -57,13 +58,17 @@ bool IDOSCommandManager::execute(IDOSCommand* command)
 {
     if (command == nullptr)
     {
+        IDOS_WARN(tr("Cannot execute a null command."));
         return false;
     }
 
     const QString name = command->name();
+    IDOS_DEBUG(tr("Executing project command: %1").arg(name));
 
     if (!m_project || !m_stack || command->project() != m_project)
     {
+        IDOS_ERROR(tr("Command execution rejected because the command targets a different project: %1")
+                       .arg(name));
         emit commandFailed(name,
                            QStringLiteral("project_mismatch"),
                            tr("The command target project does not match the manager project."));
@@ -77,10 +82,13 @@ bool IDOSCommandManager::execute(IDOSCommand* command)
 
         if (command->isSuccessful())
         {
+            IDOS_DEBUG(tr("Query command completed: %1").arg(name));
             emit commandExecuted(name);
         }
         else
         {
+            IDOS_ERROR(tr("Query command failed: %1; %2")
+                           .arg(name, command->errorString()));
             emit commandFailed(name,
                                command->errorCode(),
                                command->errorString());
@@ -95,12 +103,15 @@ bool IDOSCommandManager::execute(IDOSCommand* command)
 
     if (!command->isSuccessful())
     {
+        IDOS_ERROR(tr("Project command failed: %1; %2")
+                       .arg(name, command->errorString()));
         emit commandFailed(name,
                            command->errorCode(),
                            command->errorString());
         return false;
     }
 
+    IDOS_INFO(tr("Project command completed: %1").arg(name));
     emit commandExecuted(name);
     return true;
 }
@@ -168,6 +179,7 @@ void IDOSCommandManager::undo()
 {
     if (m_stack && m_stack->canUndo())
     {
+        IDOS_INFO(tr("Undo command: %1").arg(m_stack->undoText()));
         m_stack->undo();
     }
 }
@@ -176,6 +188,7 @@ void IDOSCommandManager::redo()
 {
     if (m_stack && m_stack->canRedo())
     {
+        IDOS_INFO(tr("Redo command: %1").arg(m_stack->redoText()));
         m_stack->redo();
     }
 }
