@@ -5,7 +5,7 @@
 #include <QObject>
 #include <QString>
 
-#include "../idos_app.h"
+#include "idos_app.h"
 
 class SARibbonCategory;
 

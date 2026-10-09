@@ -23,7 +23,6 @@ class IDOSRenderServer;
 class IDOSRenderView;
 class IDOSWell;
 class IDOSWellLogTrackView;
-class IDOSPropertyWidget;
 class IDOSAssistantWidget;
 class IDOSDebugInfoWidget;
 class IDOSRuntimeInfoWidget;
@@ -78,6 +77,9 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onCurrentViewChanged(const QString& viewId);
     void onViewPresetTriggered(QAction* action);
     void onResetViewTriggered();
+    void onOrientationMarkerToggled(bool checked);
+    void onLegendToggled(bool checked);
+    void onViewDecorationsChanged();
 
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -103,6 +105,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionPluginManager;
     QAction* m_actionViewPresets;
     QAction* m_actionResetView;
+    QAction* m_actionOrientationMarker;
+    QAction* m_actionLegend;
 
     IDOSProject* m_project;
     QPointer<IDOSCommandManager> m_commandManager;
@@ -113,7 +117,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSTreeProviderRegistry* m_treeProviderRegistry;
     IDOSRenderServer* m_renderServer;
     IDOSRenderView* m_renderView;
-    IDOSPropertyWidget* m_propertyWidget;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
     IDOSPluginRegistry* m_pluginRegistry;
     IDOSPluginManagerWidget* m_pluginManagerWidget;

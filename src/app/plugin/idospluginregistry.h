@@ -39,6 +39,7 @@ class IDOSPluginRegistry : public QObject
     IDOSPluginRegistry();
     static QStringList cppPluginNameFilters();
     static QStringList cppPluginLibraryPaths(const QDir& pluginRoot);
+    static QVariantMap pluginExportMetadata(const QString& libraryPath);
     static void destroyPluginInstance(IDOSPlugin* plugin);
     void unloadPluginByKey(const QString& key, bool updateSettings);
 

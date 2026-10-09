@@ -95,24 +95,47 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         return;
     }
 
-    IDOSPluginStringMetadata nameFunction =
-        reinterpret_cast<IDOSPluginStringMetadata>(library->resolve("name"));
-    IDOSPluginFactory factoryFunction =
-        reinterpret_cast<IDOSPluginFactory>(library->resolve("classFactory"));
-    if (nameFunction == nullptr || factoryFunction == nullptr)
+    IDOSPluginNameFunction* nameFunction =
+        reinterpret_cast<IDOSPluginNameFunction*>(library->resolve("name"));
+    IDOSPluginDescriptionFunction* descriptionFunction =
+        reinterpret_cast<IDOSPluginDescriptionFunction*>(library->resolve("description"));
+    IDOSPluginCategoryFunction* categoryFunction =
+        reinterpret_cast<IDOSPluginCategoryFunction*>(library->resolve("category"));
+    IDOSPluginTypeFunction* typeFunction =
+        reinterpret_cast<IDOSPluginTypeFunction*>(library->resolve("type"));
+    IDOSPluginVersionFunction* versionFunction =
+        reinterpret_cast<IDOSPluginVersionFunction*>(library->resolve("version"));
+    IDOSPluginIconFunction* iconFunction =
+        reinterpret_cast<IDOSPluginIconFunction*>(library->resolve("icon"));
+    IDOSPluginFactoryFunction* factoryFunction =
+        reinterpret_cast<IDOSPluginFactoryFunction*>(library->resolve("classFactory"));
+    if (nameFunction == nullptr || descriptionFunction == nullptr
+        || categoryFunction == nullptr || typeFunction == nullptr
+        || versionFunction == nullptr || iconFunction == nullptr
+        || factoryFunction == nullptr)
     {
         m_pluginErrors.insert(baseName,
-                              tr("Required exports name or classFactory are missing."));
+                              tr("Required plugin exports are missing."));
         IDOS_WARN(tr("Plugin %1 is missing required exports.").arg(baseName));
         library->unload();
         delete library;
         return;
     }
 
-    const QString* pluginName = nullptr;
+    const QString* exportedName = nullptr;
+    const QString* exportedDescription = nullptr;
+    const QString* exportedCategory = nullptr;
+    const QString* exportedVersion = nullptr;
+    const QString* exportedIcon = nullptr;
+    int pluginType = 0;
     try
     {
-        pluginName = nameFunction();
+        exportedName = nameFunction();
+        exportedDescription = descriptionFunction();
+        exportedCategory = categoryFunction();
+        pluginType = typeFunction();
+        exportedVersion = versionFunction();
+        exportedIcon = iconFunction();
     }
     catch (const std::exception& exception)
     {
@@ -134,15 +157,19 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         return;
     }
 
-    if (pluginName == nullptr || pluginName->trimmed().isEmpty())
+    if (exportedName == nullptr || exportedName->trimmed().isEmpty()
+        || exportedDescription == nullptr || exportedDescription->trimmed().isEmpty()
+        || exportedCategory == nullptr || exportedCategory->trimmed().isEmpty()
+        || exportedVersion == nullptr || exportedVersion->trimmed().isEmpty()
+        || exportedIcon == nullptr || exportedIcon->trimmed().isEmpty()
+        || pluginType != static_cast<int>(IDOSPlugin::UI))
     {
-        m_pluginErrors.insert(baseName, tr("The plugin returned an empty name."));
+        m_pluginErrors.insert(baseName, tr("The plugin returned invalid metadata."));
         IDOS_WARN(tr("Plugin %1 has invalid metadata.").arg(baseName));
         library->unload();
         delete library;
         return;
     }
-
     IDOSPlugin* pluginInstance = nullptr;
     try
     {
@@ -169,6 +196,20 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         delete library;
         return;
     }
+
+    const QString pluginDisplayName = pluginInstance->name().trimmed();
+    if (pluginDisplayName.isEmpty())
+    {
+        m_pluginErrors.insert(baseName, tr("The plugin returned an empty name."));
+        IDOS_WARN(tr("Plugin %1 has invalid metadata.").arg(baseName));
+        destroyPluginInstance(pluginInstance);
+        library->unload();
+        delete library;
+        return;
+    }
+    const QString pluginDescription = pluginInstance->description();
+    const QString pluginCategory = pluginInstance->category();
+    const QString pluginVersion = pluginInstance->version();
 
     IDOS_DEBUG(tr("Calling initGui for plugin %1: instance=0x%2, library=0x%3")
                    .arg(baseName,
@@ -209,10 +250,6 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         delete library;
         return;
     }
-    const QString pluginDisplayName = pluginName->trimmed();
-    const QString pluginDescription = pluginInstance->description();
-    const QString pluginCategory = pluginInstance->category();
-    const QString pluginVersion = pluginInstance->version();
     QObject* pluginObject = dynamic_cast<QObject*>(pluginInstance);
     if (pluginObject != nullptr)
     {
@@ -231,6 +268,8 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
                                         pluginDescription,
                                         pluginCategory,
                                         pluginVersion,
+                                        *exportedIcon,
+                                        static_cast<IDOSPlugin::PluginType>(pluginType),
                                         pluginInstance,
                                         library));
 
@@ -380,13 +419,24 @@ QVariantList IDOSPluginRegistry::pluginCatalog(const QString& directoryPath)
             pluginInfo.insert(QStringLiteral("description"), metadata.description());
             pluginInfo.insert(QStringLiteral("category"), metadata.category());
             pluginInfo.insert(QStringLiteral("version"), metadata.version());
+            pluginInfo.insert(QStringLiteral("icon"), metadata.icon());
+            pluginInfo.insert(QStringLiteral("type"), static_cast<int>(metadata.type()));
         }
         else
         {
-            pluginInfo.insert(QStringLiteral("name"), key);
-            pluginInfo.insert(QStringLiteral("description"), QString());
-            pluginInfo.insert(QStringLiteral("category"), QString());
-            pluginInfo.insert(QStringLiteral("version"), QString());
+            const QVariantMap exportedMetadata = pluginExportMetadata(libraryPath);
+            pluginInfo.insert(QStringLiteral("name"),
+                              exportedMetadata.value(QStringLiteral("name"), key));
+            pluginInfo.insert(QStringLiteral("description"),
+                              exportedMetadata.value(QStringLiteral("description")));
+            pluginInfo.insert(QStringLiteral("category"),
+                              exportedMetadata.value(QStringLiteral("category")));
+            pluginInfo.insert(QStringLiteral("version"),
+                              exportedMetadata.value(QStringLiteral("version")));
+            pluginInfo.insert(QStringLiteral("icon"),
+                              exportedMetadata.value(QStringLiteral("icon")));
+            pluginInfo.insert(QStringLiteral("type"),
+                              exportedMetadata.value(QStringLiteral("type"), 0));
         }
         result.append(pluginInfo);
     }
@@ -428,6 +478,64 @@ QStringList IDOSPluginRegistry::cppPluginLibraryPaths(const QDir& pluginRoot)
     return result;
 }
 
+QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
+{
+    QVariantMap metadata;
+    QLibrary library(libraryPath);
+    if (!library.load())
+    {
+        return metadata;
+    }
+
+    IDOSPluginNameFunction* nameFunction =
+        reinterpret_cast<IDOSPluginNameFunction*>(library.resolve("name"));
+    IDOSPluginDescriptionFunction* descriptionFunction =
+        reinterpret_cast<IDOSPluginDescriptionFunction*>(library.resolve("description"));
+    IDOSPluginCategoryFunction* categoryFunction =
+        reinterpret_cast<IDOSPluginCategoryFunction*>(library.resolve("category"));
+    IDOSPluginTypeFunction* typeFunction =
+        reinterpret_cast<IDOSPluginTypeFunction*>(library.resolve("type"));
+    IDOSPluginVersionFunction* versionFunction =
+        reinterpret_cast<IDOSPluginVersionFunction*>(library.resolve("version"));
+    IDOSPluginIconFunction* iconFunction =
+        reinterpret_cast<IDOSPluginIconFunction*>(library.resolve("icon"));
+    if (nameFunction == nullptr || descriptionFunction == nullptr
+        || categoryFunction == nullptr || typeFunction == nullptr
+        || versionFunction == nullptr || iconFunction == nullptr)
+    {
+        library.unload();
+        return metadata;
+    }
+
+    try
+    {
+        const QString* nameValue = nameFunction();
+        const QString* descriptionValue = descriptionFunction();
+        const QString* categoryValue = categoryFunction();
+        const int typeValue = typeFunction();
+        const QString* versionValue = versionFunction();
+        const QString* iconValue = iconFunction();
+        if (nameValue != nullptr && descriptionValue != nullptr
+            && categoryValue != nullptr && versionValue != nullptr
+            && iconValue != nullptr)
+        {
+            metadata.insert(QStringLiteral("name"), *nameValue);
+            metadata.insert(QStringLiteral("description"), *descriptionValue);
+            metadata.insert(QStringLiteral("category"), *categoryValue);
+            metadata.insert(QStringLiteral("type"), typeValue);
+            metadata.insert(QStringLiteral("version"), *versionValue);
+            metadata.insert(QStringLiteral("icon"), *iconValue);
+        }
+    }
+    catch (...)
+    {
+        metadata.clear();
+    }
+
+    library.unload();
+    return metadata;
+}
+
 void IDOSPluginRegistry::destroyPluginInstance(IDOSPlugin* pluginInstance)
 {
     if (pluginInstance == nullptr)
@@ -437,13 +545,11 @@ void IDOSPluginRegistry::destroyPluginInstance(IDOSPlugin* pluginInstance)
 
     try
     {
-        IDOS_DEBUG(tr("Calling plugin unload(): instance=0x%1, name=%2")
-                       .arg(QString::number(reinterpret_cast<quintptr>(pluginInstance), 16),
-                            pluginInstance->name()));
+        IDOS_DEBUG(tr("Calling plugin unload(): instance=0x%1")
+                       .arg(QString::number(reinterpret_cast<quintptr>(pluginInstance), 16)));
         pluginInstance->unload();
-        IDOS_DEBUG(tr("Plugin unload() returned: instance=0x%1, name=%2")
-                       .arg(QString::number(reinterpret_cast<quintptr>(pluginInstance), 16),
-                            pluginInstance->name()));
+        IDOS_DEBUG(tr("Plugin unload() returned: instance=0x%1")
+                       .arg(QString::number(reinterpret_cast<quintptr>(pluginInstance), 16)));
     }
     catch (const std::exception& exception)
     {
@@ -456,9 +562,7 @@ void IDOSPluginRegistry::destroyPluginInstance(IDOSPlugin* pluginInstance)
     }
 
     const QString pluginAddress = QString::number(reinterpret_cast<quintptr>(pluginInstance), 16);
-    const QString pluginName = pluginInstance->name();
-    IDOS_DEBUG(tr("Deleting plugin object: instance=0x%1, name=%2")
-                   .arg(pluginAddress, pluginName));
+    IDOS_DEBUG(tr("Deleting plugin object: instance=0x%1").arg(pluginAddress));
     delete pluginInstance;
     IDOS_DEBUG(tr("Plugin object deleted: instance=0x%1")
                    .arg(pluginAddress));

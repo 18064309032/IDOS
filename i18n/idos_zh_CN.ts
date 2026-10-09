@@ -469,6 +469,22 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>IDOSMainWindow</name>
     <message>
+        <source>Camera</source>
+        <translation>视角</translation>
+    </message>
+    <message>
+        <source>Display</source>
+        <translation>显示</translation>
+    </message>
+    <message>
+        <source>Orientation Marker</source>
+        <translation>方向标</translation>
+    </message>
+    <message>
+        <source>Legend</source>
+        <translation>图例</translation>
+    </message>
+    <message>
         <source>3D View (renderer not yet connected)</source>
         <translation type="vanished">3D 视图区域（渲染模块待接入）</translation>
     </message>
@@ -1178,6 +1194,42 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>QObject</name>
     <message>
+        <source>Fracture Modeling</source>
+        <translation>裂缝建模</translation>
+    </message>
+    <message>
+        <source>Fracture modeling plugin</source>
+        <translation>裂缝建模插件</translation>
+    </message>
+    <message>
+        <source>Geomechanics</source>
+        <translation>地质力学</translation>
+    </message>
+    <message>
+        <source>Geomechanics plugin</source>
+        <translation>地质力学插件</translation>
+    </message>
+    <message>
+        <source>Multiscale Fractures</source>
+        <translation>多尺度裂缝</translation>
+    </message>
+    <message>
+        <source>Multiscale fracture plugin</source>
+        <translation>多尺度裂缝插件</translation>
+    </message>
+    <message>
+        <source>Numerical Simulation</source>
+        <translation>数值模拟</translation>
+    </message>
+    <message>
+        <source>Reservoir simulation plugin</source>
+        <translation>油藏数值模拟插件</translation>
+    </message>
+    <message>
+        <source>Reservoir Engineering</source>
+        <translation>油藏工程</translation>
+    </message>
+    <message>
         <source>Trajectory</source>
         <translation type="vanished">井轨迹</translation>
     </message>
@@ -1798,117 +1850,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
 </context>
 <context>
-    <name>IDOSPropertyWidget</name>
-    <message>
-        <source>Selection</source>
-        <translation>选择</translation>
-    </message>
-    <message>
-        <source>No object selected</source>
-        <translation>未选择对象</translation>
-    </message>
-    <message>
-        <source>Object Type</source>
-        <translation>对象类型</translation>
-    </message>
-    <message>
-        <source>Well</source>
-        <translation>井</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>名称</translation>
-    </message>
-    <message>
-        <source>Well Type</source>
-        <translation>井类型</translation>
-    </message>
-    <message>
-        <source>Grid Location</source>
-        <translation>网格位置</translation>
-    </message>
-    <message>
-        <source>Reference Depth</source>
-        <translation>参考深度</translation>
-    </message>
-    <message>
-        <source>Trajectory</source>
-        <translation>井轨迹</translation>
-    </message>
-    <message>
-        <source>%1 points</source>
-        <translation>%1 个测点</translation>
-    </message>
-    <message>
-        <source>Not available</source>
-        <translation>无数据</translation>
-    </message>
-    <message>
-        <source>Well Log Curves</source>
-        <translation>测井曲线</translation>
-    </message>
-    <message>
-        <source>%1 channels</source>
-        <translation>%1 条通道</translation>
-    </message>
-    <message>
-        <source>Surface X</source>
-        <translation>井口 X 坐标</translation>
-    </message>
-    <message>
-        <source>Surface Y</source>
-        <translation>井口 Y 坐标</translation>
-    </message>
-    <message>
-        <source>Surface Elevation</source>
-        <translation>井口高程</translation>
-    </message>
-    <message>
-        <source>KB</source>
-        <translation>KB</translation>
-    </message>
-    <message>
-        <source>Well Trajectory</source>
-        <translation>井轨迹</translation>
-    </message>
-    <message>
-        <source>Point Count</source>
-        <translation>测点数</translation>
-    </message>
-    <message>
-        <source>Channel Count</source>
-        <translation>曲线数</translation>
-    </message>
-    <message>
-        <source>Depth Range</source>
-        <translation>深度范围</translation>
-    </message>
-    <message>
-        <source>The selected curve is no longer available.</source>
-        <translation>所选曲线已不存在。</translation>
-    </message>
-    <message>
-        <source>Well Log Curve</source>
-        <translation>测井曲线</translation>
-    </message>
-    <message>
-        <source>Unit</source>
-        <translation>单位</translation>
-    </message>
-    <message>
-        <source>Sample Count</source>
-        <translation>样本数</translation>
-    </message>
-    <message>
-        <source>Injector</source>
-        <translation>注入井</translation>
-    </message>
-    <message>
-        <source>Producer</source>
-        <translation>生产井</translation>
-    </message>
-</context>
-<context>
     <name>IDOSCommandManager</name>
     <message>
         <source>The command target project does not match the manager project.</source>
@@ -2217,8 +2158,8 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>加载插件失败：%1；%2</translation>
     </message>
     <message>
-        <source>Required exports name or classFactory are missing.</source>
-        <translation>插件缺少必需的 name 或 classFactory 导出函数。</translation>
+        <source>Required plugin exports are missing.</source>
+        <translation>插件缺少必需的导出函数。</translation>
     </message>
     <message>
         <source>Plugin %1 is missing required exports.</source>
@@ -2239,6 +2180,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>The plugin returned an empty name.</source>
         <translation>插件返回的名称为空。</translation>
+    </message>
+    <message>
+        <source>The plugin returned invalid metadata.</source>
+        <translation>插件返回的元数据无效。</translation>
     </message>
     <message>
         <source>Plugin %1 has invalid metadata.</source>
@@ -2321,12 +2266,12 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>卸载插件动态库失败：标识=%1，动态库=%2，错误=%3</translation>
     </message>
     <message>
-        <source>Calling plugin unload(): instance=0x%1, name=%2</source>
-        <translation>正在调用插件 unload()：实例=0x%1，名称=%2</translation>
+        <source>Calling plugin unload(): instance=0x%1</source>
+        <translation>正在调用插件 unload()：实例=0x%1</translation>
     </message>
     <message>
-        <source>Plugin unload() returned: instance=0x%1, name=%2</source>
-        <translation>插件 unload() 已返回：实例=0x%1，名称=%2</translation>
+        <source>Plugin unload() returned: instance=0x%1</source>
+        <translation>插件 unload() 已返回：实例=0x%1</translation>
     </message>
     <message>
         <source>Plugin unload failed: %1</source>
@@ -2337,43 +2282,16 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>插件卸载时发生未知异常。</translation>
     </message>
     <message>
-        <source>Deleting plugin object: instance=0x%1, name=%2</source>
-        <translation>正在销毁插件对象：实例=0x%1，名称=%2</translation>
+        <source>Deleting plugin object: instance=0x%1</source>
+        <translation>正在销毁插件对象：实例=0x%1</translation>
     </message>
     <message>
         <source>Plugin object deleted: instance=0x%1</source>
         <translation>插件对象已销毁：实例=0x%1</translation>
     </message>
 </context>
-<context>
-    <name>IDOSSimulationPlugin</name>
-    <message>
-        <source>Reservoir Simulation</source>
-        <translation>数值模拟</translation>
-    </message>
-    <message>
-        <source>Reservoir simulation plugin</source>
-        <translation>油藏数值模拟插件</translation>
-    </message>
-    <message>
-        <source>Reservoir Engineering</source>
-        <translation>油藏工程</translation>
-    </message>
-    <message>
-        <source>Simulation plugin initGui entered: interface=0x%1, initialized=%2</source>
-        <translation>进入数值模拟插件 initGui：接口=0x%1，已初始化=%2</translation>
-    </message>
-    <message>
-        <source>Simulation plugin category initialization finished: category=0x%1, initialized=%2</source>
-        <translation>数值模拟插件 Ribbon 页初始化完成：页面=0x%1，已初始化=%2</translation>
-    </message>
-    <message>
-        <source>Simulation plugin unload entered: category=0x%1, initialized=%2</source>
-        <translation>进入数值模拟插件卸载：页面=0x%1，已初始化=%2</translation>
-    </message>
-    <message>
-        <source>Simulation plugin unload finished.</source>
-        <translation>数值模拟插件卸载完成。</translation>
-    </message>
-</context>
+
+
+
+
 </TS>

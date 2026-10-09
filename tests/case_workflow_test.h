@@ -9,6 +9,7 @@ class CaseWorkflowTest : public QObject
     Q_OBJECT
   private slots:
     void onProvider();
+    void onViewDecorations();
     void onCreateAndImport();
     void onDialog();
 

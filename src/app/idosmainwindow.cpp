@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QToolButton>
 #include <QTreeView>
 
@@ -52,7 +53,6 @@
 #include "idosprojectmetadata.h"
 #include "plugin/idospluginmanagerwidget.h"
 #include "plugin/idospluginregistry.h"
-#include "idospropertywidget.h"
 #include "idosrenderserver.h"
 #include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
@@ -80,6 +80,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionPluginManager(nullptr)
     , m_actionViewPresets(nullptr)
     , m_actionResetView(nullptr)
+    , m_actionOrientationMarker(nullptr)
+    , m_actionLegend(nullptr)
     , m_project(nullptr)
     , m_commandManager(nullptr)
     , m_dataTreeModel(new IDOSDataTreeModel(this))
@@ -89,7 +91,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_treeProviderRegistry(new IDOSTreeProviderRegistry())
     , m_renderServer(new IDOSRenderServer(this))
     , m_renderView(nullptr)
-    , m_propertyWidget(nullptr)
     , m_runtimeInfoWidget(nullptr)
     , m_pluginRegistry(nullptr)
     , m_pluginManagerWidget(nullptr)
@@ -167,13 +168,6 @@ void IDOSMainWindow::initDockWidgets()
     dataDock->setWidget(m_dataTreeView);
     dataDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     ads::CDockAreaWidget* dataArea = m_dockManager->addDockWidget(ads::LeftDockWidgetArea, dataDock);
-
-    m_propertyWidget = new IDOSPropertyWidget(this);
-    ads::CDockWidget* propertyDock = new ads::CDockWidget(m_dockManager, tr("Properties"));
-    propertyDock->setObjectName(QStringLiteral("propertyDock"));
-    propertyDock->setWidget(m_propertyWidget, ads::CDockWidget::ForceNoScrollArea);
-    propertyDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
-    m_dockManager->addDockWidget(ads::RightDockWidgetArea, propertyDock);
 
     m_runtimeInfoWidget = new IDOSRuntimeInfoWidget(this);
     m_outputDock = new ads::CDockWidget(m_dockManager, tr("Output"));
@@ -372,6 +366,20 @@ void IDOSMainWindow::initRibbonAction()
     backgroundColorAction->setEnabled(false);
     viewPanel->addSmallAction(backgroundColorAction);
 
+    m_actionOrientationMarker = new QAction(
+        QIcon(QStringLiteral(":/images/render-coordinate.svg")), tr("Orientation Marker"), this);
+    m_actionOrientationMarker->setObjectName(QStringLiteral("orientationMarkerAction"));
+    m_actionOrientationMarker->setCheckable(true);
+    viewPanel->addSmallAction(m_actionOrientationMarker);
+    m_actionLegend = new QAction(
+        QIcon(QStringLiteral(":/images/render-legend.svg")), tr("Legend"), this);
+    m_actionLegend->setObjectName(QStringLiteral("legendAction"));
+    m_actionLegend->setCheckable(true);
+    viewPanel->addSmallAction(m_actionLegend);
+    connect(m_actionOrientationMarker, &QAction::toggled,
+            this, &IDOSMainWindow::onOrientationMarkerToggled);
+    connect(m_actionLegend, &QAction::toggled, this, &IDOSMainWindow::onLegendToggled);
+
     SARibbonPanel* windowPanel = projectPage->addPanel(tr("Window"));
     QAction* new3DWindowAction = new QAction(
         QIcon(QStringLiteral(":/images/render-view.svg")), tr("New 3D Window"), this);
@@ -553,7 +561,6 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     m_commandManager = project != nullptr ? project->commandManager() : nullptr;
     m_renderServer->setProject(project);
     m_assistantWidget->setProject(project);
-    m_propertyWidget->clear();
     m_renderServer->setHighlightedObjectId(QString());
     m_dataTreeModel->setProject(project);
     m_caseTreeModel->setProject(project);
@@ -662,9 +669,46 @@ void IDOSMainWindow::onViewPresetTriggered(QAction* action)
 
 void IDOSMainWindow::onCurrentViewChanged(const QString& viewId)
 {
-    const bool hasActiveView = !viewId.isEmpty();
+    Q_UNUSED(viewId);
+    const bool hasActiveView = m_renderServer->activeView() != nullptr;
+    IDOSRenderView* renderView = m_renderServer->activeView();
+    if (renderView != nullptr)
+    {
+        connect(renderView, &IDOSRenderView::decorationsChanged,
+                this, &IDOSMainWindow::onViewDecorationsChanged, Qt::UniqueConnection);
+    }
+    onViewDecorationsChanged();
     m_actionViewPresets->setEnabled(hasActiveView);
     m_actionResetView->setEnabled(hasActiveView);
+}
+
+void IDOSMainWindow::onViewDecorationsChanged()
+{
+    IDOSRenderView* renderView = m_renderServer->activeView();
+    const QSignalBlocker orientationBlocker(m_actionOrientationMarker);
+    const QSignalBlocker legendBlocker(m_actionLegend);
+    m_actionOrientationMarker->setEnabled(renderView != nullptr);
+    m_actionOrientationMarker->setChecked(renderView != nullptr && renderView->orientationMarkerVisible());
+    m_actionLegend->setEnabled(renderView != nullptr && renderView->legendAvailable());
+    m_actionLegend->setChecked(renderView != nullptr && renderView->legendVisible());
+}
+
+void IDOSMainWindow::onOrientationMarkerToggled(bool checked)
+{
+    IDOSRenderView* renderView = m_renderServer->activeView();
+    if (renderView != nullptr)
+    {
+        renderView->setOrientationMarkerVisible(checked);
+    }
+}
+
+void IDOSMainWindow::onLegendToggled(bool checked)
+{
+    IDOSRenderView* renderView = m_renderServer->activeView();
+    if (renderView != nullptr)
+    {
+        renderView->setLegendVisible(checked);
+    }
 }
 
 void IDOSMainWindow::onResetViewTriggered()
@@ -723,40 +767,27 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
 
     if (m_project == nullptr || !current.isValid())
     {
-        m_propertyWidget->clear();
         m_renderServer->setHighlightedObjectId(QString());
         return;
     }
 
     IDOSTreeNode* node = m_dataTreeModel->nodeFromIndex(current);
+    QString objectId;
     IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(node);
     if (objectNode != nullptr)
     {
-        IDOSWell* well = qobject_cast<IDOSWell*>(m_project->objectById(objectNode->objectId()));
-        if (well != nullptr)
-        {
-            m_propertyWidget->setWell(well);
-            m_propertyWidget->setWellPart(QString(), QString());
-            m_renderServer->setHighlightedObjectId(well->objectId());
-            return;
-        }
+        objectId = objectNode->objectId();
     }
-
-    IDOSTreePartNode* partNode = dynamic_cast<IDOSTreePartNode*>(node);
-    if (partNode != nullptr)
+    else
     {
-        IDOSWell* well = qobject_cast<IDOSWell*>(m_project->objectById(partNode->ownerObjectId()));
-        if (well != nullptr)
+        IDOSTreePartNode* partNode = dynamic_cast<IDOSTreePartNode*>(node);
+        if (partNode != nullptr)
         {
-            m_propertyWidget->setWell(well);
-            m_propertyWidget->setWellPart(partNode->partKey().toString(), partNode->itemKey());
-            m_renderServer->setHighlightedObjectId(well->objectId());
-            return;
+            objectId = partNode->ownerObjectId();
         }
     }
 
-    m_propertyWidget->clear();
-    m_renderServer->setHighlightedObjectId(QString());
+    m_renderServer->setHighlightedObjectId(objectId);
 }
 
 void IDOSMainWindow::onRenderObjectActivated(const QString& objectId)
@@ -851,7 +882,6 @@ void IDOSMainWindow::onProjectDestroyed()
     m_dataTreeModel->setProject(nullptr);
     m_caseTreeModel->setProject(nullptr);
     m_renderView->clear();
-    m_propertyWidget->clear();
     m_renderServer->setHighlightedObjectId(QString());
     m_renderServer->setProject(nullptr);
     m_assistantWidget->setProject(nullptr);

@@ -2,6 +2,7 @@
 #define IDOS_RENDER_VIEW_H
 
 #include <QHash>
+#include <QList>
 #include <QPoint>
 #include <QString>
 #include <QVector>
@@ -22,6 +23,7 @@ class vtkDataSetMapper;
 class vtkGenericOpenGLRenderWindow;
 class vtkOrientationMarkerWidget;
 class vtkRenderer;
+class vtkScalarBarActor;
 class vtkUnstructuredGrid;
 
 class RENDER_EXPORT IDOSRenderView : public QWidget
@@ -53,11 +55,17 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void clear();
     void refresh();
     void resetCamera();
+    bool orientationMarkerVisible() const;
+    void setOrientationMarkerVisible(bool visible);
+    bool legendVisible() const;
+    bool legendAvailable() const;
+    void setLegendVisible(bool visible);
     bool setViewPreset(ViewPreset preset);
     void setHighlightedObjectId(const QString& objectId);
 
   signals:
     void activated();
+    void decorationsChanged();
     void objectActivated(const QString& objectId);
 
   protected:
@@ -88,6 +96,8 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QPoint m_pressedPosition;
     QString m_highlightedObjectId;
     bool m_ownsScene;
+    bool m_legendVisible;
+    QList<vtkSmartPointer<vtkScalarBarActor>> m_scalarBars;
 };
 
 #endif // IDOS_RENDER_VIEW_H

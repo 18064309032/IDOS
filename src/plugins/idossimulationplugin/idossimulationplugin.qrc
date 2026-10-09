@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/analysis-chart.svg</file>
+        <file>images/analysis-curve.svg</file>
+        <file>images/analysis-run.svg</file>
+        <file>images/app-export.svg</file>
+        <file>images/app-import.svg</file>
+        <file>images/gui-case-results.svg</file>
+        <file>images/gui-case-views.svg</file>
+        <file>images/gui-case.svg</file>
+        <file>images/simulation-archive.svg</file>
+        <file>images/simulation-deck.svg</file>
+        <file>images/simulation-curve-comparison.svg</file>
+        <file>images/simulation-fit-evaluation.svg</file>
+        <file>images/simulation-initialize.svg</file>
+        <file>images/simulation-preflight.svg</file>
+        <file>images/simulation-report.svg</file>
+        <file>images/simulation-results-import.svg</file>
+        <file>images/simulation-stop.svg</file>
+        <file>images/simulation-well-controls.svg</file>
+        <file>images/simulation-workflow.svg</file>
+    </qresource>
+</RCC>

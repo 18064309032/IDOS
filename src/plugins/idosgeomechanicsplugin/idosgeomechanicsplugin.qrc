@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/geomechanics-energy.svg</file>
+        <file>images/geomechanics-fields.svg</file>
+        <file>images/geomechanics-stress.svg</file>
+        <file>images/geomechanics-three-field.svg</file>
+    </qresource>
+</RCC>

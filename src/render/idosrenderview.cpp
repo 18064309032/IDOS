@@ -27,8 +27,10 @@
 #include <vtkProperty.h>
 #include <vtkPropPicker.h>
 #include <vtkRenderer.h>
+#include <vtkScalarBarActor.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringOutputWindow.h>
+#include <vtkTextProperty.h>
 #include <vtkUnstructuredGrid.h>
 
 #include "idosrendermesh.h"
@@ -81,6 +83,21 @@ vtkSmartPointer<vtkActor> IDOSRenderView::createMeshActor(const IDOSRenderMesh* 
     }
     actor->GetProperty()->SetLineWidth(1.0);
     actor->SetVisibility(mesh->visible());
+    if (mesh->visible() && mesh->hasCellScalars())
+    {
+        vtkSmartPointer<vtkScalarBarActor> scalarBar = vtkSmartPointer<vtkScalarBarActor>::New();
+        scalarBar->SetLookupTable(mapper->GetLookupTable());
+        scalarBar->SetTitle(mesh->cellScalarName().toUtf8().constData());
+        scalarBar->SetNumberOfLabels(5);
+        scalarBar->SetPosition(0.85 - 0.16 * m_scalarBars.size(), 0.15);
+        scalarBar->SetWidth(0.12);
+        scalarBar->SetHeight(0.7);
+        scalarBar->GetTitleTextProperty()->SetColor(1.0, 1.0, 1.0);
+        scalarBar->GetLabelTextProperty()->SetColor(1.0, 1.0, 1.0);
+        scalarBar->SetVisibility(m_legendVisible);
+        m_scalarBars.append(scalarBar);
+        m_renderer->AddViewProp(scalarBar);
+    }
     m_activeActor = actor;
     m_activeGrid = grid;
     m_activeMapper = mapper;
@@ -235,6 +252,8 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_pressedPosition()
     , m_highlightedObjectId()
     , m_ownsScene(true)
+    , m_legendVisible(true)
+    , m_scalarBars()
 {
     configureVtkOutputWindow();
     m_vtkWidget = new QVTKOpenGLNativeWidget(this);
@@ -355,10 +374,7 @@ bool IDOSRenderView::setCellScalars(const QString& name, const QVector<double>& 
     }
 
     mesh->setCellScalars(name, cellScalars);
-    applyCellScalars(m_activeGrid, m_activeMapper, mesh);
-    m_activeGrid->Modified();
-    m_activeMapper->Modified();
-    m_renderWindow->Render();
+    rebuildActors();
     return true;
 }
 
@@ -374,6 +390,43 @@ void IDOSRenderView::clear()
 void IDOSRenderView::refresh()
 {
     rebuildActors();
+}
+
+bool IDOSRenderView::orientationMarkerVisible() const
+{
+    return m_orientationMarker->GetEnabled() != 0;
+}
+
+void IDOSRenderView::setOrientationMarkerVisible(bool visible)
+{
+    m_orientationMarker->SetEnabled(visible ? 1 : 0);
+    if (visible)
+    {
+        m_orientationMarker->InteractiveOff();
+    }
+    emit decorationsChanged();
+    m_renderWindow->Render();
+}
+
+bool IDOSRenderView::legendVisible() const
+{
+    return m_legendVisible;
+}
+
+bool IDOSRenderView::legendAvailable() const
+{
+    return !m_scalarBars.isEmpty();
+}
+
+void IDOSRenderView::setLegendVisible(bool visible)
+{
+    m_legendVisible = visible;
+    for (int index = 0; index < m_scalarBars.size(); ++index)
+    {
+        m_scalarBars.at(index)->SetVisibility(visible);
+    }
+    emit decorationsChanged();
+    m_renderWindow->Render();
 }
 
 void IDOSRenderView::resetCamera()
@@ -510,9 +563,11 @@ void IDOSRenderView::rebuildActors()
     m_renderer->RemoveAllViewProps();
     clearActivePipeline();
     m_actorObjectIds.clear();
+    m_scalarBars.clear();
 
     if (m_scene == nullptr)
     {
+        emit decorationsChanged();
         m_renderWindow->Render();
         return;
     }
@@ -556,6 +611,7 @@ void IDOSRenderView::rebuildActors()
         }
     }
 
+    emit decorationsChanged();
     m_renderWindow->Render();
 }
 

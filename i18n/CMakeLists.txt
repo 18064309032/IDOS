@@ -6,20 +6,27 @@
 # 本项目：idos_zh_CN.ts（与 Qt 自带 qtbase_zh_CN 一致）
 #
 # 翻译工作流：
-#   1. ninja lupdate  / cmake --build --target lupdate   扫描 src 提取 tr() 字符串
+#   1. cmake --build --target lupdate                   扫描平台代码提取 tr() 字符串
 #   2. linguist i18n/idos_zh_CN.ts                            翻译
 #   3. lrelease 由 translations 目标自动执行，产出 idos_zh_CN.qm
-#   4. 主程序启动时 QTranslator::load(QLocale(), "idos", "_", ":/i18n") 加载
-
-# lupdate / lrelease 来自 LinguistTools 组件
-find_package(Qt5 COMPONENTS LinguistTools REQUIRED)
+#   4. 主程序启动时从可执行文件目录加载 idos_zh_CN.qm
 
 set(IDOS_TS_FILE "${CMAKE_CURRENT_SOURCE_DIR}/idos_zh_CN.ts")
 set(IDOS_QM_FILE "${CMAKE_CURRENT_BINARY_DIR}/idos_zh_CN.qm")
 
 # 手动目标：源码有新增 tr() 后运行一次，更新 ts
 add_custom_target(lupdate
-    COMMAND Qt5::lupdate "${CMAKE_SOURCE_DIR}/src" -ts "${IDOS_TS_FILE}"
+    COMMAND Qt5::lupdate
+        "${CMAKE_SOURCE_DIR}/src/core"
+        "${CMAKE_SOURCE_DIR}/src/python"
+        "${CMAKE_SOURCE_DIR}/src/render"
+        "${CMAKE_SOURCE_DIR}/src/gui"
+        "${CMAKE_SOURCE_DIR}/src/app"
+        "${CMAKE_SOURCE_DIR}/src/assistant"
+        "${CMAKE_SOURCE_DIR}/src/analysis"
+        "${CMAKE_SOURCE_DIR}/src/providers"
+        "${CMAKE_SOURCE_DIR}/src/main.cpp"
+        -ts "${IDOS_TS_FILE}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     COMMENT "lupdate: 提取 tr() 字符串到 idos_zh_CN.ts..."
     VERBATIM

@@ -42,7 +42,7 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-find_package(Qt5 COMPONENTS Core Gui Widgets Network REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Widgets Network LinguistTools REQUIRED)
 
 # ---------------------------------------------------------------------
 # SARibbon 第三方库（仅 include/lib/bin 三段式布局，无 CMake config 文件）

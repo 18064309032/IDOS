@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/fracture-azimuth.svg</file>
+        <file>images/fracture-check.svg</file>
+        <file>images/fracture-import.svg</file>
+        <file>images/fracture-reconstruct.svg</file>
+        <file>images/fracture-reserve.svg</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/gui-grid-geometry.svg</file>
+        <file>images/multiscale-coarsen.svg</file>
+        <file>images/multiscale-connection-check.svg</file>
+        <file>images/multiscale-dfn.svg</file>
+        <file>images/multiscale-edfm.svg</file>
+        <file>images/multiscale-equivalent-mechanics.svg</file>
+        <file>images/multiscale-equivalent.svg</file>
+    </qresource>
+</RCC>

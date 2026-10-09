@@ -22,7 +22,10 @@ int main(int argc, char* argv[])
 
     QTranslator* translator = new QTranslator(&application);
     const QString exeDir = QCoreApplication::applicationDirPath();
-    if (translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"), exeDir) ||
+    const QString translationDirectory = exeDir + QStringLiteral("/i18n");
+    if (translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"),
+                         translationDirectory) ||
+        translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"), exeDir) ||
         translator->load(QLocale(), QStringLiteral("idos"), QStringLiteral("_"),
                          exeDir + QStringLiteral("/../../i18n")))
     {

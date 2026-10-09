@@ -3,7 +3,8 @@
 
 #include <QString>
 
-class IDOSPlugin;
+#include "idosplugin.h"
+
 class QLibrary;
 
 class IDOSPluginMetadata
@@ -13,12 +14,16 @@ class IDOSPluginMetadata
                        const QString& description,
                        const QString& category,
                        const QString& version,
+                       const QString& icon,
+                       IDOSPlugin::PluginType type,
                        IDOSPlugin* plugin,
                        QLibrary* library);
     QString name() const;
     QString description() const;
     QString category() const;
     QString version() const;
+    QString icon() const;
+    IDOSPlugin::PluginType type() const;
     IDOSPlugin* plugin() const;
     QLibrary* library() const;
 
@@ -27,6 +32,8 @@ class IDOSPluginMetadata
     QString m_description;
     QString m_category;
     QString m_version;
+    QString m_icon;
+    IDOSPlugin::PluginType m_type;
     IDOSPlugin* m_plugin;
     QLibrary* m_library;
 };

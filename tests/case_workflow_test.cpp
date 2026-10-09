@@ -1,3 +1,4 @@
+#include <QAction>
 #include <QFile>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -5,6 +6,7 @@
 #include <QScopedPointer>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QVector3D>
 #include <QtTest>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
@@ -30,6 +32,55 @@
 #include "idoswell.h"
 
 #include "case_workflow_test.h"
+
+void CaseWorkflowTest::onViewDecorations()
+{
+    IDOSMainWindow window;
+    QAction* orientationAction = window.findChild<QAction*>(QStringLiteral("orientationMarkerAction"));
+    QAction* legendAction = window.findChild<QAction*>(QStringLiteral("legendAction"));
+    IDOSRenderView* view = window.findChild<IDOSRenderView*>();
+    QVERIFY(orientationAction != nullptr);
+    QVERIFY(legendAction != nullptr);
+    QVERIFY(view != nullptr);
+    QVERIFY(orientationAction->isCheckable());
+    QVERIFY(orientationAction->isChecked());
+    QVERIFY(orientationAction->isEnabled());
+    QVERIFY(legendAction->isCheckable());
+    QVERIFY(!legendAction->isEnabled());
+    orientationAction->trigger();
+    QVERIFY(!view->orientationMarkerVisible());
+    view->setOrientationMarkerVisible(true);
+    QVERIFY(orientationAction->isChecked());
+
+    IDOSRenderMesh* mesh = new IDOSRenderMesh();
+    for (int index = 0; index < 8; ++index)
+    {
+        mesh->addPoint(QVector3D(index & 1, (index >> 1) & 1, (index >> 2) & 1));
+    }
+    mesh->addHexahedron(0, 1, 3, 2, 4, 5, 7, 6);
+    mesh->setCellScalars(QStringLiteral("Porosity"), QVector<double>{0.2});
+    view->setObject(mesh);
+    QVERIFY(view->legendAvailable());
+    QVERIFY(legendAction->isEnabled());
+    QVERIFY(legendAction->isChecked());
+    legendAction->trigger();
+    QVERIFY(!view->legendVisible());
+    view->refresh();
+    QVERIFY(!view->legendVisible());
+    QVERIFY(!legendAction->isChecked());
+    mesh->clearCellScalars();
+    view->refresh();
+    QVERIFY(!view->legendAvailable());
+    QVERIFY(!legendAction->isEnabled());
+    QVERIFY(view->setCellScalars(QStringLiteral("Permeability"), QVector<double>{12.0}));
+    QVERIFY(legendAction->isEnabled());
+    QVERIFY(!legendAction->isChecked());
+    legendAction->trigger();
+    QVERIFY(view->legendVisible());
+    view->clear();
+    QVERIFY(!view->legendAvailable());
+    QVERIFY(!legendAction->isEnabled());
+}
 
 void CaseWorkflowTest::onProvider()
 {

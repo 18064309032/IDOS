@@ -21,9 +21,10 @@ $allowed = @{
     python = @('core')
     assistant = @('core')
     app = @('core','gui','providers','render','render_core','render_qt','render_adapters','analysis','python','assistant')
+    plugins = @('app')
 }
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
-function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^core/command/[^/]+\.h(pp)?$' -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' }
+function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^core/command/[^/]+\.h(pp)?$' -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' -or $rel -match '^plugins/[^/]+/[^/]+\.h(pp)?$' }
 function WithoutComments($content) {
     [regex]::Replace($content, '(?s)/\*.*?\*/|(?m)//[^\r\n]*', { param($m) [regex]::Replace($m.Value, '[^\r\n]', ' ') })
 }

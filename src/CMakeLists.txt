@@ -17,7 +17,12 @@ add_subdirectory(plugins)
 
 # 可执行目标
 add_executable(idos WIN32 main.cpp)
-add_dependencies(idos idossimulationplugin)
+add_dependencies(idos
+    idossimulationplugin
+    idosfracturemodelingplugin
+    idosmultiscalefractureplugin
+    idosgeomechanicsplugin
+)
 
 if(WIN32)
     file(GLOB _idos_assistant_runtime_files CONFIGURE_DEPENDS
@@ -67,9 +72,11 @@ target_link_libraries(idos PRIVATE
 add_dependencies(idos translations)
 
 add_custom_command(TARGET idos POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:idos>/i18n"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_BINARY_DIR}/i18n/idos_zh_CN.qm"
-        "$<TARGET_FILE_DIR:idos>"
+        "$<TARGET_FILE_DIR:idos>/i18n/idos_zh_CN.qm"
     COMMENT "Deploying IDOS translation..."
 )
 
