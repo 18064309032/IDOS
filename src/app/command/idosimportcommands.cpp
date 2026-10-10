@@ -181,7 +181,7 @@ bool IDOSImportObjectsCommand::apply(QString& error)
     }
 
     captureTargetCaseReferences();
-    IDOSProjectUpdateGuard updateGuard(targetProject);
+    targetProject->beginUpdate();
     if (m_mode == Mode::Grid && m_replaceExistingGrid)
     {
         detachReplacementObjects();
@@ -215,6 +215,7 @@ bool IDOSImportObjectsCommand::apply(QString& error)
     }
     commandResult.insert(QStringLiteral("objectIds"), ids);
     setResult(commandResult);
+    targetProject->endUpdate();
     return true;
 }
 
@@ -227,7 +228,7 @@ bool IDOSImportObjectsCommand::revert(QString& error)
         return false;
     }
 
-    IDOSProjectUpdateGuard updateGuard(targetProject);
+    targetProject->beginUpdate();
     for (const QPointer<IDOSDataObject>& object : m_objects)
     {
         if (!object.isNull() && object->parent() != nullptr)
@@ -237,6 +238,7 @@ bool IDOSImportObjectsCommand::revert(QString& error)
     }
     restoreTargetCaseReferences();
     restoreReplacementObjects();
+    targetProject->endUpdate();
     return true;
 }
 

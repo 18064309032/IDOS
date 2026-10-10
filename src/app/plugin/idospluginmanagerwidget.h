@@ -44,8 +44,8 @@ class IDOSPluginManagerWidget : public QWidget
     QTreeView* m_pluginList;
     QWidget* m_detailsPane;
     QLabel* m_detailsTitle;
+    QLabel* m_iconLabel;
     QLabel* m_nameLabel;
-    QLineEdit* m_pathEdit;
     QLabel* m_categoryLabel;
     QLabel* m_versionLabel;
     QLabel* m_statusLabel;

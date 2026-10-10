@@ -24,7 +24,7 @@ static const QString sPluginIcon = QStringLiteral(":/images/fracture-azimuth.svg
 IDOSFractureModelingPlugin::IDOSFractureModelingPlugin(IDOSInterface* interface)
     :
     QObject(nullptr)
-    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
+    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginIcon, sPluginType)
     , m_interface(interface)
     , m_category(nullptr)
     , m_translator(nullptr)
@@ -66,9 +66,7 @@ void IDOSFractureModelingPlugin::initGui()
         m_translator = nullptr;
     }
 
-    m_category = m_interface->addRibbonCategory(
-        QStringLiteral("idosfractureModelingCategory"),
-        tr("Fracture Modeling"));
+    m_category = m_interface->insertCategoryPage(QStringLiteral("idosfractureModelingCategory"), tr("Fracture Modeling"), 3);
     if (m_category != nullptr)
     {
         SARibbonPanel* propertyPanel = m_category->addPanel(tr("Property Calculation"));

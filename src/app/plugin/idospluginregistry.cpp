@@ -4,8 +4,11 @@
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QIcon>
 #include <QLibrary>
+#include <QPixmap>
 #include <QSettings>
+#include <QSize>
 #include <QStringList>
 #include <QVariantMap>
 
@@ -95,20 +98,15 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         return;
     }
 
-    IDOSPluginNameFunction* nameFunction =
-        reinterpret_cast<IDOSPluginNameFunction*>(library->resolve("name"));
-    IDOSPluginDescriptionFunction* descriptionFunction =
-        reinterpret_cast<IDOSPluginDescriptionFunction*>(library->resolve("description"));
-    IDOSPluginCategoryFunction* categoryFunction =
-        reinterpret_cast<IDOSPluginCategoryFunction*>(library->resolve("category"));
-    IDOSPluginTypeFunction* typeFunction =
-        reinterpret_cast<IDOSPluginTypeFunction*>(library->resolve("type"));
-    IDOSPluginVersionFunction* versionFunction =
-        reinterpret_cast<IDOSPluginVersionFunction*>(library->resolve("version"));
-    IDOSPluginIconFunction* iconFunction =
-        reinterpret_cast<IDOSPluginIconFunction*>(library->resolve("icon"));
-    IDOSPluginFactoryFunction* factoryFunction =
-        reinterpret_cast<IDOSPluginFactoryFunction*>(library->resolve("classFactory"));
+    name_t* nameFunction = reinterpret_cast<name_t*>(library->resolve("name"));
+    description_t* descriptionFunction =
+        reinterpret_cast<description_t*>(library->resolve("description"));
+    category_t* categoryFunction =
+        reinterpret_cast<category_t*>(library->resolve("category"));
+    type_t* typeFunction = reinterpret_cast<type_t*>(library->resolve("type"));
+    version_t* versionFunction = reinterpret_cast<version_t*>(library->resolve("version"));
+    icon_t* iconFunction = reinterpret_cast<icon_t*>(library->resolve("icon"));
+    create_t* factoryFunction = reinterpret_cast<create_t*>(library->resolve("classFactory"));
     if (nameFunction == nullptr || descriptionFunction == nullptr
         || categoryFunction == nullptr || typeFunction == nullptr
         || versionFunction == nullptr || iconFunction == nullptr
@@ -210,6 +208,16 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
     const QString pluginDescription = pluginInstance->description();
     const QString pluginCategory = pluginInstance->category();
     const QString pluginVersion = pluginInstance->version();
+    const QString pluginIcon = pluginInstance->icon();
+    if (pluginIcon.trimmed().isEmpty())
+    {
+        m_pluginErrors.insert(baseName, tr("The plugin returned invalid metadata."));
+        IDOS_WARN(tr("Plugin %1 has invalid metadata.").arg(baseName));
+        destroyPluginInstance(pluginInstance);
+        library->unload();
+        delete library;
+        return;
+    }
 
     IDOS_DEBUG(tr("Calling initGui for plugin %1: instance=0x%2, library=0x%3")
                    .arg(baseName,
@@ -268,7 +276,7 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
                                         pluginDescription,
                                         pluginCategory,
                                         pluginVersion,
-                                        *exportedIcon,
+                                        pluginIcon,
                                         static_cast<IDOSPlugin::PluginType>(pluginType),
                                         pluginInstance,
                                         library));
@@ -420,6 +428,11 @@ QVariantList IDOSPluginRegistry::pluginCatalog(const QString& directoryPath)
             pluginInfo.insert(QStringLiteral("category"), metadata.category());
             pluginInfo.insert(QStringLiteral("version"), metadata.version());
             pluginInfo.insert(QStringLiteral("icon"), metadata.icon());
+            const QPixmap iconPixmap = QIcon(metadata.icon()).pixmap(QSize(64, 64));
+            if (!iconPixmap.isNull())
+            {
+                pluginInfo.insert(QStringLiteral("iconPixmap"), iconPixmap);
+            }
             pluginInfo.insert(QStringLiteral("type"), static_cast<int>(metadata.type()));
         }
         else
@@ -435,6 +448,8 @@ QVariantList IDOSPluginRegistry::pluginCatalog(const QString& directoryPath)
                               exportedMetadata.value(QStringLiteral("version")));
             pluginInfo.insert(QStringLiteral("icon"),
                               exportedMetadata.value(QStringLiteral("icon")));
+            pluginInfo.insert(QStringLiteral("iconPixmap"),
+                              exportedMetadata.value(QStringLiteral("iconPixmap")));
             pluginInfo.insert(QStringLiteral("type"),
                               exportedMetadata.value(QStringLiteral("type"), 0));
         }
@@ -487,18 +502,14 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
         return metadata;
     }
 
-    IDOSPluginNameFunction* nameFunction =
-        reinterpret_cast<IDOSPluginNameFunction*>(library.resolve("name"));
-    IDOSPluginDescriptionFunction* descriptionFunction =
-        reinterpret_cast<IDOSPluginDescriptionFunction*>(library.resolve("description"));
-    IDOSPluginCategoryFunction* categoryFunction =
-        reinterpret_cast<IDOSPluginCategoryFunction*>(library.resolve("category"));
-    IDOSPluginTypeFunction* typeFunction =
-        reinterpret_cast<IDOSPluginTypeFunction*>(library.resolve("type"));
-    IDOSPluginVersionFunction* versionFunction =
-        reinterpret_cast<IDOSPluginVersionFunction*>(library.resolve("version"));
-    IDOSPluginIconFunction* iconFunction =
-        reinterpret_cast<IDOSPluginIconFunction*>(library.resolve("icon"));
+    name_t* nameFunction = reinterpret_cast<name_t*>(library.resolve("name"));
+    description_t* descriptionFunction =
+        reinterpret_cast<description_t*>(library.resolve("description"));
+    category_t* categoryFunction =
+        reinterpret_cast<category_t*>(library.resolve("category"));
+    type_t* typeFunction = reinterpret_cast<type_t*>(library.resolve("type"));
+    version_t* versionFunction = reinterpret_cast<version_t*>(library.resolve("version"));
+    icon_t* iconFunction = reinterpret_cast<icon_t*>(library.resolve("icon"));
     if (nameFunction == nullptr || descriptionFunction == nullptr
         || categoryFunction == nullptr || typeFunction == nullptr
         || versionFunction == nullptr || iconFunction == nullptr)
@@ -525,6 +536,11 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
             metadata.insert(QStringLiteral("type"), typeValue);
             metadata.insert(QStringLiteral("version"), *versionValue);
             metadata.insert(QStringLiteral("icon"), *iconValue);
+            const QPixmap iconPixmap = QIcon(*iconValue).pixmap(QSize(64, 64));
+            if (!iconPixmap.isNull())
+            {
+                metadata.insert(QStringLiteral("iconPixmap"), iconPixmap);
+            }
         }
     }
     catch (...)

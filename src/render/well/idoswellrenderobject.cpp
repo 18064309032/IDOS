@@ -1,7 +1,9 @@
 #include "idoswellrenderobject.h"
 
-IDOSWellRenderObject::IDOSWellRenderObject()
-    : m_wellHeadPosition()
+IDOSWellRenderObject::IDOSWellRenderObject(IDOSRenderProvider* provider)
+    :
+    IDOSRenderObject(provider)
+    , m_wellHeadPosition()
     , m_hasWellHead(false)
     , m_injector(false)
 {

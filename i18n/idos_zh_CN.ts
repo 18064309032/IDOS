@@ -530,7 +530,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Stack Windows</source>
-        <translation>上下并排</translation>
+        <translation>标签堆叠</translation>
     </message>
     <message>
         <source>Grid Layout</source>
@@ -681,12 +681,32 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>输出</translation>
     </message>
     <message>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
         <source>Capture Screenshot</source>
         <translation>截图</translation>
     </message>
     <message>
         <source>Export Image</source>
         <translation>导出图片</translation>
+    </message>
+    <message>
+        <source>PNG Image (*.png)</source>
+        <translation>PNG 图片 (*.png)</translation>
+    </message>
+    <message>
+        <source>Screenshot copied to clipboard.</source>
+        <translation>截图已复制到剪贴板。</translation>
+    </message>
+    <message>
+        <source>Could not save image to %1.</source>
+        <translation>无法将图片保存到 %1。</translation>
+    </message>
+    <message>
+        <source>Image exported to %1.</source>
+        <translation>图片已导出到 %1。</translation>
     </message>
     <message>
         <source>Print</source>
@@ -711,6 +731,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>3D View</source>
         <translation>三维视图</translation>
+    </message>
+    <message>
+        <source>2D View</source>
+        <translation>二维视图</translation>
     </message>
     <message>
         <source>Data</source>

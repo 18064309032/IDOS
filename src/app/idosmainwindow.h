@@ -1,6 +1,7 @@
 #ifndef IDOS_MAIN_WINDOW_H
 #define IDOS_MAIN_WINDOW_H
 
+#include <QMap>
 #include <QPointer>
 #include <QString>
 
@@ -12,6 +13,7 @@ class IDOSProjectMetadata;
 class QAction;
 class QCloseEvent;
 class QModelIndex;
+class QTreeView;
 class IDOSCommandManager;
 class IDOSProject;
 class IDOSDataTreeModel;
@@ -20,7 +22,6 @@ class IDOSDataTreeView;
 class IDOSCaseTreeView;
 class IDOSTreeProviderRegistry;
 class IDOSRenderServer;
-class IDOSRenderView;
 class IDOSWell;
 class IDOSWellLogTrackView;
 class IDOSAssistantWidget;
@@ -72,14 +73,28 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onCommandStateChanged();
     void onDataTreeItemActivated(const QModelIndex& index);
     void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
-    void onRenderObjectActivated(const QString& objectId);
+    void onCaseTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+    void onRenderObjectActivated(const QString& viewId, const QString& objectId);
     void onPluginManagerTriggered();
+    void onFocusedDockWidgetChanged(ads::CDockWidget* oldDock, ads::CDockWidget* currentDock);
     void onCurrentViewChanged(const QString& viewId);
+    void onActiveViewContextObjectChanged(const QString& viewId, const QString& objectId);
     void onViewPresetTriggered(QAction* action);
     void onResetViewTriggered();
+    void onFitAllTriggered();
+    void onBackgroundColorTriggered();
+    void onCaptureScreenshotTriggered();
+    void onExportImageTriggered();
+    void onAssistantTriggered();
+    void onNew3DWindowTriggered();
+    void onNew2DWindowTriggered();
+    void onWindowLayoutTriggered(QAction* action);
+    void onRenderViewDockClosed();
     void onOrientationMarkerToggled(bool checked);
     void onLegendToggled(bool checked);
-    void onViewDecorationsChanged();
+    void onViewDecorationsChanged(bool orientationMarkerVisible,
+                                  bool legendAvailable,
+                                  bool legendVisible);
 
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -92,6 +107,15 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void initRibbonAction();
     void initDockWidgets();
     void initPluginManager();
+    void createRenderView(bool parallelProjection);
+    void applyWindowLayout(const QString& layout);
+    void updateTreeSelection(const QString& viewId);
+    void setViewTreeContext(const QString& viewId, const QString& objectId, const QString& caseId);
+    void selectTreeIndex(QTreeView* treeView, const QModelIndex& index);
+    QModelIndex caseTreeIndexForContext(const QString& objectId, const QString& caseId) const;
+    QModelIndex findCaseReferenceIndex(const QModelIndex& parentIndex, const QString& objectId) const;
+    QString objectIdFromCaseTreeIndex(const QModelIndex& index) const;
+    QString caseIdFromCaseTreeIndex(const QModelIndex& index) const;
     bool confirmDiscardProject();
     IDOSWellLogTrackView* findOrCreateWellLogTrackView(IDOSWell* well);
 
@@ -105,8 +129,16 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionPluginManager;
     QAction* m_actionViewPresets;
     QAction* m_actionResetView;
+    QAction* m_actionFitAll;
+    QAction* m_actionBackgroundColor;
     QAction* m_actionOrientationMarker;
     QAction* m_actionLegend;
+    QAction* m_actionCaptureScreenshot;
+    QAction* m_actionExportImage;
+    QAction* m_actionAssistant;
+    QAction* m_actionNew3DWindow;
+    QAction* m_actionNew2DWindow;
+    QAction* m_actionWindowLayout;
 
     IDOSProject* m_project;
     QPointer<IDOSCommandManager> m_commandManager;
@@ -116,7 +148,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSCaseTreeView* m_caseTreeView;
     IDOSTreeProviderRegistry* m_treeProviderRegistry;
     IDOSRenderServer* m_renderServer;
-    IDOSRenderView* m_renderView;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
     IDOSPluginRegistry* m_pluginRegistry;
     IDOSPluginManagerWidget* m_pluginManagerWidget;
@@ -129,6 +160,10 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     ads::CDockWidget* m_outputDock;
     ads::CDockWidget* m_debugDock;
     ads::CDockWidget* m_assistantDock;
+    QMap<QString, QPointer<ads::CDockWidget>> m_viewDocks;
+    QMap<QString, QString> m_viewCaseIds;
+    int m_nextViewIndex;
+    QString m_currentWindowLayout;
 };
 
 #endif // IDOS_MAIN_WINDOW_H

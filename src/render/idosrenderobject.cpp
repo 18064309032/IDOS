@@ -1,13 +1,30 @@
+#include "idosrenderprovider.h"
 #include "idosrenderobject.h"
 
-IDOSRenderObject::IDOSRenderObject()
-    : m_visible(true)
-    , m_opacity(1.0)
+IDOSRenderObject::IDOSRenderObject(IDOSRenderProvider* provider)
+    :
+    m_provider(provider)
 {
 }
 
 IDOSRenderObject::~IDOSRenderObject()
 {
+    delete m_provider;
+}
+
+void IDOSRenderObject::setRenderProvider(IDOSRenderProvider* provider)
+{
+    if (m_provider == provider)
+    {
+        return;
+    }
+    delete m_provider;
+    m_provider = provider;
+}
+
+IDOSRenderProvider* IDOSRenderObject::renderProvider() const
+{
+    return m_provider;
 }
 
 QString IDOSRenderObject::id() const
@@ -28,24 +45,4 @@ QString IDOSRenderObject::name() const
 void IDOSRenderObject::setName(const QString& name)
 {
     m_name = name;
-}
-
-bool IDOSRenderObject::visible() const
-{
-    return m_visible;
-}
-
-void IDOSRenderObject::setVisible(bool visible)
-{
-    m_visible = visible;
-}
-
-double IDOSRenderObject::opacity() const
-{
-    return m_opacity;
-}
-
-void IDOSRenderObject::setOpacity(double opacity)
-{
-    m_opacity = qBound(0.0, opacity, 1.0);
 }

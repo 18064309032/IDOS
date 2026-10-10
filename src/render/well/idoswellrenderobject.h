@@ -10,16 +10,15 @@
 /**
  * @brief 井渲染对象。
  *
- * 存储井口位置和可选的井眼轨迹点列（X/Y/Z），由渲染视图层构建为
+ * 存储井口位置和可选的井眼轨迹点列（X/Y/Z），并按渲染对象接口生成
  * vtkPolyData 井口标记与轨迹折线。
  * 与 IDOSRenderMesh（网格六面体）同级，均继承 IDOSRenderObject。
  */
 class RENDER_EXPORT IDOSWellRenderObject : public IDOSRenderObject
 {
   public:
-    IDOSWellRenderObject();
+    explicit IDOSWellRenderObject(IDOSRenderProvider* provider = nullptr);
     ~IDOSWellRenderObject() override;
-
     bool hasWellHead() const;
     QVector3D wellHeadPosition() const;
     void setWellHeadPosition(const QVector3D& position);

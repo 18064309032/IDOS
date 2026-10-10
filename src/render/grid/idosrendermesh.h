@@ -11,9 +11,8 @@
 class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
 {
   public:
-    IDOSRenderMesh();
+    explicit IDOSRenderMesh(IDOSRenderProvider* provider = nullptr);
     ~IDOSRenderMesh() override;
-
     const QVector<QVector3D>& points() const;
     void setPoints(const QVector<QVector3D>& points);
 
@@ -27,7 +26,6 @@ class RENDER_EXPORT IDOSRenderMesh : public IDOSRenderObject
 
     int hexahedronCount() const;
     const QVector<int>& cellGlobalIndices() const;
-
     QString cellScalarName() const;
     const QVector<double>& cellScalars() const;
     void setCellScalars(const QString& name, const QVector<double>& values);

@@ -84,11 +84,12 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     /** Eclipse natural order 线性索引：i 最快。 */
     static int cellIndex(int i, int j, int k, int nx, int ny);
 
-    Q_SIGNAL void keywordChanged();
-    Q_SIGNAL void kindChanged(Kind kind);
-    Q_SIGNAL void gridIdChanged();
-    Q_SIGNAL void dimensionsChanged(int nx, int ny, int nz);
-    Q_SIGNAL void valuesChanged();
+  signals:
+    void keywordChanged();
+    void kindChanged(Kind kind);
+    void gridIdChanged();
+    void dimensionsChanged(int nx, int ny, int nz);
+    void valuesChanged();
 
   private:
     QString m_keyword;

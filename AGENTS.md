@@ -17,6 +17,18 @@
 - 用户可见的界面文字、格式名称和错误提示使用 `tr()`（非 QObject 类可使用 `QObject::tr()`），更新 `i18n/idos_zh_CN.ts` 并完成中文翻译。内部标识、协议关键字和文件路径不翻译。
 - 第三方库不作批量风格改写；Qt 固定签名的事件重写函数保持框架要求的名称。
 
+# 渲染架构约定
+
+- 渲染模块按接口协作，职责限定为 Registry、Metadata、RenderProvider、RenderObject、Scene、View 和 RenderServer。
+- Registry 注册并按数据类型查找 Metadata；Metadata 负责根据数据对象创建对应的 RenderObject，不负责监听工程变化或同步场景。
+- RenderObject 持有自己的 RenderProvider，并通过公开的 `renderProvider()` 接口返回它。Provider 与对应的数据对象关联，数据对象指针在创建 Provider 时传入；不额外引入 `IDOSDataRenderProvider` 包装层。
+- RenderProvider 提供渲染对象所需的通用渲染操作。具体数据类型的渲染行为由对应 Provider 实现；不得把数据类型专属操作放入通用平台接口。
+- Scene 只管理 RenderObject；View 从 Scene 获取 RenderObject，并通过其 Provider 获取 actor、图例及其他渲染能力。
+- RenderServer 连接工程信号，负责根据 Registry 中的 Metadata 创建、更新和移除 RenderObject，并协调 Scene 与 View。工程事件同步逻辑属于 RenderServer，不属于 Metadata 或 RenderProvider。
+- 不引入 `IDOSRenderProviderContext`、`IDOSRenderObjectChange`、Provider `synchronize()` 等用于把工程同步委托给 Provider 的机制；确需工程同步时由 RenderServer 直接处理。
+- 数据对象 ID 与 RenderObject ID 分别管理。一个 RenderObject 可以对应多个 actor；View 将 actor 操作映射回 RenderObject，再由其 Provider 关联到源数据对象。
+- 实现既定架构时，删除确认不需要的旧接口和适配层，不为复用旧调用链保留重复抽象；改动前梳理完整调用路径，避免叠加补丁。
+
 # 编译目录
 
 - 后续所有 CMake 配置、编译和构建测试统一使用 `E:\CJW-Archive\build\win-x64-debug-local` 作为唯一构建目录。

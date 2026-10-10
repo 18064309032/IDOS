@@ -24,7 +24,7 @@ static const QString sPluginIcon = QStringLiteral(":/images/geomechanics-stress.
 IDOSGeomechanicsPlugin::IDOSGeomechanicsPlugin(IDOSInterface* interface)
     :
     QObject(nullptr)
-    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
+    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginIcon, sPluginType)
     , m_interface(interface)
     , m_category(nullptr)
     , m_translator(nullptr)
@@ -66,9 +66,10 @@ void IDOSGeomechanicsPlugin::initGui()
         m_translator = nullptr;
     }
 
-    m_category = m_interface->addRibbonCategory(
+    m_category = m_interface->insertCategoryPage(
         QStringLiteral("idosgeomechanicsCategory"),
-        tr("Geomechanics"));
+        tr("Geomechanics"),
+        2);
     if (m_category != nullptr)
     {
         SARibbonPanel* calculationPanel = m_category->addPanel(tr("Stress Calculation"));

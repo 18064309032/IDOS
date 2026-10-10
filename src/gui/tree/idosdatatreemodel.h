@@ -30,14 +30,6 @@ class GUI_EXPORT IDOSDataTreeModel : public IDOSTreeModel
     void buildObjectTree(IDOSTreeNode* parentNode, const IDOSDataObject* object) override;
     IDOSTreeNode* parentNodeForNewObject(const IDOSDataObject* object) const override;
 
-  private Q_SLOTS:
-    /** 勾选状态变化时把 objectId 上抛为 itemCheckedChanged 信号供渲染服务接收。 */
-    void onCheckStateChanged(const QModelIndex& index, bool checked);
-
-  Q_SIGNALS:
-    /** 数据本体节点勾选变化；payload 为被勾选/取消的数据对象 objectId。 */
-    void itemCheckedChanged(const QString& objectId, bool checked);
-
   private:
     /** 建一个分类节点：设标题/图标并登记到 m_groups。返回新建节点供挂子级。 */
     IDOSTreeGroupNode* addGroupNode(IDOSTreeBuilder& builder,

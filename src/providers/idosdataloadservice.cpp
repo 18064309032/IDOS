@@ -70,7 +70,7 @@ QStringList IDOSDataLoadService::loadFile(const QString& filePath, IDOSProject* 
 
     // 一次文件导入可能产生数十上百个对象：包批量事务，
     // 视图等订阅者只在全部对象落位后收到一次批量信号
-    IDOSProjectUpdateGuard updateGuard(project);
+    project->beginUpdate();
     for (IDOSDataObject* object : objects)
     {
         if (object == nullptr)
@@ -131,6 +131,7 @@ QStringList IDOSDataLoadService::loadFile(const QString& filePath, IDOSProject* 
     }
 
     m_lastError.clear();
+    project->endUpdate();
     return loadedObjectIds;
 }
 

@@ -24,17 +24,12 @@ class GUI_EXPORT IDOSCaseTreeModel : public IDOSTreeModel
     bool setData(const QModelIndex& index, const QVariant& value, int role) override;
     QModelIndex indexFromReferencedObjectId(const QString& objectId) const;
 
-    Q_SIGNAL void itemCheckedChanged(const QString& objectId, bool checked);
-
   protected:
     bool shouldShowObject(const IDOSDataObject* object) const override;
     void buildObjectTree(IDOSTreeNode* parentNode, const IDOSDataObject* object) override;
     void refreshReferencingBranches(const QString& objectId, bool objectRemoved) override;
     void refreshReferencingBranchesBatch(const QStringList& changedIds,
                                          const QStringList& removedIds) override;
-
-  private slots:
-    void onCheckStateChanged(const QModelIndex& index, bool checked);
 
   private:
     IDOSTreeProviderRegistry* m_treeProviderRegistry;

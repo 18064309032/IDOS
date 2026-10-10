@@ -24,7 +24,7 @@ static const QString sPluginIcon = QStringLiteral(":/images/multiscale-dfn.svg")
 IDOSMultiscaleFracturePlugin::IDOSMultiscaleFracturePlugin(IDOSInterface* interface)
     :
     QObject(nullptr)
-    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
+    , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginIcon, sPluginType)
     , m_interface(interface)
     , m_category(nullptr)
     , m_translator(nullptr)
@@ -66,9 +66,10 @@ void IDOSMultiscaleFracturePlugin::initGui()
         m_translator = nullptr;
     }
 
-    m_category = m_interface->addRibbonCategory(
+    m_category = m_interface->insertCategoryPage(
         QStringLiteral("idosmultiscaleFractureCategory"),
-        tr("Multiscale Fractures"));
+        tr("Multiscale Fractures"),
+        4);
     if (m_category != nullptr)
     {
         SARibbonPanel* networkPanel = m_category->addPanel(tr("Network Generation"));

@@ -37,7 +37,8 @@ enum class IDOSOrientation
     Front,
     Back,
     Left,
-    Right
+    Right,
+    Isometric
 };
 
 #endif // IDOS_RENDER_TYPES_H

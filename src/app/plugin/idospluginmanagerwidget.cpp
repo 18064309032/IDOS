@@ -7,7 +7,9 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
+#include <QPixmap>
 #include <QPushButton>
+#include <QSize>
 #include <QSortFilterProxyModel>
 #include <QSplitter>
 #include <QStyle>
@@ -33,8 +35,8 @@ IDOSPluginManagerWidget::IDOSPluginManagerWidget(IDOSPluginRegistry* registry,
     , m_pluginList(new QTreeView(this))
     , m_detailsPane(new QWidget(this))
     , m_detailsTitle(new QLabel(tr("Plugin Information"), this))
+    , m_iconLabel(new QLabel(this))
     , m_nameLabel(new QLabel(this))
-    , m_pathEdit(new QLineEdit(this))
     , m_categoryLabel(new QLabel(this))
     , m_versionLabel(new QLabel(this))
     , m_statusLabel(new QLabel(this))
@@ -77,8 +79,9 @@ IDOSPluginManagerWidget::IDOSPluginManagerWidget(IDOSPluginRegistry* registry,
     m_pluginList->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
 
     m_nameLabel->setWordWrap(true);
-    m_pathEdit->setReadOnly(true);
-    m_pathEdit->setFrame(false);
+    m_iconLabel->setFixedSize(QSize(48, 48));
+    m_iconLabel->setAlignment(Qt::AlignCenter);
+    m_iconLabel->hide();
     m_categoryLabel->setWordWrap(true);
     m_versionLabel->setWordWrap(true);
     m_statusLabel->setWordWrap(true);
@@ -120,21 +123,23 @@ IDOSPluginManagerWidget::IDOSPluginManagerWidget(IDOSPluginRegistry* registry,
     metadataLayout->setVerticalSpacing(10);
     metadataLayout->addRow(tr("Category"), m_categoryLabel);
     metadataLayout->addRow(tr("Version"), m_versionLabel);
-    metadataLayout->addRow(tr("Location"), m_pathEdit);
-
-    QLabel* descriptionTitle = new QLabel(tr("Description"), m_detailsPane);
+    metadataLayout->addRow(tr("Description"), m_descriptionLabel);
     QVBoxLayout* detailsLayout = new QVBoxLayout(m_detailsPane);
     detailsLayout->setContentsMargins(16, 0, 0, 0);
     detailsLayout->setSpacing(12);
     detailsLayout->addWidget(m_detailsTitle);
 
     QHBoxLayout* pluginHeadingLayout = new QHBoxLayout();
-    pluginHeadingLayout->addWidget(m_nameLabel, 1);
-    pluginHeadingLayout->addWidget(m_statusLabel, 0, Qt::AlignRight | Qt::AlignVCenter);
+    pluginHeadingLayout->addWidget(m_iconLabel, 0, Qt::AlignTop);
+    QVBoxLayout* pluginIdentityLayout = new QVBoxLayout();
+    QHBoxLayout* pluginTitleLayout = new QHBoxLayout();
+    pluginTitleLayout->addWidget(m_nameLabel, 1);
+    pluginTitleLayout->addWidget(m_statusLabel, 0, Qt::AlignRight | Qt::AlignVCenter);
+    pluginIdentityLayout->addLayout(pluginTitleLayout);
+    pluginHeadingLayout->addLayout(pluginIdentityLayout, 1);
     detailsLayout->addLayout(pluginHeadingLayout);
     detailsLayout->addLayout(metadataLayout);
-    detailsLayout->addWidget(descriptionTitle);
-    detailsLayout->addWidget(m_descriptionLabel, 1);
+    detailsLayout->addStretch(1);
     detailsLayout->addWidget(m_errorLabel);
 
     QSplitter* splitter = new QSplitter(Qt::Horizontal, this);
@@ -246,9 +251,10 @@ void IDOSPluginManagerWidget::updatePluginDetails(const QModelIndex& proxyIndex)
     if (!proxyIndex.isValid())
     {
         const bool hasPlugins = m_pluginModel->rowCount() > 0;
+        m_iconLabel->clear();
+        m_iconLabel->hide();
         m_nameLabel->setText(hasPlugins ? tr("Select a plugin") : tr("Plugin Manager"));
         m_statusLabel->clear();
-        m_pathEdit->clear();
         m_categoryLabel->clear();
         m_versionLabel->clear();
         if (!hasPlugins)
@@ -281,13 +287,21 @@ void IDOSPluginManagerWidget::updatePluginDetails(const QModelIndex& proxyIndex)
         m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginDescriptionRole).toString();
     const QString errorMessage =
         m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginErrorRole).toString();
-    const QString pluginPath =
-        m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginPathRole).toString();
-
+    const QPixmap pluginIconPixmap =
+        m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginIconRole).value<QPixmap>();
+    if (pluginIconPixmap.isNull())
+    {
+        m_iconLabel->clear();
+        m_iconLabel->hide();
+    }
+    else
+    {
+        m_iconLabel->setPixmap(pluginIconPixmap.scaled(QSize(48, 48),
+                                                       Qt::KeepAspectRatio,
+                                                       Qt::SmoothTransformation));
+        m_iconLabel->show();
+    }
     m_nameLabel->setText(pluginName);
-    m_pathEdit->setText(pluginPath);
-    m_pathEdit->setToolTip(pluginPath);
-    m_pathEdit->setCursorPosition(pluginPath.length());
     m_categoryLabel->setText(category.isEmpty() ? tr("Not specified") : category);
     m_versionLabel->setText(version.isEmpty() ? tr("Not specified") : version);
     m_statusLabel->setText(status);

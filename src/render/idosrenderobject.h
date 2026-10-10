@@ -5,28 +5,25 @@
 
 #include "idos_render.h"
 
+class IDOSRenderProvider;
+
 class RENDER_EXPORT IDOSRenderObject
 {
   public:
-    IDOSRenderObject();
+    explicit IDOSRenderObject(IDOSRenderProvider* provider = nullptr);
     virtual ~IDOSRenderObject();
 
     QString id() const;
     void setId(const QString& id);
-
     QString name() const;
     void setName(const QString& name);
-
-    bool visible() const;
-    void setVisible(bool visible);
-    double opacity() const;
-    void setOpacity(double opacity);
+    IDOSRenderProvider* renderProvider() const;
+    void setRenderProvider(IDOSRenderProvider* provider);
 
   private:
     QString m_id;
     QString m_name;
-    bool m_visible;
-    double m_opacity;
+    IDOSRenderProvider* m_provider;
 };
 
 #endif // IDOS_RENDER_OBJECT_H

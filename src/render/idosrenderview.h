@@ -1,47 +1,37 @@
 #ifndef IDOS_RENDER_VIEW_H
 #define IDOS_RENDER_VIEW_H
 
+#include <QColor>
 #include <QHash>
+#include <QImage>
 #include <QList>
 #include <QPoint>
 #include <QString>
-#include <QVector>
 #include <QWidget>
 
 #include <vtkSmartPointer.h>
 
 #include "idos_render.h"
+#include "idosrendertypes.h"
 
 class IDOSRenderObject;
-class IDOSRenderMesh;
 class IDOSRenderScene;
-class IDOSWellRenderObject;
+class QFrame;
+class QGraphicsOpacityEffect;
+class QPropertyAnimation;
 class QVTKOpenGLNativeWidget;
 class vtkActor;
 class vtkAxesActor;
-class vtkDataSetMapper;
 class vtkGenericOpenGLRenderWindow;
 class vtkOrientationMarkerWidget;
 class vtkRenderer;
-class vtkScalarBarActor;
-class vtkUnstructuredGrid;
+class vtkProp;
 
 class RENDER_EXPORT IDOSRenderView : public QWidget
 {
     Q_OBJECT
 
   public:
-    enum class ViewPreset
-    {
-        Front,
-        Back,
-        Left,
-        Right,
-        Top,
-        Bottom,
-        Isometric
-    };
-
     explicit IDOSRenderView(QWidget* parent = nullptr);
     ~IDOSRenderView() override;
 
@@ -51,16 +41,23 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void addObject(IDOSRenderObject* object);
     void setObject(IDOSRenderObject* object);
     QString currentObjectId() const;
-    bool setCellScalars(const QString& name, const QVector<double>& values);
     void clear();
     void refresh();
     void resetCamera();
+    void setParallelProjection(bool enabled);
+    bool parallelProjection() const;
+    QColor backgroundColor() const;
+    void setBackgroundColor(const QColor& color);
+    void setActive(bool active);
+    bool isActive() const;
+    QImage captureImage();
+    void flashScreenshot();
     bool orientationMarkerVisible() const;
     void setOrientationMarkerVisible(bool visible);
     bool legendVisible() const;
     bool legendAvailable() const;
     void setLegendVisible(bool visible);
-    bool setViewPreset(ViewPreset preset);
+    bool setOrientation(IDOSOrientation orientation);
     void setHighlightedObjectId(const QString& objectId);
 
   signals:
@@ -72,32 +69,28 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool eventFilter(QObject* watched, QEvent* event) override;
 
   private:
-    vtkSmartPointer<vtkActor> createMeshActor(const IDOSRenderMesh* mesh);
-    vtkSmartPointer<vtkActor> createWellHeadActor(const IDOSWellRenderObject* well);
-    vtkSmartPointer<vtkActor> createWellTrajectoryActor(const IDOSWellRenderObject* well);
-    void applyWellStyle(vtkActor* actor, const IDOSWellRenderObject* well) const;
-    void applyCellScalars(vtkUnstructuredGrid* grid, vtkDataSetMapper* mapper,
-                          const IDOSRenderMesh* mesh) const;
     void configureVtkOutputWindow();
-    void clearActivePipeline();
     void rebuildActors();
     void activateObjectAt(const QPoint& position);
+    void updateActiveBorder();
 
     QVTKOpenGLNativeWidget* m_vtkWidget;
+    QFrame* m_activeBorder;
+    QWidget* m_flashOverlay;
+    QGraphicsOpacityEffect* m_flashOpacityEffect;
+    QPropertyAnimation* m_flashAnimation;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> m_renderWindow;
     vtkSmartPointer<vtkRenderer> m_renderer;
     vtkSmartPointer<vtkAxesActor> m_axesActor;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
-    vtkSmartPointer<vtkActor> m_activeActor;
-    vtkSmartPointer<vtkUnstructuredGrid> m_activeGrid;
-    vtkSmartPointer<vtkDataSetMapper> m_activeMapper;
     IDOSRenderScene* m_scene;
     QHash<vtkActor*, QString> m_actorObjectIds;
     QPoint m_pressedPosition;
     QString m_highlightedObjectId;
+    bool m_active;
     bool m_ownsScene;
     bool m_legendVisible;
-    QList<vtkSmartPointer<vtkScalarBarActor>> m_scalarBars;
+    QList<vtkProp*> m_legends;
 };
 
 #endif // IDOS_RENDER_VIEW_H

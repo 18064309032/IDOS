@@ -11,7 +11,6 @@ IDOSDataTreeModel::IDOSDataTreeModel(QObject* parent)
     : IDOSTreeModel(parent)
     , m_treeProviderRegistry(nullptr)
 {
-    connect(this, &IDOSTreeModel::checkStateChanged, this, &IDOSDataTreeModel::onCheckStateChanged);
 }
 
 IDOSDataTreeModel::~IDOSDataTreeModel()
@@ -71,15 +70,6 @@ IDOSTreeGroupNode* IDOSDataTreeModel::addGroupNode(IDOSTreeBuilder& builder,
     node->setIcon(QIcon(iconPath));
     m_groups.insert(key, node);
     return node;
-}
-
-void IDOSDataTreeModel::onCheckStateChanged(const QModelIndex& index, bool checked)
-{
-    IDOSDataObject* object = objectFromIndex(index);
-    if (object != nullptr)
-    {
-        emit itemCheckedChanged(object->objectId(), checked);
-    }
 }
 
 void IDOSDataTreeModel::buildDefaultTree(IDOSTreeNode* rootNode)

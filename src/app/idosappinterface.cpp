@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonMainWindow.h>
@@ -78,13 +80,107 @@ SARibbonCategory* IDOSAppInterface::addRibbonCategory(const QString& objectName,
     }
 
     category->setObjectName(objectName);
+    category->setProperty("idosRibbonIndex", std::numeric_limits<int>::max());
     m_ownedRibbonCategories.append(QPointer<SARibbonCategory>(category));
+    reorderRibbonCategories();
     IDOS_DEBUG(tr("Ribbon category created: objectName=%1, title=%2, category=0x%3, parent=0x%4")
                    .arg(objectName,
                         title,
                         QString::number(reinterpret_cast<quintptr>(category), 16),
                         QString::number(reinterpret_cast<quintptr>(category->parent()), 16)));
     return category;
+}
+
+SARibbonCategory* IDOSAppInterface::insertCategoryPage(const QString& objectName,
+                                                        const QString& title,
+                                                        int index)
+{
+    if (m_mainWindow == nullptr || objectName.isEmpty() || title.isEmpty() || index < 0)
+    {
+        IDOS_WARN(tr("Ribbon category creation rejected: objectName=%1, title=%2")
+                      .arg(objectName, title));
+        return nullptr;
+    }
+
+    SARibbonMainWindow* ribbonMainWindow = qobject_cast<SARibbonMainWindow*>(m_mainWindow);
+    if (ribbonMainWindow == nullptr || ribbonMainWindow->ribbonBar() == nullptr)
+    {
+        IDOS_ERROR(tr("Ribbon category creation failed: ribbon main window or ribbon bar is null."));
+        return nullptr;
+    }
+
+    SARibbonBar* ribbonBar = ribbonMainWindow->ribbonBar();
+    SARibbonCategory* existingCategory = ribbonBar->categoryByObjectName(objectName);
+    if (existingCategory != nullptr)
+    {
+        IDOS_WARN(tr("Ribbon category creation rejected: duplicate objectName=%1, existing=0x%2")
+                      .arg(objectName,
+                           QString::number(reinterpret_cast<quintptr>(existingCategory), 16)));
+        return nullptr;
+    }
+
+    SARibbonCategory* category = ribbonBar->insertCategoryPage(title, index);
+    if (category == nullptr)
+    {
+        IDOS_ERROR(tr("Ribbon category creation failed: objectName=%1, title=%2")
+                       .arg(objectName, title));
+        return nullptr;
+    }
+
+    category->setObjectName(objectName);
+    category->setProperty("idosRibbonIndex", index);
+    m_ownedRibbonCategories.append(QPointer<SARibbonCategory>(category));
+    reorderRibbonCategories();
+    IDOS_DEBUG(tr("Ribbon category created: objectName=%1, title=%2, category=0x%3, parent=0x%4")
+                   .arg(objectName,
+                        title,
+                        QString::number(reinterpret_cast<quintptr>(category), 16),
+                        QString::number(reinterpret_cast<quintptr>(category->parent()), 16)));
+    return category;
+}
+
+void IDOSAppInterface::reorderRibbonCategories()
+{
+    SARibbonMainWindow* ribbonMainWindow = qobject_cast<SARibbonMainWindow*>(m_mainWindow);
+    if (ribbonMainWindow == nullptr || ribbonMainWindow->ribbonBar() == nullptr)
+    {
+        return;
+    }
+
+    SARibbonBar* ribbonBar = ribbonMainWindow->ribbonBar();
+    for (int index = 0; index < m_ownedRibbonCategories.size(); ++index)
+    {
+        int lowestIndex = index;
+        for (int candidateIndex = index + 1;
+             candidateIndex < m_ownedRibbonCategories.size();
+             ++candidateIndex)
+        {
+            SARibbonCategory* candidate = m_ownedRibbonCategories.at(candidateIndex).data();
+            SARibbonCategory* current = m_ownedRibbonCategories.at(lowestIndex).data();
+            if (candidate != nullptr && current != nullptr
+                && candidate->property("idosRibbonIndex").toInt()
+                       < current->property("idosRibbonIndex").toInt())
+            {
+                lowestIndex = candidateIndex;
+            }
+        }
+
+        if (lowestIndex != index)
+        {
+            m_ownedRibbonCategories.swapItemsAt(index, lowestIndex);
+        }
+
+        SARibbonCategory* category = m_ownedRibbonCategories.at(index).data();
+        if (category != nullptr)
+        {
+            const int currentIndex = ribbonBar->categoryIndex(category);
+            const int targetIndex = index + 1;
+            if (currentIndex >= 0 && currentIndex != targetIndex)
+            {
+                ribbonBar->moveCategory(currentIndex, targetIndex);
+            }
+        }
+    }
 }
 
 void IDOSAppInterface::removeRibbonCategory(SARibbonCategory* category)

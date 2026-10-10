@@ -24,10 +24,14 @@ void IDOSTreeModel::setProject(IDOSProject* project)
     {
         disconnect(m_project, &IDOSProject::objectAdded, this, &IDOSTreeModel::onObjectAdded);
         disconnect(m_project, &IDOSProject::objectRemoved, this, &IDOSTreeModel::onObjectRemoved);
-        disconnect(m_project, &IDOSProject::objectChanged, this, &IDOSTreeModel::onObjectChanged);
+        disconnect(m_project, &IDOSProject::objectDataChanged, this, &IDOSTreeModel::onObjectDataChanged);
         disconnect(m_project, &IDOSProject::objectsAdded, this, &IDOSTreeModel::onObjectsAdded);
         disconnect(m_project, &IDOSProject::objectsRemoved, this, &IDOSTreeModel::onObjectsRemoved);
-        disconnect(m_project, &IDOSProject::objectsChanged, this, &IDOSTreeModel::onObjectsChanged);
+        disconnect(m_project, &IDOSProject::objectsDataChanged, this, &IDOSTreeModel::onObjectsDataChanged);
+        disconnect(m_project, &IDOSProject::objectVisibilityChanged,
+                   this, &IDOSTreeModel::onObjectVisibilityChanged);
+        disconnect(m_project, &IDOSProject::objectsVisibilityChanged,
+                   this, &IDOSTreeModel::onObjectsVisibilityChanged);
     }
 
     m_project = project;
@@ -36,10 +40,14 @@ void IDOSTreeModel::setProject(IDOSProject* project)
     {
         connect(m_project, &IDOSProject::objectAdded, this, &IDOSTreeModel::onObjectAdded);
         connect(m_project, &IDOSProject::objectRemoved, this, &IDOSTreeModel::onObjectRemoved);
-        connect(m_project, &IDOSProject::objectChanged, this, &IDOSTreeModel::onObjectChanged);
+        connect(m_project, &IDOSProject::objectDataChanged, this, &IDOSTreeModel::onObjectDataChanged);
         connect(m_project, &IDOSProject::objectsAdded, this, &IDOSTreeModel::onObjectsAdded);
         connect(m_project, &IDOSProject::objectsRemoved, this, &IDOSTreeModel::onObjectsRemoved);
-        connect(m_project, &IDOSProject::objectsChanged, this, &IDOSTreeModel::onObjectsChanged);
+        connect(m_project, &IDOSProject::objectsDataChanged, this, &IDOSTreeModel::onObjectsDataChanged);
+        connect(m_project, &IDOSProject::objectVisibilityChanged,
+                this, &IDOSTreeModel::onObjectVisibilityChanged);
+        connect(m_project, &IDOSProject::objectsVisibilityChanged,
+                this, &IDOSTreeModel::onObjectsVisibilityChanged);
     }
 
     beginResetModel();
@@ -111,7 +119,9 @@ QVariant IDOSTreeModel::data(const QModelIndex& index, int role) const
     }
     if (role == Qt::CheckStateRole && node->isCheckable())
     {
-        return node->isChecked() ? Qt::Checked : Qt::Unchecked;
+        IDOSDataObject* object = objectOfNode(node);
+        const bool checked = object != nullptr ? object->isVisible() : node->isChecked();
+        return checked ? Qt::Checked : Qt::Unchecked;
     }
     return QVariant();
 }
@@ -129,11 +139,18 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
         return false;
     }
 
+    if (m_project != nullptr)
+    {
+        m_project->beginUpdate();
+    }
     const bool checked = value.toInt() == Qt::Checked;
     IDOSDataObject* currentObject = objectOfNode(node);
     node->setChecked(checked);
     emit dataChanged(index, index, QVector<int>() << Qt::CheckStateRole);
-    emit checkStateChanged(index, checked);
+    if (currentObject != nullptr && currentObject->isVisible() != checked)
+    {
+        currentObject->setVisible(checked);
+    }
 
     // 勾选网格属性节点时，取消其他已勾选属性（单选互斥），
     // 避免渲染窗口多个属性颜色映射互相覆盖。
@@ -143,6 +160,10 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
         {
             uncheckOtherProperties(node);
         }
+    }
+    if (m_project != nullptr)
+    {
+        m_project->endUpdate();
     }
     return true;
 }
@@ -163,12 +184,12 @@ void IDOSTreeModel::uncheckOtherProperties(IDOSTreeNode* exceptNode)
         QModelIndex idx = indexOfNode(node);
         if (idx.isValid())
         {
-            // 仅更新树 UI 的勾选显示；不向渲染服务器发 hide 信号。
-            // 原因：网格属性共用同一 grid renderObject，hide 旧属性会
-            // 把整个 grid renderObject 隐藏，导致新勾选属性也看不见。
-            // 新属性颜色已通过 showGridProperty 覆盖到 renderObject，
-            // 旧属性无需单独 hide。
             emit dataChanged(idx, idx, QVector<int>() << Qt::CheckStateRole);
+        }
+        IDOSDataObject* object = objectOfNode(node);
+        if (object != nullptr && object->isVisible())
+        {
+            object->setVisible(false);
         }
     }
 }
@@ -522,7 +543,7 @@ void IDOSTreeModel::onObjectRemoved(const QString& objectId)
     refreshReferencingBranches(objectId, true);
 }
 
-void IDOSTreeModel::onObjectChanged(const QString& objectId)
+void IDOSTreeModel::onObjectDataChanged(const QString& objectId)
 {
     processChangedObject(objectId);
     refreshReferencingBranches(objectId, false);
@@ -547,11 +568,54 @@ void IDOSTreeModel::onObjectsRemoved(const QStringList& objectIds)
     refreshReferencingBranchesBatch(QStringList(), objectIds);
 }
 
-void IDOSTreeModel::onObjectsChanged(const QStringList& objectIds)
+void IDOSTreeModel::onObjectsDataChanged(const QStringList& objectIds)
 {
     for (const QString& id : objectIds)
     {
         processChangedObject(id);
     }
     refreshReferencingBranchesBatch(objectIds, QStringList());
+}
+
+void IDOSTreeModel::onObjectVisibilityChanged(const QString& objectId, bool visible)
+{
+    Q_UNUSED(visible)
+    updateCheckStateForObject(objectId);
+}
+
+void IDOSTreeModel::onObjectsVisibilityChanged(const QStringList& objectIds)
+{
+    for (const QString& objectId : objectIds)
+    {
+        updateCheckStateForObject(objectId);
+    }
+}
+
+void IDOSTreeModel::updateCheckStateForObject(const QString& objectId)
+{
+    updateCheckStateForObject(m_rootNode, objectId);
+}
+
+void IDOSTreeModel::updateCheckStateForObject(IDOSTreeNode* branch, const QString& objectId)
+{
+    if (branch == nullptr || objectId.isEmpty())
+    {
+        return;
+    }
+
+    IDOSDataObject* object = objectOfNode(branch);
+    if (object != nullptr && object->objectId() == objectId)
+    {
+        branch->setChecked(object->isVisible());
+        const QModelIndex index = indexOfNode(branch);
+        if (index.isValid())
+        {
+            emit dataChanged(index, index, QVector<int>() << Qt::CheckStateRole);
+        }
+    }
+
+    for (int childIndex = 0; childIndex < branch->childCount(); ++childIndex)
+    {
+        updateCheckStateForObject(branch->child(childIndex), objectId);
+    }
 }

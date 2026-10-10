@@ -18,10 +18,12 @@ class APP_EXPORT IDOSWellRenderObjectProvider : public IDOSRenderObjectProvider
     IDOSWellRenderObjectProvider();
     ~IDOSWellRenderObjectProvider() override;
 
-    QString providerId() const override;
-    QString displayName() const override;
-    bool canCreate(const IDOSDataObject* object) const override;
-    IDOSRenderObject* createObject(const IDOSDataObject* object) const override;
+    QString dataTypeId() const override;
+    IDOSRenderObject* createRenderObject(IDOSDataObject* object) const override;
+    bool canConvert(const IDOSRenderObject* object) const override;
+    QList<vtkActor*> toVtk(const IDOSRenderObject* object,
+                           bool highlighted) const override;
+    QList<vtkSmartPointer<vtkProp>> toVtkLegends(const IDOSRenderObject* object) const override;
 };
 
 #endif // IDOS_WELL_RENDER_OBJECT_PROVIDER_H

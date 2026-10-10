@@ -2,6 +2,10 @@ add_library(idos_render SHARED
     idos_render.h
     idosrenderobject.h
     idosrenderobject.cpp
+    idosrenderprovider.h
+    idosrenderprovider.cpp
+    idosrenderobjectvtkconverter.h
+    idosrenderobjectvtkconverter.cpp
     grid/idosrendermesh.h
     grid/idosrendermesh.cpp
     well/idoswellrenderobject.h

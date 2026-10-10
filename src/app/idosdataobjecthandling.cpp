@@ -81,78 +81,80 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, QWidget* parent
     int createdWells = 0;
     int mergedData = 0;
     QStringList errors;
+    target->beginUpdate();
+    for (const QString& file : files)
     {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        for (const QString& file : files)
+        if (target.isNull())
         {
-            if (target.isNull())
-            {
-                break;
-            }
-            const QString suffix = QFileInfo(file).suffix().toLower();
-            QString providerId;
-            bool isHeader = false;
-            if (suffix == QStringLiteral("txt"))
-            {
-                providerId = QStringLiteral("idos.well.header");
-                isHeader = true;
-            }
-            else if (suffix == QStringLiteral("dev"))
-            {
-                providerId = QStringLiteral("idos.well.path");
-            }
-            else if (suffix == QStringLiteral("las"))
-            {
-                providerId = QStringLiteral("idos.well.las");
-            }
-            else
-            {
-                continue;
-            }
-            std::unique_ptr<IDOSDataProvider> provider =
-                IDOSProviderRegistry::instance().createProvider(providerId);
-            if (!provider)
-            {
-                IDOS_WARN(tr("No well data reader is available for file: %1").arg(file));
-                errors.append(tr("Reader unavailable for %1").arg(file));
-                continue;
-            }
-            QList<IDOSDataObject*> objects = provider->read(file);
-            for (IDOSDataObject* object : objects)
-            {
-                IDOSWell* well = qobject_cast<IDOSWell*>(object);
-                if (well == nullptr)
-                {
-                    delete object;
-                    continue;
-                }
-                IDOSWell* existingWell = wellByName(target.data(), well->name());
-                if (existingWell == nullptr)
-                {
-                    well->setVisible(false);
-                    target->addObject(well);
-                    ++createdWells;
-                    continue;
-                }
-
-                // 已导入井头不被后续同名井头覆盖；轨迹和测井始终合并到同一井对象。
-                if (isHeader && existingWell->hasWellHead())
-                {
-                    delete well;
-                    continue;
-                }
-
-                existingWell->mergeFrom(well);
-                delete well;
-                ++mergedData;
-            }
-            if (!provider->lastError().isEmpty())
-            {
-                IDOS_WARN(tr("Well data reader reported an error for %1: %2")
-                              .arg(file, provider->lastError()));
-                errors.append(provider->lastError());
-            }
+            break;
         }
+        const QString suffix = QFileInfo(file).suffix().toLower();
+        QString providerId;
+        bool isHeader = false;
+        if (suffix == QStringLiteral("txt"))
+        {
+            providerId = QStringLiteral("idos.well.header");
+            isHeader = true;
+        }
+        else if (suffix == QStringLiteral("dev"))
+        {
+            providerId = QStringLiteral("idos.well.path");
+        }
+        else if (suffix == QStringLiteral("las"))
+        {
+            providerId = QStringLiteral("idos.well.las");
+        }
+        else
+        {
+            continue;
+        }
+        std::unique_ptr<IDOSDataProvider> provider =
+            IDOSProviderRegistry::instance().createProvider(providerId);
+        if (!provider)
+        {
+            IDOS_WARN(tr("No well data reader is available for file: %1").arg(file));
+            errors.append(tr("Reader unavailable for %1").arg(file));
+            continue;
+        }
+        QList<IDOSDataObject*> objects = provider->read(file);
+        for (IDOSDataObject* object : objects)
+        {
+            IDOSWell* well = qobject_cast<IDOSWell*>(object);
+            if (well == nullptr)
+            {
+                delete object;
+                continue;
+            }
+            IDOSWell* existingWell = wellByName(target.data(), well->name());
+            if (existingWell == nullptr)
+            {
+                well->setVisible(false);
+                target->addObject(well);
+                ++createdWells;
+                continue;
+            }
+
+            // 已导入井头不被后续同名井头覆盖；轨迹和测井始终合并到同一井对象。
+            if (isHeader && existingWell->hasWellHead())
+            {
+                delete well;
+                continue;
+            }
+
+            existingWell->mergeFrom(well);
+            delete well;
+            ++mergedData;
+        }
+        if (!provider->lastError().isEmpty())
+        {
+            IDOS_WARN(tr("Well data reader reported an error for %1: %2")
+                          .arg(file, provider->lastError()));
+            errors.append(provider->lastError());
+        }
+    }
+    if (!target.isNull())
+    {
+        target->endUpdate();
     }
     if (!errors.isEmpty())
     {
@@ -233,10 +235,9 @@ int IDOSDataObjectHandling::importWellData(IDOSProject* project, const QString& 
         QMessageBox::warning(parent, tr("Import Well Data"), provider->lastError());
         return 0;
     }
-    {
-        IDOSProjectUpdateGuard updateGuard(target.data());
-        targetWell->mergeFrom(sourceWell);
-    }
+    target->beginUpdate();
+    targetWell->mergeFrom(sourceWell);
+    target->endUpdate();
     qDeleteAll(objects);
     IDOS_INFO(tr("Well data imported into well %1.").arg(targetWellId));
     return 1;

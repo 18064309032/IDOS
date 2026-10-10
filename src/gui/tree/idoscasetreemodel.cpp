@@ -14,7 +14,6 @@ IDOSCaseTreeModel::IDOSCaseTreeModel(QObject* parent)
     : IDOSTreeModel(parent)
     , m_treeProviderRegistry(nullptr)
 {
-    connect(this, &IDOSTreeModel::checkStateChanged, this, &IDOSCaseTreeModel::onCheckStateChanged);
 }
 
 IDOSCaseTreeModel::~IDOSCaseTreeModel()
@@ -55,6 +54,10 @@ QModelIndex IDOSCaseTreeModel::indexFromReferencedObjectId(const QString& object
 
 bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
+    if (project() != nullptr)
+    {
+        project()->beginUpdate();
+    }
     if (index.isValid() && role == Qt::CheckStateRole && value.toInt() == Qt::Checked)
     {
         IDOSTreeNode* node = nodeFromIndex(index);
@@ -79,16 +82,14 @@ bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value,
                 const QModelIndex childIndex = IDOSTreeModel::index(row, 0, parentIndex);
                 emit dataChanged(childIndex, childIndex, QVector<int>() << Qt::CheckStateRole);
 
-                // 网格属性互斥只更新 UI，不发 hide 信号：属性共用同一 grid renderObject，
-                // hide 会让整个网格消失一帧再被 showGridProperty 重建 = 闪烁；
-                // 新属性颜色由 showGridProperty 直接覆盖到 renderObject，无需先 hide 旧属性。
-                const IDOSDataObject* childObject =
+                // The project batches these visibility changes so the renderer can apply
+                // the final active property without briefly hiding the shared grid actor.
+                IDOSDataObject* childObject =
                     project() != nullptr ? project()->objectById(childReferenceNode->itemRef().objectId()) : nullptr;
-                if (qobject_cast<const IDOSGridProperty*>(childObject) != nullptr)
+                if (childObject != nullptr && childObject->isVisible())
                 {
-                    continue;
+                    childObject->setVisible(false);
                 }
-                emit itemCheckedChanged(childReferenceNode->itemRef().objectId(), false);
             }
         }
     }
@@ -96,6 +97,10 @@ bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value,
     const bool ok = IDOSTreeModel::setData(index, value, role);
     if (!ok)
     {
+        if (project() != nullptr)
+        {
+            project()->endUpdate();
+        }
         return false;
     }
 
@@ -118,6 +123,10 @@ bool IDOSCaseTreeModel::setData(const QModelIndex& index, const QVariant& value,
                 uncheckChildProperties(node);
             }
         }
+    }
+    if (project() != nullptr)
+    {
+        project()->endUpdate();
     }
     return true;
 }
@@ -216,15 +225,6 @@ void IDOSCaseTreeModel::refreshReferencingBranchesBatch(const QStringList& chang
     }
 }
 
-void IDOSCaseTreeModel::onCheckStateChanged(const QModelIndex& index, bool checked)
-{
-    IDOSTreeReferenceNode* referenceNode = dynamic_cast<IDOSTreeReferenceNode*>(nodeFromIndex(index));
-    if (referenceNode != nullptr)
-    {
-        emit itemCheckedChanged(referenceNode->itemRef().objectId(), checked);
-    }
-}
-
 void IDOSCaseTreeModel::autoCheckParentGrid(IDOSTreeNode* propertyNode)
 {
     if (propertyNode == nullptr)
@@ -247,9 +247,13 @@ void IDOSCaseTreeModel::autoCheckParentGrid(IDOSTreeNode* propertyNode)
             {
                 emit dataChanged(idx, idx, QVector<int>() << Qt::CheckStateRole);
             }
-            // 通知渲染服务器显示网格几何（showGridProperty 已隐式创建 renderObject，
-            // 此处补发网格 shown 使树 UI 与渲染状态一致）
-            emit itemCheckedChanged(gridRef->itemRef().objectId(), true);
+            IDOSDataObject* gridObject = project() != nullptr
+                                             ? project()->objectById(gridRef->itemRef().objectId())
+                                             : nullptr;
+            if (gridObject != nullptr && !gridObject->isVisible())
+            {
+                gridObject->setVisible(true);
+            }
         }
         break;
     }
@@ -274,7 +278,13 @@ void IDOSCaseTreeModel::uncheckChildProperties(IDOSTreeNode* gridNode)
         IDOSTreeReferenceNode* ref = dynamic_cast<IDOSTreeReferenceNode*>(node);
         if (ref != nullptr)
         {
-            emit itemCheckedChanged(ref->itemRef().objectId(), false);
+            IDOSDataObject* object = project() != nullptr
+                                         ? project()->objectById(ref->itemRef().objectId())
+                                         : nullptr;
+            if (object != nullptr && object->isVisible())
+            {
+                object->setVisible(false);
+            }
         }
     }
 }

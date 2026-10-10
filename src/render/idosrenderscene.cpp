@@ -1,6 +1,7 @@
 #include <QtAlgorithms>
 
 #include "idosrenderobject.h"
+#include "idosrenderprovider.h"
 
 #include "idosrenderscene.h"
 
@@ -64,7 +65,11 @@ void IDOSRenderScene::setObjectVisible(const QString& objectId, bool visible)
     {
         return;
     }
-    renderObject->setVisible(visible);
+    IDOSRenderProvider* provider = renderObject->renderProvider();
+    if (provider != nullptr)
+    {
+        provider->setVisible(visible);
+    }
 }
 
 const QList<IDOSRenderObject*>& IDOSRenderScene::objects() const

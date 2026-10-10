@@ -9,6 +9,10 @@ IDOSProject::IDOSProject(QObject* parent)
     , m_undoStack(new QUndoStack(this))
     , m_commandManager(new IDOSCommandManager(this, this))
     , m_updateDepth(0)
+    , m_pendingAdded()
+    , m_pendingRemoved()
+    , m_pendingDataChanged()
+    , m_pendingVisibilityChanged()
 {
 }
 
@@ -149,7 +153,7 @@ void IDOSProject::endUpdate()
         return;
     }
 
-    // 最外层事务闭合：按 removed → added → changed 顺序各发一次批量信号。
+    // 最外层事务闭合：按 removed → added → data changed → visibility changed 顺序发批量信号。
     // 集合在 notify* 中已做归并（同 id 先删后加最终算 added 等），列表天然唯一。
     if (!m_pendingRemoved.isEmpty())
     {
@@ -161,10 +165,15 @@ void IDOSProject::endUpdate()
         emit objectsAdded(m_pendingAdded.values());
         m_pendingAdded.clear();
     }
-    if (!m_pendingChanged.isEmpty())
+    if (!m_pendingDataChanged.isEmpty())
     {
-        emit objectsChanged(m_pendingChanged.values());
-        m_pendingChanged.clear();
+        emit objectsDataChanged(m_pendingDataChanged.values());
+        m_pendingDataChanged.clear();
+    }
+    if (!m_pendingVisibilityChanged.isEmpty())
+    {
+        emit objectsVisibilityChanged(m_pendingVisibilityChanged.values());
+        m_pendingVisibilityChanged.clear();
     }
 }
 
@@ -174,7 +183,8 @@ void IDOSProject::notifyAdded(const QString& objectId)
     {
         // 删后又加（含同 id 替换）：最终状态为 added，清掉其他两类记录
         m_pendingRemoved.remove(objectId);
-        m_pendingChanged.remove(objectId);
+        m_pendingDataChanged.remove(objectId);
+        m_pendingVisibilityChanged.remove(objectId);
         m_pendingAdded.insert(objectId);
         return;
     }
@@ -187,42 +197,26 @@ void IDOSProject::notifyRemoved(const QString& objectId)
     {
         // 加了又删 / 改了又删：最终状态为 removed
         m_pendingAdded.remove(objectId);
-        m_pendingChanged.remove(objectId);
+        m_pendingDataChanged.remove(objectId);
+        m_pendingVisibilityChanged.remove(objectId);
         m_pendingRemoved.insert(objectId);
         return;
     }
     emit objectRemoved(objectId);
 }
 
-void IDOSProject::notifyChanged(const QString& objectId)
+void IDOSProject::notifyDataChanged(const QString& objectId)
 {
     if (m_updateDepth > 0)
     {
         // 新对象在事务内的变化不重复记录（最终 added 已包含它）
         if (!m_pendingAdded.contains(objectId))
         {
-            m_pendingChanged.insert(objectId);
+            m_pendingDataChanged.insert(objectId);
         }
         return;
     }
-    emit objectChanged(objectId);
-}
-
-IDOSProjectUpdateGuard::IDOSProjectUpdateGuard(IDOSProject* project)
-    : m_project(project)
-{
-    if (m_project != nullptr)
-    {
-        m_project->beginUpdate();
-    }
-}
-
-IDOSProjectUpdateGuard::~IDOSProjectUpdateGuard()
-{
-    if (m_project != nullptr)
-    {
-        m_project->endUpdate();
-    }
+    emit objectDataChanged(objectId);
 }
 
 // ===== 内部：信号转发 =====
@@ -244,17 +238,25 @@ void IDOSProject::onObjectDataChanged()
     IDOSDataObject* obj = qobject_cast<IDOSDataObject*>(sender());
     if (obj != nullptr)
     {
-        notifyChanged(obj->objectId());
+        notifyDataChanged(obj->objectId());
     }
 }
 
 void IDOSProject::onObjectVisibilityChanged(bool visible)
 {
-    Q_UNUSED(visible);
     IDOSDataObject* obj = qobject_cast<IDOSDataObject*>(sender());
     if (obj != nullptr)
     {
-        notifyChanged(obj->objectId());
+        if (m_updateDepth > 0)
+        {
+            if (!m_pendingAdded.contains(obj->objectId()) &&
+                !m_pendingRemoved.contains(obj->objectId()))
+            {
+                m_pendingVisibilityChanged.insert(obj->objectId());
+            }
+            return;
+        }
+        emit objectVisibilityChanged(obj->objectId(), visible);
     }
 }
 
@@ -264,6 +266,6 @@ void IDOSProject::onObjectNameChanged(const QString& name)
     IDOSDataObject* obj = qobject_cast<IDOSDataObject*>(sender());
     if (obj != nullptr)
     {
-        notifyChanged(obj->objectId());
+        notifyDataChanged(obj->objectId());
     }
 }

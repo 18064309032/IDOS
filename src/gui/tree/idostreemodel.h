@@ -42,8 +42,6 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
     IDOSDataObject* objectFromIndex(const QModelIndex& index) const;
     QModelIndex indexFromObjectId(const QString& objectId) const;
 
-    Q_SIGNAL void checkStateChanged(const QModelIndex& index, bool checked);
-
   protected:
     virtual void buildDefaultTree(IDOSTreeNode* rootNode);
     virtual bool shouldShowObject(const IDOSDataObject* object) const = 0;
@@ -86,10 +84,12 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
   private slots:
     void onObjectAdded(const QString& objectId);
     void onObjectRemoved(const QString& objectId);
-    void onObjectChanged(const QString& objectId);
+    void onObjectDataChanged(const QString& objectId);
     void onObjectsAdded(const QStringList& objectIds);
     void onObjectsRemoved(const QStringList& objectIds);
-    void onObjectsChanged(const QStringList& objectIds);
+    void onObjectsDataChanged(const QStringList& objectIds);
+    void onObjectVisibilityChanged(const QString& objectId, bool visible);
+    void onObjectsVisibilityChanged(const QStringList& objectIds);
 
   private:
     void rebuildTree();
@@ -113,6 +113,8 @@ class GUI_EXPORT IDOSTreeModel : public QAbstractItemModel
     void collectCheckedProperties(IDOSTreeNode* branch,
                                   IDOSTreeNode* exceptNode,
                                   QList<IDOSTreeNode*>& out) const;
+    void updateCheckStateForObject(const QString& objectId);
+    void updateCheckStateForObject(IDOSTreeNode* branch, const QString& objectId);
     /**
      * @brief 统一获取节点关联的数据对象。
      * 支持 IDOSObjectTreeNode（数据本体树，直接持 objectId）

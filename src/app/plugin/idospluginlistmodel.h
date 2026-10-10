@@ -17,7 +17,7 @@ class IDOSPluginListModel : public QAbstractItemModel
     enum PluginDataRole
     {
         PluginKeyRole = Qt::UserRole + 1,
-        PluginPathRole,
+        PluginIconRole,
         PluginDescriptionRole,
         PluginCategoryRole,
         PluginVersionRole,

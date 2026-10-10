@@ -47,13 +47,14 @@ class CORE_EXPORT IDOSObject : public QObject
      * @brief objectId 变化时发射（仅恢复加载时触发）。
      * @param id 新的 objectId。
      */
-    Q_SIGNAL void objectIdChanged(const QString& id);
+  signals:
+    void objectIdChanged(const QString& id);
 
     /**
      * @brief 对象名称变化时发射。
      * @param name 新的名称。
      */
-    Q_SIGNAL void nameChanged(const QString& name);
+    void nameChanged(const QString& name);
 
   protected:
     /**

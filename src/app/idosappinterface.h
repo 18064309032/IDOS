@@ -21,10 +21,15 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     SARibbonCategory* ribbonCategory(const QString& objectName) const override;
     SARibbonCategory* addRibbonCategory(const QString& objectName,
                                         const QString& title) override;
-    // Removes and destroys only categories created through addRibbonCategory().
+    SARibbonCategory* insertCategoryPage(const QString& objectName,
+                                         const QString& title,
+                                         int index) override;
+    // Removes and destroys only categories created through this interface.
     void removeRibbonCategory(SARibbonCategory* category) override;
 
   private:
+    void reorderRibbonCategories();
+
     IDOSMainWindow* m_mainWindow;
     QList<QPointer<SARibbonCategory>> m_ownedRibbonCategories;
 };

@@ -1,37 +1,39 @@
 #include <QObject>
-#include <QtAlgorithms>
 
 #include "idosdataobject.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idosgridrenderobjectprovider.h"
 #include "idosproject.h"
-#include "idosrendermesh.h"
 #include "idosrenderobject.h"
 #include "idosrenderobjectprovider.h"
+#include "idosrenderprovider.h"
 #include "idosrenderscene.h"
 #include "idosrenderview.h"
-#include "idoswell.h"
 
 #include "idosrenderserver.h"
 
 IDOSRenderServer::IDOSRenderServer(QObject* parent)
-    : QObject(parent)
+    :
+    QObject(parent)
     , m_project(nullptr)
     , m_mainScene(new IDOSRenderScene())
     , m_views()
+    , m_viewContextObjectIds()
     , m_activeViewId()
     , m_highlightedObjectId()
-    , m_selectedGridId()
-    , m_opacityPercentByObjectId()
-    , m_displayModeByGridId()
-    , m_providers()
+    , m_selectedDataObjectId()
+    , m_selectedRenderObjectId()
+    , m_opacityPercentByDataId()
+    , m_displayModeByDataId()
+    , m_renderRegistry()
+    , m_renderObjectIdsByDataId()
+    , m_dataObjectIdsByRenderObjectId()
+    , m_sceneUpdateDepth(0)
+    , m_refreshPending(false)
+    , m_resetViewsPending(false)
 {
 }
 
 IDOSRenderServer::~IDOSRenderServer()
 {
-    qDeleteAll(m_providers);
     delete m_mainScene;
 }
 
@@ -48,6 +50,12 @@ void IDOSRenderServer::setProject(IDOSProject* project)
         disconnect(m_project, &IDOSProject::objectsAdded, this, &IDOSRenderServer::onObjectsAdded);
         disconnect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
         disconnect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
+        disconnect(m_project, &IDOSProject::objectDataChanged, this, &IDOSRenderServer::onObjectDataChanged);
+        disconnect(m_project, &IDOSProject::objectsDataChanged, this, &IDOSRenderServer::onObjectsDataChanged);
+        disconnect(m_project, &IDOSProject::objectVisibilityChanged,
+                   this, &IDOSRenderServer::onObjectVisibilityChanged);
+        disconnect(m_project, &IDOSProject::objectsVisibilityChanged,
+                   this, &IDOSRenderServer::onObjectsVisibilityChanged);
     }
 
     m_project = project;
@@ -57,29 +65,31 @@ void IDOSRenderServer::setProject(IDOSProject* project)
         connect(m_project, &IDOSProject::objectsAdded, this, &IDOSRenderServer::onObjectsAdded);
         connect(m_project, &IDOSProject::objectRemoved, this, &IDOSRenderServer::onObjectRemoved);
         connect(m_project, &IDOSProject::objectsRemoved, this, &IDOSRenderServer::onObjectsRemoved);
+        connect(m_project, &IDOSProject::objectDataChanged, this, &IDOSRenderServer::onObjectDataChanged);
+        connect(m_project, &IDOSProject::objectsDataChanged, this, &IDOSRenderServer::onObjectsDataChanged);
+        connect(m_project, &IDOSProject::objectVisibilityChanged,
+                this, &IDOSRenderServer::onObjectVisibilityChanged);
+        connect(m_project, &IDOSProject::objectsVisibilityChanged,
+                this, &IDOSRenderServer::onObjectsVisibilityChanged);
     }
 
-    m_highlightedObjectId.clear();
-    m_selectedGridId.clear();
-    m_opacityPercentByObjectId.clear();
-    m_displayModeByGridId.clear();
+    beginSceneUpdate();
+    setHighlightedObjectId(QString());
+    m_viewContextObjectIds.clear();
+    m_selectedDataObjectId.clear();
+    m_selectedRenderObjectId.clear();
+    m_opacityPercentByDataId.clear();
+    m_displayModeByDataId.clear();
+    m_renderObjectIdsByDataId.clear();
+    m_dataObjectIdsByRenderObjectId.clear();
     emit selectedObjectOpacityChanged(100, false);
-    emit selectedGridDisplayModeChanged(IDOSDisplayMode::Surface, false);
+    emit selectedDisplayModeChanged(IDOSDisplayMode::Surface, false);
     m_mainScene->clear();
-    if (m_project != nullptr)
-    {
-        const QList<IDOSDataObject*> objects = m_project->objects();
-        bool objectAdded = false;
-        for (const IDOSDataObject* object : objects)
-        {
-            objectAdded = addWellToScene(object) || objectAdded;
-        }
-        if (objectAdded)
-        {
-            resetViews();
-        }
-    }
+    synchronizeProviders(IDOSRenderObjectChange::ProjectReplaced, QStringList());
+    applyRenderSettings();
     refreshViews();
+    endSceneUpdate();
+    emit activeViewContextObjectChanged(m_activeViewId, QString());
 }
 
 IDOSProject* IDOSRenderServer::project() const
@@ -87,29 +97,100 @@ IDOSProject* IDOSRenderServer::project() const
     return m_project;
 }
 
-IDOSRenderScene* IDOSRenderServer::mainScene() const
+IDOSDataObject* IDOSRenderServer::dataObject(const QString& objectId) const
 {
-    return m_mainScene;
+    return m_project != nullptr ? m_project->objectById(objectId) : nullptr;
 }
 
-void IDOSRenderServer::addView(const QString& viewId, IDOSRenderView* view)
+QList<IDOSDataObject*> IDOSRenderServer::dataObjects() const
 {
-    if (viewId.isEmpty() || view == nullptr)
+    QList<IDOSDataObject*> result;
+    if (m_project != nullptr)
+    {
+        const QList<IDOSDataObject*> objects = m_project->objects();
+        for (IDOSDataObject* object : objects)
+        {
+            result.append(object);
+        }
+    }
+    return result;
+}
+
+IDOSRenderObject* IDOSRenderServer::renderObject(const QString& objectId) const
+{
+    const QString renderObjectId = m_renderObjectIdsByDataId.value(objectId, objectId);
+    return m_mainScene->object(renderObjectId);
+}
+
+QList<IDOSRenderObject*> IDOSRenderServer::renderObjects() const
+{
+    return m_mainScene->objects();
+}
+
+void IDOSRenderServer::addRenderObject(IDOSRenderObject* object)
+{
+    if (object == nullptr)
     {
         return;
     }
+    IDOSDataRenderProvider* provider =
+        dynamic_cast<IDOSDataRenderProvider*>(object->renderProvider());
+    const QString dataObjectId = provider != nullptr && provider->dataObject() != nullptr
+                                     ? provider->dataObject()->objectId()
+                                     : object->id();
+    const QString previousRenderObjectId = m_renderObjectIdsByDataId.value(dataObjectId);
+    if (!previousRenderObjectId.isEmpty() && previousRenderObjectId != object->id())
+    {
+        m_dataObjectIdsByRenderObjectId.remove(previousRenderObjectId);
+        m_mainScene->removeObject(previousRenderObjectId);
+    }
+    m_renderObjectIdsByDataId.insert(dataObjectId, object->id());
+    m_dataObjectIdsByRenderObjectId.insert(object->id(), dataObjectId);
+    if (m_selectedDataObjectId == dataObjectId)
+    {
+        m_selectedRenderObjectId = object->id();
+    }
+    m_mainScene->addObject(object);
+}
+
+void IDOSRenderServer::removeRenderObject(const QString& objectId)
+{
+    const QString renderObjectId = m_renderObjectIdsByDataId.take(objectId);
+    if (renderObjectId.isEmpty())
+    {
+        return;
+    }
+    m_dataObjectIdsByRenderObjectId.remove(renderObjectId);
+    m_mainScene->removeObject(renderObjectId);
+}
+
+QWidget* IDOSRenderServer::createView(const QString& viewId, bool parallelProjection)
+{
+    if (viewId.isEmpty() || m_views.contains(viewId))
+    {
+        return nullptr;
+    }
+    IDOSRenderView* view = new IDOSRenderView();
     m_views.insert(viewId, view);
     connect(view,
             &IDOSRenderView::activated,
             this,
             &IDOSRenderServer::onViewActivated,
             Qt::UniqueConnection);
+    connect(view, &IDOSRenderView::decorationsChanged,
+            this, &IDOSRenderServer::onViewDecorationsChanged, Qt::UniqueConnection);
+    connect(view, &IDOSRenderView::objectActivated,
+            this, &IDOSRenderServer::onViewObjectActivated, Qt::UniqueConnection);
     view->setScene(m_mainScene);
-    view->setHighlightedObjectId(m_highlightedObjectId);
+    view->setHighlightedObjectId(
+        m_renderObjectIdsByDataId.value(m_highlightedObjectId, m_highlightedObjectId));
+    view->setParallelProjection(parallelProjection);
+    view->setOrientation(parallelProjection ? IDOSOrientation::Top : IDOSOrientation::Isometric);
     if (m_activeViewId.isEmpty())
     {
         setActiveView(viewId);
     }
+    return view;
 }
 
 void IDOSRenderServer::removeView(const QString& viewId)
@@ -125,9 +206,14 @@ void IDOSRenderServer::removeView(const QString& viewId)
                    &IDOSRenderView::activated,
                    this,
                    &IDOSRenderServer::onViewActivated);
+        disconnect(renderView, &IDOSRenderView::decorationsChanged,
+                   this, &IDOSRenderServer::onViewDecorationsChanged);
+        disconnect(renderView, &IDOSRenderView::objectActivated,
+                   this, &IDOSRenderServer::onViewObjectActivated);
         renderView->setScene(nullptr);
     }
     m_views.remove(viewId);
+    m_viewContextObjectIds.remove(viewId);
     if (m_activeViewId == viewId)
     {
         m_activeViewId.clear();
@@ -138,13 +224,10 @@ void IDOSRenderServer::removeView(const QString& viewId)
         else
         {
             emit currentViewChanged(m_activeViewId);
+            emit activeViewContextObjectChanged(m_activeViewId, QString());
+            emitActiveViewDecorationsChanged();
         }
     }
-}
-
-IDOSRenderView* IDOSRenderServer::view(const QString& viewId) const
-{
-    return m_views.value(viewId, nullptr);
 }
 
 void IDOSRenderServer::setActiveView(const QString& viewId)
@@ -154,7 +237,19 @@ void IDOSRenderServer::setActiveView(const QString& viewId)
         return;
     }
     m_activeViewId = viewId;
+    QMap<QString, IDOSRenderView*>::iterator viewIterator = m_views.begin();
+    while (viewIterator != m_views.end())
+    {
+        if (viewIterator.value() != nullptr)
+        {
+            viewIterator.value()->setActive(viewIterator.key() == m_activeViewId);
+        }
+        ++viewIterator;
+    }
+    setHighlightedObjectId(activeViewContextObjectId());
     emit currentViewChanged(m_activeViewId);
+    emit activeViewContextObjectChanged(m_activeViewId, activeViewContextObjectId());
+    emitActiveViewDecorationsChanged();
 }
 
 QString IDOSRenderServer::activeViewId() const
@@ -162,9 +257,107 @@ QString IDOSRenderServer::activeViewId() const
     return m_activeViewId;
 }
 
-IDOSRenderView* IDOSRenderServer::activeView() const
+bool IDOSRenderServer::hasActiveView() const
 {
-    return view(m_activeViewId);
+    return m_views.contains(m_activeViewId) && m_views.value(m_activeViewId) != nullptr;
+}
+
+void IDOSRenderServer::setActiveViewOrientation(IDOSOrientation orientation)
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    if (renderView != nullptr)
+    {
+        renderView->setOrientation(orientation);
+    }
+}
+
+bool IDOSRenderServer::activeViewParallelProjection() const
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr && renderView->parallelProjection();
+}
+
+QColor IDOSRenderServer::activeViewBackgroundColor() const
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr ? renderView->backgroundColor() : QColor();
+}
+
+void IDOSRenderServer::setActiveViewBackgroundColor(const QColor& color)
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    if (renderView != nullptr)
+    {
+        renderView->setBackgroundColor(color);
+    }
+}
+
+QImage IDOSRenderServer::captureActiveViewImage()
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr ? renderView->captureImage() : QImage();
+}
+
+void IDOSRenderServer::flashActiveViewScreenshot()
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    if (renderView != nullptr)
+    {
+        renderView->flashScreenshot();
+    }
+}
+
+bool IDOSRenderServer::activeViewOrientationMarkerVisible() const
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr && renderView->orientationMarkerVisible();
+}
+
+bool IDOSRenderServer::activeViewLegendAvailable() const
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr && renderView->legendAvailable();
+}
+
+bool IDOSRenderServer::activeViewLegendVisible() const
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    return renderView != nullptr && renderView->legendVisible();
+}
+
+void IDOSRenderServer::setActiveViewOrientationMarkerVisible(bool visible)
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    if (renderView != nullptr)
+    {
+        renderView->setOrientationMarkerVisible(visible);
+    }
+}
+
+void IDOSRenderServer::setActiveViewLegendVisible(bool visible)
+{
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
+    if (renderView != nullptr)
+    {
+        renderView->setLegendVisible(visible);
+    }
+}
+
+QString IDOSRenderServer::activeViewContextObjectId() const
+{
+    return m_viewContextObjectIds.value(m_activeViewId);
+}
+
+void IDOSRenderServer::setActiveViewContextObjectId(const QString& objectId)
+{
+    if (!m_views.contains(m_activeViewId) ||
+        m_viewContextObjectIds.value(m_activeViewId) == objectId)
+    {
+        return;
+    }
+    m_viewContextObjectIds.insert(m_activeViewId, objectId);
+    setHighlightedObjectId(objectId);
+    emit activeViewContextObjectChanged(m_activeViewId, objectId);
 }
 
 void IDOSRenderServer::onViewActivated()
@@ -189,255 +382,391 @@ void IDOSRenderServer::onViewActivated()
 
 void IDOSRenderServer::setHighlightedObjectId(const QString& objectId)
 {
-    if (m_highlightedObjectId == objectId)
-    {
-        return;
-    }
-
     m_highlightedObjectId = objectId;
+    const QString renderObjectId = m_renderObjectIdsByDataId.value(objectId, objectId);
     QMap<QString, IDOSRenderView*>::const_iterator iterator = m_views.constBegin();
     while (iterator != m_views.constEnd())
     {
         IDOSRenderView* renderView = iterator.value();
         if (renderView != nullptr)
         {
-            renderView->setHighlightedObjectId(m_highlightedObjectId);
+            renderView->setHighlightedObjectId(renderObjectId);
         }
         ++iterator;
     }
+    refreshViews();
 }
 
 void IDOSRenderServer::setSelectedObjectId(const QString& objectId)
 {
     QString renderObjectId;
-    QString selectedGridId;
     QString highlightedObjectId;
     if (m_project != nullptr && !objectId.isEmpty())
     {
-        const IDOSDataObject* object = m_project->objectById(objectId);
-        bool hasProvider = false;
-        for (int index = 0; object != nullptr && index < m_providers.size(); ++index)
+        IDOSDataObject* object = m_project->objectById(objectId);
+        IDOSRenderMetadata* metadata = object != nullptr
+                                           ? m_renderRegistry.metadata(object->typeId())
+                                           : nullptr;
+        if (metadata != nullptr && object != nullptr)
         {
-            if (m_providers.at(index)->canCreate(object))
-            {
-                hasProvider = true;
-                break;
-            }
-        }
-        if (hasProvider && object != nullptr)
-        {
-            renderObjectId = object->objectId();
-            highlightedObjectId = renderObjectId;
-            if (qobject_cast<const IDOSGrid*>(object) != nullptr)
-            {
-                selectedGridId = renderObjectId;
-            }
+            renderObjectId = m_renderObjectIdsByDataId.value(object->objectId());
+            highlightedObjectId = object->objectId();
         }
     }
-    m_selectedGridId = selectedGridId;
+    m_selectedRenderObjectId = renderObjectId;
+    m_selectedDataObjectId = highlightedObjectId;
     setHighlightedObjectId(highlightedObjectId);
-    emit selectedObjectOpacityChanged(selectedObjectOpacityPercent(), !m_selectedGridId.isEmpty());
-    emit selectedGridDisplayModeChanged(selectedGridDisplayMode(), !m_selectedGridId.isEmpty());
+    emit selectedObjectOpacityChanged(selectedObjectOpacityPercent(), !m_selectedRenderObjectId.isEmpty());
+    const IDOSRenderObject* renderObject = m_mainScene->object(m_selectedRenderObjectId);
+    IDOSRenderProvider* renderProvider =
+        renderObject != nullptr ? renderObject->renderProvider() : nullptr;
+    const bool displayModeEnabled = renderProvider != nullptr && renderProvider->supportsDisplayMode();
+    emit selectedDisplayModeChanged(selectedDisplayMode(), displayModeEnabled);
 }
 
 int IDOSRenderServer::selectedObjectOpacityPercent() const
 {
-    return m_opacityPercentByObjectId.value(m_selectedGridId, 100);
+    const QString dataObjectId = m_dataObjectIdsByRenderObjectId.value(m_selectedRenderObjectId);
+    return m_opacityPercentByDataId.value(dataObjectId, 100);
 }
 
 void IDOSRenderServer::setSelectedObjectOpacityPercent(int opacityPercent)
 {
-    if (m_selectedGridId.isEmpty())
+    if (m_selectedRenderObjectId.isEmpty())
     {
         return;
     }
     const int clampedOpacity = qBound(0, opacityPercent, 100);
-    m_opacityPercentByObjectId.insert(m_selectedGridId, clampedOpacity);
-    IDOSRenderObject* renderObject = m_mainScene->object(m_selectedGridId);
-    if (renderObject != nullptr)
+    const QString dataObjectId = m_dataObjectIdsByRenderObjectId.value(m_selectedRenderObjectId);
+    m_opacityPercentByDataId.insert(dataObjectId, clampedOpacity);
+    IDOSRenderObject* renderObject = m_mainScene->object(m_selectedRenderObjectId);
+    IDOSRenderProvider* provider = renderObject != nullptr ? renderObject->renderProvider() : nullptr;
+    if (provider != nullptr)
     {
-        renderObject->setOpacity(static_cast<double>(clampedOpacity) / 100.0);
+        provider->setOpacity(static_cast<double>(clampedOpacity) / 100.0);
         refreshViews();
     }
 }
 
 void IDOSRenderServer::resetActiveViewCamera()
 {
-    IDOSRenderView* renderView = activeView();
+    IDOSRenderView* renderView = m_views.value(m_activeViewId, nullptr);
     if (renderView != nullptr)
     {
         renderView->resetCamera();
     }
 }
 
-void IDOSRenderServer::setActiveViewOrientation(IDOSOrientation orientation)
+void IDOSRenderServer::onViewDecorationsChanged()
 {
-    IDOSRenderView* renderView = activeView();
-    if (renderView != nullptr)
+    IDOSRenderView* renderView = qobject_cast<IDOSRenderView*>(sender());
+    if (renderView != nullptr && m_views.value(m_activeViewId, nullptr) == renderView)
     {
-        IDOSRenderView::ViewPreset viewPreset = IDOSRenderView::ViewPreset::Isometric;
-        switch (orientation)
-        {
-        case IDOSOrientation::Perspective:
-            viewPreset = IDOSRenderView::ViewPreset::Isometric;
-            break;
-        case IDOSOrientation::Top:
-            viewPreset = IDOSRenderView::ViewPreset::Top;
-            break;
-        case IDOSOrientation::Bottom:
-            viewPreset = IDOSRenderView::ViewPreset::Bottom;
-            break;
-        case IDOSOrientation::Front:
-            viewPreset = IDOSRenderView::ViewPreset::Front;
-            break;
-        case IDOSOrientation::Back:
-            viewPreset = IDOSRenderView::ViewPreset::Back;
-            break;
-        case IDOSOrientation::Left:
-            viewPreset = IDOSRenderView::ViewPreset::Left;
-            break;
-        case IDOSOrientation::Right:
-            viewPreset = IDOSRenderView::ViewPreset::Right;
-            break;
-        }
-        renderView->setViewPreset(viewPreset);
+        emitActiveViewDecorationsChanged();
     }
 }
 
-IDOSDisplayMode IDOSRenderServer::selectedGridDisplayMode() const
+void IDOSRenderServer::onViewObjectActivated(const QString& objectId)
 {
-    return m_displayModeByGridId.value(m_selectedGridId, IDOSDisplayMode::Surface);
+    IDOSRenderView* renderView = qobject_cast<IDOSRenderView*>(sender());
+    const QString viewId = viewIdFor(renderView);
+    if (!viewId.isEmpty())
+    {
+        setActiveView(viewId);
+        emit renderViewObjectActivated(viewId,
+                                       m_dataObjectIdsByRenderObjectId.value(objectId, objectId));
+    }
 }
 
-void IDOSRenderServer::setSelectedGridDisplayMode(IDOSDisplayMode mode)
+QString IDOSRenderServer::viewIdFor(const IDOSRenderView* renderView) const
 {
-    if (m_selectedGridId.isEmpty())
+    QMap<QString, IDOSRenderView*>::const_iterator viewIterator = m_views.constBegin();
+    while (viewIterator != m_views.constEnd())
+    {
+        if (viewIterator.value() == renderView)
+        {
+            return viewIterator.key();
+        }
+        ++viewIterator;
+    }
+    return QString();
+}
+
+void IDOSRenderServer::emitActiveViewDecorationsChanged()
+{
+    emit activeViewDecorationsChanged(activeViewOrientationMarkerVisible(),
+                                      activeViewLegendAvailable(),
+                                      activeViewLegendVisible());
+}
+
+IDOSDisplayMode IDOSRenderServer::selectedDisplayMode() const
+{
+    const IDOSRenderObject* renderObject = m_mainScene->object(m_selectedRenderObjectId);
+    IDOSRenderProvider* renderProvider =
+        renderObject != nullptr ? renderObject->renderProvider() : nullptr;
+    return renderProvider != nullptr && renderProvider->supportsDisplayMode()
+               ? renderProvider->displayMode()
+               : IDOSDisplayMode::Surface;
+}
+
+void IDOSRenderServer::setSelectedDisplayMode(IDOSDisplayMode mode)
+{
+    IDOSRenderObject* renderObject = m_mainScene->object(m_selectedRenderObjectId);
+    if (renderObject == nullptr)
     {
         return;
     }
-    m_displayModeByGridId.insert(m_selectedGridId, mode);
-    IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(m_mainScene->object(m_selectedGridId));
-    if (mesh != nullptr)
+    IDOSRenderProvider* renderProvider = renderObject->renderProvider();
+    if (renderProvider != nullptr && renderProvider->setDisplayMode(mode))
     {
-        mesh->setDisplayMode(mode);
+        const QString dataObjectId = m_dataObjectIdsByRenderObjectId.value(m_selectedRenderObjectId);
+        m_displayModeByDataId.insert(dataObjectId, mode);
         refreshViews();
     }
 }
 
-void IDOSRenderServer::addProvider(IDOSRenderObjectProvider* provider)
+void IDOSRenderServer::registerMetadata(IDOSRenderMetadata* metadata)
 {
-    if (provider == nullptr)
+    if (metadata == nullptr)
     {
         return;
     }
-    m_providers.append(provider);
+    const QString dataTypeId = metadata->dataTypeId();
+    if (!m_renderRegistry.registerMetadata(metadata) &&
+        m_renderRegistry.metadata(dataTypeId) != metadata)
+    {
+        delete metadata;
+    }
 }
 
-void IDOSRenderServer::onItemCheckedChanged(const QString& objectId, bool checked)
+bool IDOSRenderServer::unregisterMetadata(const QString& dataTypeId)
 {
-    if (m_project != nullptr)
+    IDOSDataObject* selectedDataObject = dataObject(m_selectedDataObjectId);
+    if (selectedDataObject != nullptr && selectedDataObject->typeId() == dataTypeId)
     {
-        IDOSWell* well = qobject_cast<IDOSWell*>(m_project->objectById(objectId));
-        if (well != nullptr)
+        setSelectedObjectId(QString());
+    }
+
+    const QList<QString> dataObjectIds = m_renderObjectIdsByDataId.keys();
+    for (int index = 0; index < dataObjectIds.size(); ++index)
+    {
+        IDOSRenderObject* object = renderObject(dataObjectIds.at(index));
+        IDOSDataRenderProvider* provider = object != nullptr
+                                               ? dynamic_cast<IDOSDataRenderProvider*>(
+                                                     object->renderProvider())
+                                               : nullptr;
+        IDOSDataObject* sourceDataObject = provider != nullptr ? provider->dataObject() : nullptr;
+        if (sourceDataObject != nullptr && sourceDataObject->typeId() == dataTypeId)
         {
-            well->setVisible(checked);
+            removeRenderObject(sourceDataObject->objectId());
         }
     }
-
-    onItemStateChanged(objectId, checked ? IDOSItemState::Shown : IDOSItemState::Hidden);
+    const bool removed = m_renderRegistry.unregisterMetadata(dataTypeId);
+    if (removed)
+    {
+        refreshViews();
+    }
+    return removed;
 }
 
-void IDOSRenderServer::onItemStateChanged(const QString& objectId, IDOSItemState state)
+bool IDOSRenderServer::synchronizeProviders(IDOSRenderObjectChange change, const QStringList& objectIds)
 {
-    switch (state)
+    bool changed = false;
+    bool resetCamera = false;
+    const QList<IDOSRenderMetadata*> metadataList = m_renderRegistry.metadataList();
+    for (int index = 0; index < metadataList.size(); ++index)
     {
-    case IDOSItemState::Shown:
-        setItemShown(objectId);
-        break;
-    case IDOSItemState::Hidden:
-        setItemHidden(objectId);
-        break;
-    case IDOSItemState::Selected:
-        setItemSelectionState(objectId, state);
-        break;
-    case IDOSItemState::Unselected:
-        setItemSelectionState(objectId, state);
-        break;
-    case IDOSItemState::Highlighted:
-        setItemHighlightState(objectId, state);
-        break;
-    case IDOSItemState::Unhighlighted:
-        setItemHighlightState(objectId, state);
-        break;
-    }
-}
-
-IDOSRenderObject* IDOSRenderServer::createObject(const IDOSDataObject* object) const
-{
-    if (object == nullptr)
-    {
-        return nullptr;
-    }
-
-    for (int index = 0; index < m_providers.size(); ++index)
-    {
-        IDOSRenderObjectProvider* provider = m_providers.at(index);
-        if (provider->canCreate(object))
+        IDOSRenderMetadata* metadata = metadataList.at(index);
+        IDOSRenderObjectProvider* provider =
+            dynamic_cast<IDOSRenderObjectProvider*>(metadata);
+        if (provider != nullptr)
         {
-            IDOSRenderObject* renderObject = provider->createObject(object);
-            if (renderObject != nullptr && m_opacityPercentByObjectId.contains(renderObject->id()))
+            changed = provider->synchronize(change, objectIds, this, &resetCamera) || changed;
+            continue;
+        }
+
+        if (change == IDOSRenderObjectChange::ProjectReplaced)
+        {
+            if (m_project == nullptr)
             {
-                renderObject->setOpacity(static_cast<double>(m_opacityPercentByObjectId.value(renderObject->id()))
-                                         / 100.0);
+                continue;
             }
-            IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(renderObject);
-            if (mesh != nullptr && m_displayModeByGridId.contains(mesh->id()))
+            const QList<IDOSDataObject*> dataObjects = m_project->objects();
+            for (IDOSDataObject* dataObject : dataObjects)
             {
-                mesh->setDisplayMode(m_displayModeByGridId.value(mesh->id()));
+                if (dataObject == nullptr || dataObject->typeId() != metadata->dataTypeId() ||
+                    !dataObject->isVisible())
+                {
+                    continue;
+                }
+                IDOSRenderObject* renderObject = metadata->createRenderObject(dataObject);
+                if (renderObject != nullptr)
+                {
+                    addRenderObject(renderObject);
+                    changed = true;
+                    resetCamera = true;
+                }
             }
-            return renderObject;
+            continue;
+        }
+
+        for (const QString& objectId : objectIds)
+        {
+            if (objectId.isEmpty())
+            {
+                continue;
+            }
+            if (change == IDOSRenderObjectChange::Removed)
+            {
+                if (renderObject(objectId) != nullptr)
+                {
+                    removeRenderObject(objectId);
+                    changed = true;
+                }
+                continue;
+            }
+
+            IDOSDataObject* sourceDataObject = dataObject(objectId);
+            if (sourceDataObject == nullptr ||
+                sourceDataObject->typeId() != metadata->dataTypeId())
+            {
+                continue;
+            }
+            IDOSRenderObject* existingObject = renderObject(objectId);
+            IDOSRenderProvider* existingProvider =
+                existingObject != nullptr ? existingObject->renderProvider() : nullptr;
+            if (!sourceDataObject->isVisible())
+            {
+                if (existingProvider != nullptr && existingProvider->visible())
+                {
+                    existingProvider->setVisible(false);
+                    changed = true;
+                }
+                continue;
+            }
+            if (change == IDOSRenderObjectChange::VisibilityChanged && existingProvider != nullptr)
+            {
+                if (!existingProvider->visible())
+                {
+                    existingProvider->setVisible(true);
+                    changed = true;
+                }
+                continue;
+            }
+
+            IDOSRenderObject* renderObject = metadata->createRenderObject(sourceDataObject);
+            if (renderObject == nullptr)
+            {
+                continue;
+            }
+            if (existingObject != nullptr)
+            {
+                removeRenderObject(objectId);
+            }
+            addRenderObject(renderObject);
+            changed = true;
+            if (existingObject == nullptr)
+            {
+                resetCamera = true;
+            }
         }
     }
-    return nullptr;
+    if (changed && !m_highlightedObjectId.isEmpty())
+    {
+        setHighlightedObjectId(m_highlightedObjectId);
+    }
+    applyRenderSettings();
+    if (!m_selectedDataObjectId.isEmpty())
+    {
+        const IDOSRenderObject* selectedObject = m_mainScene->object(m_selectedRenderObjectId);
+        IDOSRenderProvider* selectedProvider =
+            selectedObject != nullptr ? selectedObject->renderProvider() : nullptr;
+        emit selectedObjectOpacityChanged(selectedObjectOpacityPercent(),
+                                          selectedProvider != nullptr);
+        emit selectedDisplayModeChanged(
+            selectedDisplayMode(),
+            selectedProvider != nullptr && selectedProvider->supportsDisplayMode());
+    }
+    if (resetCamera)
+    {
+        resetViews();
+    }
+    return changed;
 }
 
-bool IDOSRenderServer::addWellToScene(const IDOSDataObject* object)
+void IDOSRenderServer::applyRenderSettings()
 {
-    const IDOSWell* well = qobject_cast<const IDOSWell*>(object);
-    if (well == nullptr || !well->isVisible())
+    const QList<IDOSRenderObject*> renderObjects = m_mainScene->objects();
+    for (IDOSRenderObject* renderObject : renderObjects)
     {
-        return false;
+        if (renderObject == nullptr)
+        {
+            continue;
+        }
+        IDOSRenderProvider* renderProvider = renderObject->renderProvider();
+        IDOSDataRenderProvider* dataProvider =
+            dynamic_cast<IDOSDataRenderProvider*>(renderProvider);
+        IDOSDataObject* sourceDataObject =
+            dataProvider != nullptr ? dataProvider->dataObject() : nullptr;
+        const QString dataObjectId =
+            sourceDataObject != nullptr ? sourceDataObject->objectId() : renderObject->id();
+        if (m_opacityPercentByDataId.contains(dataObjectId))
+        {
+            if (renderProvider != nullptr)
+            {
+                renderProvider->setOpacity(
+                    static_cast<double>(m_opacityPercentByDataId.value(dataObjectId)) / 100.0);
+            }
+        }
+        if (renderProvider != nullptr && renderProvider->supportsDisplayMode() &&
+            m_displayModeByDataId.contains(dataObjectId))
+        {
+            renderProvider->setDisplayMode(m_displayModeByDataId.value(dataObjectId));
+        }
     }
-
-    IDOSRenderObject* renderObject = m_mainScene->object(well->objectId());
-    if (renderObject != nullptr)
-    {
-        renderObject->setVisible(true);
-        return false;
-    }
-
-    renderObject = createObject(well);
-    if (renderObject == nullptr)
-    {
-        return false;
-    }
-
-    m_mainScene->addObject(renderObject);
-    emit titleChanged(QObject::tr("3D View - %1").arg(well->name()));
-    return true;
 }
 
-IDOSRenderView* IDOSRenderServer::firstView() const
+void IDOSRenderServer::beginSceneUpdate()
 {
-    if (m_views.isEmpty())
+    ++m_sceneUpdateDepth;
+}
+
+void IDOSRenderServer::endSceneUpdate()
+{
+    if (m_sceneUpdateDepth <= 0)
     {
-        return nullptr;
+        return;
     }
-    return m_views.first();
+
+    --m_sceneUpdateDepth;
+    if (m_sceneUpdateDepth > 0)
+    {
+        return;
+    }
+
+    const bool refreshPending = m_refreshPending;
+    const bool resetViewsPending = m_resetViewsPending;
+    m_refreshPending = false;
+    m_resetViewsPending = false;
+
+    if (refreshPending)
+    {
+        refreshViews();
+    }
+    if (resetViewsPending)
+    {
+        resetViews();
+    }
 }
 
 void IDOSRenderServer::refreshViews()
 {
+    if (m_sceneUpdateDepth > 0)
+    {
+        m_refreshPending = true;
+        return;
+    }
+
     QMap<QString, IDOSRenderView*>::const_iterator iterator = m_views.constBegin();
     while (iterator != m_views.constEnd())
     {
@@ -452,6 +781,12 @@ void IDOSRenderServer::refreshViews()
 
 void IDOSRenderServer::resetViews()
 {
+    if (m_sceneUpdateDepth > 0)
+    {
+        m_resetViewsPending = true;
+        return;
+    }
+
     QMap<QString, IDOSRenderView*>::const_iterator iterator = m_views.constBegin();
     while (iterator != m_views.constEnd())
     {
@@ -464,155 +799,6 @@ void IDOSRenderServer::resetViews()
     }
 }
 
-bool IDOSRenderServer::showGridProperty(const IDOSGridProperty* property)
-{
-    if (property == nullptr || m_project == nullptr)
-    {
-        return false;
-    }
-
-    const IDOSGrid* grid = qobject_cast<const IDOSGrid*>(m_project->objectById(property->gridId()));
-    if (grid == nullptr)
-    {
-        return false;
-    }
-
-    IDOSRenderObject* renderObject = m_mainScene->object(grid->objectId());
-    bool objectCreated = false;
-    if (renderObject == nullptr)
-    {
-        renderObject = createObject(grid);
-        if (renderObject == nullptr)
-        {
-            return false;
-        }
-        m_mainScene->addObject(renderObject);
-        objectCreated = true;
-    }
-
-    renderObject->setVisible(true);
-    if (!applyGridProperty(renderObject, property))
-    {
-        return false;
-    }
-
-    emit titleChanged(QObject::tr("3D View - %1").arg(property->name()));
-    refreshViews();
-    if (objectCreated)
-    {
-        resetViews();
-    }
-    return true;
-}
-
-bool IDOSRenderServer::hideGridProperty(const IDOSGridProperty* property)
-{
-    if (property == nullptr)
-    {
-        return false;
-    }
-
-    // 清除属性着色，网格保持可见并回退到默认色；
-    // 不隐藏整个 grid renderObject（取消属性 ≠ 取消网格）
-    IDOSRenderObject* renderObject = m_mainScene->object(property->gridId());
-    IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(renderObject);
-    if (mesh != nullptr)
-    {
-        mesh->clearCellScalars();
-        refreshViews();
-    }
-    return true;
-}
-
-bool IDOSRenderServer::applyGridProperty(IDOSRenderObject* renderObject, const IDOSGridProperty* property)
-{
-    IDOSRenderMesh* mesh = dynamic_cast<IDOSRenderMesh*>(renderObject);
-    if (mesh == nullptr || property == nullptr)
-    {
-        return false;
-    }
-
-    const QVector<double>& values = property->values();
-    const QVector<int>& globalIndices = mesh->cellGlobalIndices();
-    QVector<double> cellScalars;
-    cellScalars.reserve(globalIndices.size());
-    for (int index = 0; index < globalIndices.size(); ++index)
-    {
-        const int globalIndex = globalIndices.at(index);
-        if (globalIndex >= 0 && globalIndex < values.size())
-        {
-            cellScalars.append(values.at(globalIndex));
-        }
-        else
-        {
-            cellScalars.append(0.0);
-        }
-    }
-    mesh->setCellScalars(property->name(), cellScalars);
-    return true;
-}
-
-void IDOSRenderServer::setItemShown(const QString& objectId)
-{
-    if (m_project == nullptr || objectId.isEmpty())
-    {
-        return;
-    }
-
-    const IDOSDataObject* object = m_project->objectById(objectId);
-    const IDOSGridProperty* property = qobject_cast<const IDOSGridProperty*>(object);
-    if (property != nullptr)
-    {
-        showGridProperty(property);
-        return;
-    }
-
-    IDOSRenderObject* renderObject = m_mainScene->object(objectId);
-    bool objectCreated = false;
-    if (renderObject == nullptr)
-    {
-        renderObject = createObject(object);
-        if (renderObject == nullptr)
-        {
-            return;
-        }
-        m_mainScene->addObject(renderObject);
-        emit titleChanged(QObject::tr("3D View - %1").arg(object->name()));
-        objectCreated = true;
-    }
-    else
-    {
-        renderObject->setVisible(true);
-    }
-    refreshViews();
-    if (objectCreated)
-    {
-        resetViews();
-    }
-}
-
-void IDOSRenderServer::setItemHidden(const QString& objectId)
-{
-    if (objectId.isEmpty())
-    {
-        return;
-    }
-
-    if (m_project != nullptr)
-    {
-        const IDOSDataObject* object = m_project->objectById(objectId);
-        const IDOSGridProperty* property = qobject_cast<const IDOSGridProperty*>(object);
-        if (property != nullptr)
-        {
-            hideGridProperty(property);
-            return;
-        }
-    }
-
-    m_mainScene->setObjectVisible(objectId, false);
-    refreshViews();
-}
-
 void IDOSRenderServer::onObjectAdded(const QString& objectId)
 {
     if (m_project == nullptr || objectId.isEmpty())
@@ -620,11 +806,17 @@ void IDOSRenderServer::onObjectAdded(const QString& objectId)
         return;
     }
 
-    if (addWellToScene(m_project->objectById(objectId)))
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::Added, QStringList() << objectId))
     {
         refreshViews();
-        resetViews();
+        IDOSDataObject* object = m_project->objectById(objectId);
+        if (object != nullptr)
+        {
+            emit titleChanged(QObject::tr("3D View - %1").arg(object->name()));
+        }
     }
+    endSceneUpdate();
 }
 
 void IDOSRenderServer::onObjectsAdded(const QStringList& objectIds)
@@ -634,20 +826,70 @@ void IDOSRenderServer::onObjectsAdded(const QStringList& objectIds)
         return;
     }
 
-    bool objectAdded = false;
-    for (const QString& objectId : objectIds)
-    {
-        if (!objectId.isEmpty())
-        {
-            objectAdded = addWellToScene(m_project->objectById(objectId)) || objectAdded;
-        }
-    }
-
-    if (objectAdded)
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::Added, objectIds))
     {
         refreshViews();
-        resetViews();
+        for (const QString& objectId : objectIds)
+        {
+            const IDOSDataObject* object = m_project->objectById(objectId);
+            if (object != nullptr && object->isVisible())
+            {
+                emit titleChanged(QObject::tr("3D View - %1").arg(object->name()));
+            }
+        }
     }
+    endSceneUpdate();
+}
+
+void IDOSRenderServer::onObjectDataChanged(const QString& objectId)
+{
+    if (m_project == nullptr || objectId.isEmpty())
+    {
+        return;
+    }
+
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::DataChanged, QStringList() << objectId))
+    {
+        refreshViews();
+    }
+    endSceneUpdate();
+}
+
+void IDOSRenderServer::onObjectsDataChanged(const QStringList& objectIds)
+{
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::DataChanged, objectIds))
+    {
+        refreshViews();
+    }
+    endSceneUpdate();
+}
+
+void IDOSRenderServer::onObjectVisibilityChanged(const QString& objectId, bool visible)
+{
+    Q_UNUSED(visible);
+    if (objectId.isEmpty())
+    {
+        return;
+    }
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::VisibilityChanged, QStringList() << objectId))
+    {
+        refreshViews();
+    }
+    endSceneUpdate();
+}
+
+void IDOSRenderServer::onObjectsVisibilityChanged(const QStringList& objectIds)
+{
+    beginSceneUpdate();
+    if (synchronizeProviders(IDOSRenderObjectChange::VisibilityChanged, objectIds))
+    {
+        refreshViews();
+    }
+    endSceneUpdate();
 }
 
 void IDOSRenderServer::onObjectRemoved(const QString& objectId)
@@ -657,40 +899,72 @@ void IDOSRenderServer::onObjectRemoved(const QString& objectId)
         return;
     }
 
-    m_mainScene->removeObject(objectId);
-    refreshViews();
+    beginSceneUpdate();
+    clearViewContextForObject(objectId);
+    if (m_highlightedObjectId == objectId)
+    {
+        setHighlightedObjectId(QString());
+    }
+    if (m_selectedRenderObjectId == m_renderObjectIdsByDataId.value(objectId, objectId))
+    {
+        m_selectedDataObjectId.clear();
+        m_selectedRenderObjectId.clear();
+        emit selectedObjectOpacityChanged(100, false);
+        emit selectedDisplayModeChanged(IDOSDisplayMode::Surface, false);
+    }
+    if (synchronizeProviders(IDOSRenderObjectChange::Removed, QStringList() << objectId))
+    {
+        refreshViews();
+    }
+    endSceneUpdate();
 }
 
 void IDOSRenderServer::onObjectsRemoved(const QStringList& objectIds)
 {
+    beginSceneUpdate();
     for (const QString& objectId : objectIds)
     {
         if (!objectId.isEmpty())
         {
-            m_mainScene->removeObject(objectId);
+            clearViewContextForObject(objectId);
+            if (m_highlightedObjectId == objectId)
+            {
+                setHighlightedObjectId(QString());
+            }
+            if (m_selectedRenderObjectId ==
+                m_renderObjectIdsByDataId.value(objectId, objectId))
+            {
+                m_selectedDataObjectId.clear();
+                m_selectedRenderObjectId.clear();
+                emit selectedObjectOpacityChanged(100, false);
+                emit selectedDisplayModeChanged(IDOSDisplayMode::Surface, false);
+            }
         }
     }
-    refreshViews();
-}
-
-void IDOSRenderServer::setItemSelectionState(const QString& objectId, IDOSItemState state)
-{
-    Q_UNUSED(objectId);
-    Q_UNUSED(state);
-}
-
-void IDOSRenderServer::setItemHighlightState(const QString& objectId, IDOSItemState state)
-{
-    if (state == IDOSItemState::Highlighted)
+    if (synchronizeProviders(IDOSRenderObjectChange::Removed, objectIds))
     {
-        setHighlightedObjectId(objectId);
-        return;
+        refreshViews();
     }
-
-    if (state == IDOSItemState::Unhighlighted && m_highlightedObjectId == objectId)
-    {
-        setHighlightedObjectId(QString());
-    }
+    endSceneUpdate();
 }
 
-
+void IDOSRenderServer::clearViewContextForObject(const QString& objectId)
+{
+    QMap<QString, QString>::iterator contextIterator = m_viewContextObjectIds.begin();
+    while (contextIterator != m_viewContextObjectIds.end())
+    {
+        if (contextIterator.value() == objectId)
+        {
+            const QString viewId = contextIterator.key();
+            contextIterator = m_viewContextObjectIds.erase(contextIterator);
+            if (viewId == m_activeViewId)
+            {
+                emit activeViewContextObjectChanged(viewId, QString());
+            }
+        }
+        else
+        {
+            ++contextIterator;
+        }
+    }
+}

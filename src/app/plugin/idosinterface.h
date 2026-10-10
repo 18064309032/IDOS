@@ -21,6 +21,9 @@ class APP_EXPORT IDOSInterface : public QObject
     virtual SARibbonCategory* ribbonCategory(const QString& objectName) const = 0;
     virtual SARibbonCategory* addRibbonCategory(const QString& objectName,
                                                 const QString& title) = 0;
+    virtual SARibbonCategory* insertCategoryPage(const QString& objectName,
+                                                 const QString& title,
+                                                 int index) = 0;
     virtual void removeRibbonCategory(SARibbonCategory* category) = 0;
 };
 #endif // IDOS_PLUGIN_INTERFACE_H

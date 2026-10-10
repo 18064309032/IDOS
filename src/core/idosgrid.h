@@ -95,9 +95,10 @@ class CORE_EXPORT IDOSGrid : public IDOSDataObject
      */
     void mergeFrom(const IDOSDataObject* other) override;
 
-    Q_SIGNAL void typeChanged(Type type);
-    Q_SIGNAL void dimensionsChanged(int nx, int ny, int nz);
-    Q_SIGNAL void gridDataChanged();
+  signals:
+    void typeChanged(Type type);
+    void dimensionsChanged(int nx, int ny, int nz);
+    void gridDataChanged();
 
   private:
     int pillarCoordIndex(int i, int j) const;

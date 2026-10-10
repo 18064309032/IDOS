@@ -13,7 +13,6 @@
 #include "idosprojectmetadata.h"
 
 class IDOSCommandManager;
-class IDOSProjectUpdateGuard;
 class QUndoStack;
 
 /**
@@ -41,7 +40,6 @@ class CORE_EXPORT IDOSProject : public QObject
     bool setMetadata(const IDOSProjectMetadata& metadata);
     QUndoStack* undoStack() const;
     IDOSCommandManager* commandManager() const;
-    Q_SIGNAL void metadataChanged();
 
     /** 将数据对象加入工程，接管所有权。已存在同 objectId 则替换。 */
     void addObject(IDOSDataObject* object);
@@ -73,22 +71,27 @@ class CORE_EXPORT IDOSProject : public QObject
     /** 结束一层批量事务；最外层结束时发射累积的批量信号。 */
     void endUpdate();
 
-    // ===== 单个信号（非批量路径，如交互新建单个对象） =====
+  signals:
+    void metadataChanged();
 
     /** 新对象加入。 */
-    Q_SIGNAL void objectAdded(const QString& objectId);
+    void objectAdded(const QString& objectId);
 
     /** 对象移除。 */
-    Q_SIGNAL void objectRemoved(const QString& objectId);
+    void objectRemoved(const QString& objectId);
 
-    /** 对象任意属性变化。 */
-    Q_SIGNAL void objectChanged(const QString& objectId);
+    /** 对象业务数据变化，不包含可见性变化。 */
+    void objectDataChanged(const QString& objectId);
+
+    /** 对象可见性变化。 */
+    void objectVisibilityChanged(const QString& objectId, bool visible);
 
     // ===== 批量信号（事务结束时发射，列表内 id 唯一） =====
 
-    Q_SIGNAL void objectsAdded(const QStringList& objectIds);
-    Q_SIGNAL void objectsRemoved(const QStringList& objectIds);
-    Q_SIGNAL void objectsChanged(const QStringList& objectIds);
+    void objectsAdded(const QStringList& objectIds);
+    void objectsRemoved(const QStringList& objectIds);
+    void objectsDataChanged(const QStringList& objectIds);
+    void objectsVisibilityChanged(const QStringList& objectIds);
 
   private slots:
     void onObjectDataChanged();
@@ -96,11 +99,9 @@ class CORE_EXPORT IDOSProject : public QObject
     void onObjectNameChanged(const QString& name);
 
   private:
-    friend class IDOSProjectUpdateGuard;
-
     void notifyAdded(const QString& objectId);
     void notifyRemoved(const QString& objectId);
-    void notifyChanged(const QString& objectId);
+    void notifyDataChanged(const QString& objectId);
 
     void connectObject(IDOSDataObject* object);
     void disconnectObject(IDOSDataObject* object);
@@ -112,26 +113,8 @@ class CORE_EXPORT IDOSProject : public QObject
     int m_updateDepth;
     QSet<QString> m_pendingAdded;
     QSet<QString> m_pendingRemoved;
-    QSet<QString> m_pendingChanged;
-};
-
-/**
- * @brief IDOSProject 批量事务 RAII 守卫。
- *
- * 构造时 beginUpdate，析构（含提前 return / 栈展开）时 endUpdate，
- * 保证事务一定闭合。
- */
-class CORE_EXPORT IDOSProjectUpdateGuard
-{
-  public:
-    explicit IDOSProjectUpdateGuard(IDOSProject* project);
-    ~IDOSProjectUpdateGuard();
-
-    IDOSProjectUpdateGuard(const IDOSProjectUpdateGuard&) = delete;
-    IDOSProjectUpdateGuard& operator=(const IDOSProjectUpdateGuard&) = delete;
-
-  private:
-    IDOSProject* m_project;
+    QSet<QString> m_pendingDataChanged;
+    QSet<QString> m_pendingVisibilityChanged;
 };
 
 #endif // IDOS_PROJECT_H

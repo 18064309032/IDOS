@@ -1,7 +1,9 @@
 #include "idosrendermesh.h"
 
-IDOSRenderMesh::IDOSRenderMesh()
-    : m_displayMode(IDOSDisplayMode::Surface)
+IDOSRenderMesh::IDOSRenderMesh(IDOSRenderProvider* provider)
+    :
+    IDOSRenderObject(provider)
+    , m_displayMode(IDOSDisplayMode::Surface)
 {
 }
 
@@ -111,4 +113,3 @@ void IDOSRenderMesh::clear()
     m_cellScalars.clear();
     m_displayMode = IDOSDisplayMode::Surface;
 }
-

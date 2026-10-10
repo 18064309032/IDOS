@@ -1,3 +1,4 @@
+#include <QPixmap>
 #include <QStringList>
 #include <QVariantMap>
 #include <QVector>
@@ -70,6 +71,18 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     }
     if (role == Qt::DecorationRole && modelIndex.column() == 0)
     {
+        const QPixmap pluginPixmap =
+            plugin.value(QStringLiteral("iconPixmap")).value<QPixmap>();
+        if (!pluginPixmap.isNull())
+        {
+            return QIcon(pluginPixmap);
+        }
+
+        const QIcon pluginIcon(plugin.value(QStringLiteral("icon")).toString());
+        if (!pluginIcon.isNull())
+        {
+            return pluginIcon;
+        }
         return m_pluginIcon;
     }
     if (role == Qt::CheckStateRole && modelIndex.column() == 0)
@@ -80,9 +93,9 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     {
         return plugin.value(QStringLiteral("key"));
     }
-    if (role == PluginPathRole)
+    if (role == PluginIconRole)
     {
-        return plugin.value(QStringLiteral("path"));
+        return plugin.value(QStringLiteral("iconPixmap"));
     }
     if (role == PluginDescriptionRole)
     {

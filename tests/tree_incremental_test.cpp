@@ -250,19 +250,20 @@ void TreeIncrementalTest::onBatchImportRebuildsCaseBranchOnce()
 
     // 批量导入 5 个同网格属性（模拟 Eclipse DATA 导入）
     resetSignalCounters();
+    project->beginUpdate();
+    bool allPropertiesValid = true;
+    for (int i = 0; i < 5; ++i)
     {
-        IDOSProjectUpdateGuard updateGuard(project);
-        for (int i = 0; i < 5; ++i)
-        {
-            IDOSGridProperty* property = new IDOSGridProperty();
-            property->setName(QStringLiteral("P%1").arg(i));
-            property->setKeyword(property->name());
-            property->setGridId(grid->objectId());
-            property->setDimensions(1, 1, 1);
-            QVERIFY(property->setValues(QVector<double>(1, 0.1 * i)));
-            project->addObject(property);
-        }
+        IDOSGridProperty* property = new IDOSGridProperty();
+        property->setName(QStringLiteral("P%1").arg(i));
+        property->setKeyword(property->name());
+        property->setGridId(grid->objectId());
+        property->setDimensions(1, 1, 1);
+        allPropertiesValid = property->setValues(QVector<double>(1, 0.1 * i)) && allPropertiesValid;
+        project->addObject(property);
     }
+    project->endUpdate();
+    QVERIFY(allPropertiesValid);
 
     QVERIFY(!m_caseTreeReset);
     // 关键断言：5 个属性只让工况分支摘除/重建一次，而不是 5 次（修复 O(N²)）
@@ -289,18 +290,19 @@ void TreeIncrementalTest::onProjectUpdateTransactionBatchesSignals()
     QSignalSpy batchAddedSpy(&project, &IDOSProject::objectsAdded);
     QSignalSpy batchRemovedSpy(&project, &IDOSProject::objectsRemoved);
 
-    // 事务期间不发单信号，守卫析构（最外层闭合）时发一次批量信号
-    {
-        IDOSProjectUpdateGuard updateGuard(&project);
-        IDOSWell* well1 = new IDOSWell();
-        well1->setName(QStringLiteral("W1"));
-        IDOSWell* well2 = new IDOSWell();
-        well2->setName(QStringLiteral("W2"));
-        project.addObject(well1);
-        project.addObject(well2);
-        QCOMPARE(singleAddedSpy.count(), 0);
-        QCOMPARE(batchAddedSpy.count(), 0);
-    }
+    // 事务期间不发单信号，最外层 endUpdate 时发一次批量信号
+    project.beginUpdate();
+    IDOSWell* well1 = new IDOSWell();
+    well1->setName(QStringLiteral("W1"));
+    IDOSWell* well2 = new IDOSWell();
+    well2->setName(QStringLiteral("W2"));
+    project.addObject(well1);
+    project.addObject(well2);
+    const int singleSignalsDuringUpdate = singleAddedSpy.count();
+    const int batchSignalsDuringUpdate = batchAddedSpy.count();
+    project.endUpdate();
+    QCOMPARE(singleSignalsDuringUpdate, 0);
+    QCOMPARE(batchSignalsDuringUpdate, 0);
     QCOMPARE(singleAddedSpy.count(), 0);
     QCOMPARE(batchAddedSpy.count(), 1);
     QCOMPARE(batchAddedSpy.takeFirst().at(0).toStringList().count(), 2);
@@ -321,10 +323,10 @@ void TreeIncrementalTest::onProjectUpdateTransactionBatchesSignals()
     IDOSWell* well4 = new IDOSWell();
     well4->setName(QStringLiteral("W4"));
     project.addObject(well4);
-    {
-        IDOSProjectUpdateGuard updateGuard(&project);
-        QVERIFY(project.removeObject(well4->objectId()));
-    }
+    project.beginUpdate();
+    const bool wellRemoved = project.removeObject(well4->objectId());
+    project.endUpdate();
+    QVERIFY(wellRemoved);
     QCOMPARE(batchRemovedSpy.count(), 1);
     QCOMPARE(batchRemovedSpy.takeFirst().at(0).toStringList(), QStringList(well4->objectId()));
 

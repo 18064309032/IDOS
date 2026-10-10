@@ -34,6 +34,10 @@ add_library(idos_app SHARED
     idosmainwindow.cpp
     render/idosrenderobjectprovider.h
     render/idosrenderobjectprovider.cpp
+    render/idosrendermetadata.h
+    render/idosrendermetadata.cpp
+    render/idosrenderregistry.h
+    render/idosrenderregistry.cpp
     render/idosrenderserver.h
     render/idosrenderserver.cpp
 )
@@ -61,3 +65,12 @@ target_link_libraries(idos_app PRIVATE
     ADS::ADS
     idos_assistant
 )
+
+if(IDOS_ENABLE_RENDER)
+    target_link_libraries(idos_app PRIVATE
+        VTK::CommonCore
+        VTK::CommonDataModel
+        VTK::RenderingCore
+        VTK::RenderingAnnotation
+    )
+endif()

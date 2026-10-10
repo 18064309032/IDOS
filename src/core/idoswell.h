@@ -108,17 +108,18 @@ class CORE_EXPORT IDOSWell : public IDOSDataObject
     bool isOpen() const;
     void setOpen(bool open);
 
-    Q_SIGNAL void typeChanged(Type type);
-    Q_SIGNAL void gridLocationChanged(int i, int j, int k);
-    Q_SIGNAL void referenceDepthChanged(double depth);
-    Q_SIGNAL void completionsChanged(const QList<IDOSWellCompletion>& completions);
-    Q_SIGNAL void segmentsChanged(const QList<IDOSWellSegment>& segments);
-    Q_SIGNAL void wellControlChanged(const IDOSWellControl& control);
-    Q_SIGNAL void wellHeadChanged(const IDOSWellHead& head);
-    Q_SIGNAL void pathChanged(const IDOSWellPath& path);
-    Q_SIGNAL void logsChanged(const IDOSWellLogSet& logs);
-    Q_SIGNAL void markersChanged(const IDOSWellMarkerSet& markers);
-    Q_SIGNAL void openStatusChanged(bool open);
+  signals:
+    void typeChanged(Type type);
+    void gridLocationChanged(int i, int j, int k);
+    void referenceDepthChanged(double depth);
+    void completionsChanged(const QList<IDOSWellCompletion>& completions);
+    void segmentsChanged(const QList<IDOSWellSegment>& segments);
+    void wellControlChanged(const IDOSWellControl& control);
+    void wellHeadChanged(const IDOSWellHead& head);
+    void pathChanged(const IDOSWellPath& path);
+    void logsChanged(const IDOSWellLogSet& logs);
+    void markersChanged(const IDOSWellMarkerSet& markers);
+    void openStatusChanged(bool open);
 
   private:
     Type m_type;

@@ -96,7 +96,8 @@ class CORE_EXPORT IDOSDataObject : public IDOSObject
      * @brief 对象可见性变化时发射。
      * @param visible true 显示，false 隐藏。
      */
-    Q_SIGNAL void visibilityChanged(bool visible);
+  signals:
+    void visibilityChanged(bool visible);
 
     /**
      * @brief 对象任意业务数据变化时发射。
@@ -104,7 +105,7 @@ class CORE_EXPORT IDOSDataObject : public IDOSObject
      * 子类在属性（非 objectId/name/visible）发生变化时 emit 此信号，
      * 使 Project 等容器能统一感知并转发。
      */
-    Q_SIGNAL void dataChanged();
+    void dataChanged();
 
   private:
     bool m_visible;
