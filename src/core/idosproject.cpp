@@ -1,12 +1,9 @@
-#include <QUndoStack>
-
 #include "command/idoscommandmanager.h"
 
 #include "idosproject.h"
 
 IDOSProject::IDOSProject(QObject* parent)
     : QObject(parent)
-    , m_undoStack(new QUndoStack(this))
     , m_commandManager(new IDOSCommandManager(this, this))
     , m_updateDepth(0)
     , m_pendingAdded()
@@ -23,11 +20,6 @@ IDOSProject::~IDOSProject()
 const IDOSProjectMetadata& IDOSProject::metadata() const
 {
     return m_metadata;
-}
-
-QUndoStack* IDOSProject::undoStack() const
-{
-    return m_undoStack;
 }
 
 IDOSCommandManager* IDOSProject::commandManager() const
@@ -59,7 +51,7 @@ bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
 
 // ===== 增删查 =====
 
-void IDOSProject::addObject(IDOSDataObject* object)
+void IDOSProject::add(IDOSDataObject* object)
 {
     if (object == nullptr)
     {
@@ -72,6 +64,7 @@ void IDOSProject::addObject(IDOSDataObject* object)
     IDOSDataObject* existing = m_objects.value(id, nullptr);
     if (existing != nullptr && existing != object)
     {
+        emit objectAboutToBeRemoved(id);
         disconnectObject(existing);
         m_objects.remove(id);
         existing->deleteLater();
@@ -84,7 +77,7 @@ void IDOSProject::addObject(IDOSDataObject* object)
     notifyAdded(id);
 }
 
-IDOSDataObject* IDOSProject::takeObject(const QString& objectId)
+IDOSDataObject* IDOSProject::take(const QString& objectId)
 {
     IDOSDataObject* object = m_objects.value(objectId, nullptr);
     if (object == nullptr)
@@ -92,6 +85,7 @@ IDOSDataObject* IDOSProject::takeObject(const QString& objectId)
         return nullptr;
     }
 
+    emit objectAboutToBeRemoved(objectId);
     disconnectObject(object);
     m_objects.remove(objectId);
     object->setParent(nullptr);
@@ -100,9 +94,9 @@ IDOSDataObject* IDOSProject::takeObject(const QString& objectId)
     return object;
 }
 
-bool IDOSProject::removeObject(const QString& objectId)
+bool IDOSProject::remove(const QString& objectId)
 {
-    IDOSDataObject* object = takeObject(objectId);
+    IDOSDataObject* object = take(objectId);
     if (object == nullptr)
     {
         return false;
@@ -112,7 +106,7 @@ bool IDOSProject::removeObject(const QString& objectId)
     return true;
 }
 
-IDOSDataObject* IDOSProject::objectById(const QString& objectId) const
+IDOSDataObject* IDOSProject::object(const QString& objectId) const
 {
     return m_objects.value(objectId, nullptr);
 }

@@ -122,14 +122,18 @@ if(WIN32)
         message(WARNING "VC Debug runtime redist not found under ${_idos_vcroot}/Redist")
     endif()
 
-    # Deploy VTK DLLs (copy all; VTK has no equivalent of windeployqt)
+    # Deploy runtime DLLs without copying unrelated tools and debug databases.
     if(IDOS_ENABLE_RENDER)
-        add_custom_command(TARGET idos POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/bin"
-                "$<TARGET_FILE_DIR:idos>"
-            COMMENT "Copying VTK DLLs to exe directory..."
-        )
+        file(GLOB _idos_vtk_runtime_dlls CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/bin/*.dll")
+        foreach(_idos_vtk_runtime_dll IN LISTS _idos_vtk_runtime_dlls)
+            add_custom_command(TARGET idos POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_idos_vtk_runtime_dll}"
+                    "$<TARGET_FILE_DIR:idos>"
+                VERBATIM
+            )
+        endforeach()
     endif()
 
     # Deploy SARibbon DLLs（按配置拷贝对应 Debug/Release 版本，避免错配）

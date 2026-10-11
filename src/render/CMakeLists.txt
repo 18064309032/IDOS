@@ -1,15 +1,17 @@
 add_library(idos_render SHARED
+    idosrenderguiprovider.h
+    idosrenderguiprovider.cpp
+    idosrenderserver.h
+    idosrenderserver.cpp
+    idosrendermetadata.h
+    idosrendermetadata.cpp
+    idosrenderregistry.h
+    idosrenderregistry.cpp
     idos_render.h
     idosrenderobject.h
     idosrenderobject.cpp
     idosrenderprovider.h
     idosrenderprovider.cpp
-    idosrenderobjectvtkconverter.h
-    idosrenderobjectvtkconverter.cpp
-    grid/idosrendermesh.h
-    grid/idosrendermesh.cpp
-    well/idoswellrenderobject.h
-    well/idoswellrenderobject.cpp
     idosrenderscene.h
     idosrenderscene.cpp
     idosrendertypes.h
@@ -21,10 +23,8 @@ add_library(idos_render SHARED
 target_include_directories(idos_render
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/grid
-        ${CMAKE_CURRENT_SOURCE_DIR}/well
 )
-target_link_libraries(idos_render PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(idos_render PUBLIC idos_core Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)

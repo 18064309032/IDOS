@@ -3,30 +3,42 @@
 
 #include <QList>
 #include <QMap>
+#include <QObject>
 #include <QString>
 
 #include "idos_render.h"
 
 class IDOSRenderObject;
 
-class RENDER_EXPORT IDOSRenderScene
+class RENDER_EXPORT IDOSRenderScene : public QObject
 {
+    Q_OBJECT
   public:
-    IDOSRenderScene();
-    ~IDOSRenderScene();
-
-    void addObject(IDOSRenderObject* object);
-    void removeObject(const QString& objectId);
-    IDOSRenderObject* object(const QString& objectId) const;
-    void setObject(IDOSRenderObject* object);
-    void setObjectVisible(const QString& objectId, bool visible);
+    explicit IDOSRenderScene(QObject* parent = nullptr);
+    ~IDOSRenderScene() override;
+    // Ownership transfers only on success. Removal destroys the object after its lifecycle signal.
+    bool add(IDOSRenderObject* object);
+    bool remove(const QString& id);
     void clear();
-
-    const QList<IDOSRenderObject*>& objects() const;
+    IDOSRenderObject* object(const QString& id) const;
+    QList<IDOSRenderObject*> objects() const;
+    QList<QString> ids() const;
+    bool contains(const QString& id) const;
+    void notifyChanged(const QString& id);
+    void beginUpdate();
+    void endUpdate();
+  signals:
+    void objectAdded(const QString& id);
+    void objectAboutToBeRemoved(const QString& id);
+    void objectRemoved(const QString& id);
+    void objectChanged(const QString& id);
+    void changed();
 
   private:
-    QList<IDOSRenderObject*> m_objects;
-    QMap<QString, IDOSRenderObject*> m_objectById;
+    void notify();
+    QMap<QString, IDOSRenderObject*> m_objects;
+    int m_updateDepth;
+    bool m_pending;
 };
 
 #endif // IDOS_RENDER_SCENE_H

@@ -1,15 +1,128 @@
+#include <memory>
+
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtGlobal>
 #include <QtTest>
 
+#include "idosapplication.h"
+#include "idoscommandmanager.h"
+#include "idoscommandregistry.h"
 #include "idosdataprovider.h"
-#include "idosproviderregistry.h"
+#include "idosdataproviderregistry.h"
+#include "idosimportcommands.h"
+#include "idosproject.h"
+#include "idossimulationcaseobject.h"
 #include "idoswell.h"
 #include "idoswelllogchannel.h"
 #include "idoswelllogset.h"
 
 #include "well_import_test.h"
+
+void WellImportTest::onCommandMergeUndoRedo()
+{
+    IDOSProject project;
+    IDOSCommandRegistry registry;
+    registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+    IDOSCommandManager* manager = project.commandManager();
+    manager->setRegistry(&registry);
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral(" a10 "));
+    project.add(well);
+    const QString id = well->objectId();
+    IDOSSimulationCaseObject* caseObject = new IDOSSimulationCaseObject();
+    IDOSCaseItemRef ref;
+    ref.setObjectId(id);
+    ref.setRole(QStringLiteral("case.well"));
+    caseObject->setItemRefs(QList<IDOSCaseItemRef>{ref});
+    project.add(caseObject);
+    QTemporaryDir directory;
+    const QString filePath = directory.filePath(QStringLiteral("header.txt"));
+    QVERIFY(QFile::copy(QFINDTESTDATA("data/Wellheader.txt"), filePath));
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), filePath);
+    QVERIFY(manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(project.object(id), static_cast<IDOSDataObject*>(well));
+    QVERIFY(well->hasWellHead());
+    QCOMPARE(manager->result().value(QStringLiteral("createdCount")).toInt(), 14);
+    QCOMPARE(manager->result().value(QStringLiteral("mergedCount")).toInt(), 1);
+    QCOMPARE(caseObject->itemRefs().first().objectId(), id);
+    manager->undo();
+    QVERIFY(!well->hasWellHead());
+    QCOMPARE(project.objects().size(), 2);
+    QVERIFY(QFile::remove(filePath));
+    manager->redo();
+    QVERIFY(well->hasWellHead());
+    QCOMPARE(project.objects().size(), 16);
+    QVERIFY(!manager->canRedo());
+    manager->undo();
+    manager->clear();
+    QCOMPARE(project.object(id), static_cast<IDOSDataObject*>(well));
+}
+
+void WellImportTest::onTargetedCommandAndFailure()
+{
+    IDOSProject project;
+    IDOSCommandRegistry registry;
+    registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+    IDOSCommandManager* manager = project.commandManager();
+    manager->setRegistry(&registry);
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral("Target"));
+    project.add(well);
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), QFINDTESTDATA("data/A10.dev"));
+    arguments.insert(QStringLiteral("targetWellId"), well->objectId());
+    QVERIFY(manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(well->hasPath());
+    QCOMPARE(well->name(), QStringLiteral("Target"));
+    QCOMPARE(project.objects().size(), 1);
+    manager->undo();
+    QVERIFY(!well->hasPath());
+    QVERIFY(well->path().isEmpty());
+    arguments.insert(QStringLiteral("filePath"), QFINDTESTDATA("data/Wellheader.txt"));
+    QVERIFY(!manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(manager->canRedo());
+    QVERIFY(!well->hasWellHead());
+    QCOMPARE(project.objects().size(), 1);
+    manager->redo();
+    QVERIFY(well->hasPath());
+}
+
+void WellImportTest::onCommandRestoresLogChannels()
+{
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("input.las"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("~Version Information\nVERS. 2.0 : LAS version\n"
+               "~Well Information\nWELL. A : Well name\nNULL. -999.25 : Null\n"
+               "~Curve Information\nDEPT.M : Depth\nGR.API : Gamma\nRHOB.G/C3 : Density\n"
+               "~ASCII\n100 20 2.4\n101 21 2.5\n");
+    file.close();
+    IDOSProject project;
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral("A"));
+    IDOSWellLogChannel channel(QStringLiteral("GR"));
+    channel.setData(QVector<double>{100}, QVector<double>{7});
+    IDOSWellLogSet logs;
+    logs.addChannel(channel);
+    well->setLogs(logs);
+    project.add(well);
+    IDOSCommandManager* manager = project.commandManager();
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), path);
+    QVERIFY(manager->execute(new IDOSImportObjectsCommand(
+        &project, QStringLiteral("wellData.import"), arguments)));
+    QCOMPARE(well->logs().channels().size(), 2);
+    manager->undo();
+    QCOMPARE(well->logs().channels().size(), 1);
+    QCOMPARE(well->logs().channels().first().values().first(), 7.0);
+    QVERIFY(QFile::remove(path));
+    manager->redo();
+    QCOMPARE(well->logs().channels().size(), 2);
+    QCOMPARE(well->logs().channels().first().values().first(), 20.0);
+}
 
 void WellImportTest::onSampleFiles()
 {
@@ -23,7 +136,7 @@ void WellImportTest::onSampleFiles()
     for (const QString& path : paths)
     {
         std::unique_ptr<IDOSDataProvider> provider =
-            IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.header"));
+            IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.header"));
         QVERIFY(provider != nullptr);
         QList<IDOSDataObject*> objects = provider->read(path);
         QCOMPARE(provider->lastError(), QString());
@@ -46,7 +159,7 @@ void WellImportTest::onInvalidRows()
     const QByteArray header("WellName X-Coord Y-Coord Top_Depth Bottom Depth KB Symbol\n");
     const QList<QByteArray> badRows = {"B 1 2 3 4 5\n", "B nan 2 3 4 5 6\n", "B 1 2 5 4 5 6\n", "B 1 2 3 4 5 1.5\n"};
     std::unique_ptr<IDOSDataProvider> provider =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.header"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.header"));
     for (const QByteArray& row : badRows)
     {
         QFile file(path);
@@ -75,7 +188,7 @@ void WellImportTest::onReorderedColumns()
     file.write("Symbol KB Bottom_Depth Top_Depth Y-Coord X-Coord WellName\n7 125 400 300 2 1 A\n");
     file.close();
     std::unique_ptr<IDOSDataProvider> provider =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.header"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.header"));
     QList<IDOSDataObject*> objects = provider->read(file.fileName());
     QCOMPARE(objects.size(), 1);
     const IDOSWell* well = qobject_cast<IDOSWell*>(objects.first());
@@ -115,7 +228,7 @@ void WellImportTest::onLasImport()
     file.close();
 
     std::unique_ptr<IDOSDataProvider> provider =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.las"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.las"));
     QVERIFY(provider != nullptr);
     QList<IDOSDataObject*> objects = provider->read(file.fileName());
     QCOMPARE(provider->lastError(), QString());
@@ -156,7 +269,7 @@ void WellImportTest::onInvalidLasFiles()
     QVERIFY(directory.isValid());
     QFile file(directory.filePath(QStringLiteral("invalid.las")));
     std::unique_ptr<IDOSDataProvider> provider =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.las"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.las"));
     QVERIFY(provider != nullptr);
 
     const QList<QByteArray> inputs = {
@@ -175,3 +288,8 @@ void WellImportTest::onInvalidLasFiles()
 }
 
 QTEST_MAIN(WellImportTest)
+
+WellImportTest::WellImportTest()
+{
+    IDOSApplication::initProviders();
+}

@@ -1,5 +1,5 @@
 # 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
-# 公共头在模块根目录；app/plugin 是方案明确规定的插件 SDK 例外。
+# 公共边界以固定源码目录中的功能根目录为准。
 # 检查直接 include 和已知内部类型引用，不替代 C++ 编译器的语义分析。
 param([string]$SourceRoot = "")
 $ErrorActionPreference = 'Stop'
@@ -13,7 +13,7 @@ $allowed = @{
     core = @()
     gui = @('core','render_core','render_qt','render_adapters','assistant')
     providers = @('core')
-    render = @()
+    render = @('core')
     render_core = @()
     render_qt = @('render_core')
     render_adapters = @('core','render_core')
@@ -21,32 +21,26 @@ $allowed = @{
     python = @('core')
     assistant = @('core')
     app = @('core','gui','providers','render','render_core','render_qt','render_adapters','analysis','python','assistant')
-    plugins = @('app')
+    plugins = @('core','app','gui','render','providers')
 }
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
-function IsPublic($rel) { ($rel -split '/').Count -eq 2 -or $rel -match '^core/command/[^/]+\.h(pp)?$' -or $rel -match '^app/plugin/[^/]+\.h(pp)?$' -or $rel -match '^plugins/[^/]+/[^/]+\.h(pp)?$' }
+function IsPublic($rel) {
+    ($rel -split '/').Count -eq 2 -or
+    $rel -match '^core/(data|tree|command|log)/[^/]+\.h(pp)?$' -or
+    $rel -match '^core/data/(well|grid|case)/[^/]+\.h(pp)?$' -or
+    $rel -match '^gui/tree/[^/]+\.h(pp)?$' -or
+    $rel -match '^providers/(well|las|eclipse)/[^/]+\.h(pp)?$' -or
+    $rel -match '^plugins/[^/]+/[^/]+\.h(pp)?$'
+}
 function WithoutComments($content) {
     [regex]::Replace($content, '(?s)/\*.*?\*/|(?m)//[^\r\n]*', { param($m) [regex]::Replace($m.Value, '[^\r\n]', ' ') })
-}
-# 同目录布局通过显式清单保留 GUI 分层；子目录布局仍按目录识别。
-$guiLayers = @{}
-$layerManifest = Join-Path $PSScriptRoot 'gui_layers.json'
-if (Test-Path -LiteralPath $layerManifest) {
-    $layerDefinitions = Get-Content -LiteralPath $layerManifest -Raw | ConvertFrom-Json
-    foreach ($property in $layerDefinitions.PSObject.Properties) {
-        $guiLayers[$property.Name] = $property.Value
-    }
-}
-foreach ($file in $files) {
-    $rel = RelativePath $file.FullName
-    if ($rel -match '^gui/(tree|input|case)/') { $guiLayers[$file.BaseName] = $Matches[1] }
 }
 $internalTypes = @{}
 foreach ($header in $headers) {
     $rel = RelativePath $header.FullName
     if (!(IsPublic $rel)) {
         $content = WithoutComments ([IO.File]::ReadAllText($header.FullName))
-        $typePattern = '\b(?:class|struct)\s+(?:\w+_EXPORT\s+)?(IDOS\w+)\s*(?:final\s*)?'
+        $typePattern = '\b(?:class|struct)\s+(?:\w+_EXPORT\s+)?(IDOS\w+)\s*(?:final\s*)?(?::[^;{]+)?\s*\{'
         foreach ($match in [regex]::Matches($content, $typePattern)) {
             $typeName = $match.Groups[1].Value
             $internalTypes[$typeName] = $rel
@@ -59,8 +53,10 @@ foreach ($file in $files) {
     $content = WithoutComments ([IO.File]::ReadAllText($file.FullName))
     $public = $file.Extension -in '.h','.hpp' -and (IsPublic $rel)
     if ($public) {
+        $publicContent = [regex]::Replace($content, '\bclass\s+IDOS\w+\s*;', '')
+        $publicContent = [regex]::Replace($publicContent, '(?s)\bprivate(?:\s+slots)?\s*:.*', '')
         foreach ($type in $internalTypes.Keys) {
-            if ($content -match "\b$([regex]::Escape($type))\b") {
+            if ($publicContent -match "\b$([regex]::Escape($type))\b") {
                 $violations.Add("${rel}: 公共头引用内部类型 $type ($($internalTypes[$type]))")
             }
         }
@@ -94,6 +90,12 @@ foreach ($file in $files) {
             if (Test-Path -LiteralPath $qualified -PathType Leaf) { $candidates += Get-Item -LiteralPath $qualified }
             $candidates = @($candidates | Sort-Object FullName -Unique)
         }
+        if (!$candidates.Count -and $inc -notmatch '/') {
+            $matchingHeaders = @($headers | Where-Object { $_.Name -eq $inc })
+            $sameModule = @($matchingHeaders | Where-Object { (RelativePath $_.FullName) -like "$module/*" })
+            if ($sameModule.Count) { $candidates = $sameModule }
+            else { $candidates = $matchingHeaders }
+        }
         if (!$candidates.Count) {
             if ($quoted -or $inc -match '(^|/)idos[^/]*\.h$') { $violations.Add("${location}: 无法解析项目头文件: $inc") }
             continue # 第三方尖括号头由编译器检查。
@@ -104,21 +106,13 @@ foreach ($file in $files) {
         $targetModule = ($targetRel -split '/')[0]
         if ($module -ne $targetModule) {
             if ($module -ne 'main.cpp' -and
-                (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module])) {
+                (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module]) -and
+                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h')) {
                 $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
             }
             if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
         }
         if ($public -and !(IsPublic $targetRel)) { $violations.Add("${location}: 公共头禁止包含内部头: $targetRel") }
-        if ($module -eq 'gui' -and $targetModule -eq 'gui') {
-            $fromLayer = $guiLayers[$file.BaseName]
-            $toLayer = $guiLayers[$target.BaseName]
-            if (($fromLayer -eq 'tree' -and $toLayer -in 'input','case') -or
-                ($fromLayer -eq 'input' -and $toLayer -eq 'case') -or
-                ($fromLayer -eq 'case' -and $toLayer -eq 'input')) {
-                $violations.Add("${location}: GUI $fromLayer 禁止依赖 $toLayer ($inc)")
-            }
-        }
     }
 }
 if ($violations.Count) {

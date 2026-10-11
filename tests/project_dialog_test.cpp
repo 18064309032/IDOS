@@ -1,7 +1,9 @@
 #include <QComboBox>
+#include <QAction>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopedPointer>
@@ -10,13 +12,13 @@
 #include <QTranslator>
 #include <QtTest>
 
-#include "idoscasetreemodel.h"
-#include "idosdatatreemenuprovider.h"
-#include "idosdatatreemodel.h"
-#include "idosdatatreeview.h"
+#include "idostreemodel.h"
+#include "idostreemodel.h"
+#include "idostreeview.h"
 #include "idosmainwindow.h"
 #include "idosnewprojectdialog.h"
 #include "idosproject.h"
+#include "idostreeitem.h"
 #include "idoswell.h"
 
 class ProjectDialogTest : public QObject
@@ -26,18 +28,19 @@ class ProjectDialogTest : public QObject
     void onNewWellFlow()
     {
         IDOSMainWindow window;
-        window.onNewWell();
         IDOSProject* project = new IDOSProject(&window);
         window.setProject(project);
-        IDOSDataTreeView* view = window.dataTreeView();
-        IDOSDataTreeModel* model = window.dataTreeModel();
-        IDOSDataTreeMenuProvider* provider = view->findChild<IDOSDataTreeMenuProvider*>();
-        QVERIFY(provider != nullptr);
-        QVERIFY(provider->createContextMenu() == nullptr);
+        IDOSTreeView* view = window.dataTreeView();
+        IDOSTreeModel* model = window.dataTreeModel();
+        QScopedPointer<QMenu> emptyMenu(view->createMenu(view->currentIndex()));
+        QCOMPARE(emptyMenu->actions().size(), 2);
         view->setCurrentIndex(model->index(0, 0, QModelIndex()));
-        QVERIFY(provider->createContextMenu() == nullptr);
-        view->setCurrentIndex(model->index(4, 0, model->index(0, 0, QModelIndex())));
-        QScopedPointer<QMenu> menu(provider->createContextMenu());
+        QScopedPointer<QMenu> groupMenu(view->createMenu(view->currentIndex()));
+        QVERIFY(groupMenu->actions().isEmpty());
+        const QModelIndex wells = findGroup(model, QModelIndex(), QStringLiteral("data.wells"));
+        QVERIFY(wells.isValid());
+        view->setCurrentIndex(wells);
+        QScopedPointer<QMenu> menu(view->createMenu(view->currentIndex()));
         QVERIFY(menu != nullptr);
         QCOMPARE(menu->actions().size(), 2);
         QCOMPARE(menu->actions().first()->objectName(), QStringLiteral("newWellAction"));
@@ -50,19 +53,20 @@ class ProjectDialogTest : public QObject
         QVERIFY(well != nullptr);
         QCOMPARE(well->name(), QStringLiteral("A10"));
         QVERIFY(!well->objectId().isEmpty());
-        const QModelIndex wells = model->index(4, 0, model->index(0, 0, QModelIndex()));
         QCOMPARE(model->rowCount(wells), 1);
         QCOMPARE(model->objectFromIndex(model->index(0, 0, wells)), well);
-        QCOMPARE(model->rowCount(model->index(0, 0, wells)), 4);
+        QCOMPARE(model->rowCount(model->index(0, 0, wells)), 0);
         view->setCurrentIndex(model->index(0, 0, wells));
-        QVERIFY(provider->createContextMenu() == nullptr);
+        QScopedPointer<QMenu> objectMenu(view->createMenu(view->currentIndex()));
+        QVERIFY(objectMenu != nullptr);
+        QCOMPARE(objectMenu->actions().last()->objectName(), QStringLiteral("deleteWellAction"));
         m_wellNames = QStringList{QStringLiteral("a10")};
         m_cancelAfterInput = true;
         QTimer::singleShot(0, this, &ProjectDialogTest::onSubmitWellName);
-        window.onNewWell();
+        menu->actions().first()->trigger();
         QCOMPARE(project->objects().size(), 1);
         QTimer::singleShot(0, this, &ProjectDialogTest::onCancelWellDialog);
-        window.onNewWell();
+        menu->actions().first()->trigger();
         QCOMPARE(project->objects().size(), 1);
     }
 
@@ -143,17 +147,17 @@ class ProjectDialogTest : public QObject
         QCOMPARE(window.windowTitle(), QStringLiteral("IDOS"));
         QCOMPARE(original->metadata().name(), QStringLiteral("Project One"));
         QVERIFY(original->objects().isEmpty());
-        IDOSDataTreeModel* model = window.dataTreeModel();
+        IDOSTreeModel* model = window.dataTreeModel();
         QCOMPARE(model->rowCount(QModelIndex()), 14);
         const QModelIndex wellGroup = model->index(0, 0, QModelIndex());
         QCOMPARE(model->data(wellGroup, Qt::DisplayRole).toString(), QStringLiteral("Well Group"));
         QCOMPARE(model->rowCount(wellGroup), 5);
         QCOMPARE(model->data(model->index(4, 0, wellGroup), Qt::DisplayRole).toString(), QStringLiteral("Wells"));
-        model->setProject(original);
+        window.setProject(original);
         QCOMPARE(model->rowCount(QModelIndex()), 14);
         IDOSWell* well = new IDOSWell();
         well->setName(QStringLiteral("A10"));
-        original->addObject(well);
+        original->add(well);
         const QModelIndex wells = model->index(4, 0, model->index(0, 0, QModelIndex()));
         QCOMPARE(model->rowCount(wells), 1);
         QCOMPARE(model->data(model->index(0, 0, wells), Qt::DisplayRole).toString(), QStringLiteral("A10"));
@@ -164,7 +168,7 @@ class ProjectDialogTest : public QObject
         QTimer::singleShot(0, this, &ProjectDialogTest::onAcceptReplacementDialog);
         window.onNewProject();
         QCOMPARE(window.dataTreeModel()->project(), original);
-        original->removeObject(well->objectId());
+        original->remove(well->objectId());
         QCOMPARE(model->rowCount(QModelIndex()), 14);
         QCOMPARE(model->rowCount(model->index(4, 0, model->index(0, 0, QModelIndex()))), 0);
         delete original;
@@ -175,6 +179,26 @@ class ProjectDialogTest : public QObject
     }
 
   private:
+    QModelIndex findGroup(IDOSTreeModel* model, const QModelIndex& parent,
+                          const QString& key) const
+    {
+        for (int row = 0; row < model->rowCount(parent); ++row)
+        {
+            const QModelIndex index = model->index(row, 0, parent);
+            IDOSTreeItem* group = model->nodeFromIndex(index);
+            if (group != nullptr && group->key() == key)
+            {
+                return index;
+            }
+            const QModelIndex child = findGroup(model, index, key);
+            if (child.isValid())
+            {
+                return child;
+            }
+        }
+        return QModelIndex();
+    }
+
     QStringList m_wellNames;
     bool m_cancelAfterInput = false;
 

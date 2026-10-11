@@ -16,6 +16,9 @@ class TreeIncrementalTest : public QObject
     void onBatchImportRebuildsCaseBranchOnce();
     void onProjectUpdateTransactionBatchesSignals();
     void onCaseTreeReferenceRefreshAndCheckPreserved();
+    void onRegistryLifecycle();
+    void onTreeOwnership();
+    void onMenuTargets();
 
   private slots:
     void onDataTreeReset();

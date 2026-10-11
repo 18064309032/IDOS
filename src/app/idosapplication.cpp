@@ -1,11 +1,34 @@
+#include <memory>
+
+#include "eclipse/idosgrideclipsemetadata.h"
+#include "eclipse/idossimulationcaseeclipsemetadata.h"
+#include "idosdataproviderregistry.h"
+#include "idosdataregistry.h"
+#include "idosgridmetadata.h"
+#include "idossimulationcasemetadata.h"
+#include "idoswellmetadata.h"
+#include "las/idoswelllasmetadata.h"
 #include "log/idoslogger.h"
+#include "well/idoswellheadermetadata.h"
+#include "well/idoswellpathmetadata.h"
 
 #include "idosapplication.h"
 
 IDOSApplication::IDOSApplication(int& argc, char** argv)
-    : QApplication(argc, argv)
+    :
+    QApplication(argc, argv)
+    , m_dataRegistry(new IDOSDataRegistry(this))
 {
     qInstallMessageHandler(IDOSApplication::handleQtMessage);
+    initProviders();
+    m_dataRegistry->add(new IDOSWellMetadata());
+    m_dataRegistry->add(new IDOSGridMetadata());
+    m_dataRegistry->add(new IDOSSimulationCaseMetadata());
+}
+
+IDOSDataRegistry* IDOSApplication::dataRegistry() const
+{
+    return m_dataRegistry;
 }
 
 IDOSApplication::~IDOSApplication()
@@ -41,5 +64,30 @@ void IDOSApplication::handleQtMessage(QtMsgType type,
     else
     {
         logger.debug(message, file, context.line, function);
+    }
+}
+
+void IDOSApplication::initProviders()
+{
+    IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    if (registry.metadata(QStringLiteral("idos.well.header")) == nullptr)
+    {
+        registry.add(new IDOSWellHeaderMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.well.path")) == nullptr)
+    {
+        registry.add(new IDOSWellPathMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.well.las")) == nullptr)
+    {
+        registry.add(new IDOSWellLasMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.grid.eclipse")) == nullptr)
+    {
+        registry.add(new IDOSGridEclipseMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.case.simulation.eclipse")) == nullptr)
+    {
+        registry.add(new IDOSSimulationCaseEclipseMetadata());
     }
 }

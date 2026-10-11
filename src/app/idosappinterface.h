@@ -5,7 +5,7 @@
 #include <QPointer>
 
 #include "idos_app.h"
-#include "plugin/idosinterface.h"
+#include "idosinterface.h"
 
 class IDOSMainWindow;
 class SARibbonCategory;
@@ -18,6 +18,11 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     explicit IDOSAppInterface(IDOSMainWindow* mainWindow);
 
     QMainWindow* mainWindow() const override;
+    IDOSProject* project() const override;
+    IDOSDataRegistry* dataRegistry() const override;
+    IDOSTreeRegistry* treeRegistry() const override;
+    IDOSRenderRegistry* renderRegistry() const override;
+    IDOSCommandRegistry* commandRegistry() const override;
     SARibbonCategory* ribbonCategory(const QString& objectName) const override;
     SARibbonCategory* addRibbonCategory(const QString& objectName,
                                         const QString& title) override;

@@ -9,7 +9,12 @@ class CommandRegistryTest : public QObject
 {
     Q_OBJECT
 
+  public:
+    CommandRegistryTest();
+
 private slots:
+    void onDataRegistryOwnsRegisteredMetadata();
+    void onFailedCommandPreservesRedo();
     void onDefaultRegistryContainsCreateWell();
     void onExecuteCreateWellFromJson();
     void onExecuteCreateCaseFromJson();

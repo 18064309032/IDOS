@@ -2,19 +2,18 @@
 # 依赖链：idos_providers → idos_core → (OPM 静态库)
 add_library(idos_providers SHARED
     idosdataprovider.cpp
-    idosprovidermetadata.cpp
-    idosproviderregistry.cpp
-    idosdataloadservice.cpp
+    idosdataprovidermetadata.cpp
+    idosdataproviderregistry.cpp
     well/idoswellheadermetadata.cpp
     well/idoswellheaderprovider.cpp
     well/idoswellpathprovider.cpp
     well/idoswellpathmetadata.cpp
-    well/idoswelllasmetadata.cpp
-    well/idoswelllasprovider.cpp
-    grid/idosgrideclipsemetadata.cpp
-    grid/idosgrideclipseprovider.cpp
-    case/idossimulationcaseeclipsemetadata.cpp
-    case/idossimulationcaseeclipseprovider.cpp
+    las/idoswelllasmetadata.cpp
+    las/idoswelllasprovider.cpp
+    eclipse/idosgrideclipsemetadata.cpp
+    eclipse/idosgrideclipseprovider.cpp
+    eclipse/idossimulationcaseeclipsemetadata.cpp
+    eclipse/idossimulationcaseeclipseprovider.cpp
 )
 target_include_directories(idos_providers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # OPM 静态库：只在 providers 模块用（Parser 解析 .DATA）；不对外暴露

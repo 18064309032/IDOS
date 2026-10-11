@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-#include "plugin/idosplugin.h"
+#include "idosplugin.h"
 
 class IDOSInterface;
 class SARibbonCategory;
@@ -19,6 +19,7 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
 
     void initGui() override;
     void unload() override;
+    bool canUnload() const override;
 
   private:
     void uninstallTranslator();

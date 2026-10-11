@@ -3,7 +3,6 @@
 
 #include <QJsonObject>
 #include <QString>
-#include <QUndoCommand>
 
 #include "idos_core.h"
 
@@ -12,7 +11,7 @@ class IDOSProject;
 /**
  * @brief Reversible project operation.
  */
-class CORE_EXPORT IDOSCommand : public QUndoCommand
+class CORE_EXPORT IDOSCommand
 {
 public:
     enum class Type
@@ -24,11 +23,11 @@ public:
     IDOSCommand(QString name,
                 Type type,
                 IDOSProject* project,
-                QString text = QString(),
-                QUndoCommand* parent = nullptr);
-    ~IDOSCommand() override;
+                QString text = QString());
+    virtual ~IDOSCommand();
 
     const QString& name() const;
+    QString text() const;
     Type type() const;
     IDOSProject* project() const;
 
@@ -39,8 +38,8 @@ public:
     const QString& errorString() const;
     const QJsonObject& result() const;
 
-    void undo() final;
-    void redo() final;
+    bool undo();
+    bool execute();
 
 protected:
     virtual bool validateCommand(QString& error) const;
@@ -54,6 +53,7 @@ private:
     void setError(QString errorCode, QString errorString);
 
     QString m_name;
+    QString m_text;
     Type m_type;
     IDOSProject* m_project;
     QString m_errorCode;

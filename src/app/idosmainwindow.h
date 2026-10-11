@@ -4,24 +4,29 @@
 #include <QMap>
 #include <QPointer>
 #include <QString>
+#include <QStringList>
 
 #include <SARibbonMainWindow.h>
 
 #include "idos_app.h"
 
 class IDOSProjectMetadata;
+class IDOSCommandRegistry;
+class IDOSDataRegistry;
 class QAction;
 class QCloseEvent;
 class QModelIndex;
 class QTreeView;
 class IDOSCommandManager;
 class IDOSProject;
-class IDOSDataTreeModel;
-class IDOSCaseTreeModel;
-class IDOSDataTreeView;
-class IDOSCaseTreeView;
-class IDOSTreeProviderRegistry;
+class IDOSTreeModel;
+class IDOSTreeView;
+class IDOSTreeRegistry;
+class IDOSTreeServer;
+class IDOSTree;
+class IDOSRenderRegistry;
 class IDOSRenderServer;
+class IDOSRenderView;
 class IDOSWell;
 class IDOSWellLogTrackView;
 class IDOSAssistantWidget;
@@ -58,16 +63,30 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
     // ===== 面板访问器 =====
 
-    IDOSDataTreeView* dataTreeView() const;
-    IDOSCaseTreeView* caseTreeView() const;
-    IDOSDataTreeModel* dataTreeModel() const;
-    IDOSCaseTreeModel* caseTreeModel() const;
+    IDOSTreeView* dataTreeView() const;
+    IDOSTreeView* caseTreeView() const;
+    IDOSTreeModel* dataTreeModel() const;
+    IDOSTreeModel* caseTreeModel() const;
+    IDOSProject* project() const;
+    IDOSDataRegistry* dataRegistry() const;
+    IDOSTreeRegistry* treeRegistry() const;
+    IDOSRenderRegistry* renderRegistry() const;
+    IDOSCommandRegistry* commandRegistry() const;
+
+  signals:
+    void projectChanged(IDOSProject* project);
 
   public slots:
     void onNewProject();
 
   private slots:
     void onProjectDestroyed();
+    void onRenderViewFocused();
+    void onRenderViewDecorations();
+    void onRenderViewActivated(const QString& id);
+    void onRenderViewDestroyed(QObject* object);
+    void onRenderDataRemoving(const QString& id);
+    void onRenderObjectsChanged(IDOSRenderView* view, const QStringList& ids, bool dataChanged);
     void onUndoTriggered();
     void onRedoTriggered();
     void onCommandStateChanged();
@@ -101,6 +120,13 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   private:
     void initProviders();
+    IDOSRenderView* activeView() const;
+    QString activeViewId() const;
+    IDOSRenderView* createView(const QString& id, bool parallel);
+    void removeView(const QString& id);
+    void setActiveView(const QString& id);
+    QString viewContextId() const;
+    void setViewContextId(const QString& id);
     void initMainWindow();
     void initDockManager();
     void initRenderView();
@@ -141,13 +167,21 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionWindowLayout;
 
     IDOSProject* m_project;
+    IDOSDataRegistry* m_dataRegistry;
     QPointer<IDOSCommandManager> m_commandManager;
-    IDOSDataTreeModel* m_dataTreeModel;
-    IDOSCaseTreeModel* m_caseTreeModel;
-    IDOSDataTreeView* m_dataTreeView;
-    IDOSCaseTreeView* m_caseTreeView;
-    IDOSTreeProviderRegistry* m_treeProviderRegistry;
+    IDOSTree* m_dataTree;
+    IDOSTree* m_caseTree;
+    IDOSTreeModel* m_dataTreeModel;
+    IDOSTreeModel* m_caseTreeModel;
+    IDOSTreeView* m_dataTreeView;
+    IDOSTreeView* m_caseTreeView;
+    IDOSTreeRegistry* m_treeRegistry;
+    IDOSTreeServer* m_treeServer;
+    IDOSRenderRegistry* m_renderRegistry;
     IDOSRenderServer* m_renderServer;
+    QMap<QString, QPointer<IDOSRenderView>> m_views;
+    QMap<QString, QString> m_viewContextIds;
+    QString m_activeViewId;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
     IDOSPluginRegistry* m_pluginRegistry;
     IDOSPluginManagerWidget* m_pluginManagerWidget;

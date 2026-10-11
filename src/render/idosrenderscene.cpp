@@ -1,11 +1,12 @@
-#include <QtAlgorithms>
-
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 
 #include "idosrenderscene.h"
 
-IDOSRenderScene::IDOSRenderScene()
+IDOSRenderScene::IDOSRenderScene(QObject* parent)
+    :
+    QObject(parent)
+    , m_updateDepth(0)
+    , m_pending(false)
 {
 }
 
@@ -14,65 +15,100 @@ IDOSRenderScene::~IDOSRenderScene()
     clear();
 }
 
-void IDOSRenderScene::addObject(IDOSRenderObject* object)
+bool IDOSRenderScene::add(IDOSRenderObject* object)
 {
-    if (object == nullptr)
+    if (object == nullptr || contains(object->id()))
     {
-        return;
+        return false;
     }
-    if (m_objectById.contains(object->id()))
-    {
-        removeObject(object->id());
-    }
-    m_objects.append(object);
-    m_objectById.insert(object->id(), object);
+    m_objects.insert(object->id(), object);
+    emit objectAdded(object->id());
+    notify();
+    return true;
 }
 
-void IDOSRenderScene::removeObject(const QString& objectId)
+bool IDOSRenderScene::remove(const QString& id)
 {
-    IDOSRenderObject* renderObject = m_objectById.value(objectId, nullptr);
-    if (renderObject == nullptr)
+    IDOSRenderObject* value = object(id);
+    if (value == nullptr)
     {
-        return;
+        return false;
     }
-    m_objectById.remove(objectId);
-    m_objects.removeAll(renderObject);
-    delete renderObject;
-}
-
-IDOSRenderObject* IDOSRenderScene::object(const QString& objectId) const
-{
-    return m_objectById.value(objectId, nullptr);
-}
-
-void IDOSRenderScene::setObject(IDOSRenderObject* object)
-{
-    clear();
-    addObject(object);
+    emit objectAboutToBeRemoved(id);
+    m_objects.remove(id);
+    delete value;
+    emit objectRemoved(id);
+    notify();
+    return true;
 }
 
 void IDOSRenderScene::clear()
 {
-    qDeleteAll(m_objects);
-    m_objects.clear();
-    m_objectById.clear();
+    beginUpdate();
+    const QList<QString> keys = ids();
+    for (const QString& id : keys)
+    {
+        remove(id);
+    }
+    endUpdate();
 }
 
-void IDOSRenderScene::setObjectVisible(const QString& objectId, bool visible)
+IDOSRenderObject* IDOSRenderScene::object(const QString& id) const
 {
-    IDOSRenderObject* renderObject = object(objectId);
-    if (renderObject == nullptr)
+    return m_objects.value(id, nullptr);
+}
+
+QList<IDOSRenderObject*> IDOSRenderScene::objects() const
+{
+    return m_objects.values();
+}
+
+QList<QString> IDOSRenderScene::ids() const
+{
+    return m_objects.keys();
+}
+
+bool IDOSRenderScene::contains(const QString& id) const
+{
+    return m_objects.contains(id);
+}
+
+void IDOSRenderScene::notifyChanged(const QString& id)
+{
+    if (contains(id))
+    {
+        emit objectChanged(id);
+        notify();
+    }
+}
+
+void IDOSRenderScene::beginUpdate()
+{
+    ++m_updateDepth;
+}
+
+void IDOSRenderScene::endUpdate()
+{
+    if (m_updateDepth == 0)
     {
         return;
     }
-    IDOSRenderProvider* provider = renderObject->renderProvider();
-    if (provider != nullptr)
+    --m_updateDepth;
+    if (m_updateDepth == 0 && m_pending)
     {
-        provider->setVisible(visible);
+        m_pending = false;
+        emit changed();
     }
 }
 
-const QList<IDOSRenderObject*>& IDOSRenderScene::objects() const
+void IDOSRenderScene::notify()
 {
-    return m_objects;
+    if (m_updateDepth > 0)
+    {
+        m_pending = true;
+    }
+    else
+    {
+        emit changed();
+    }
 }

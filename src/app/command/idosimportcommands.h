@@ -2,6 +2,8 @@
 #define IDOS_IMPORT_COMMANDS_H
 
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QList>
 #include <QPointer>
 #include <QStringList>
@@ -13,6 +15,7 @@
 
 class IDOSCaseObject;
 class IDOSDataObject;
+class IDOSWell;
 
 class APP_EXPORT IDOSImportObjectsCommand : public IDOSCommand
 {
@@ -25,15 +28,8 @@ public:
         WellData
     };
 
-    IDOSImportObjectsCommand(IDOSProject* project,
-                             QString name,
-                             QString filePath,
-                             Mode mode,
-                             QString targetGridId,
-                             QString targetCaseId,
-                             QString caseNameOverride = QString(),
-                             bool replaceExistingGrid = false,
-                             QUndoCommand* parent = nullptr);
+    IDOSImportObjectsCommand(IDOSProject* project, const QString& name,
+                             const QJsonObject& arguments);
     ~IDOSImportObjectsCommand() override;
 
 protected:
@@ -43,11 +39,21 @@ protected:
     bool revert(QString& error) override;
 
 private:
+    friend class IDOSImportCaseCommandMetadata;
+    friend class IDOSImportGridCommandMetadata;
+    friend class IDOSImportPropertyCommandMetadata;
+    friend class IDOSImportWellDataCommandMetadata;
+    static QJsonObject filePathSchema();
+    static QJsonObject stringPropertySchema(const QString& description);
+    static QJsonObject schemaWithProperties(const QJsonObject& properties, const QJsonArray& required);
     bool ensureLoaded(QString& error);
     bool loadObjects(QString& error);
     bool acceptObject(IDOSDataObject* object) const;
     void prepareObject(IDOSDataObject* object);
-    bool hasDuplicateWell(QString& error) const;
+    bool prepareWells(QString& error);
+    bool applyWells(QString& error);
+    bool revertWells(QString& error);
+    bool validateWells(bool attached, QString& error) const;
     void captureTargetCaseReferences();
     void appendTargetCaseReferences();
     void restoreTargetCaseReferences();
@@ -65,6 +71,12 @@ private:
     QString m_caseNameOverride;
     bool m_replaceExistingGrid;
     bool m_loaded;
+    QString m_targetWellId;
+    bool m_wellsPrepared;
+    QHash<QString, QPointer<IDOSWell>> m_wellTargets;
+    QHash<QString, IDOSWell*> m_wellBefore;
+    QHash<QString, IDOSWell*> m_wellAfter;
+    QStringList m_createdWellIds;
     QList<QPointer<IDOSDataObject>> m_objects;
     QList<QPointer<IDOSDataObject>> m_replacedObjects;
     QHash<QString, QList<IDOSCaseItemRef>> m_caseReferences;

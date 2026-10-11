@@ -3,8 +3,9 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "idosapplication.h"
 #include "idosdataprovider.h"
-#include "idosproviderregistry.h"
+#include "idosdataproviderregistry.h"
 #include "idoswell.h"
 #include "idoswellgeometryresolver.h"
 
@@ -13,7 +14,7 @@
 void WellPathTest::onParseSample()
 {
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.path"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.path"));
     QVERIFY(reader != nullptr);
     QList<IDOSDataObject*> objects = reader->read(QFINDTESTDATA("data/A10.dev"));
     QCOMPARE(reader->lastError(), QString());
@@ -57,7 +58,7 @@ void WellPathTest::onInvalidInput()
     QTemporaryDir directory;
     const QString filePath = directory.filePath(QStringLiteral("wrong-name.dev"));
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSProviderRegistry::instance().createProvider(QStringLiteral("idos.well.path"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.path"));
     const QByteArray header("# WELL NAME: A10\nMD X Y Z TVD DX DY AZIM INCL\n");
     const QList<QByteArray> contents = {
         header + "10 1 2 -3 3 0 0 -90 10\n10 2 3 -4 4 1 1 -90 10\n",
@@ -150,3 +151,8 @@ void WellPathTest::onResolveGeometry()
 }
 
 QTEST_MAIN(WellPathTest)
+
+WellPathTest::WellPathTest()
+{
+    IDOSApplication::initProviders();
+}

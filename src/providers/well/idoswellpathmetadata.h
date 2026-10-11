@@ -1,14 +1,14 @@
 #ifndef IDOS_WELL_PATH_METADATA_H
 #define IDOS_WELL_PATH_METADATA_H
 
-#include "idosprovidermetadata.h"
+#include "idosdataprovidermetadata.h"
 
-class PROVIDERS_EXPORT IDOSWellPathMetadata : public IDOSProviderMetadata
+class PROVIDERS_EXPORT IDOSWellPathMetadata : public IDOSDataProviderMetadata
 {
   public:
     QString id() const override;
     QString displayName() const override;
     QStringList fileExtensions() const override;
-    std::unique_ptr<IDOSDataProvider> createProvider() const override;
+    std::unique_ptr<IDOSDataProvider> create() const override;
 };
 #endif

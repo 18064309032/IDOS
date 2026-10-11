@@ -1,242 +1,221 @@
 # IDOS 架构设计
 
-> 本文说明 IDOS 的模块边界、核心对象关系和扩展流程。渲染部分以已确认的目标架构为准；若现有代码与本文不一致，应按本文收敛实现，不以旧实现反向改变设计。
+> 本文为已确认的新目标方案，不表示当前代码已经完成。后续直接改造现有框架，删除被替代的类与接口，不保留两套调用链。方案不受旧实现类划分约束。
 
-## 1. 设计目标与原则
+## 1. 目标与实施边界
 
-IDOS 是面向油气储层数值模拟前处理的桌面应用，负责工程数据组织、数据导入、模型管理、交互式 3D 可视化以及专业功能扩展。
+新增数据、工况、父子节点、菜单和渲染，通过具体实现与注册完成。通用框架只调用接口，不判断井、网格、断层或具体工况；具体实现可以识别自己的数据。
 
-架构遵循以下原则：
+树与渲染独立但职责一致：通用展示对象管理身份与所有权，Provider 提供展示，GuiProvider 提供交互，Server 同步工程。
 
-- **面向接口**：模块之间通过稳定接口协作，调用方不依赖具体数据类型或渲染实现。
-- **依赖单向**：领域模型不依赖界面、插件或渲染；应用装配层组合各模块。
-- **数据与显示分离**：工程数据对象是业务数据的唯一来源；树节点和渲染对象是按需建立的展示对象。
-- **所有权明确**：工程持有数据对象，注册表持有元数据，渲染对象持有自己的 Provider，场景持有渲染对象。
-- **ID 分层**：数据对象 ID 与渲染对象 ID 是不同概念，各自唯一，通过 Provider 和服务层维护关联，不要求两个 ID 相同。
-- **扩展走同一通道**：内置功能与插件通过同一组注册接口接入，不依赖插件 DLL 的加载先后决定功能顺序。
+- 允许增加本文方案类及具体业务数据、Provider、GuiProvider、Metadata、命令实现；禁止增加方案外类及包装层。
+- 类内接口、成员可按需要增删调整；签名是设计基线，不是冻结 API。消除重复职责、同义接口和过多参数，稳定依赖在构造或绑定时关联。
+- 禁止新增结构体、命名空间、匿名命名空间、自由函数及 lambda；辅助方法放在所属类中，非公开方法为 private。
+- 不引入 domain、统一交互结果协议、多层 Context、额外适配类来弥补职责不清。
+- 命名借鉴 QGIS 的职责清晰与可读性，不照搬其接口。类名提供上下文，方法使用 add/remove、create、populate/update 等直接名称。
+- 改动前梳理调用路径，接通替代实现后删除旧类、接口、构建项与测试依赖。既有日志、应用、插件、领域值类等未被替代职责保留。
 
-## 2. 模块分层
+## 2. 模块边界
 
-```mermaid
-flowchart BT
-    core[core：领域对象、工程、命令、类型注册]
-    providers[providers：文件格式解析]
-    gui[gui：树模型、树 Provider、通用控件]
-    render[render：RenderObject、Provider 接口、Scene、View、VTK]
-    app[app：主窗口、RenderServer、应用 Registry、业务装配]
-    plugins[plugins：专业功能插件]
-    assistant[assistant：本地 AI 服务与界面]
-    analysis[analysis：专业算法扩展点]
-    python[python：Python 集成扩展点]
-    exe[idos：桌面程序入口]
-
-    providers --> core
-    gui --> core
-    app --> core
-    app --> providers
-    app --> gui
-    app --> render
-    app --> assistant
-    app --> analysis
-    app --> python
-    plugins --> app
-    exe --> app
-```
-
-| 模块 | 职责 | 不应承担的职责 |
-|---|---|---|
-| `core` | 数据对象、工程、命令与撤销重做、对象类型元数据和注册 | 文件格式解析、界面展示、VTK 渲染、插件 UI |
-| `providers` | 将文件解析为领域数据对象，维护文件格式元数据和解析器注册表 | 直接操作工程 UI、维护树节点或渲染对象 |
-| `gui` | 数据树/工况树的模型、视图、树 Provider 注册与通用控件 | 持有业务数据副本、执行数据解析或直接创建 VTK actor |
-| `render` | 通用渲染对象和 Provider 接口、Scene、View、VTK 交互 | 工程事件同步、业务类型分派和 Ribbon/停靠 UI |
-| `app` | 主窗口和服务装配；连接工程、树、渲染及插件接口 | 将具体业务类型的渲染规则塞进通用 View/Scene |
-| `plugins` | 通过应用接口注册专业 Ribbon 页面和功能 | 修改应用内部对象或依赖其他插件的加载顺序 |
-| `assistant` | 本地模型进程、请求服务和助手 UI | 管理工程数据结构或渲染场景 |
-| `analysis` | 专业算法扩展模块 | 界面、导入解析、渲染和应用流程编排 |
-| `python` | Python 集成扩展模块 | 领域模型的重复实现 |
-
-### 2.1 依赖规则
-
-- `core` 是领域基础模块，不引用 `gui`、`render`、`app` 或插件模块。
-- `providers` 和 `gui` 面向 `core` 的稳定接口工作；`render` 不依赖应用数据类型，由应用适配层将领域数据接入渲染接口。
-- `app` 是组合根：创建服务、连接信号、将各模块装配成桌面应用。
-- 专业插件依赖公开的应用接口；插件之间不直接互相调用。
-- VTK 依赖限制在 `render` 及需要实现具体渲染 Provider 的适配代码中。
-- `tools/check_includes.ps1` 用于检查源码 include 边界；新增依赖必须符合上述方向。
-
-## 3. 核心领域模型
-
-### 3.1 工程与数据对象
-
-`IDOSProject` 是工程数据对象的根容器，按对象 ID 管理并持有 `IDOSDataObject`。工程对象通常包括井、网格、属性场、工况等。
-
-数据对象通过稳定的类型 ID 描述自身类型；`IDOSTypeRegistry` 保存类型元数据，并支持按类型创建领域对象。输入数据和模型对象通过 `IDOSObjectCategory` 区分，以决定其在数据树或模型树中的归属。
-
-工程通过信号发布对象新增、移除、业务数据变化和可见性变化。批量更新期间，工程收集变化并在事务结束后发送批量信号，避免导入大量对象时重复刷新界面。
-
-### 3.2 工况引用
-
-工况可以引用已有网格、属性场等对象。引用保存对象 ID，而不是复制业务数据。树模型可在不同上下文展示同一个领域对象；因此树节点 ID、对象 ID 和渲染对象 ID 不应混为一谈。
-
-### 3.3 命令与撤销重做
-
-工程修改通过 `IDOSCommandManager` 和 `QUndoStack` 管理。命令负责校验、执行和撤销具体操作；应用入口根据用户操作创建或调用命令。命令元数据可描述可执行命令及其参数 schema，供应用层调用。
-
-## 4. 数据导入与类型扩展
-
-文件导入链路由格式元数据、解析器和应用命令共同完成：
-
-```mermaid
-sequenceDiagram
-    participant UI as 应用界面
-    participant Registry as IDOSProviderRegistry
-    participant Metadata as IDOSProviderMetadata
-    participant Parser as IDOSDataProvider
-    participant Command as 导入命令
-    participant Project as IDOSProject
-
-    UI->>Registry: 按文件路径查询候选格式
-    Registry->>Metadata: 获取匹配的格式元数据
-    UI->>Metadata: createProvider()
-    Metadata-->>UI: 新解析器实例
-    UI->>Parser: read(filePath)
-    Parser-->>UI: 领域数据对象列表
-    UI->>Command: 提交导入命令
-    Command->>Project: 添加/替换对象
-    Project-->>UI: 发出对象变化信号
-```
-
-- `IDOSProviderMetadata` 描述稳定格式 ID、显示名称、扩展名、格式检测和解析器创建。
-- `IDOSDataProvider` 执行一次具体解析；解析器有状态，每次导入创建新实例。
-- 解析器返回领域对象，不直接拥有或修改 `IDOSProject`；对象归并、校验和提交由应用命令负责。
-- `IDOSProviderRegistry` 按格式 ID 或文件路径查找元数据，并生成文件选择器过滤器。
-
-## 5. 树视图架构
-
-输入数据树和工况/模型树是对工程对象的不同投影，不是各自维护一份业务数据。
-
-- 树 Model 管理节点与 Qt Model/View 索引，响应工程变化并维护增量更新。
-- Tree Provider 按数据类型提供节点构建、显示信息和菜单能力。
-- `IDOSTreeProviderRegistry` 根据类型 ID 查找对应 Tree Provider。
-- 工况树可通过对象 ID 展示工况内的网格、属性等引用；一个对象可以在不同工况上下文中有不同树节点。
-- 树选中状态由应用层协调。渲染视图的上下文和当前活动视图可以决定对应的树定位；树选中本身不应被误认为工程数据变化。
-
-## 6. 渲染架构（目标设计）
-
-渲染链路限定为 **Registry → Metadata → RenderObject → RenderProvider → Scene/View**，工程信号由 **RenderServer** 直接处理。
-
-### 6.1 组件职责
-
-| 组件 | 职责 |
+| 模块 | 职责 |
 |---|---|
-| `IDOSRenderRegistry` | 注册和查找渲染元数据，按数据类型 ID 分派 |
-| `IDOSRenderMetadata` | 描述所支持的数据类型，并根据数据对象创建对应的 `IDOSRenderObject` |
-| `IDOSRenderObject` | 保存渲染对象自身 ID/名称，持有 Provider，并通过公开的 `renderProvider()` 返回 Provider |
-| `IDOSRenderProvider` | 为所属渲染对象提供通用渲染操作；创建时接收并关联源数据对象指针，不拥有源数据对象 |
-| `IDOSRenderScene` | 持有和管理渲染对象；不连接工程信号，也不负责业务类型判断 |
-| `IDOSRenderView` | 从 Scene 获取渲染对象，通过 Provider 获取 actor、图例等；处理视图交互和 actor 拾取 |
-| `IDOSRenderServer` | 连接工程信号；使用 Registry/Metadata 创建、更新、移除渲染对象；协调 Scene、View 和活动视图状态 |
+| core | 数据对象、工程、数据类型工厂与注册、树结构/模型/同步、命令与历史 |
+| providers | 文件和外部数据源解析，格式工厂与注册 |
+| gui | 通用树 View、GuiProvider、平台公共界面接口 |
+| render | 通用渲染对象、Provider、GuiProvider、Metadata、Registry、Server、Scene、View、VTK |
+| app | 服务装配、内置具体树/渲染实现、导入命令和 UI 协调 |
+| plugins | 专业数据、展示、交互和命令的具体扩展 |
+| assistant | 模型进程、请求服务、命令调用及助手界面 |
+| analysis / python | 算法和脚本入口，通过命令提交业务修改 |
 
-### 6.2 对象与 ID
+providers、gui、render、assistant 面向 core。core 不依赖界面、渲染、app 或插件。gui 与 render 不互相依赖，通过工程事件和应用层协作。具体实现放在 app 或插件，通用模块不反向依赖具体实现。VTK 构造限于 render 和具体 RenderProvider。
 
-- 数据对象由工程持有，使用自己的数据对象 ID。
-- 渲染对象由 Scene 持有，使用独立的渲染对象 ID；渲染 ID 不复用数据对象 ID。
-- 一个渲染对象可以生成多个 actor。View 在拾取时先将 actor 解析为其所属渲染对象，再通过该对象 Provider 找到关联源数据。
-- Provider 对源数据对象保存非拥有指针；其生命周期不得超过工程中源数据对象的生命周期。Server 收到对象移除信号时，应先移除对应渲染对象。
+源码目录以 [IDOS源码目录.md](IDOS源码目录.md) 的固定文件布局为准。公共接口位于所属功能目录根部，同名头文件与源文件成对放置。IDOSProject 位于 core 根目录；通用树结构、模型和同步位于 core/tree，树视图与 GUI 扩展接口位于 gui/tree；插件加载、描述、列表模型和管理界面位于 app 根目录。不设置 app/plugins 或 app/render，不保留 IDOSRenderController。目录调整须经用户确认。
 
-### 6.3 典型调用流程
+## 3. 数据与工程
 
-```mermaid
-sequenceDiagram
-    participant Project as IDOSProject
-    participant Server as IDOSRenderServer
-    participant Registry as IDOSRenderRegistry
-    participant Metadata as IDOSRenderMetadata
-    participant Scene as IDOSRenderScene
-    participant View as IDOSRenderView
-    participant Object as IDOSRenderObject
-    participant Provider as IDOSRenderProvider
+| 类 | 职责与主要接口 |
+|---|---|
+| IDOSDataObject | 数据 ID、名称、类型及通知；id()、name()、setName()、typeId() |
+| IDOSProject | 数据与关系管理；add()、take()、remove()、object()、objects()、beginUpdate()、endUpdate() |
+| IDOSDataMetadata | 类型描述及工厂；typeId()、displayName()、create() |
+| IDOSDataRegistry | 类型注册；add()、remove()、metadata() |
 
-    Project-->>Server: objectAdded(dataObjectId)
-    Server->>Project: 根据 ID 获取数据对象
-    Server->>Registry: 按 dataTypeId 查 Metadata
-    Registry-->>Server: Metadata
-    Server->>Metadata: createRenderObject(dataObject)
-    Metadata->>Object: 创建 RenderObject 和其 Provider
-    Metadata-->>Server: RenderObject
-    Server->>Scene: 添加 RenderObject
-    Server->>View: 刷新关联视图
-    View->>Object: renderProvider()
-    Object-->>View: Provider
-    View->>Provider: 更新并获取 actors()/legends()
-```
+工况也是具体业务数据，保存配置和数据引用。共享原始数据与工况专属配置分别表达；引用使用稳定数据 ID。数据拥有关系、引用关系和展示父子关系不能混用。
 
-对象数据变化、可见性变化和移除同样由 RenderServer 根据工程信号处理。该逻辑不放入 Metadata 或 Provider；不设置 `IDOSRenderProviderContext`、变更枚举或 Provider `synchronize()` 回调层。
+工程发布新增、删除前、删除、业务数据变化和批量通知。删除前通知在批量操作内仍立即发送，以解除展示关联。beginUpdate/endUpdate 只合并通知，不提供业务回滚。
 
-### 6.4 边界与复用
+数据、树节点、渲染对象分别管理 ID。同一数据可有多个引用节点和各视图独立的渲染对象。
 
-`render` 提供通用渲染接口和视图/场景能力；应用数据类型的元数据与具体 Provider 由适配层实现。其他软件可以复用通用渲染接口，并为自己的数据对象实现 Metadata 和 Provider，而无需复用 IDOS 的树、工程窗口或业务插件。
+## 4. 数据读写
 
-## 7. 插件架构
+| 类 | 职责与主要接口 |
+|---|---|
+| IDOSDataProvider | 一次解析；read(source)、error() |
+| IDOSDataProviderMetadata | 格式描述、匹配和工厂；key()、displayName()、supports(source)、create() |
+| IDOSDataProviderRegistry | 格式注册和匹配；add()、remove()、providers(source) |
 
-插件由 `IDOSPluginRegistry` 发现和管理，通过 `QLibrary` 加载动态库。插件实现 `IDOSPlugin` 接口，并导出创建、卸载和元数据查询等 C-linkage 函数。插件元数据包括名称、描述、分类、版本、图标和类型。
+类型工厂回答“创建什么数据”，格式工厂回答“如何读取数据”。一个类型可有多个格式，一个格式可产生多种数据。手工或算法产生的数据不必经过 DataProvider。
 
-插件通过 `IDOSInterface` / `IDOSAppInterface` 使用受支持的主窗口能力，例如查询或创建 Ribbon 页面。插件初始化时注册 UI；卸载时移除自己创建的 UI 并释放资源。Ribbon 页面顺序应由显式索引或应用约定决定，不能依赖插件文件枚举或加载顺序。
-
-插件可以扩展专业 UI 和业务行为。若要扩展数据类型、文件格式、树节点或渲染，应使用相应注册接口；不应通过跨插件硬编码依赖实现扩展。
-
-## 8. 主窗口与应用装配
-
-`IDOSMainWindow` 是桌面应用的组合根，负责创建并连接：
-
-- SARibbon 工具栏和插件接口；
-- ADS 停靠管理器、数据树、工况树、输出面板与渲染视图；
-- `IDOSProject`、命令管理器、Provider 注册表和 RenderServer；
-- 工程信号、树交互、视图交互与工具栏状态。
-
-主窗口负责协调 UI 状态，不应直接实现具体网格/井的 VTK 构造细节。活动视图变化、方向标记/图例显示、视图上下文与树定位等状态，由 RenderServer 发信号，主窗口连接并更新 UI。
-
-## 9. 生命周期与所有权
+每次解析创建独立实例，结果由调用方接管；解析器不修改工程、不创建树或渲染对象。导入命令负责校验、合并、替换、引用建立和提交。候选格式按明确规则选择，不依赖哈希遍历顺序。导出能力按实际需求在这些类内补充。
 
 ```text
-IDOSProject
-└── owns IDOSDataObject instances
-
-IDOSProviderRegistry
-└── owns IDOSProviderMetadata instances
-
-IDOSRenderRegistry
-└── owns IDOSRenderMetadata instances
-
-IDOSRenderScene
-└── owns IDOSRenderObject instances
-    └── owns IDOSRenderProvider instance
-        └── keeps non-owning association to source data object
-
-IDOSMainWindow / ADS
-└── owns or coordinates widgets, dock widgets and render views
+文件 / 外部数据源
+  → DataProvider 解析
+  → 导入命令校验、合并并提交
+  → Project 保存数据
 ```
 
-对象销毁顺序必须保证：先移除引用源数据的渲染对象，再销毁工程数据对象；卸载渲染元数据前，先移除由其创建且仍在 Scene 中的对象。
+## 5. 树框架
 
-## 10. 横切约定
+| 类 | 职责与主要接口 |
+|---|---|
+| IDOSTreeItem | 通用节点、关联及子节点所有权；id()、name()、parent()、children()、dataId()、itemKey()、provider() |
+| IDOSTreeProvider | 非拥有地关联数据，构建和更新分支；dataSource()、populate(item)、update(item) |
+| IDOSTreeGuiProvider | 菜单和节点行为；name()、supports(item)、populateMenu(menu, view)、isCheckable(item)、isChecked(item)、setChecked(item, checked) |
+| IDOSTreeMetadata | 数据类型与 Provider 工厂；typeId()、create(data) |
+| IDOSTreeRegistry | 工厂、GUI 扩展和默认分组；add()、remove()、metadata()、addGuiProvider()、removeGuiProvider() |
+| IDOSTree | 拥有根节点、受控修改和通知；root()、insert()、remove()、clear() |
+| IDOSTreeModel | Qt 模型适配及节点查询；nodeFromIndex()、indexFromNode() |
+| IDOSTreeView | 展示、选择与输入；currentItem()、selectedItems()、menuItem() |
+| IDOSTreeServer | 工程同步与引用刷新；setProject()、addTree()、removeTree() |
 
-- 用户可见文案通过 `tr()` 和翻译文件维护。
-- 工程修改统一通过命令/工程接口，避免 UI、Tree Provider 或 Render Provider 直接绕过工程对象管理。
-- 批量操作使用工程批量更新信号减少重复刷新；不在每个对象更新后重复重建整个 UI。
-- 跨模块接口放在所属模块的公共头文件中，禁止用具体实现头文件反向制造依赖。
-- C++ 风格、头文件自包含、构建目录和架构检查按仓库根目录 `AGENTS.md` 执行。
+数据树与工况树使用同一框架，通过不同树实例、注册内容和根节点组织形成，不分别写带业务判断的 Model。
 
-## 11. 当前实现与设计的差距
+默认分组使用 Registry 类内描述注册键、父分组、标题、图标和顺序，不增加分组 Metadata/Context 类。对象分支结构由具体 Provider 构建。TreeItem 表达分组、对象、内部子项和引用，必要关联与所属工况在类内明确保存，操作不靠固定父节点形状猜测目标。
 
-本节用于提醒维护者：设计边界与现存代码不一致时，应修正实现，不应把历史兼容层当作新的架构约定。
+对象分支根拥有 TreeProvider，父节点拥有子节点。独立数据引用分支可拥有独立 Provider；内部子项通过所属分支访问 Provider，不重复拥有它。Provider 经 Tree 的受控接口修改已展示节点，Model 据此发送正确的 Qt 插入、删除和变化通知。
 
-渲染实现仍需收敛到第 6 节。以下模式不属于目标架构：
+Model 不解释具体业务角色，不处理网格属性互斥等规则。GuiProvider 提供具体能力、状态和行为；未提供专属实现时使用明确默认行为。菜单可组合多个实现，勾选等修改操作必须有明确负责者，冲突不静默执行。
 
-- 用 `IDOSRenderProviderContext` 让 Provider 访问工程和 Scene；
-- 用 `IDOSRenderObjectChange` 和 `synchronize()` 将工程事件同步委托给 Provider；
-- 用 `IDOSDataRenderProvider` 作为 `IDOSRenderProvider` 的额外包装/派生层；
-- 由 RenderServer 或 View 持有一个全局 VTK 转换器，再按渲染对象类型转换 actor；
-- 将网格属性、井轨迹等具体数据类型操作放入通用渲染服务接口。
+```text
+工程新增数据 → TreeServer → Metadata 创建 Provider
+  → 通用 TreeItem → Tree 接管 → Model / View 展示
+工程变化 → TreeServer → Provider 更新受影响分支
+```
 
-后续重构应先梳理工程信号到 Scene/View 的完整调用链，再一次性调整接口和实现；不要在旧机制上叠加适配层。
+## 6. 渲染框架
+
+| 类 | 职责与主要接口 |
+|---|---|
+| IDOSRenderObject | 通用具体类，独立身份及 Provider 所有权；id()、name()、provider() |
+| IDOSRenderProvider | 几何、图例与显示状态；dataSource()、update()、actors()、legends()、visible()/setVisible()、highlighted()/setHighlighted()、opacity()/setOpacity() |
+| IDOSRenderGuiProvider | 对象菜单及专属交互；name()、supports(object)、populateMenu(menu, view) |
+| IDOSRenderMetadata | 数据类型与 Provider 工厂；typeId()、create(data) |
+| IDOSRenderRegistry | 工厂与 GUI 注册；add()、remove()、metadata()、addGuiProvider()、removeGuiProvider() |
+| IDOSRenderScene | 拥有展示对象；add()、remove()、clear()、object()、objects() |
+| IDOSRenderView | 展示、相机、选择和拾取；scene()、menuObject()、selectedObjects() |
+| IDOSRenderServer | 工程同步；setProject()、addView()、removeView() |
+
+Metadata 创建具体 RenderProvider，Server 装入通用 RenderObject 后交给 Scene。不增加仅装配 Provider 的具体 RenderObject 子类。每个 View 的 Scene、Object、Provider 和显示状态独立。
+
+Provider 不访问工程或 Scene，数据关联非拥有。工程同步由 Server 处理，不引入 Provider Context、synchronize() 或数据 Provider 包装层。显示模式、属性着色等专属能力只放具体 Provider，由对应功能和 GuiProvider 调用。
+
+一个对象可产生多个 actor；View 将拾取 actor 映射回 RenderObject，再通过 Provider 获取源数据。当前 actors() 覆盖普通几何；体渲染等需求在方案内现有类中扩充接口。
+
+```text
+工程新增数据 → RenderServer → Metadata 创建 Provider
+  → 通用 RenderObject → Scene 接管 → View 展示
+工程变化 → RenderServer → Provider 更新 → Scene / View 刷新
+```
+
+## 7. 菜单与交互
+
+不增加 MenuContributor、ActionRegistry、InteractionProvider 或菜单组织器类。TreeView 和 RenderView 在类内创建菜单、调用适用 GuiProvider、弹出和销毁菜单。
+
+- 右键目标与选择分别查询；空白处也进入菜单流程。多个 GUI 实现共同贡献菜单，排序明确；通用视图动作由 View 或注册的通用 GUI 实现提供。
+- 稳定服务依赖在构造或绑定时设置；populateMenu 只接收菜单和目标 View，通过明确关联获取目标及工程，不使用隐式全局“当前对象”。
+- 视图菜单以实际点击的 View 与拾取对象为目标，不依赖事后变化的活动视图。
+- QAction 与子菜单归本次 QMenu。动作保存稳定 ID，执行时重新校验；不长期保存节点指针，不共用 pending 目标成员。
+- 菜单调用业务命令，局部显示操作调用目标 Provider；不接管 Server 同步和容器所有权。
+- 动作连接具名成员或 on 开头的槽，不使用 lambda。
+
+## 8. 命令体系
+
+| 类 | 职责与主要接口 |
+|---|---|
+| IDOSCommand | 参数、执行及撤销状态；validate(error)、execute(error)、undo(error)、isUndoable()、result()、error() |
+| IDOSCommandMetadata | 描述、参数和工厂；name()、description()、parameters()、create(project, arguments) |
+| IDOSCommandRegistry | add()、remove()、metadata()、commands() |
+| IDOSCommandManager | 每工程独立历史；execute(command)、execute(name, arguments)、undo()、redo()、canUndo()、canRedo()、isClean()、setClean()、clear()、result()、error() |
+
+Manager 构造时绑定工程和 Registry。内部 C++ 可直接构造命令，助手和脚本通过名称和 JSON 参数创建。Manager 保存执行结果与错误，命令销毁后仍有效，不新增结果包装类。
+
+创建、编辑、删除、导入合并及工况引用修改走业务命令。查询不进入历史；相机、截图、临时高亮直接操作 View，局部显示状态操作目标 Provider，不混入业务撤销历史。
+
+- 命令绑定工程，参数使用数据 ID；工况相关操作明确工况目标。
+- 验证、执行成功后才提交历史；失败不进入历史、不破坏重做记录；撤销失败不移动历史位置。
+- 失败需恢复数据与关系，通知批处理不等于事务回滚。
+- 删除命令拥有脱离工程的数据，撤销时恢复，清理历史时释放未恢复数据。
+- 重做使用保存的解析/计算结果，不重新读取外部文件。
+- 使用 QUndoStack 时必须适配上述契约，不可 push 后才判断成功。
+
+## 9. 助手、插件与应用
+
+IDOSAssistantService 负责模型请求、命令调用、结果处理与目标工程绑定；IDOSAssistantWidget 只负责输入和展示。现有模型进程和网络服务职责保留或迁入服务，不额外叠加包装类。
+
+每次请求绑定发起时工程，工程切换后取消或使旧请求失效。助手通过命令 Metadata 获取描述及参数，经目标 CommandManager 执行，不直接修改节点、actor 或业务数据。显示操作明确目标 View 并使用应用公开能力。
+
+应用负责服务装配、活动视图、树定位和工具栏协调。IDOSInterface 提供 project()、dataRegistry()、treeRegistry()、renderRegistry()、commandRegistry() 和 projectChanged()，插件通过公共入口注册并调用相同能力，不访问主窗口内部实现。gui 仅前置声明 RenderRegistry，不增加对 render 的编译或链接依赖。
+
+插件实现 canUnload()，检查存活数据、命令历史和自身持有的任务，包含脱离工程但尚未销毁的实例。PluginRegistry 拥有插件实例，拒绝不安全的卸载，不把卸载失败保存为禁用。具体 GuiProvider 注销时同步清理自己创建的 QAction，避免存活菜单保留已卸载 DLL 的代码与数据。
+
+```text
+树菜单 / 视图菜单 / 工具栏 / 脚本 / 助手
+  → CommandManager → Project
+  → TreeServer / RenderServer → 各自 Provider 更新展示
+```
+
+## 10. 所有权与注册生命周期
+
+```text
+Project → DataObject
+Tree → 根 TreeItem → 子 TreeItem
+对象分支根 TreeItem → TreeProvider
+RenderView → Scene → RenderObject → RenderProvider
+Registry → Metadata / GuiProvider
+CommandManager → 历史命令 → 尚未恢复的脱离工程数据
+```
+
+Server 借用工程、Registry 和容器；Provider 非拥有地关联数据；GuiProvider 不拥有操作目标。注册成功转移所有权，失败不转移；重复注册拒绝并报告。
+
+注册变化自动补建已有数据展示，注销前清理依赖展示再销毁工厂。多项注册可合并通知。插件存在存活数据、命令或任务时先清理或拒绝卸载，不能直接卸载 DLL。切换/销毁工程断开旧连接并清空展示。
+
+## 11. 扩展示例与验收
+
+断层功能按需要提供：
+
+```text
+IDOSFault / IDOSFaultMetadata
+IDOSFaultTreeMetadata / IDOSFaultTreeProvider / IDOSFaultTreeGuiProvider
+IDOSFaultRenderMetadata / IDOSFaultRenderProvider / IDOSFaultRenderGuiProvider
+创建、编辑、删除断层命令及 Metadata
+需要导入时增加对应格式 DataProvider / Metadata
+```
+
+无需类型专属 TreeItem 和 RenderObject；无需 GUI、渲染或导入时省略对应实现。
+
+验收覆盖新数据与工况注册、分类及父子节点、内部子项与引用、菜单组合、空白和多选、勾选联动、多视图状态隔离、更新删除、撤销重做、注销与助手调用。新增功能只增加方案内实现与注册，通用 Model、View、Server 不增加具体业务判断。
+
+## 12. 迁移与工程规范
+
+当前代码的旧类型注册名称、专属树模型、集中菜单、具体 RenderObject 子类和 Controller 业务规则是迁移对象，不作为新方案约束。保留可复用解析与算法，删除被替代类和适配层，同步 CMake、测试、翻译和文档。未替代的日志、应用、插件等基础设施不机械删除。
+
+编码、头文件自包含及翻译规则遵循 AGENTS.md。配置、编译及构建测试统一使用 E:\CJW-Archive\build\win-x64-debug-local，禁止源码内构建。
+
+## 13. 实施进度（2026-10-12）
+
+- 数据对象及井、网格、工况数据已迁入 core/data；新增独立 DataMetadata、DataRegistry 与内置类型 Metadata，由应用注册。删除旧 TypeRegistry、ObjectTypeMetadata 及其模板工厂。
+- Project 的旧 addObject/takeObject/removeObject/objectById 接口已替换为 add/take/remove/object，全部源码和测试调用同步修改，不保留别名。
+- CommandManager 直接拥有命令历史，失败不提交历史或清除重做记录，撤销失败不移动历史位置，结果在命令销毁后保留。删除 QUndoStack 和 QUndoCommand 依赖；命令使用 execute/undo，注册表通过 setRegistry 绑定。具体业务命令迁入 app 对应目录。
+- RenderObject 已成为通用具体类，RenderMetadata 通过 create 创建 Provider，RenderServer 负责装配对象。删除井和网格的 RenderObject 子类，具体渲染 Provider/Metadata 迁入 app/well 和 app/grid。
+- 平台插件接口、加载与管理设施已迁入固定目录；工况对话框迁入 app/case。源码目录边界检查已同步功能目录规则。
+- 通用 Tree、TreeItem、TreeProvider、TreeMetadata、TreeRegistry、TreeModel 与 TreeServer 已实现；井、网格及工况分支由对应 Provider 构建，引用节点使用源数据注册的 Provider。旧专属模型、节点类、构建器、注册表及集中菜单接口已删除。
+- 数据更新调用已有 TreeProvider 的 update，保留分支根节点的 ID、Provider 和持久索引；新分支调用 populate，分类或数据实例改变时重新装配。默认 update 调用 populate，具体 Provider 可覆盖以实现更细粒度更新。
+- 工况统一使用 DataObject 的 typeId；模拟工况标识为 idos.case.simulation，删除重复 caseTypeId。删除无调用的 pendingImportPaths、IDOSItemState、IDOSColorMap 及旧 GUI 分层清单，目录回归检查采用当前模块边界。
+- TreeGuiProvider 和 RenderGuiProvider 已实现，菜单保留实际目标视图和稳定对象标识；井、网格、工况菜单迁入对应业务目录。RenderController 和 DataObjectHandling 已删除，渲染业务联动迁入具体 GuiProvider。
+- AssistantService 负责模型请求、工具协议和命令执行，Widget 负责界面。异步回复校验请求身份与绑定工程，切换工程取消旧请求。
+- 数据解析 Registry 已删除 Impl 包装类，按注册顺序查找，拒绝重复类型并支持注销；内置格式由应用注册。旧 DataLoadService 已删除，LAS、ECLIPSE 与测井视图迁入固定目录。
+- 井导入通过命令合并已有数据，保存修改前后快照，撤销恢复原通道，重做不重新读取文件。导入失败读取 CommandManager 保存的错误，避免访问已销毁的命令。
+- 框架主体改造已落地，固定构建目录的 Debug 构建及 9 项回归测试全部通过。回归包含动态树注册、节点所有权、菜单目标、工程切换、渲染生命周期、井合并撤销重做及助手旧工程响应拒绝；独立头文件编译和目录边界检查通过，中文翻译无未完成项。这些检查覆盖现有内置实现，第三方新数据类型及插件卸载仍应按第 11 节逐项验收。
+- idosexampleplugin 已完成点集扩展验收，只依赖公共 core/gui/render 接口，不链接 app。专项测试覆盖 DLL 加载、工厂和命令注册、失败命令不入历史、八个子节点、工况引用、树更新、实际三维截图、视图菜单与状态隔离、删除和撤销重做、旧菜单目标、跨工程及延迟删除的卸载保护、未关闭菜单时注销、工厂创建的游离实例与重新加载。完整 Debug 构建和 9 项回归测试通过，插件头文件独立编译、模块边界检查和中文翻译完成。此示例验证点集链路，其他新工况和业务扩展仍按第 11 节验收。

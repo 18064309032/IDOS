@@ -17,6 +17,7 @@ private slots:
     void onTextCommandCallCreatesWell();
     void onInvalidToolArgumentsDoNotCreateCommand();
     void onToolCallWithoutProjectIsReported();
+    void onProjectSwitchRejectsOldResponse();
 
 private:
     void registerCommands(IDOSCommandRegistry* registry) const;

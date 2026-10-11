@@ -10,7 +10,7 @@
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
-#include "plugin/idosinterface.h"
+#include "idosinterface.h"
 
 #include "idosgeomechanicsplugin.h"
 
@@ -158,4 +158,9 @@ extern "C" IDOS_PLUGIN_EXPORT void unload(IDOSPlugin* plugin)
 extern "C" IDOS_PLUGIN_EXPORT IDOSPlugin* classFactory(IDOSInterface* interface)
 {
     return new IDOSGeomechanicsPlugin(interface);
+}
+
+bool IDOSGeomechanicsPlugin::canUnload() const
+{
+    return true;
 }

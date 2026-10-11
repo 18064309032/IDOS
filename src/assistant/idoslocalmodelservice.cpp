@@ -80,7 +80,7 @@ void IDOSLocalModelService::onReplyFinished()
 
     if (reply->error() != QNetworkReply::NoError)
     {
-        emit requestFailed(reply->errorString());
+        emit requestFailed(reply, reply->errorString());
         reply->deleteLater();
         return;
     }
@@ -89,12 +89,12 @@ void IDOSLocalModelService::onReplyFinished()
     const QJsonDocument document = QJsonDocument::fromJson(reply->readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !document.isObject())
     {
-        emit requestFailed(QStringLiteral("Invalid model response: %1").arg(parseError.errorString()));
+        emit requestFailed(reply, tr("Invalid model response: %1").arg(parseError.errorString()));
         reply->deleteLater();
         return;
     }
 
-    emit responseReady(document.object());
+    emit responseReady(reply, document.object());
     reply->deleteLater();
 }
 

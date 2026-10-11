@@ -1,0 +1,9 @@
+EXPORTS
+    classFactory=?create@IDOSExamplePlugin@@SAPEAVIDOSPlugin@@PEAVIDOSInterface@@@Z
+    name=?pluginName@IDOSExamplePlugin@@SAPEBVQString@@XZ
+    description=?pluginDescription@IDOSExamplePlugin@@SAPEBVQString@@XZ
+    category=?pluginCategory@IDOSExamplePlugin@@SAPEBVQString@@XZ
+    version=?pluginVersion@IDOSExamplePlugin@@SAPEBVQString@@XZ
+    icon=?pluginIcon@IDOSExamplePlugin@@SAPEBVQString@@XZ
+    type=?pluginType@IDOSExamplePlugin@@SAHXZ
+

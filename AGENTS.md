@@ -1,6 +1,6 @@
 # 编码规范
 
-- 每个模块中同名的 `.h` 和 `.cpp` 必须放在同一目录；公共类的头文件和实现文件一同放在模块根目录，内部类在所属子目录内成对放置。
+- 同名的 `.h` 和 `.cpp` 必须放在同一目录。固定源码目录以 `docs/IDOS源码目录.md` 为准；公共接口及实现放在所属功能目录根部，具体业务实现按确认的目录归属放置。未经用户确认不得改变目录划分。
 - 项目自有 C++ 代码（含测试）禁止使用 `auto`，必须显式写出类型。
 - 项目自有 C++ 代码（含测试）禁止使用 `struct`，类型定义和前置声明统一使用 `class`，并显式声明所需访问权限。
 - 禁止使用匿名函数（lambda），使用具名函数、成员函数或槽函数。
@@ -17,17 +17,18 @@
 - 用户可见的界面文字、格式名称和错误提示使用 `tr()`（非 QObject 类可使用 `QObject::tr()`），更新 `i18n/idos_zh_CN.ts` 并完成中文翻译。内部标识、协议关键字和文件路径不翻译。
 - 第三方库不作批量风格改写；Qt 固定签名的事件重写函数保持框架要求的名称。
 
-# 渲染架构约定
+# 架构约定
 
-- 渲染模块按接口协作，职责限定为 Registry、Metadata、RenderProvider、RenderObject、Scene、View 和 RenderServer。
-- Registry 注册并按数据类型查找 Metadata；Metadata 负责根据数据对象创建对应的 RenderObject，不负责监听工程变化或同步场景。
-- RenderObject 持有自己的 RenderProvider，并通过公开的 `renderProvider()` 接口返回它。Provider 与对应的数据对象关联，数据对象指针在创建 Provider 时传入；不额外引入 `IDOSDataRenderProvider` 包装层。
-- RenderProvider 提供渲染对象所需的通用渲染操作。具体数据类型的渲染行为由对应 Provider 实现；不得把数据类型专属操作放入通用平台接口。
-- Scene 只管理 RenderObject；View 从 Scene 获取 RenderObject，并通过其 Provider 获取 actor、图例及其他渲染能力。
-- RenderServer 连接工程信号，负责根据 Registry 中的 Metadata 创建、更新和移除 RenderObject，并协调 Scene 与 View。工程事件同步逻辑属于 RenderServer，不属于 Metadata 或 RenderProvider。
-- 不引入 `IDOSRenderProviderContext`、`IDOSRenderObjectChange`、Provider `synchronize()` 等用于把工程同步委托给 Provider 的机制；确需工程同步时由 RenderServer 直接处理。
-- 数据对象 ID 与 RenderObject ID 分别管理。一个 RenderObject 可以对应多个 actor；View 将 actor 操作映射回 RenderObject，再由其 Provider 关联到源数据对象。
-- 实现既定架构时，删除确认不需要的旧接口和适配层，不为复用旧调用链保留重复抽象；改动前梳理完整调用路径，避免叠加补丁。
+- 目标架构以 `docs/IDOS架构设计.md` 的新方案为准。该文档描述待实施架构，不表示当前代码已完成；不受旧类划分约束。
+- 树与渲染独立但职责一致：通用展示对象管理身份与所有权，Provider 提供展示，GuiProvider 提供菜单与交互，Server 同步工程。通用 Model、View、Scene、Server 不判断具体数据或 Provider 子类。
+- 仅允许增加设计方案中的类及对应具体数据、Provider、GuiProvider、Metadata、命令实现；禁止新增方案外的类、结构体、命名空间、匿名命名空间和自由函数。类内接口与成员可以按需要增删调整，非公开辅助方法放在所属类 private 区域。
+- 通用树结构、Provider、Metadata、Registry、Model、Server 放在 src/core/tree，TreeView 和 TreeGuiProvider 放在 src/gui/tree；通用渲染框架放在 src/render；具体业务实现放在 app 或插件。gui 与 render 不互相依赖，均可依赖 core；core 不依赖 gui、render、app 或插件。
+- RenderObject 为通用具体类，管理独立 ID、名称和 Provider 所有权；RenderMetadata 创建 RenderProvider，由 RenderServer 装入通用 RenderObject。删除仅用于装配 Provider 的具体 RenderObject 子类，不增加数据 Provider 包装层。
+- 每个 RenderView 拥有独立 Scene，Scene 拥有 RenderObject，RenderObject 拥有 Provider；源数据关联非拥有，各视图显示状态独立。数据 ID、节点 ID、渲染 ID 分别管理。
+- 工程同步只由 TreeServer 和 RenderServer 处理，不委托给 Metadata、Provider 或 GuiProvider；不引入 Provider Context、synchronize()、统一交互结果协议或额外适配层。
+- 节点结构、分类、勾选联动和专属菜单由具体实现提供，不写入通用模型。View 类内组合菜单，不新增菜单组织器类；对象、空白、多选以及实际目标视图必须明确。
+- 业务修改统一调用命令，菜单、工具栏、脚本和助手共用同一逻辑；局部显示操作调用目标 Provider 或 View。失败命令不进入历史，批量通知不代替回滚。
+- 直接改造现有框架并删除被替代的类、接口及适配层，不保留两套调用链。改动前梳理完整路径；保留未被替代的日志、应用、插件和领域基础设施。
 
 # 编译目录
 

@@ -12,8 +12,8 @@ class IDOSDataObject;
  * @brief 数据解析行为基类。
  *
  * 只负责解析——从文件读数据、构建 IDOSDataObject、返回给调用方。
- * 元数据（id / 扩展名 / 格式检测）在 IDOSProviderMetadata 里，
- * 工厂也在那边。每次解析用 createProvider() 拿 fresh instance。
+ * 元数据（id / 扩展名 / 格式检测）在 IDOSDataProviderMetadata 里，
+ * 工厂也在那边。每次解析用 create() 拿 fresh instance。
  *
  * 非 QObject，轻量无信号槽。错误通过 lastError() 取回，解析进度
  * 未来可扩展 cancel()/progress()。

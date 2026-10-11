@@ -5,8 +5,8 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QClipboard>
-#include <QColorDialog>
 #include <QCloseEvent>
+#include <QColorDialog>
 #include <QDialog>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -37,46 +37,53 @@
 #include "command/idoscommandmanager.h"
 #include "command/idoscommandmetadata.h"
 #include "command/idoscommandregistry.h"
-#include "command/idoscreatecasecommand.h"
-#include "command/idoscreatewellcommand.h"
-#include "command/idosdeletecasecommand.h"
-#include "command/idosdeletegridcommand.h"
-#include "command/idosdeletepropertycommand.h"
-#include "command/idosdeletewellcommand.h"
 #include "command/idosimportcommands.h"
-#include "command/idosrenameobjectcommand.h"
 #include "idosappinterface.h"
 #include "idosapplication.h"
+#include "idosassistantservice.h"
 #include "idosassistantwidget.h"
 #include "idoscaseobject.h"
-#include "idoscasetreemenuprovider.h"
-#include "idoscasetreemodel.h"
-#include "idoscasetreeview.h"
-#include "idosdataobjecthandling.h"
-#include "idosdatatreemenuprovider.h"
-#include "idosdatatreemodel.h"
-#include "idosdatatreeview.h"
+#include "idosdataregistry.h"
+#include "idoscreatecasecommand.h"
+#include "idoscreatewellcommand.h"
 #include "idosdebuginfowidget.h"
-#include "idosgriddatatreeprovider.h"
-#include "idosgridrenderobjectprovider.h"
+#include "idosdeletecasecommand.h"
+#include "idosdeletegridcommand.h"
+#include "idosdeletepropertycommand.h"
+#include "idosdeletewellcommand.h"
+#include "idosgridrenderguiprovider.h"
+#include "idosgridrendermetadata.h"
+#include "idosgridtreeguiprovider.h"
+#include "idosgridtreemetadata.h"
 #include "idosnewprojectdialog.h"
-#include "idosobjecttreenode.h"
+#include "idospluginregistry.h"
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
-#include "plugin/idospluginmanagerwidget.h"
-#include "plugin/idospluginregistry.h"
+#include "idosrenameobjectcommand.h"
+#include "idosrenderobject.h"
+#include "idosrenderprovider.h"
+#include "idosrenderregistry.h"
+#include "idosrenderscene.h"
 #include "idosrenderserver.h"
 #include "idosrendertypes.h"
+#include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
-#include "idossimulationcasetreeprovider.h"
-#include "idostreepartnode.h"
-#include "idostreeproviderregistry.h"
-#include "idostreereferencenode.h"
+#include "idossimulationcasetreeguiprovider.h"
+#include "idossimulationcasetreemetadata.h"
+#include "idostree.h"
+#include "idostreeitem.h"
+#include "idostreemodel.h"
+#include "idostreeregistry.h"
+#include "idostreeserver.h"
+#include "idostreeview.h"
 #include "idoswell.h"
-#include "idoswelldatatreeprovider.h"
 #include "idoswelllogtrackview.h"
-#include "idoswellrenderobjectprovider.h"
+#include "idoswellrenderguiprovider.h"
+#include "idoswellrendermetadata.h"
+#include "idoswelltreeguiprovider.h"
+#include "idoswelltreemetadata.h"
 #include "log/idoslogger.h"
+#include "idospluginmanagerwidget.h"
 
 #include "idosmainwindow.h"
 
@@ -104,13 +111,18 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionNew2DWindow(nullptr)
     , m_actionWindowLayout(nullptr)
     , m_project(nullptr)
+    , m_dataRegistry(nullptr)
     , m_commandManager(nullptr)
-    , m_dataTreeModel(new IDOSDataTreeModel(this))
-    , m_caseTreeModel(new IDOSCaseTreeModel(this))
+    , m_dataTree(new IDOSTree(this))
+    , m_caseTree(new IDOSTree(this))
+    , m_dataTreeModel(new IDOSTreeModel(m_dataTree, this))
+    , m_caseTreeModel(new IDOSTreeModel(m_caseTree, this))
     , m_dataTreeView(nullptr)
     , m_caseTreeView(nullptr)
-    , m_treeProviderRegistry(new IDOSTreeProviderRegistry())
-    , m_renderServer(new IDOSRenderServer(this))
+    , m_treeRegistry(new IDOSTreeRegistry(this))
+    , m_treeServer(new IDOSTreeServer(m_treeRegistry, this))
+    , m_renderRegistry(new IDOSRenderRegistry(this))
+    , m_renderServer(new IDOSRenderServer(m_renderRegistry, this))
     , m_runtimeInfoWidget(nullptr)
     , m_pluginRegistry(nullptr)
     , m_pluginManagerWidget(nullptr)
@@ -126,6 +138,8 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_nextViewIndex(1)
     , m_currentWindowLayout(QStringLiteral("single"))
 {
+    IDOSApplication* application = qobject_cast<IDOSApplication*>(QApplication::instance());
+    m_dataRegistry = application != nullptr ? application->dataRegistry() : new IDOSDataRegistry(this);
     initProviders();
     initMainWindow();
     initDockManager();
@@ -139,13 +153,140 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
 
 void IDOSMainWindow::initProviders()
 {
-    m_treeProviderRegistry->registerDataProvider(new IDOSWellDataTreeProvider());
-    m_treeProviderRegistry->registerDataProvider(new IDOSGridDataTreeProvider());
-    m_treeProviderRegistry->registerCaseProvider(new IDOSSimulationCaseTreeProvider());
-    m_dataTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
-    m_caseTreeModel->setTreeProviderRegistry(m_treeProviderRegistry);
-    m_renderServer->registerMetadata(new IDOSGridRenderObjectProvider());
-    m_renderServer->registerMetadata(new IDOSWellRenderObjectProvider());
+    IDOSApplication::initProviders();
+    m_dataTree->setName(QStringLiteral("data"));
+    m_caseTree->setName(QStringLiteral("case"));
+    m_treeRegistry->add(new IDOSWellTreeMetadata());
+    m_treeRegistry->add(new IDOSGridTreeMetadata());
+    m_treeRegistry->add(new IDOSSimulationCaseTreeMetadata(m_treeRegistry));
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSGridTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSSimulationCaseTreeGuiProvider>());
+    IDOSTreeItem* wellGroup = nullptr;
+    IDOSTreeItem* group0 = new IDOSTreeItem();
+    group0->setKey(QStringLiteral("data.wellGroup"));
+    group0->setName(tr("Well Group"));
+    group0->setIcon(QIcon(QStringLiteral(":/images/gui-well-group.svg")));
+    group0->setGroup(true);
+    wellGroup = group0;
+    IDOSTreeItem* group1 = new IDOSTreeItem();
+    group1->setKey(QStringLiteral("data.globalLogs"));
+    group1->setName(tr("Global Well Logs"));
+    group1->setIcon(QIcon(QStringLiteral(":/images/gui-global-logs.svg")));
+    group1->setGroup(true);
+    wellGroup->appendChild(group1);
+    IDOSTreeItem* group2 = new IDOSTreeItem();
+    group2->setKey(QStringLiteral("data.globalCompletions"));
+    group2->setName(tr("Global Completions"));
+    group2->setIcon(QIcon(QStringLiteral(":/images/gui-global-completions.svg")));
+    group2->setGroup(true);
+    wellGroup->appendChild(group2);
+    IDOSTreeItem* group3 = new IDOSTreeItem();
+    group3->setKey(QStringLiteral("data.globalObservations"));
+    group3->setName(tr("Global Observations"));
+    group3->setIcon(QIcon(QStringLiteral(":/images/gui-global-observations.svg")));
+    group3->setGroup(true);
+    wellGroup->appendChild(group3);
+    IDOSTreeItem* group4 = new IDOSTreeItem();
+    group4->setKey(QStringLiteral("data.wellProperties"));
+    group4->setName(tr("Well Properties"));
+    group4->setIcon(QIcon(QStringLiteral(":/images/gui-well-properties.svg")));
+    group4->setGroup(true);
+    wellGroup->appendChild(group4);
+    IDOSTreeItem* group5 = new IDOSTreeItem();
+    group5->setKey(QStringLiteral("data.wells"));
+    group5->setName(tr("Wells"));
+    group5->setIcon(QIcon(QStringLiteral(":/images/gui-wells.svg")));
+    group5->setGroup(true);
+    wellGroup->appendChild(group5);
+    m_treeRegistry->addGroup(QStringLiteral("data"), wellGroup);
+    IDOSTreeItem* group6 = new IDOSTreeItem();
+    group6->setKey(QStringLiteral("data.seismic"));
+    group6->setName(tr("Seismic"));
+    group6->setIcon(QIcon(QStringLiteral(":/images/gui-seismic.svg")));
+    group6->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group6);
+    IDOSTreeItem* group7 = new IDOSTreeItem();
+    group7->setKey(QStringLiteral("data.surfaceProperties"));
+    group7->setName(tr("Surface Properties"));
+    group7->setIcon(QIcon(QStringLiteral(":/images/gui-surface-properties.svg")));
+    group7->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group7);
+    IDOSTreeItem* group8 = new IDOSTreeItem();
+    group8->setKey(QStringLiteral("data.faults"));
+    group8->setName(tr("Faults"));
+    group8->setIcon(QIcon(QStringLiteral(":/images/gui-faults.svg")));
+    group8->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group8);
+    IDOSTreeItem* group9 = new IDOSTreeItem();
+    group9->setKey(QStringLiteral("data.boundaries"));
+    group9->setName(tr("Polygons / Boundaries"));
+    group9->setIcon(QIcon(QStringLiteral(":/images/gui-boundaries.svg")));
+    group9->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group9);
+    IDOSTreeItem* group10 = new IDOSTreeItem();
+    group10->setKey(QStringLiteral("data.naturalFractures"));
+    group10->setName(tr("Natural Fractures"));
+    group10->setIcon(QIcon(QStringLiteral(":/images/gui-natural-fractures.svg")));
+    group10->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group10);
+    IDOSTreeItem* group11 = new IDOSTreeItem();
+    group11->setKey(QStringLiteral("data.hydraulicFractures"));
+    group11->setName(tr("Hydraulic Fracturing"));
+    group11->setIcon(QIcon(QStringLiteral(":/images/gui-hydraulic-fractures.svg")));
+    group11->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group11);
+    IDOSTreeItem* group12 = new IDOSTreeItem();
+    group12->setKey(QStringLiteral("data.fluids"));
+    group12->setName(tr("Fluids"));
+    group12->setIcon(QIcon(QStringLiteral(":/images/gui-fluids.svg")));
+    group12->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group12);
+    IDOSTreeItem* group13 = new IDOSTreeItem();
+    group13->setKey(QStringLiteral("data.rockPhysics"));
+    group13->setName(tr("Rock Physics Functions"));
+    group13->setIcon(QIcon(QStringLiteral(":/images/gui-rock-physics.svg")));
+    group13->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group13);
+    IDOSTreeItem* group14 = new IDOSTreeItem();
+    group14->setKey(QStringLiteral("data.initialConditions"));
+    group14->setName(tr("Initial Conditions"));
+    group14->setIcon(QIcon(QStringLiteral(":/images/gui-initial-conditions.svg")));
+    group14->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group14);
+    IDOSTreeItem* group15 = new IDOSTreeItem();
+    group15->setKey(QStringLiteral("data.microseismic"));
+    group15->setName(tr("Microseismic"));
+    group15->setIcon(QIcon(QStringLiteral(":/images/gui-microseismic.svg")));
+    group15->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group15);
+    IDOSTreeItem* group16 = new IDOSTreeItem();
+    group16->setKey(QStringLiteral("data.production"));
+    group16->setName(tr("Production Summary"));
+    group16->setIcon(QIcon(QStringLiteral(":/images/gui-production.svg")));
+    group16->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group16);
+    IDOSTreeItem* group17 = new IDOSTreeItem();
+    group17->setKey(QStringLiteral("data.streamlines"));
+    group17->setName(tr("Flow Diagnostics"));
+    group17->setIcon(QIcon(QStringLiteral(":/images/gui-flow-diagnostics.svg")));
+    group17->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group17);
+    IDOSTreeItem* group18 = new IDOSTreeItem();
+    group18->setKey(QStringLiteral("data.management"));
+    group18->setName(tr("Field Management Strategies"));
+    group18->setIcon(QIcon(QStringLiteral(":/images/gui-field-management.svg")));
+    group18->setGroup(true);
+    m_treeRegistry->addGroup(QStringLiteral("data"), group18);
+    m_treeServer->addTree(m_dataTree);
+    m_treeServer->addTree(m_caseTree);
+
+    m_renderRegistry->add(new IDOSGridRenderMetadata());
+    m_renderRegistry->add(new IDOSWellRenderMetadata());
+    m_renderRegistry->addGuiProvider(new IDOSGridRenderGuiProvider(m_renderServer));
+    m_renderRegistry->addGuiProvider(new IDOSWellRenderGuiProvider());
+    connect(m_renderServer, &IDOSRenderServer::objectsChanged, this, &IDOSMainWindow::onRenderObjectsChanged);
+    connect(m_renderServer, &IDOSRenderServer::dataAboutToBeRemoved, this, &IDOSMainWindow::onRenderDataRemoving);
 }
 
 void IDOSMainWindow::initMainWindow()
@@ -169,7 +310,7 @@ void IDOSMainWindow::initDockManager()
 
 void IDOSMainWindow::initRenderView()
 {
-    QWidget* renderViewWidget = m_renderServer->createView(QStringLiteral("main3d"), false);
+    QWidget* renderViewWidget = createView(QStringLiteral("main3d"), false);
     if (renderViewWidget == nullptr)
     {
         return;
@@ -185,13 +326,12 @@ void IDOSMainWindow::initRenderView()
 
 void IDOSMainWindow::initDockWidgets()
 {
-    m_dataTreeView = new IDOSDataTreeView(this);
+    m_dataTreeView = new IDOSTreeView(this);
     m_dataTreeView->setModel(m_dataTreeModel);
     connect(m_dataTreeView, &QTreeView::doubleClicked, this, &IDOSMainWindow::onDataTreeItemActivated);
     connect(m_dataTreeView->selectionModel(), &QItemSelectionModel::currentChanged,this, &IDOSMainWindow::onDataTreeCurrentChanged);
 
-    IDOSDataTreeMenuProvider* provider = new IDOSDataTreeMenuProvider(m_dataTreeView);
-    m_dataTreeView->setMenuProvider(provider);
+    m_dataTreeView->setRegistry(m_treeRegistry);
     ads::CDockWidget* dataDock = new ads::CDockWidget(m_dockManager, tr("Data"));
     dataDock->setObjectName(QStringLiteral("dataTreeDock"));
     dataDock->setIcon(QIcon(QStringLiteral(":/images/gui-data-tree.svg")));
@@ -214,7 +354,7 @@ void IDOSMainWindow::initDockWidgets()
     m_dockManager->addDockWidgetTabToArea(m_debugDock, outputArea);
 
     m_assistantWidget = new IDOSAssistantWidget(this);
-    IDOSCommandRegistry* commandRegistry = m_assistantWidget->commandRegistry();
+    IDOSCommandRegistry* commandRegistry = m_assistantWidget->service()->commandRegistry();
     if (commandRegistry != nullptr)
     {
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateCaseCommandMetadata()));
@@ -236,13 +376,11 @@ void IDOSMainWindow::initDockWidgets()
     m_dockManager->addDockWidgetTabToArea(m_assistantDock, outputArea);
 
     // ---- 工况树 ----
-    m_caseTreeView = new IDOSCaseTreeView(this);
+    m_caseTreeView = new IDOSTreeView(this);
     m_caseTreeView->setModel(m_caseTreeModel);
     connect(m_caseTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &IDOSMainWindow::onCaseTreeCurrentChanged);
-    connect(m_renderServer, &IDOSRenderServer::titleChanged, m_renderDock, &ads::CDockWidget::setWindowTitle);
-    IDOSCaseTreeMenuProvider* caseMenu = new IDOSCaseTreeMenuProvider(m_caseTreeView);
-    m_caseTreeView->setMenuProvider(caseMenu);
+    m_caseTreeView->setRegistry(m_treeRegistry);
     ads::CDockWidget* caseDock = new ads::CDockWidget(m_dockManager, tr("Case"));
     caseDock->setObjectName(QStringLiteral("caseTreeDock"));
     caseDock->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
@@ -250,7 +388,7 @@ void IDOSMainWindow::initDockWidgets()
     caseDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
 
-    updateTreeSelection(m_renderServer->activeViewId());
+    updateTreeSelection(activeViewId());
 }
 
 void IDOSMainWindow::initPluginManager()
@@ -514,18 +652,10 @@ void IDOSMainWindow::initRibbonAction()
             this, &IDOSMainWindow::onWindowLayoutTriggered);
     connect(gridLayoutMenu, &QMenu::triggered,
             this, &IDOSMainWindow::onWindowLayoutTriggered);
-    connect(m_renderServer, &IDOSRenderServer::currentViewChanged,
-            this, &IDOSMainWindow::onCurrentViewChanged);
-    connect(m_renderServer, &IDOSRenderServer::activeViewDecorationsChanged,
-            this, &IDOSMainWindow::onViewDecorationsChanged);
-    connect(m_renderServer, &IDOSRenderServer::renderViewObjectActivated,
-            this, &IDOSMainWindow::onRenderObjectActivated);
-    connect(m_renderServer, &IDOSRenderServer::activeViewContextObjectChanged,
-            this, &IDOSMainWindow::onActiveViewContextObjectChanged);
-    onCurrentViewChanged(m_renderServer->activeViewId());
-    onViewDecorationsChanged(m_renderServer->activeViewOrientationMarkerVisible(),
-                             m_renderServer->activeViewLegendAvailable(),
-                             m_renderServer->activeViewLegendVisible());
+    onCurrentViewChanged(activeViewId());
+    onViewDecorationsChanged(activeView()->axesVisible(),
+                             activeView()->legendAvailable(),
+                             activeView()->legendVisible());
 }
 
 IDOSMainWindow::~IDOSMainWindow()
@@ -573,23 +703,33 @@ IDOSMainWindow::~IDOSMainWindow()
     m_pluginRegistry = nullptr;
     delete m_appInterface;
     m_appInterface = nullptr;
-    m_dataTreeModel->setProject(nullptr);
-    m_caseTreeModel->setProject(nullptr);
+    m_treeServer->setProject(nullptr);
     if (m_project)
     {
         disconnect(m_project, nullptr, this, nullptr);
     }
     disconnect(m_commandManager.data(), nullptr, this, nullptr);
-    delete m_treeProviderRegistry;
+    delete m_treeServer;
+    delete m_treeRegistry;
+    disconnect(m_renderServer, nullptr, this, nullptr);
+    delete m_renderServer;
+    delete m_renderRegistry;
+    for (const QPointer<IDOSRenderView>& view : m_views)
+    {
+        if (view != nullptr)
+        {
+            disconnect(view, nullptr, this, nullptr);
+        }
+    }
     IDOS_DEBUG(tr("Main window teardown body completed."));
 }
 
-IDOSDataTreeView* IDOSMainWindow::dataTreeView() const
+IDOSTreeView* IDOSMainWindow::dataTreeView() const
 {
     return m_dataTreeView;
 }
 
-IDOSCaseTreeView* IDOSMainWindow::caseTreeView() const
+IDOSTreeView* IDOSMainWindow::caseTreeView() const
 {
     return m_caseTreeView;
 }
@@ -612,12 +752,12 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     disconnect(m_commandManager.data(), nullptr, this, nullptr);
     m_project = project;
     m_viewCaseIds.clear();
+    m_viewContextIds.clear();
     m_commandManager = project != nullptr ? project->commandManager() : nullptr;
     m_renderServer->setProject(project);
     m_assistantWidget->setProject(project);
-    m_dataTreeModel->setProject(project);
-    m_caseTreeModel->setProject(project);
-    updateTreeSelection(m_renderServer->activeViewId());
+    m_treeServer->setProject(project);
+    updateTreeSelection(activeViewId());
     if (project)
     {
         connect(project, &QObject::destroyed, this, &IDOSMainWindow::onProjectDestroyed);
@@ -630,14 +770,15 @@ void IDOSMainWindow::setProject(IDOSProject* project)
 
     onCommandStateChanged();
     IDOS_INFO(tr("Active project changed."));
+    emit projectChanged(project);
 }
 
-IDOSDataTreeModel* IDOSMainWindow::dataTreeModel() const
+IDOSTreeModel* IDOSMainWindow::dataTreeModel() const
 {
     return m_dataTreeModel;
 }
 
-IDOSCaseTreeModel* IDOSMainWindow::caseTreeModel() const
+IDOSTreeModel* IDOSMainWindow::caseTreeModel() const
 {
     return m_caseTreeModel;
 }
@@ -705,24 +846,24 @@ void IDOSMainWindow::onPluginManagerTriggered()
 
 void IDOSMainWindow::onViewPresetTriggered(QAction* action)
 {
-    if (action == nullptr || m_renderServer == nullptr)
+    if (action == nullptr)
     {
         return;
     }
 
-    if (!m_renderServer->hasActiveView())
+    if (activeView() == nullptr)
     {
         return;
     }
 
     const int presetValue = action->data().toInt();
     const IDOSOrientation orientation = static_cast<IDOSOrientation>(presetValue);
-    m_renderServer->setActiveViewOrientation(orientation);
+    activeView()->setOrientation(orientation);
 }
 
 void IDOSMainWindow::onCurrentViewChanged(const QString& viewId)
 {
-    const bool hasActiveView = m_renderServer->hasActiveView();
+    const bool hasActiveView = activeView() != nullptr;
     m_actionViewPresets->setEnabled(hasActiveView);
     m_actionResetView->setEnabled(hasActiveView);
     m_actionFitAll->setEnabled(hasActiveView);
@@ -736,7 +877,7 @@ void IDOSMainWindow::onActiveViewContextObjectChanged(const QString& viewId,
                                                        const QString& objectId)
 {
     Q_UNUSED(objectId)
-    if (viewId == m_renderServer->activeViewId())
+    if (viewId == activeViewId())
     {
         updateTreeSelection(viewId);
     }
@@ -754,7 +895,7 @@ void IDOSMainWindow::onFocusedDockWidgetChanged(ads::CDockWidget*, ads::CDockWid
     {
         if (viewIterator.value() == currentDock)
         {
-            m_renderServer->setActiveView(viewIterator.key());
+            setActiveView(viewIterator.key());
             return;
         }
         ++viewIterator;
@@ -767,7 +908,7 @@ void IDOSMainWindow::onViewDecorationsChanged(bool orientationMarkerVisible,
 {
     const QSignalBlocker orientationBlocker(m_actionOrientationMarker);
     const QSignalBlocker legendBlocker(m_actionLegend);
-    m_actionOrientationMarker->setEnabled(m_renderServer->hasActiveView());
+    m_actionOrientationMarker->setEnabled(activeView() != nullptr);
     m_actionOrientationMarker->setChecked(orientationMarkerVisible);
     m_actionLegend->setEnabled(legendAvailable);
     m_actionLegend->setChecked(legendVisible);
@@ -775,24 +916,26 @@ void IDOSMainWindow::onViewDecorationsChanged(bool orientationMarkerVisible,
 
 void IDOSMainWindow::onOrientationMarkerToggled(bool checked)
 {
-    m_renderServer->setActiveViewOrientationMarkerVisible(checked);
+    if (activeView() != nullptr)
+    {
+        activeView()->setAxesVisible(checked);
+    }
 }
 
 void IDOSMainWindow::onLegendToggled(bool checked)
 {
-    m_renderServer->setActiveViewLegendVisible(checked);
+    if (activeView() != nullptr)
+    {
+        activeView()->setLegendVisible(checked);
+    }
 }
 
 void IDOSMainWindow::onResetViewTriggered()
 {
-    if (m_renderServer == nullptr)
-    {
-        return;
-    }
 
-    if (m_renderServer->hasActiveView())
+    if (activeView() != nullptr)
     {
-        m_renderServer->setActiveViewOrientation(m_renderServer->activeViewParallelProjection()
+        activeView()->setOrientation(activeView()->parallelProjection()
                                                      ? IDOSOrientation::Top
                                                      : IDOSOrientation::Isometric);
     }
@@ -800,48 +943,48 @@ void IDOSMainWindow::onResetViewTriggered()
 
 void IDOSMainWindow::onFitAllTriggered()
 {
-    if (m_renderServer->hasActiveView())
+    if (activeView() != nullptr)
     {
-        m_renderServer->resetActiveViewCamera();
+        activeView()->resetCamera();
     }
 }
 
 void IDOSMainWindow::onBackgroundColorTriggered()
 {
-    if (!m_renderServer->hasActiveView())
+    if (activeView() == nullptr)
     {
         return;
     }
 
     const QColor selectedColor = QColorDialog::getColor(
-        m_renderServer->activeViewBackgroundColor(), this, tr("Background Color"));
+        activeView()->background(), this, tr("Background Color"));
     if (selectedColor.isValid())
     {
-        m_renderServer->setActiveViewBackgroundColor(selectedColor);
+        activeView()->setBackground(selectedColor);
     }
 }
 
 void IDOSMainWindow::onCaptureScreenshotTriggered()
 {
-    if (!m_renderServer->hasActiveView())
+    if (activeView() == nullptr)
     {
         return;
     }
 
-    const QImage screenshot = m_renderServer->captureActiveViewImage();
+    const QImage screenshot = activeView()->captureImage();
     if (screenshot.isNull())
     {
         return;
     }
 
     QApplication::clipboard()->setImage(screenshot);
-    m_renderServer->flashActiveViewScreenshot();
+    activeView()->flashScreenshot();
     statusBar()->showMessage(tr("Screenshot copied to clipboard."), 3000);
 }
 
 void IDOSMainWindow::onExportImageTriggered()
 {
-    if (!m_renderServer->hasActiveView())
+    if (activeView() == nullptr)
     {
         return;
     }
@@ -859,7 +1002,7 @@ void IDOSMainWindow::onExportImageTriggered()
         outputPath.append(QStringLiteral(".png"));
     }
 
-    const QImage image = m_renderServer->captureActiveViewImage();
+    const QImage image = activeView()->captureImage();
     if (image.isNull() || !image.save(outputPath, "PNG"))
     {
         QMessageBox::warning(this,
@@ -919,7 +1062,7 @@ void IDOSMainWindow::onRenderViewDockClosed()
             const QString viewId = it.key();
             if (viewId != QStringLiteral("main3d"))
             {
-                m_renderServer->removeView(viewId);
+                removeView(viewId);
                 m_viewCaseIds.remove(viewId);
                 m_viewDocks.erase(it);
                 dock->deleteLater();
@@ -933,14 +1076,14 @@ void IDOSMainWindow::onRenderViewDockClosed()
 
 void IDOSMainWindow::createRenderView(bool parallelProjection)
 {
-    if (m_dockManager == nullptr || m_renderServer == nullptr)
+    if (m_dockManager == nullptr)
     {
         return;
     }
 
     const int viewIndex = m_nextViewIndex++;
     const QString viewId = QStringLiteral("view_%1").arg(viewIndex, 4, 10, QLatin1Char('0'));
-    QWidget* renderViewWidget = m_renderServer->createView(viewId, parallelProjection);
+    QWidget* renderViewWidget = createView(viewId, parallelProjection);
     if (renderViewWidget == nullptr)
     {
         return;
@@ -962,7 +1105,7 @@ void IDOSMainWindow::createRenderView(bool parallelProjection)
     m_viewDocks.insert(viewId, dock);
     connect(dock, &ads::CDockWidget::closed,
             this, &IDOSMainWindow::onRenderViewDockClosed);
-    m_renderServer->setActiveView(viewId);
+    setActiveView(viewId);
 
     if (m_currentWindowLayout == QStringLiteral("single"))
     {
@@ -1131,28 +1274,20 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     QString objectId;
     if (m_project != nullptr && current.isValid())
     {
-        IDOSTreeNode* node = m_dataTreeModel->nodeFromIndex(current);
-        IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(node);
-        if (objectNode != nullptr)
-        {
-            objectId = objectNode->objectId();
-        }
-        else
-        {
-            IDOSTreePartNode* partNode = dynamic_cast<IDOSTreePartNode*>(node);
-            if (partNode != nullptr)
-            {
-                objectId = partNode->ownerObjectId();
-            }
-        }
+        IDOSTreeItem* item = m_dataTreeModel->nodeFromIndex(current);
+        objectId = item != nullptr ? item->dataId() : QString();
     }
 
-    const QString viewId = m_renderServer->activeViewId();
+    if (current.isValid() && objectId.isEmpty())
+    {
+        return;
+    }
+    const QString viewId = activeViewId();
     if (!viewId.isEmpty())
     {
         const QModelIndex caseIndex = objectId.isEmpty()
                                           ? QModelIndex()
-                                          : m_caseTreeModel->indexFromReferencedObjectId(objectId);
+                                          : m_caseTreeModel->indexFromDataId(objectId);
         const QString caseId = caseIdFromCaseTreeIndex(caseIndex);
         setViewTreeContext(viewId, objectId, caseId);
         updateTreeSelection(viewId);
@@ -1163,7 +1298,7 @@ void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const 
 {
     Q_UNUSED(previous)
 
-    const QString viewId = m_renderServer->activeViewId();
+    const QString viewId = activeViewId();
     if (viewId.isEmpty())
     {
         return;
@@ -1177,7 +1312,7 @@ void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const 
 
 void IDOSMainWindow::onRenderObjectActivated(const QString& viewId, const QString& objectId)
 {
-    m_renderServer->setActiveView(viewId);
+    setActiveView(viewId);
     const QModelIndex caseIndex = caseTreeIndexForContext(objectId, QString());
     const QString caseId = caseIdFromCaseTreeIndex(caseIndex);
     setViewTreeContext(viewId, objectId, caseId);
@@ -1191,13 +1326,13 @@ void IDOSMainWindow::updateTreeSelection(const QString& viewId)
         return;
     }
 
-    const QString objectId = viewId == m_renderServer->activeViewId()
-                                 ? m_renderServer->activeViewContextObjectId()
+    const QString objectId = viewId == activeViewId()
+                                 ? viewContextId()
                                  : QString();
     const QString caseId = m_viewCaseIds.value(viewId);
     const QModelIndex dataIndex = objectId.isEmpty()
                                       ? QModelIndex()
-                                      : m_dataTreeModel->indexFromObjectId(objectId);
+                                      : m_dataTreeModel->indexFromDataId(objectId);
     const QModelIndex caseIndex = caseTreeIndexForContext(objectId, caseId);
     selectTreeIndex(m_dataTreeView, dataIndex);
     selectTreeIndex(m_caseTreeView, caseIndex);
@@ -1221,9 +1356,9 @@ void IDOSMainWindow::setViewTreeContext(const QString& viewId,
         m_viewCaseIds.insert(viewId, caseId);
     }
 
-    if (viewId == m_renderServer->activeViewId())
+    if (viewId == activeViewId())
     {
-        m_renderServer->setActiveViewContextObjectId(objectId);
+        setViewContextId(objectId);
     }
 }
 
@@ -1257,7 +1392,7 @@ QModelIndex IDOSMainWindow::caseTreeIndexForContext(const QString& objectId, con
 {
     if (!caseId.isEmpty())
     {
-        const QModelIndex caseIndex = m_caseTreeModel->indexFromObjectId(caseId);
+        const QModelIndex caseIndex = m_caseTreeModel->indexFromDataId(caseId);
         if (!objectId.isEmpty())
         {
             const QModelIndex referenceIndex = findCaseReferenceIndex(caseIndex, objectId);
@@ -1274,7 +1409,7 @@ QModelIndex IDOSMainWindow::caseTreeIndexForContext(const QString& objectId, con
 
     if (!objectId.isEmpty())
     {
-        return m_caseTreeModel->indexFromReferencedObjectId(objectId);
+        return m_caseTreeModel->indexFromDataId(objectId);
     }
     return QModelIndex();
 }
@@ -1290,9 +1425,8 @@ QModelIndex IDOSMainWindow::findCaseReferenceIndex(const QModelIndex& parentInde
     for (int row = 0; row < m_caseTreeModel->rowCount(parentIndex); ++row)
     {
         const QModelIndex childIndex = m_caseTreeModel->index(row, 0, parentIndex);
-        IDOSTreeReferenceNode* referenceNode =
-            dynamic_cast<IDOSTreeReferenceNode*>(m_caseTreeModel->nodeFromIndex(childIndex));
-        if (referenceNode != nullptr && referenceNode->itemRef().objectId() == objectId)
+        IDOSTreeItem* referenceNode = m_caseTreeModel->nodeFromIndex(childIndex);
+        if (referenceNode != nullptr && referenceNode->isReference() && referenceNode->dataId() == objectId)
         {
             return childIndex;
         }
@@ -1308,50 +1442,15 @@ QModelIndex IDOSMainWindow::findCaseReferenceIndex(const QModelIndex& parentInde
 
 QString IDOSMainWindow::objectIdFromCaseTreeIndex(const QModelIndex& index) const
 {
-    if (!index.isValid())
-    {
-        return QString();
-    }
-
-    IDOSTreeNode* node = m_caseTreeModel->nodeFromIndex(index);
-    IDOSTreeReferenceNode* referenceNode = dynamic_cast<IDOSTreeReferenceNode*>(node);
-    if (referenceNode != nullptr)
-    {
-        return referenceNode->itemRef().objectId();
-    }
-
-    IDOSTreePartNode* partNode = dynamic_cast<IDOSTreePartNode*>(node);
-    if (partNode != nullptr)
-    {
-        return partNode->ownerObjectId();
-    }
-
-    IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(node);
-    if (objectNode != nullptr && m_project != nullptr &&
-        qobject_cast<IDOSCaseObject*>(m_project->objectById(objectNode->objectId())) == nullptr)
-    {
-        return objectNode->objectId();
-    }
-    return QString();
+    IDOSTreeItem* item = m_caseTreeModel->nodeFromIndex(index);
+    return item != nullptr && item->dataId() != item->caseId() ? item->dataId() : QString();
 }
 
 QString IDOSMainWindow::caseIdFromCaseTreeIndex(const QModelIndex& index) const
 {
-    QModelIndex currentIndex = index;
-    while (currentIndex.isValid())
-    {
-        IDOSTreeNode* node = m_caseTreeModel->nodeFromIndex(currentIndex);
-        IDOSObjectTreeNode* objectNode = dynamic_cast<IDOSObjectTreeNode*>(node);
-        if (objectNode != nullptr && m_project != nullptr &&
-            qobject_cast<IDOSCaseObject*>(m_project->objectById(objectNode->objectId())) != nullptr)
-        {
-            return objectNode->objectId();
-        }
-        currentIndex = currentIndex.parent();
-    }
-    return QString();
+    IDOSTreeItem* item = m_caseTreeModel->nodeFromIndex(index);
+    return item != nullptr ? item->caseId() : QString();
 }
-
 void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)
 {
     if (m_project == nullptr)
@@ -1359,13 +1458,13 @@ void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)
         return;
     }
 
-    IDOSTreePartNode* partNode = dynamic_cast<IDOSTreePartNode*>(m_dataTreeModel->nodeFromIndex(index));
-    if (partNode == nullptr || partNode->partKey().toString() != QStringLiteral("idos.well.logs"))
+    IDOSTreeItem* partNode = m_dataTreeModel->nodeFromIndex(index);
+    if (partNode == nullptr || partNode->partKey() != QStringLiteral("idos.well.logs"))
     {
         return;
     }
 
-    IDOSWell* well = qobject_cast<IDOSWell*>(m_project->objectById(partNode->ownerObjectId()));
+    IDOSWell* well = qobject_cast<IDOSWell*>(m_project->object(partNode->dataId()));
     if (well == nullptr)
     {
         return;
@@ -1429,10 +1528,202 @@ void IDOSMainWindow::onProjectDestroyed()
     m_project = nullptr;
     m_commandManager = nullptr;
     m_viewCaseIds.clear();
-    m_dataTreeModel->setProject(nullptr);
-    m_caseTreeModel->setProject(nullptr);
+    m_viewContextIds.clear();
+    m_treeServer->setProject(nullptr);
     m_renderServer->setProject(nullptr);
     m_assistantWidget->setProject(nullptr);
-    updateTreeSelection(m_renderServer->activeViewId());
+    emit projectChanged(nullptr);
+    updateTreeSelection(activeViewId());
     onCommandStateChanged();
+}
+
+IDOSRenderView* IDOSMainWindow::activeView() const
+{
+    return m_views.value(m_activeViewId).data();
+}
+
+QString IDOSMainWindow::activeViewId() const
+{
+    return m_activeViewId;
+}
+
+IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool parallel)
+{
+    if (id.isEmpty() || m_views.contains(id))
+    {
+        return nullptr;
+    }
+    IDOSRenderView* view = new IDOSRenderView(this);
+    view->setProperty("viewId", id);
+    m_views.insert(id, view);
+    connect(view, &IDOSRenderView::focused, this, &IDOSMainWindow::onRenderViewFocused);
+    connect(view, &IDOSRenderView::decorationsChanged, this, &IDOSMainWindow::onRenderViewDecorations);
+    connect(view, &IDOSRenderView::activated, this, &IDOSMainWindow::onRenderViewActivated);
+    connect(view, &QObject::destroyed, this, &IDOSMainWindow::onRenderViewDestroyed);
+    m_renderServer->addView(view);
+    view->setParallelProjection(parallel);
+    view->setOrientation(parallel ? IDOSOrientation::Top : IDOSOrientation::Isometric);
+    if (m_activeViewId.isEmpty())
+    {
+        setActiveView(id);
+    }
+    return view;
+}
+
+void IDOSMainWindow::removeView(const QString& id)
+{
+    IDOSRenderView* view = m_views.take(id).data();
+    if (view != nullptr)
+    {
+        disconnect(view, nullptr, this, nullptr);
+        m_renderServer->removeView(view);
+    }
+    m_viewContextIds.remove(id);
+    if (m_activeViewId == id)
+    {
+        m_activeViewId.clear();
+        if (!m_views.isEmpty())
+        {
+            setActiveView(m_views.firstKey());
+        }
+        else if (m_actionViewPresets != nullptr)
+        {
+            onCurrentViewChanged(QString());
+            onViewDecorationsChanged(false, false, false);
+        }
+    }
+}
+
+void IDOSMainWindow::setActiveView(const QString& id)
+{
+    if (!m_views.contains(id) || m_views.value(id) == nullptr || m_activeViewId == id)
+    {
+        return;
+    }
+    m_activeViewId = id;
+    for (QMap<QString, QPointer<IDOSRenderView>>::const_iterator iterator = m_views.constBegin();
+         iterator != m_views.constEnd(); ++iterator)
+    {
+        if (iterator.value() != nullptr)
+        {
+            iterator.value()->setActive(iterator.key() == id);
+        }
+    }
+    activeView()->setSelection(m_renderServer->objectIds(activeView(), viewContextId()));
+    if (m_actionViewPresets != nullptr)
+    {
+        onCurrentViewChanged(id);
+        onViewDecorationsChanged(activeView()->axesVisible(), activeView()->legendAvailable(), activeView()->legendVisible());
+    }
+}
+
+QString IDOSMainWindow::viewContextId() const
+{
+    return m_viewContextIds.value(m_activeViewId);
+}
+
+void IDOSMainWindow::setViewContextId(const QString& id)
+{
+    if (activeView() == nullptr || viewContextId() == id)
+    {
+        return;
+    }
+    m_viewContextIds.insert(m_activeViewId, id);
+    activeView()->setSelection(m_renderServer->objectIds(activeView(), id));
+    onActiveViewContextObjectChanged(m_activeViewId, id);
+}
+
+void IDOSMainWindow::onRenderViewFocused()
+{
+    IDOSRenderView* view = qobject_cast<IDOSRenderView*>(sender());
+    if (view != nullptr)
+    {
+        setActiveView(view->property("viewId").toString());
+    }
+}
+
+void IDOSMainWindow::onRenderViewDecorations()
+{
+    if (m_actionOrientationMarker != nullptr && activeView() != nullptr && sender() == activeView())
+    {
+        onViewDecorationsChanged(activeView()->axesVisible(), activeView()->legendAvailable(), activeView()->legendVisible());
+    }
+}
+
+void IDOSMainWindow::onRenderViewActivated(const QString& id)
+{
+    IDOSRenderView* view = qobject_cast<IDOSRenderView*>(sender());
+    IDOSDataObject* data = m_renderServer->dataSource(view, id);
+    if (view != nullptr && data != nullptr)
+    {
+        onRenderObjectActivated(view->property("viewId").toString(), data->objectId());
+    }
+}
+
+void IDOSMainWindow::onRenderViewDestroyed(QObject* object)
+{
+    removeView(object->property("viewId").toString());
+}
+
+void IDOSMainWindow::onRenderDataRemoving(const QString& id)
+{
+    const QStringList views = m_viewContextIds.keys();
+    for (const QString& viewId : views)
+    {
+        if (m_viewContextIds.value(viewId) == id)
+        {
+            m_viewContextIds.remove(viewId);
+        }
+        if (m_viewCaseIds.value(viewId) == id)
+        {
+            m_viewCaseIds.remove(viewId);
+        }
+    }
+}
+
+void IDOSMainWindow::onRenderObjectsChanged(IDOSRenderView* view, const QStringList& ids, bool dataChanged)
+{
+    Q_UNUSED(dataChanged);
+    if (m_project == nullptr || view == nullptr)
+    {
+        return;
+    }
+    ads::CDockWidget* dock = m_viewDocks.value(view->property("viewId").toString()).data();
+    if (dock == nullptr)
+    {
+        return;
+    }
+    for (const QString& id : ids)
+    {
+        IDOSDataObject* data = m_project->object(id);
+        if (data != nullptr && data->isVisible() && !m_renderServer->objectIds(view, id).isEmpty())
+        {
+            dock->setWindowTitle(tr("3D View - %1").arg(data->name()));
+        }
+    }
+}
+
+IDOSProject* IDOSMainWindow::project() const
+{
+    return m_project;
+}
+
+IDOSDataRegistry* IDOSMainWindow::dataRegistry() const
+{
+    return m_dataRegistry;
+}
+
+IDOSTreeRegistry* IDOSMainWindow::treeRegistry() const
+{
+    return m_treeRegistry;
+}
+
+IDOSRenderRegistry* IDOSMainWindow::renderRegistry() const
+{
+    return m_renderRegistry;
+}
+
+IDOSCommandRegistry* IDOSMainWindow::commandRegistry() const
+{
+    return m_assistantWidget->service()->commandRegistry();
 }

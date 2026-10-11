@@ -5,14 +5,17 @@
 #include <SARibbonMainWindow.h>
 
 #include "idosmainwindow.h"
+#include "idosproject.h"
 #include "log/idoslogger.h"
 
 #include "idosappinterface.h"
 
 IDOSAppInterface::IDOSAppInterface(IDOSMainWindow* mainWindow)
-    : IDOSInterface(mainWindow)
+    :
+    IDOSInterface(mainWindow)
     , m_mainWindow(mainWindow)
 {
+    connect(mainWindow, &IDOSMainWindow::projectChanged, this, &IDOSInterface::projectChanged);
 }
 
 QMainWindow* IDOSAppInterface::mainWindow() const
@@ -244,4 +247,29 @@ void IDOSAppInterface::removeRibbonCategory(SARibbonCategory* category)
     delete category;
     IDOS_DEBUG(tr("Detached ribbon category deleted: objectName=%1, category=0x%2")
                    .arg(objectName, categoryAddress));
+}
+
+IDOSProject* IDOSAppInterface::project() const
+{
+    return m_mainWindow->project();
+}
+
+IDOSDataRegistry* IDOSAppInterface::dataRegistry() const
+{
+    return m_mainWindow->dataRegistry();
+}
+
+IDOSTreeRegistry* IDOSAppInterface::treeRegistry() const
+{
+    return m_mainWindow->treeRegistry();
+}
+
+IDOSRenderRegistry* IDOSAppInterface::renderRegistry() const
+{
+    return m_mainWindow->renderRegistry();
+}
+
+IDOSCommandRegistry* IDOSAppInterface::commandRegistry() const
+{
+    return m_mainWindow->commandRegistry();
 }

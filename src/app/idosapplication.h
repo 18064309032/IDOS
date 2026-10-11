@@ -5,6 +5,8 @@
 
 #include "idos_app.h"
 
+class IDOSDataRegistry;
+
 class APP_EXPORT IDOSApplication : public QApplication
 {
     Q_OBJECT
@@ -13,7 +15,12 @@ class APP_EXPORT IDOSApplication : public QApplication
     IDOSApplication(int& argc, char** argv);
     ~IDOSApplication() override;
 
+    IDOSDataRegistry* dataRegistry() const;
+    static void initProviders();
+
   private:
+    IDOSDataRegistry* m_dataRegistry;
+
     static void handleQtMessage(QtMsgType type,
                                 const QMessageLogContext& context,
                                 const QString& message);

@@ -1,51 +1,59 @@
 # idos_core: business data and type registry
 # Dependency chain: no custom module dependencies, only Qt5::Core, Qt5::Gui, and Qt5::Widgets
 add_library(idos_core SHARED
+    tree/idostree.cpp
+    tree/idostree.h
+    tree/idostreeitem.cpp
+    tree/idostreeitem.h
+    tree/idostreemetadata.cpp
+    tree/idostreemetadata.h
+    tree/idostreemodel.cpp
+    tree/idostreemodel.h
+    tree/idostreeprovider.cpp
+    tree/idostreeprovider.h
+    tree/idostreeregistry.cpp
+    tree/idostreeregistry.h
+    tree/idostreeserver.cpp
+    tree/idostreeserver.h
     idos_core.h
+    data/well/idoswellmetadata.h
+    data/well/idoswellmetadata.cpp
+    data/grid/idosgridmetadata.h
+    data/grid/idosgridmetadata.cpp
+    data/case/idossimulationcasemetadata.h
+    data/case/idossimulationcasemetadata.cpp
     command/idoscommand.h
     command/idoscommand.cpp
     command/idoscommandmanager.h
     command/idoscommandmanager.cpp
-    command/idoscreatecasecommand.h
-    command/idoscreatecasecommand.cpp
-    command/idoscreatewellcommand.h
-    command/idoscreatewellcommand.cpp
-    command/idosdeletecasecommand.h
-    command/idosdeletecasecommand.cpp
-    command/idosdeletegridcommand.h
-    command/idosdeletegridcommand.cpp
-    command/idosdeletepropertycommand.h
-    command/idosdeletepropertycommand.cpp
-    command/idosdeletewellcommand.h
-    command/idosdeletewellcommand.cpp
-    command/idosrenameobjectcommand.h
-    command/idosrenameobjectcommand.cpp
     command/idoscommandmetadata.h
     command/idoscommandmetadata.cpp
     command/idoscommandregistry.h
     command/idoscommandregistry.cpp
-    case/idoscaseitemref.h
-    case/idoscaseitemref.cpp
-    case/idoscaseobject.h
-    case/idoscaseobject.cpp
-    idosdataobject.h
-    idosdataobject.cpp
-    idosgrid.h
-    idosgrid.cpp
-    grid/idosgridcell.h
-    grid/idosgridcell.cpp
-    grid/idosgridproperty.h
-    grid/idosgridproperty.cpp
+    data/case/idoscaseitemref.h
+    data/case/idoscaseitemref.cpp
+    data/case/idoscaseobject.h
+    data/case/idoscaseobject.cpp
+    data/idosdataobject.h
+    data/idosdataobject.cpp
+    data/grid/idosgrid.h
+    data/grid/idosgrid.cpp
+    data/grid/idosgridcell.h
+    data/grid/idosgridcell.cpp
+    data/grid/idosgridproperty.h
+    data/grid/idosgridproperty.cpp
     idosobject.h
     idosobject.cpp
     idosproject.h
     idosproject.cpp
     idosprojectmetadata.h
     idosprojectmetadata.cpp
-    case/idossimulationcaseobject.h
-    case/idossimulationcaseobject.cpp
-    idostyperegistry.h
-    idostyperegistry.cpp
+    data/case/idossimulationcaseobject.h
+    data/case/idossimulationcaseobject.cpp
+    data/idosdatametadata.h
+    data/idosdatametadata.cpp
+    data/idosdataregistry.h
+    data/idosdataregistry.cpp
     log/idosconsoletarget.h
     log/idosconsoletarget.cpp
     log/idosfiletarget.h
@@ -59,40 +67,42 @@ add_library(idos_core SHARED
     log/idoslogtarget.h
     log/idosmsvctarget.h
     log/idosmsvctarget.cpp
-    idoswell.h
-    idoswell.cpp
-    well/idoswellcompletion.h
-    well/idoswellcompletion.cpp
-    well/idoswellcontrol.h
-    well/idoswellcontrol.cpp
-    well/idoswellgeometryresolver.h
-    well/idoswellgeometryresolver.cpp
-    well/idoswellhead.h
-    well/idoswellhead.cpp
-    well/idoswelllogchannel.h
-    well/idoswelllogchannel.cpp
-    well/idoswelllogset.h
-    well/idoswelllogset.cpp
-    well/idoswellmarker.h
-    well/idoswellmarker.cpp
-    well/idoswellmarkerset.h
-    well/idoswellmarkerset.cpp
-    well/idoswellpath.h
-    well/idoswellpath.cpp
-    well/idoswellpathpoint.h
-    well/idoswellpathpoint.cpp
-    well/idoswellsegment.h
-    well/idoswellsegment.cpp
-    well/idoswellspatialreference.h
-    well/idoswellspatialreference.cpp
+    data/well/idoswell.h
+    data/well/idoswell.cpp
+    data/well/idoswellcompletion.h
+    data/well/idoswellcompletion.cpp
+    data/well/idoswellcontrol.h
+    data/well/idoswellcontrol.cpp
+    data/well/idoswellgeometryresolver.h
+    data/well/idoswellgeometryresolver.cpp
+    data/well/idoswellhead.h
+    data/well/idoswellhead.cpp
+    data/well/idoswelllogchannel.h
+    data/well/idoswelllogchannel.cpp
+    data/well/idoswelllogset.h
+    data/well/idoswelllogset.cpp
+    data/well/idoswellmarker.h
+    data/well/idoswellmarker.cpp
+    data/well/idoswellmarkerset.h
+    data/well/idoswellmarkerset.cpp
+    data/well/idoswellpath.h
+    data/well/idoswellpath.cpp
+    data/well/idoswellpathpoint.h
+    data/well/idoswellpathpoint.cpp
+    data/well/idoswellsegment.h
+    data/well/idoswellsegment.cpp
+    data/well/idoswellspatialreference.h
+    data/well/idoswellspatialreference.cpp
 )
 target_include_directories(idos_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/case
+        ${CMAKE_CURRENT_SOURCE_DIR}/tree
+        ${CMAKE_CURRENT_SOURCE_DIR}/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/case
         ${CMAKE_CURRENT_SOURCE_DIR}/command
-        ${CMAKE_CURRENT_SOURCE_DIR}/grid
-        ${CMAKE_CURRENT_SOURCE_DIR}/well
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/grid
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/well
 )
 target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_core PRIVATE IDOS_CORE_LIB)

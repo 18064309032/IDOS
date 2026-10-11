@@ -7,10 +7,10 @@
 IDOSCommand::IDOSCommand(QString name,
                          Type type,
                          IDOSProject* project,
-                         QString text,
-                         QUndoCommand* parent)
-    : QUndoCommand(std::move(text), parent)
-    , m_name(std::move(name))
+                         QString text)
+    :
+    m_name(std::move(name))
+    , m_text(std::move(text))
     , m_type(type)
     , m_project(project)
 {
@@ -21,6 +21,11 @@ IDOSCommand::~IDOSCommand() = default;
 const QString& IDOSCommand::name() const
 {
     return m_name;
+}
+
+QString IDOSCommand::text() const
+{
+    return m_text;
 }
 
 IDOSCommand::Type IDOSCommand::type() const
@@ -71,38 +76,40 @@ const QJsonObject& IDOSCommand::result() const
     return m_result;
 }
 
-void IDOSCommand::undo()
+bool IDOSCommand::undo()
 {
     QString error;
 
     if (!revert(error))
     {
         setError(QStringLiteral("revert_failed"), error);
-        return;
+        return false;
     }
 
     m_errorCode.clear();
     m_errorString.clear();
+    return true;
 }
 
-void IDOSCommand::redo()
+bool IDOSCommand::execute()
 {
     QString error;
 
     if (!validate(error))
     {
         setError(QStringLiteral("validation_failed"), error);
-        return;
+        return false;
     }
 
     if (!apply(error))
     {
         setError(QStringLiteral("apply_failed"), error);
-        return;
+        return false;
     }
 
     m_errorCode.clear();
     m_errorString.clear();
+    return true;
 }
 
 bool IDOSCommand::validateCommand(QString& error) const

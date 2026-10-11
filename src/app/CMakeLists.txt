@@ -1,52 +1,81 @@
 # idos_app: application composition
 add_library(idos_app SHARED
+    well/idoscreatewellcommand.h
+    well/idoscreatewellcommand.cpp
+    command/idosrenameobjectcommand.h
+    command/idosrenameobjectcommand.cpp
+    grid/idosdeletegridcommand.h
+    grid/idosdeletegridcommand.cpp
+    case/idosdeletecasecommand.h
+    case/idosdeletecasecommand.cpp
+    well/idosdeletewellcommand.h
+    well/idosdeletewellcommand.cpp
+    case/idoscreatecasecommand.h
+    case/idoscreatecasecommand.cpp
+    grid/idosdeletepropertycommand.h
+    grid/idosdeletepropertycommand.cpp
+    case/idossimulationcasetreeguiprovider.cpp
+    case/idossimulationcasetreeguiprovider.h
+    case/idossimulationcasetreemetadata.cpp
+    case/idossimulationcasetreemetadata.h
+    case/idossimulationcasetreeprovider.cpp
+    case/idossimulationcasetreeprovider.h
+    grid/idosgridtreeguiprovider.cpp
+    grid/idosgridtreeguiprovider.h
+    grid/idosgridtreemetadata.cpp
+    grid/idosgridtreemetadata.h
+    grid/idosgridtreeprovider.cpp
+    grid/idosgridtreeprovider.h
+    well/idoswelltreeguiprovider.cpp
+    well/idoswelltreeguiprovider.h
+    well/idoswelltreemetadata.cpp
+    well/idoswelltreemetadata.h
+    well/idoswelltreeprovider.cpp
+    well/idoswelltreeprovider.h
+    well/idoswellrenderguiprovider.h
+    well/idoswellrenderguiprovider.cpp
+    grid/idosgridrenderguiprovider.h
+    grid/idosgridrenderguiprovider.cpp
     idos_app.h
+    case/idoscasedialog.h
+    case/idoscasedialog.cpp
     idosapplication.cpp
     idosapplication.h
     command/idosimportcommands.h
     command/idosimportcommands.cpp
-    tree/idoscasetreemenuprovider.h
-    tree/idoscasetreemenuprovider.cpp
-    tree/idosdatatreemenuprovider.h
-    tree/idosdatatreemenuprovider.cpp
-    idosdataobjecthandling.h
-    idosdataobjecthandling.cpp
-    render/idosgridrenderobjectprovider.h
-    render/idosgridrenderobjectprovider.cpp
-    render/idoswellrenderobjectprovider.h
-    render/idoswellrenderobjectprovider.cpp
-    idoswelllogtrackview.h
-    idoswelllogtrackview.cpp
+    grid/idosgridrendermetadata.h
+    grid/idosgridrendermetadata.cpp
+    well/idoswellrendermetadata.h
+    well/idoswellrendermetadata.cpp
+    well/idoswelllogtrackview.h
+    well/idoswelllogtrackview.cpp
     idosappinterface.h
     idosappinterface.cpp
-    plugin/idosplugin.h
-    plugin/idospluginmetadata.h
-    plugin/idospluginmetadata.cpp
-    plugin/idosinterface.h
-    plugin/idosinterface.cpp
-    plugin/idospluginregistry.h
-    plugin/idospluginregistry.cpp
-    plugin/idospluginmanagerwidget.h
-    plugin/idospluginmanagerwidget.cpp
-    plugin/idospluginlistmodel.h
-    plugin/idospluginlistmodel.cpp
+    idospluginmetadata.h
+    idospluginmetadata.cpp
+    idospluginregistry.h
+    idospluginregistry.cpp
+    idospluginmanagerwidget.h
+    idospluginmanagerwidget.cpp
+    idospluginlistmodel.h
+    idospluginlistmodel.cpp
     idosmainwindow.h
     idosmainwindow.cpp
-    render/idosrenderobjectprovider.h
-    render/idosrenderobjectprovider.cpp
-    render/idosrendermetadata.h
-    render/idosrendermetadata.cpp
-    render/idosrenderregistry.h
-    render/idosrenderregistry.cpp
-    render/idosrenderserver.h
-    render/idosrenderserver.cpp
+    grid/idosgridrenderprovider.h
+    grid/idosgridrenderprovider.cpp
+    well/idoswellrenderprovider.h
+    well/idoswellrenderprovider.cpp
 )
 target_include_directories(idos_app
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/src/plugins
+        ${CMAKE_CURRENT_SOURCE_DIR}/case
         ${CMAKE_CURRENT_SOURCE_DIR}/command
-        ${CMAKE_CURRENT_SOURCE_DIR}/render
-        ${CMAKE_CURRENT_SOURCE_DIR}/tree
+)
+target_include_directories(idos_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/well
+    ${CMAKE_CURRENT_SOURCE_DIR}/grid
 )
 target_link_libraries(idos_app PUBLIC
     idos_core

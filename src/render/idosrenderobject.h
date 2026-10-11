@@ -10,15 +10,21 @@ class IDOSRenderProvider;
 class RENDER_EXPORT IDOSRenderObject
 {
   public:
-    explicit IDOSRenderObject(IDOSRenderProvider* provider = nullptr);
+    explicit IDOSRenderObject(IDOSRenderProvider* provider);
     virtual ~IDOSRenderObject();
-
+    IDOSRenderObject(const IDOSRenderObject&) = delete;
+    IDOSRenderObject& operator=(const IDOSRenderObject&) = delete;
     QString id() const;
-    void setId(const QString& id);
     QString name() const;
     void setName(const QString& name);
-    IDOSRenderProvider* renderProvider() const;
-    void setRenderProvider(IDOSRenderProvider* provider);
+    IDOSRenderProvider* provider() const;
+    void update();
+    bool visible() const;
+    void setVisible(bool visible);
+    bool highlighted() const;
+    void setHighlighted(bool highlighted);
+    double opacity() const;
+    void setOpacity(double opacity);
 
   private:
     QString m_id;

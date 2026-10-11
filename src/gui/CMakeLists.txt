@@ -1,61 +1,22 @@
 # idos_gui: user interface features
 add_library(idos_gui SHARED
+    tree/idostreeview.h
+    tree/idostreeview.cpp
+    tree/idostreeguiprovider.h
+    tree/idostreeguiprovider.cpp
     idos_gui.h
+    idosinterface.h
+    idosinterface.cpp
     idosdebuginfowidget.h
     idosdebuginfowidget.cpp
     idosruntimeinfowidget.h
     idosruntimeinfowidget.cpp
     idosnewprojectdialog.h
     idosnewprojectdialog.cpp
-    case/idoscasedialog.h
-    case/idoscasedialog.cpp
-    tree/idoscasetreemodel.h
-    tree/idoscasetreemodel.cpp
-    tree/idoscasetreeprovider.h
-    tree/idoscasetreeprovider.cpp
-    tree/idoscasetreeview.h
-    tree/idoscasetreeview.cpp
-    tree/idosdatatreemodel.h
-    tree/idosdatatreemodel.cpp
-    tree/idosdatatreeprovider.h
-    tree/idosdatatreeprovider.cpp
-    tree/idosdatatreeview.h
-    tree/idosdatatreeview.cpp
-    tree/idosgriddatatreeprovider.h
-    tree/idosgriddatatreeprovider.cpp
-    tree/idosobjecttreenode.h
-    tree/idosobjecttreenode.cpp
-    tree/idossimulationcasetreeprovider.h
-    tree/idossimulationcasetreeprovider.cpp
-    tree/idostreebuilder.h
-    tree/idostreebuilder.cpp
-    tree/idostreegroupnode.h
-    tree/idostreegroupnode.cpp
-    tree/idostreemenuprovider.h
-    tree/idostreemenuprovider.cpp
-    tree/idostreemodel.h
-    tree/idostreemodel.cpp
-    tree/idostreenode.h
-    tree/idostreenode.cpp
-    tree/idostreepartkey.h
-    tree/idostreepartkey.cpp
-    tree/idostreepartnode.h
-    tree/idostreepartnode.cpp
-    tree/idostreeprovider.h
-    tree/idostreeprovider.cpp
-    tree/idostreeproviderregistry.h
-    tree/idostreeproviderregistry.cpp
-    tree/idostreereferencenode.h
-    tree/idostreereferencenode.cpp
-    tree/idostreeview.h
-    tree/idostreeview.cpp
-    tree/idoswelldatatreeprovider.h
-    tree/idoswelldatatreeprovider.cpp
 )
 target_include_directories(idos_gui
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/case
         ${CMAKE_CURRENT_SOURCE_DIR}/tree
 )
 target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)

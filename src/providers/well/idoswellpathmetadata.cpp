@@ -16,7 +16,7 @@ QStringList IDOSWellPathMetadata::fileExtensions() const
 {
     return {QStringLiteral("*.dev"), QStringLiteral("*.DEV")};
 }
-std::unique_ptr<IDOSDataProvider> IDOSWellPathMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellPathMetadata::create() const
 {
     return std::make_unique<IDOSWellPathProvider>();
 }

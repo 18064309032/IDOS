@@ -10,13 +10,14 @@
 #include "command/idoscommandmanager.h"
 #include "command/idoscommandmetadata.h"
 #include "command/idoscommandregistry.h"
-#include "command/idoscreatecasecommand.h"
-#include "command/idoscreatewellcommand.h"
-#include "command/idosdeletecasecommand.h"
-#include "command/idosdeletegridcommand.h"
-#include "command/idosdeletepropertycommand.h"
-#include "command/idosdeletewellcommand.h"
+#include "idoscreatecasecommand.h"
+#include "idoscreatewellcommand.h"
+#include "idosdeletecasecommand.h"
+#include "idosdeletegridcommand.h"
+#include "idosdeletepropertycommand.h"
+#include "idosdeletewellcommand.h"
 #include "command/idosimportcommands.h"
+#include "idosassistantservice.h"
 #include "idosassistantwidget.h"
 #include "idosdataobject.h"
 #include "idosproject.h"
@@ -24,23 +25,38 @@
 
 #include "assistant_widget_test.h"
 
+void AssistantWidgetTest::onProjectSwitchRejectsOldResponse()
+{
+    IDOSProject original;
+    IDOSProject replacement;
+    IDOSAssistantWidget widget;
+    widget.setProject(&original);
+    registerCommands(widget.service()->commandRegistry());
+    const QJsonObject response = createToolCallResponse(
+        QStringLiteral("well.create"), QStringLiteral("{\"name\":\"A10\"}"));
+    widget.setProject(&replacement);
+    widget.service()->process(response, &original);
+    QCOMPARE(original.objects().size(), 0);
+    QCOMPARE(replacement.objects().size(), 0);
+    QVERIFY(!original.commandManager()->canUndo());
+    QVERIFY(!replacement.commandManager()->canUndo());
+    widget.service()->process(response, &replacement);
+    QCOMPARE(replacement.objects().size(), 1);
+    QVERIFY(replacement.commandManager()->canUndo());
+}
+
 void AssistantWidgetTest::onToolCallCreatesWell()
 {
     IDOSProject project;
     IDOSAssistantWidget widget;
     widget.setProject(&project);
-    registerCommands(widget.commandRegistry());
+    registerCommands(widget.service()->commandRegistry());
 
     const QJsonObject response =
         createToolCallResponse(QStringLiteral("well.create"),
                                QStringLiteral("{\"name\":\"A10\"}"));
 
-    const bool invoked =
-        QMetaObject::invokeMethod(&widget,
-                                  "onAssistantResponse",
-                                  Qt::DirectConnection,
-                                  Q_ARG(QJsonObject, response));
-    QVERIFY(invoked);
+    widget.service()->process(response, &project);
 
     IDOSWell* well = nullptr;
     const QList<IDOSDataObject*> objects = project.objects();
@@ -66,17 +82,12 @@ void AssistantWidgetTest::onTextCommandCallCreatesWell()
     IDOSProject project;
     IDOSAssistantWidget widget;
     widget.setProject(&project);
-    registerCommands(widget.commandRegistry());
+    registerCommands(widget.service()->commandRegistry());
 
     const QJsonObject response =
         createTextResponse(QStringLiteral("```json well.create({\"name\":\"A10\"}) ```"));
 
-    const bool invoked =
-        QMetaObject::invokeMethod(&widget,
-                                  "onAssistantResponse",
-                                  Qt::DirectConnection,
-                                  Q_ARG(QJsonObject, response));
-    QVERIFY(invoked);
+    widget.service()->process(response, &project);
 
     IDOSWell* well = nullptr;
     const QList<IDOSDataObject*> objects = project.objects();
@@ -102,18 +113,13 @@ void AssistantWidgetTest::onInvalidToolArgumentsDoNotCreateCommand()
     IDOSProject project;
     IDOSAssistantWidget widget;
     widget.setProject(&project);
-    registerCommands(widget.commandRegistry());
+    registerCommands(widget.service()->commandRegistry());
 
     const QJsonObject response =
         createToolCallResponse(QStringLiteral("well.create"),
                                QStringLiteral("{\"name\""));
 
-    const bool invoked =
-        QMetaObject::invokeMethod(&widget,
-                                  "onAssistantResponse",
-                                  Qt::DirectConnection,
-                                  Q_ARG(QJsonObject, response));
-    QVERIFY(invoked);
+    widget.service()->process(response, &project);
 
     QCOMPARE(project.objects().size(), 0);
     QVERIFY(!project.commandManager()->canUndo());
@@ -124,18 +130,13 @@ void AssistantWidgetTest::onInvalidToolArgumentsDoNotCreateCommand()
 void AssistantWidgetTest::onToolCallWithoutProjectIsReported()
 {
     IDOSAssistantWidget widget;
-    registerCommands(widget.commandRegistry());
+    registerCommands(widget.service()->commandRegistry());
 
     const QJsonObject response =
         createToolCallResponse(QStringLiteral("well.create"),
                                QStringLiteral("{\"name\":\"A10\"}"));
 
-    const bool invoked =
-        QMetaObject::invokeMethod(&widget,
-                                  "onAssistantResponse",
-                                  Qt::DirectConnection,
-                                  Q_ARG(QJsonObject, response));
-    QVERIFY(invoked);
+    widget.service()->process(response, nullptr);
 
     QVERIFY(transcriptText(&widget).contains(
         QStringLiteral("No project is available for command execution.")));

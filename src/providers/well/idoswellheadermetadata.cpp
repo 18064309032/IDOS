@@ -11,7 +11,7 @@ bool IDOSWellHeaderMetadata::canHandle(const QString& filePath) const
     return fi.fileName().toLower().contains(QStringLiteral("wellheader"));
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSWellHeaderMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellHeaderMetadata::create() const
 {
     return std::make_unique<IDOSWellHeaderProvider>();
 }

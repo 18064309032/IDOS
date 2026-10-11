@@ -10,52 +10,48 @@
 #include "idoscaseitemref.h"
 #include "idoscaseobject.h"
 #include "idosdataprovider.h"
+#include "idosdataprovidermetadata.h"
+#include "idosdataproviderregistry.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
-#include "idosprovidermetadata.h"
-#include "idosproviderregistry.h"
 #include "idossimulationcaseobject.h"
 #include "idoswell.h"
 
-#include "command/idosimportcommands.h"
+#include "idosimportcommands.h"
 
-class IDOSImportCommandJsonHelpers
-{
-public:
-    static QJsonObject filePathSchema();
-    static QJsonObject stringPropertySchema(const QString& description);
-    static QJsonObject schemaWithProperties(const QJsonObject& properties,
-                                            const QJsonArray& required);
-};
-
-IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project,
-                                                   QString name,
-                                                   QString filePath,
-                                                   Mode mode,
-                                                   QString targetGridId,
-                                                   QString targetCaseId,
-                                                   QString caseNameOverride,
-                                                   bool replaceExistingGrid,
-                                                   QUndoCommand* parent)
-    : IDOSCommand(std::move(name),
-                  Type::Action,
-                  project,
-                  QObject::tr("Import data"),
-                  parent)
-    , m_filePath(std::move(filePath))
-    , m_mode(mode)
-    , m_targetGridId(std::move(targetGridId))
-    , m_targetCaseId(std::move(targetCaseId))
-    , m_caseNameOverride(std::move(caseNameOverride))
-    , m_replaceExistingGrid(replaceExistingGrid)
+IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const QString& name,
+                                                   const QJsonObject& arguments)
+    :
+    IDOSCommand(name, Type::Action, project, QObject::tr("Import data"))
+    , m_filePath(arguments.value(QStringLiteral("filePath")).toString())
+    , m_mode(Mode::WellData)
+    , m_targetGridId(arguments.value(QStringLiteral("targetGridId")).toString())
+    , m_targetCaseId(arguments.value(QStringLiteral("targetCaseId")).toString())
+    , m_caseNameOverride(arguments.value(QStringLiteral("caseName")).toString())
+    , m_replaceExistingGrid(arguments.value(QStringLiteral("replaceExistingGrid")).toBool())
     , m_loaded(false)
+    , m_targetWellId(arguments.value(QStringLiteral("targetWellId")).toString())
+    , m_wellsPrepared(false)
 {
+    if (name == QStringLiteral("case.import"))
+    {
+        m_mode = Mode::Case;
+    }
+    else if (name == QStringLiteral("grid.import"))
+    {
+        m_mode = Mode::Grid;
+    }
+    else if (name == QStringLiteral("property.import"))
+    {
+        m_mode = Mode::Property;
+    }
 }
-
 IDOSImportObjectsCommand::~IDOSImportObjectsCommand()
 {
     deleteDetachedObjects();
+    qDeleteAll(m_wellBefore);
+    qDeleteAll(m_wellAfter);
 }
 
 bool IDOSImportObjectsCommand::validateCommand(QString& error) const
@@ -66,7 +62,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (m_filePath.trimmed().isEmpty() || !QFileInfo::exists(m_filePath))
+    if (m_filePath.trimmed().isEmpty() || (!m_loaded && !QFileInfo::exists(m_filePath)))
     {
         error = QObject::tr("The import file is unavailable.");
         return false;
@@ -88,7 +84,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
     if (m_mode == Mode::Grid || m_mode == Mode::Property)
     {
         IDOSCaseObject* targetCase =
-            qobject_cast<IDOSCaseObject*>(targetProject->objectById(m_targetCaseId));
+            qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
         if (targetCase == nullptr)
         {
             error = QObject::tr("The target case is unavailable.");
@@ -113,12 +109,18 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         }
     }
 
-    if (m_mode == Mode::Property && targetProject->objectById(m_targetGridId) == nullptr)
+    if (m_mode == Mode::Property && targetProject->object(m_targetGridId) == nullptr)
     {
         error = QObject::tr("The target grid is unavailable.");
         return false;
     }
 
+    if (m_mode == Mode::WellData && !m_targetWellId.isEmpty() &&
+        qobject_cast<IDOSWell*>(targetProject->object(m_targetWellId)) == nullptr)
+    {
+        error = QObject::tr("The target well is unavailable.");
+        return false;
+    }
     return true;
 }
 
@@ -126,6 +128,7 @@ QJsonObject IDOSImportObjectsCommand::buildPreview() const
 {
     QJsonObject preview;
     preview.insert(QStringLiteral("filePath"), m_filePath);
+    preview.insert(QStringLiteral("targetWellId"), m_targetWellId);
     preview.insert(QStringLiteral("targetGridId"), m_targetGridId);
     preview.insert(QStringLiteral("targetCaseId"), m_targetCaseId);
     preview.insert(QStringLiteral("caseName"), m_caseNameOverride);
@@ -175,9 +178,9 @@ bool IDOSImportObjectsCommand::apply(QString& error)
         }
     }
 
-    if (m_mode == Mode::WellData && hasDuplicateWell(error))
+    if (m_mode == Mode::WellData)
     {
-        return false;
+        return applyWells(error);
     }
 
     captureTargetCaseReferences();
@@ -192,7 +195,7 @@ bool IDOSImportObjectsCommand::apply(QString& error)
     {
         if (!object.isNull() && object->parent() == nullptr)
         {
-            targetProject->addObject(object.data());
+            targetProject->add(object.data());
             objectIds.append(object->objectId());
         }
     }
@@ -228,12 +231,16 @@ bool IDOSImportObjectsCommand::revert(QString& error)
         return false;
     }
 
+    if (m_mode == Mode::WellData)
+    {
+        return revertWells(error);
+    }
     targetProject->beginUpdate();
     for (const QPointer<IDOSDataObject>& object : m_objects)
     {
         if (!object.isNull() && object->parent() != nullptr)
         {
-            targetProject->takeObject(object->objectId());
+            targetProject->take(object->objectId());
         }
     }
     restoreTargetCaseReferences();
@@ -254,15 +261,15 @@ bool IDOSImportObjectsCommand::ensureLoaded(QString& error)
 
 bool IDOSImportObjectsCommand::loadObjects(QString& error)
 {
-    QList<IDOSProviderMetadata*> metadataList =
-        IDOSProviderRegistry::instance().metadataForFile(m_filePath);
+    QList<IDOSDataProviderMetadata*> metadataList =
+        IDOSDataProviderRegistry::instance().providers(m_filePath);
     if (metadataList.isEmpty())
     {
         error = QObject::tr("No provider matches file: %1").arg(m_filePath);
         return false;
     }
 
-    std::unique_ptr<IDOSDataProvider> provider = metadataList.first()->createProvider();
+    std::unique_ptr<IDOSDataProvider> provider = metadataList.first()->create();
     if (provider == nullptr)
     {
         error = QObject::tr("Failed to create provider for: %1").arg(m_filePath);
@@ -270,9 +277,10 @@ bool IDOSImportObjectsCommand::loadObjects(QString& error)
     }
 
     QList<IDOSDataObject*> objects = provider->read(m_filePath);
-    if (objects.isEmpty())
+    if (objects.isEmpty() || !provider->lastError().isEmpty())
     {
         error = provider->lastError();
+        qDeleteAll(objects);
         return false;
     }
 
@@ -344,38 +352,143 @@ void IDOSImportObjectsCommand::prepareObject(IDOSDataObject* object)
     }
 }
 
-bool IDOSImportObjectsCommand::hasDuplicateWell(QString& error) const
+bool IDOSImportObjectsCommand::prepareWells(QString& error)
 {
-    IDOSProject* targetProject = project();
-    if (targetProject == nullptr)
+    if (m_wellsPrepared)
     {
-        error = QObject::tr("The target project is unavailable.");
         return true;
     }
-
-    for (const QPointer<IDOSDataObject>& object : m_objects)
+    QList<IDOSWell*> candidates;
+    for (IDOSDataObject* data : project()->objects())
     {
-        IDOSWell* importedWell = qobject_cast<IDOSWell*>(object.data());
-        if (importedWell == nullptr)
+        IDOSWell* well = qobject_cast<IDOSWell*>(data);
+        if (well != nullptr)
+        {
+            candidates.append(well);
+        }
+    }
+    if (!m_targetWellId.isEmpty() && m_objects.size() != 1)
+    {
+        error = QObject::tr("A targeted well import must contain exactly one well.");
+        return false;
+    }
+    for (const QPointer<IDOSDataObject>& data : m_objects)
+    {
+        IDOSWell* source = qobject_cast<IDOSWell*>(data.data());
+        if (source == nullptr)
+        {
+            error = QObject::tr("The imported well is unavailable.");
+            return false;
+        }
+        IDOSWell* target = qobject_cast<IDOSWell*>(project()->object(m_targetWellId));
+        if (m_targetWellId.isEmpty())
+        {
+            for (IDOSWell* candidate : candidates)
+            {
+                if (candidate->name().trimmed().compare(source->name().trimmed(), Qt::CaseInsensitive) == 0)
+                {
+                    target = candidate;
+                    break;
+                }
+            }
+        }
+        if (target == nullptr)
+        {
+            target = source;
+            target->setVisible(false);
+            candidates.append(target);
+            m_createdWellIds.append(target->objectId());
+        }
+        const QString id = target->objectId();
+        if (!m_wellTargets.contains(id))
+        {
+            m_wellTargets.insert(id, target);
+            IDOSWell* after = new IDOSWell();
+            after->copyInputData(target);
+            m_wellAfter.insert(id, after);
+            if (!m_createdWellIds.contains(id))
+            {
+                IDOSWell* before = new IDOSWell();
+                before->copyInputData(target);
+                m_wellBefore.insert(id, before);
+            }
+        }
+        IDOSWell* after = m_wellAfter.value(id);
+        // Group imports preserve an existing well head; explicit targeting allows replacement.
+        if (source->hasWellHead() && after->hasWellHead() && m_targetWellId.isEmpty())
         {
             continue;
         }
+        after->mergeFrom(source);
+    }
+    m_wellsPrepared = true;
+    return true;
+}
 
-        for (IDOSDataObject* existingObject : targetProject->objects())
+bool IDOSImportObjectsCommand::validateWells(bool attached, QString& error) const
+{
+    for (const QString& id : m_wellTargets.keys())
+    {
+        IDOSWell* target = m_wellTargets.value(id).data();
+        const bool created = m_createdWellIds.contains(id);
+        if (target == nullptr || ((attached || !created) && project()->object(id) != target) ||
+            (!attached && created && (target->parent() != nullptr || project()->object(id) != nullptr)))
         {
-            IDOSWell* existingWell = qobject_cast<IDOSWell*>(existingObject);
-            if (existingWell != nullptr
-                && existingWell->name().trimmed().compare(importedWell->name().trimmed(),
-                                                          Qt::CaseInsensitive) == 0)
-            {
-                error = QObject::tr("A well named \"%1\" already exists. Well data merge is not undoable yet.")
-                            .arg(importedWell->name());
-                return true;
-            }
+            error = QObject::tr("The import target changed or is unavailable.");
+            return false;
         }
     }
+    return true;
+}
 
-    return false;
+bool IDOSImportObjectsCommand::applyWells(QString& error)
+{
+    if (!prepareWells(error) || !validateWells(false, error))
+    {
+        return false;
+    }
+    project()->beginUpdate();
+    QJsonArray ids;
+    QStringList orderedIds = m_wellTargets.keys();
+    orderedIds.sort();
+    for (const QString& id : orderedIds)
+    {
+        IDOSWell* target = m_wellTargets.value(id).data();
+        target->copyInputData(m_wellAfter.value(id));
+        if (m_createdWellIds.contains(id))
+        {
+            project()->add(target);
+        }
+        ids.append(id);
+    }
+    QJsonObject commandResult;
+    commandResult.insert(QStringLiteral("filePath"), m_filePath);
+    commandResult.insert(QStringLiteral("objectCount"), ids.size());
+    commandResult.insert(QStringLiteral("objectIds"), ids);
+    commandResult.insert(QStringLiteral("createdCount"), m_createdWellIds.size());
+    commandResult.insert(QStringLiteral("mergedCount"), m_wellBefore.size());
+    setResult(commandResult);
+    project()->endUpdate();
+    return true;
+}
+
+bool IDOSImportObjectsCommand::revertWells(QString& error)
+{
+    if (!validateWells(true, error))
+    {
+        return false;
+    }
+    project()->beginUpdate();
+    for (const QString& id : m_wellBefore.keys())
+    {
+        m_wellTargets.value(id)->copyInputData(m_wellBefore.value(id));
+    }
+    for (const QString& id : m_createdWellIds)
+    {
+        project()->take(id);
+    }
+    project()->endUpdate();
+    return true;
 }
 
 void IDOSImportObjectsCommand::captureTargetCaseReferences()
@@ -388,7 +501,7 @@ void IDOSImportObjectsCommand::captureTargetCaseReferences()
     }
 
     IDOSCaseObject* caseObject =
-        qobject_cast<IDOSCaseObject*>(targetProject->objectById(m_targetCaseId));
+        qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
     if (caseObject != nullptr)
     {
         m_caseReferences.insert(caseObject->objectId(), caseObject->itemRefs());
@@ -404,7 +517,7 @@ void IDOSImportObjectsCommand::appendTargetCaseReferences()
     }
 
     IDOSCaseObject* caseObject =
-        qobject_cast<IDOSCaseObject*>(targetProject->objectById(m_targetCaseId));
+        qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
     if (caseObject == nullptr)
     {
         return;
@@ -477,7 +590,7 @@ void IDOSImportObjectsCommand::restoreTargetCaseReferences()
     while (iterator != m_caseReferences.constEnd())
     {
         IDOSCaseObject* caseObject =
-            qobject_cast<IDOSCaseObject*>(targetProject->objectById(iterator.key()));
+            qobject_cast<IDOSCaseObject*>(targetProject->object(iterator.key()));
         if (caseObject != nullptr)
         {
             caseObject->setItemRefs(iterator.value());
@@ -495,7 +608,7 @@ QString IDOSImportObjectsCommand::referencedGridId() const
     }
 
     IDOSCaseObject* caseObject =
-        qobject_cast<IDOSCaseObject*>(targetProject->objectById(m_targetCaseId));
+        qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
     if (caseObject == nullptr)
     {
         return QString();
@@ -546,7 +659,7 @@ void IDOSImportObjectsCommand::captureReplacementObjects()
         return;
     }
 
-    IDOSDataObject* grid = targetProject->objectById(gridId);
+    IDOSDataObject* grid = targetProject->object(gridId);
     if (grid != nullptr)
     {
         m_replacedObjects.append(QPointer<IDOSDataObject>(grid));
@@ -555,7 +668,7 @@ void IDOSImportObjectsCommand::captureReplacementObjects()
     const QStringList propertyIds = collectGridPropertyIds(gridId);
     for (const QString& propertyId : propertyIds)
     {
-        IDOSDataObject* property = targetProject->objectById(propertyId);
+        IDOSDataObject* property = targetProject->object(propertyId);
         if (property != nullptr)
         {
             m_replacedObjects.append(QPointer<IDOSDataObject>(property));
@@ -575,7 +688,7 @@ void IDOSImportObjectsCommand::detachReplacementObjects()
     {
         if (!object.isNull() && object->parent() != nullptr)
         {
-            targetProject->takeObject(object->objectId());
+            targetProject->take(object->objectId());
         }
     }
 }
@@ -592,7 +705,7 @@ void IDOSImportObjectsCommand::restoreReplacementObjects()
     {
         if (!object.isNull() && object->parent() == nullptr)
         {
-            targetProject->addObject(object.data());
+            targetProject->add(object.data());
         }
     }
 }
@@ -616,7 +729,7 @@ void IDOSImportObjectsCommand::deleteDetachedObjects()
     }
 }
 
-QJsonObject IDOSImportCommandJsonHelpers::filePathSchema()
+QJsonObject IDOSImportObjectsCommand::filePathSchema()
 {
     QJsonObject property;
     property.insert(QStringLiteral("type"), QStringLiteral("string"));
@@ -624,7 +737,7 @@ QJsonObject IDOSImportCommandJsonHelpers::filePathSchema()
     return property;
 }
 
-QJsonObject IDOSImportCommandJsonHelpers::stringPropertySchema(const QString& description)
+QJsonObject IDOSImportObjectsCommand::stringPropertySchema(const QString& description)
 {
     QJsonObject property;
     property.insert(QStringLiteral("type"), QStringLiteral("string"));
@@ -632,7 +745,7 @@ QJsonObject IDOSImportCommandJsonHelpers::stringPropertySchema(const QString& de
     return property;
 }
 
-QJsonObject IDOSImportCommandJsonHelpers::schemaWithProperties(const QJsonObject& properties,
+QJsonObject IDOSImportObjectsCommand::schemaWithProperties(const QJsonObject& properties,
                                                                const QJsonArray& required)
 {
     QJsonObject schemaObject;
@@ -655,25 +768,19 @@ IDOSImportCaseCommandMetadata::~IDOSImportCaseCommandMetadata() = default;
 QJsonObject IDOSImportCaseCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportCommandJsonHelpers::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
     properties.insert(QStringLiteral("caseName"),
-                      IDOSImportCommandJsonHelpers::stringPropertySchema(
+                      IDOSImportObjectsCommand::stringPropertySchema(
                           QObject::tr("Optional imported case name.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
-    return IDOSImportCommandJsonHelpers::schemaWithProperties(properties, required);
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportCaseCommandMetadata::create(const QJsonObject& arguments,
                                                    IDOSProject* project) const
 {
-    return new IDOSImportObjectsCommand(project,
-                                        QStringLiteral("case.import"),
-                                        arguments.value(QStringLiteral("filePath")).toString(),
-                                        IDOSImportObjectsCommand::Mode::Case,
-                                        QString(),
-                                        QString(),
-                                        arguments.value(QStringLiteral("caseName")).toString());
+    return new IDOSImportObjectsCommand(project, name(), arguments);
 }
 
 IDOSImportGridCommandMetadata::IDOSImportGridCommandMetadata()
@@ -689,9 +796,9 @@ IDOSImportGridCommandMetadata::~IDOSImportGridCommandMetadata() = default;
 QJsonObject IDOSImportGridCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportCommandJsonHelpers::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportCommandJsonHelpers::stringPropertySchema(
+                      IDOSImportObjectsCommand::stringPropertySchema(
                           QObject::tr("Object ID of the target case.")));
     QJsonObject replaceProperty;
     replaceProperty.insert(QStringLiteral("type"), QStringLiteral("boolean"));
@@ -701,20 +808,13 @@ QJsonObject IDOSImportGridCommandMetadata::schema() const
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("targetCaseId"));
-    return IDOSImportCommandJsonHelpers::schemaWithProperties(properties, required);
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportGridCommandMetadata::create(const QJsonObject& arguments,
                                                    IDOSProject* project) const
 {
-    return new IDOSImportObjectsCommand(project,
-                                        QStringLiteral("grid.import"),
-                                        arguments.value(QStringLiteral("filePath")).toString(),
-                                        IDOSImportObjectsCommand::Mode::Grid,
-                                        QString(),
-                                        arguments.value(QStringLiteral("targetCaseId")).toString(),
-                                        QString(),
-                                        arguments.value(QStringLiteral("replaceExistingGrid")).toBool());
+    return new IDOSImportObjectsCommand(project, name(), arguments);
 }
 
 IDOSImportPropertyCommandMetadata::IDOSImportPropertyCommandMetadata()
@@ -730,35 +830,30 @@ IDOSImportPropertyCommandMetadata::~IDOSImportPropertyCommandMetadata() = defaul
 QJsonObject IDOSImportPropertyCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportCommandJsonHelpers::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
     properties.insert(QStringLiteral("targetGridId"),
-                      IDOSImportCommandJsonHelpers::stringPropertySchema(
+                      IDOSImportObjectsCommand::stringPropertySchema(
                           QObject::tr("Object ID of the target grid.")));
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportCommandJsonHelpers::stringPropertySchema(
+                      IDOSImportObjectsCommand::stringPropertySchema(
                           QObject::tr("Object ID of the target case.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("targetGridId"));
     required.append(QStringLiteral("targetCaseId"));
-    return IDOSImportCommandJsonHelpers::schemaWithProperties(properties, required);
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportPropertyCommandMetadata::create(const QJsonObject& arguments,
                                                        IDOSProject* project) const
 {
-    return new IDOSImportObjectsCommand(project,
-                                        QStringLiteral("property.import"),
-                                        arguments.value(QStringLiteral("filePath")).toString(),
-                                        IDOSImportObjectsCommand::Mode::Property,
-                                        arguments.value(QStringLiteral("targetGridId")).toString(),
-                                        arguments.value(QStringLiteral("targetCaseId")).toString());
+    return new IDOSImportObjectsCommand(project, name(), arguments);
 }
 
 IDOSImportWellDataCommandMetadata::IDOSImportWellDataCommandMetadata()
     : IDOSCommandMetadata(QStringLiteral("wellData.import"),
                           QObject::tr("Import well data"),
-                          QObject::tr("Import well data as new wells."),
+                          QObject::tr("Import well data, merging wells with matching names."),
                           IDOSCommand::Type::Action)
 {
 }
@@ -768,19 +863,17 @@ IDOSImportWellDataCommandMetadata::~IDOSImportWellDataCommandMetadata() = defaul
 QJsonObject IDOSImportWellDataCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportCommandJsonHelpers::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("targetWellId"),
+                      IDOSImportObjectsCommand::stringPropertySchema(
+                          QObject::tr("Optional object ID of the well receiving the imported data.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
-    return IDOSImportCommandJsonHelpers::schemaWithProperties(properties, required);
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportWellDataCommandMetadata::create(const QJsonObject& arguments,
                                                        IDOSProject* project) const
 {
-    return new IDOSImportObjectsCommand(project,
-                                        QStringLiteral("wellData.import"),
-                                        arguments.value(QStringLiteral("filePath")).toString(),
-                                        IDOSImportObjectsCommand::Mode::WellData,
-                                        QString(),
-                                        QString());
+    return new IDOSImportObjectsCommand(project, name(), arguments);
 }

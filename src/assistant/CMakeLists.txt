@@ -7,8 +7,8 @@ add_library(idos_assistant SHARED
     idoslocalmodelprocess.cpp
     idoslocalmodelservice.h
     idoslocalmodelservice.cpp
-    idoslocalassistantservice.h
-    idoslocalassistantservice.cpp
+    idosassistantservice.h
+    idosassistantservice.cpp
 )
 
 target_include_directories(idos_assistant PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

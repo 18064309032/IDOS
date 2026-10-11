@@ -7,6 +7,9 @@ class WellPathTest : public QObject
 {
     Q_OBJECT
 
+  public:
+    WellPathTest();
+
   private slots:
     void onParseSample();
     void onInvalidInput();

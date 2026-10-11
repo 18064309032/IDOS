@@ -32,8 +32,8 @@ public:
     void cancel(QNetworkReply* reply);
 
 signals:
-    void responseReady(const QJsonObject& response);
-    void requestFailed(const QString& error);
+    void responseReady(QNetworkReply* reply, const QJsonObject& response);
+    void requestFailed(QNetworkReply* reply, const QString& error);
 
 private slots:
     void onReplyFinished();

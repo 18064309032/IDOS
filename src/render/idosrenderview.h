@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QList>
 #include <QPoint>
+#include <QPointer>
 #include <QString>
 #include <QWidget>
 
@@ -15,8 +16,11 @@
 #include "idosrendertypes.h"
 
 class IDOSRenderObject;
+class IDOSProject;
+class IDOSRenderRegistry;
 class IDOSRenderScene;
 class QFrame;
+class QMenu;
 class QGraphicsOpacityEffect;
 class QPropertyAnimation;
 class QVTKOpenGLNativeWidget;
@@ -35,43 +39,59 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     explicit IDOSRenderView(QWidget* parent = nullptr);
     ~IDOSRenderView() override;
 
+    // The view owns this scene for its entire lifetime.
     IDOSRenderScene* scene() const;
-    void setScene(IDOSRenderScene* scene);
+    void setRegistry(IDOSRenderRegistry* registry);
+    void setProject(IDOSProject* project);
+    IDOSProject* project() const;
+    IDOSRenderObject* menuObject() const;
+    QList<IDOSRenderObject*> selectedObjects() const;
+    QMenu* createMenu(const QString& objectId);
 
-    void addObject(IDOSRenderObject* object);
-    void setObject(IDOSRenderObject* object);
-    QString currentObjectId() const;
-    void clear();
-    void refresh();
+    QList<QString> selection() const;
+    void setSelection(const QList<QString>& ids);
+    void fit(const QList<QString>& ids);
+    void render();
     void resetCamera();
     void setParallelProjection(bool enabled);
     bool parallelProjection() const;
-    QColor backgroundColor() const;
-    void setBackgroundColor(const QColor& color);
+    QColor background() const;
+    void setBackground(const QColor& color);
     void setActive(bool active);
     bool isActive() const;
     QImage captureImage();
     void flashScreenshot();
-    bool orientationMarkerVisible() const;
-    void setOrientationMarkerVisible(bool visible);
+    bool axesVisible() const;
+    void setAxesVisible(bool visible);
     bool legendVisible() const;
     bool legendAvailable() const;
     void setLegendVisible(bool visible);
     bool setOrientation(IDOSOrientation orientation);
-    void setHighlightedObjectId(const QString& objectId);
 
   signals:
-    void activated();
+    void focused();
+    void selectionChanged(const QList<QString>& ids);
     void decorationsChanged();
-    void objectActivated(const QString& objectId);
+    void activated(const QString& objectId);
+    void contextMenuAboutToShow(QMenu* menu);
 
   protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+
+  private slots:
+    void onObjectAboutToBeRemoved(const QString& id);
+    void onSceneChanged();
+    void onFitObject();
+    void onOpacity();
+    void onHideObject();
+    void onResetCamera();
 
   private:
     void configureVtkOutputWindow();
     void rebuildActors();
     void activateObjectAt(const QPoint& position);
+    IDOSRenderObject* pick(const QPoint& position) const;
+    IDOSRenderObject* actionObject() const;
     void updateActiveBorder();
 
     QVTKOpenGLNativeWidget* m_vtkWidget;
@@ -84,14 +104,15 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkAxesActor> m_axesActor;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
+    QPointer<IDOSProject> m_project;
+    QPointer<IDOSRenderRegistry> m_registry;
+    QString m_menuId;
     QHash<vtkActor*, QString> m_actorObjectIds;
     QPoint m_pressedPosition;
-    QString m_highlightedObjectId;
+    QList<QString> m_selection;
     bool m_active;
-    bool m_ownsScene;
     bool m_legendVisible;
     QList<vtkProp*> m_legends;
 };
 
 #endif // IDOS_RENDER_VIEW_H
-

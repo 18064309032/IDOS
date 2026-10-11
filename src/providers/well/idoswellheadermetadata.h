@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-#include "idosprovidermetadata.h"
+#include "idosdataprovidermetadata.h"
 
 /**
  * @brief 井头汇总表 provider 的元数据 + 工厂。
@@ -11,7 +11,7 @@
  * 文件名固定为 Wellheader.txt，canHandle 按文件名匹配
  * （包含 "wellheader"），不靠扩展名。
  */
-class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSProviderMetadata
+class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSDataProviderMetadata
 {
   public:
     QString id() const override;
@@ -22,7 +22,7 @@ class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSProviderMetadata
 
     bool canHandle(const QString& filePath) const override;
 
-    std::unique_ptr<IDOSDataProvider> createProvider() const override;
+    std::unique_ptr<IDOSDataProvider> create() const override;
 };
 
 #endif // IDOS_WELL_HEADER_METADATA_H

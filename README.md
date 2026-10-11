@@ -37,9 +37,9 @@ core ──────────── 领域模型：IDOSObject / IDOSProjec
  │                （仅依赖 Qt5::Core、Qt5::Gui）
  ├── providers ─── 数据解析：LAS / Petrel DEV / Wellheader / ECLIPSE DATA·GRID
  │                 （链 OPM opmcommon 静态库）
- ├── render ────── VTK 9.6 渲染：场景、视图、渲染对象、网格/井渲染体
+ ├── render ────── VTK 9.6 渲染：Registry、Metadata、抽象 RenderObject/Provider、RenderServer、RenderScene 与 RenderView
  ├── gui ───────── 树控件体系：TreeModel / TreeView / TreeProvider / 右键菜单
- └── app ───────── 程序装配：主窗口、Ribbon、停靠面板、RenderServer、业务操作入口
+ └── app ───────── 程序装配：主窗口、Ribbon、停靠面板；app/well、app/grid、app/case 提供具体数据的树、菜单、渲染与命令实现
 analysis / python / assistant ── 扩展占位模块（INTERFACE 目标，尚无实现）
 
 idos (exe) ────── src/main.cpp，只链接 idos_app + Qt
@@ -51,8 +51,8 @@ idos (exe) ────── src/main.cpp，只链接 idos_app + Qt
 |---|---|
 | 批量事务 | `IDOSProject::beginUpdate/endUpdate` + `IDOSProjectUpdateGuard`（RAII），一次导入只发一条批量信号，避免视图 O(N²) 重建 |
 | 类型注册表 | `IDOSTypeRegistry`：typeId → 元数据 + 工厂，区分输入树 / 模型树，官方与插件类型同一注册通道 |
-| Provider 注册表 | `IDOSProviderRegistry`（文件格式 → 解析器）、`IDOSRenderObjectProvider`（对象 → 渲染体）、`IDOSTreeProviderRegistry`（typeId → 树分支构建器） |
-| 架构守护 | `check_includes` 构建目标：禁止跨目录回溯 include、禁止公开头引用他模块内部类型，并按 `tools/gui_layers.json` 校验 GUI 内部分层 |
+| Provider 注册表 | `IDOSDataProviderRegistry`（文件格式 → 解析器）、`IDOSRenderRegistry`（数据类型 → 渲染 Provider）、`IDOSTreeRegistry`（数据类型 → 树 Provider 和菜单扩展） |
+| 架构守护 | `check_includes` 构建目标：禁止跨目录回溯 include、禁止公开头引用内部类型，校验模块依赖方向及固定功能目录的公共接口 |
 
 ## 构建
 
@@ -70,10 +70,10 @@ idos (exe) ────── src/main.cpp，只链接 idos_app + Qt
 #    或设置环境变量 QTDIR
 
 # 2) 配置
-cmake --preset win-x64-debug-local
+cmake --preset win-x64-debug-local -B E:/CJW-Archive/build/win-x64-debug-local
 
 # 3) 编译（VS 多配置生成器）
-cmake --build ../IDOS-Build/win-x64-debug-local --config Debug
+cmake --build E:/CJW-Archive/build/win-x64-debug-local --config Debug
 
 # 或直接用 VS 内置 cmake（PATH 中无 cmake 时）
 # "D:/Microsoft Visual Studio 2022/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
@@ -90,14 +90,14 @@ POST_BUILD 步骤会自动完成 Qt 部署（windeployqt）、VC Debug 运行库
 | `IDOS_BUILD_TESTS` | `OFF` | 打开后构建 `tests/` 下的 Qt Test 目标 |
 
 ```powershell
-cmake --preset win-x64-debug-local -DIDOS_BUILD_TESTS=ON -DIDOS_ENABLE_RENDER=ON
+cmake --preset win-x64-debug-local -B E:/CJW-Archive/build/win-x64-debug-local -DIDOS_BUILD_TESTS=ON -DIDOS_ENABLE_RENDER=ON
 ```
 
 ### 架构检查
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/check_includes.ps1 -SourceRoot src
-ctest --test-dir ../IDOS-Build/win-x64-debug-local -C Debug -R check_includes
+ctest --test-dir E:/CJW-Archive/build/win-x64-debug-local -C Debug -R check_includes
 ```
 
 ## 测试
@@ -113,7 +113,7 @@ ctest --test-dir ../IDOS-Build/win-x64-debug-local -C Debug -R check_includes
 | `tree_incremental` | 数据树/工况树增量刷新与批量事务 |
 
 ```powershell
-ctest --test-dir ../IDOS-Build/win-x64-debug-local -C Debug --output-on-failure
+ctest --test-dir E:/CJW-Archive/build/win-x64-debug-local -C Debug --output-on-failure
 ```
 
 样例数据位于 `tests/data/`（`case.DATA`、`Wellheader.txt`、`A10.dev`、`case-wells.inc`）。
@@ -134,7 +134,7 @@ cmake --build <构建目录> --target translations   # lrelease 生成 .qm（随
 
 完整规则见 [AGENTS.md](AGENTS.md)，要点：
 
-- 同名 `.h` / `.cpp` 必须同目录；公共类放模块根目录，内部类在子目录成对放置
+- 同名 `.h` / `.cpp` 必须同目录；固定目标目录见 [IDOS源码目录](docs/IDOS源码目录.md)，公共接口位于所属功能目录根部，目录调整须经用户确认
 - 禁止 `auto`、禁止 `struct`（类型一律 `class`）、禁止 lambda、禁止文件作用域静态函数
 - 头文件只放声明，函数实现（含一行函数）一律写在 `.cpp`
 - 控制语句与函数体大括号独占一行（Allman），`if`/`for` 等即使单条语句也必须加括号
@@ -151,6 +151,6 @@ cmake --build <构建目录> --target translations   # lrelease 生成 .qm（随
 | SARibbon | Ribbon 主窗 | 预编译，`SARibbon::SARibbonBar` IMPORTED |
 | Qt Advanced Docking System | 可停靠面板 | 预编译，`ADS::ADS` IMPORTED |
 | OPM (opm-common) | ECLIPSE `.DATA` 输入文件解析 | 静态库，`OPM::opmcommon`，仅 providers 使用 |
-| VTK 9.6.0 | 3D 渲染 | `find_package(VTK)`，仅 render 模块持有 |
+| VTK 9.6.0 | 3D 渲染 | `find_package(VTK)`，render 与 app/render 的具体 Provider 使用 |
 
 第三方库不做批量风格改写；Qt 固定签名的事件重写函数保持框架要求的名称。
