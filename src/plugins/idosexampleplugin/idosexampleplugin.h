@@ -56,7 +56,6 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
     bool m_dataAdded;
     bool m_treeAdded;
     bool m_renderAdded;
-    bool m_renderGuiAdded;
     bool m_createAdded;
     bool m_deleteAdded;
 };

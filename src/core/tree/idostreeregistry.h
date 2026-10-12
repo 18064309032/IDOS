@@ -12,8 +12,6 @@
 class IDOSTreeGuiProvider;
 class IDOSTreeItem;
 class IDOSTreeMetadata;
-class IDOSDataRegistry;
-class IDOSDataMetadata;
 
 class CORE_EXPORT IDOSTreeRegistry : public QObject
 {
@@ -26,7 +24,6 @@ class CORE_EXPORT IDOSTreeRegistry : public QObject
     bool remove(const QString& typeId);
     const IDOSTreeMetadata* metadata(const QString& typeId) const;
     QList<const IDOSTreeMetadata*> metadata() const;
-    QList<const IDOSDataMetadata*> dataMetadata(const IDOSDataRegistry* dataRegistry) const;
     bool addGuiProvider(const std::shared_ptr<IDOSTreeGuiProvider>& provider);
     bool removeGuiProvider(IDOSTreeGuiProvider* provider);
     QList<std::shared_ptr<IDOSTreeGuiProvider>> guiProviders() const;

@@ -23,7 +23,6 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     ~IDOSRenderServer() override;
     IDOSProject* project() const;
     void setProject(IDOSProject* project);
-    IDOSRenderRegistry* registry() const;
     void addView(IDOSRenderView* view);
     void removeView(IDOSRenderView* view);
     QList<IDOSRenderView*> views() const;

@@ -2,6 +2,8 @@
 #define IDOS_RENDER_PROVIDER_H
 
 #include <QList>
+#include <QString>
+#include <QStringList>
 
 #include <vtkSmartPointer.h>
 
@@ -17,6 +19,8 @@ class RENDER_EXPORT IDOSRenderProvider
     virtual ~IDOSRenderProvider();
     virtual IDOSDataObject* dataSource() const = 0;
     virtual void update() = 0;
+    virtual bool dependsOn(const QStringList& dataIds) const;
+    virtual bool removeDataReference(const QString& dataId);
     virtual QList<vtkActor*> actors() const = 0;
     virtual QList<vtkSmartPointer<vtkProp>> legends() const = 0;
     virtual bool visible() const = 0;

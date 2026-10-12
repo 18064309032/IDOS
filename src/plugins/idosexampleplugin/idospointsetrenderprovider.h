@@ -26,8 +26,6 @@ class IDOSPointSetRenderProvider : public IDOSRenderProvider
     void setHighlighted(bool highlighted) override;
     double opacity() const override;
     void setOpacity(double opacity) override;
-    double pointSize() const;
-    void setPointSize(double size);
 
   private:
     QPointer<IDOSPointSet> m_data;

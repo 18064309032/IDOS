@@ -6,6 +6,7 @@
 #include <QString>
 
 #include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
 
 class IDOSGridProperty;
@@ -36,6 +37,15 @@ private:
     int m_reportStepCount;
     bool m_loaded;
     QList<QPointer<IDOSGridProperty>> m_properties;
+};
+
+class APP_EXPORT IDOSImportRestartResultsCommandMetadata : public IDOSCommandMetadata
+{
+public:
+    IDOSImportRestartResultsCommandMetadata();
+    ~IDOSImportRestartResultsCommandMetadata() override;
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments, IDOSProject* project) const override;
 };
 
 #endif // IDOS_IMPORT_RESTART_RESULTS_COMMAND_H

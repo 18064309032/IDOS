@@ -1,12 +1,18 @@
 # IDOS 源码目录
 
-本文是已确认的固定目标目录，是后续源码迁移与目录检查的依据；当前源码尚未完成迁移。未经用户确认，不更改目录划分，不增加方案外类或包装层。
+更新日期：2026-10-13。
+
+本文是已确认的固定源码目录及扩展归属依据。主要框架、具体井/网格/工况实现和通用工具类已按此布局落地；清单不是整个仓库文件枚举，实施及未完成状态见工作进度。未经用户确认，不改变目录划分，不增加方案外类或包装层。
+
+配套文档：[架构设计](IDOS架构设计.md)、[开发指南](开发指南.md)、[工作进度](工作进度-CJW.md)。
 
 公共接口放在所属功能目录根部，不要求全部集中在链接模块根部。同名 `.h` 和 `.cpp` 必须同目录。功能目录不单独建立 CMake 模块，除非另行确认。
 
 `IDOSProject` 放在 `core` 根目录，不建立 `core/project`；不设置 `app/render`，不保留 `IDOSRenderController`。通用树结构、模型和同步位于 `core/tree`，树视图和 GUI 扩展接口位于 `gui/tree`。插件公共访问接口位于 `gui`，入口契约位于 `plugins`，加载、描述、列表模型和管理界面均位于 `app` 根目录，不设置 `app/plugins`。
 
 ## 固定文件布局
+
+2026-10-13 按用户要求补充并实现视图工具框架五组成对文件，位于现有 render 根目录，不改变目录划分。接口见架构设计第 13 节；具体业务工具待在 app 或插件中实现。
 
 以下列出实际文件名；既有基础设施保留，新增文件仅限已经确认的架构类及具体实现。具体插件实现暂不讨论，原有插件不因本清单省略而删除。
 
@@ -185,8 +191,6 @@ src/
         idosrenderobject.cpp
         idosrenderprovider.h
         idosrenderprovider.cpp
-        idosrenderguiprovider.h
-        idosrenderguiprovider.cpp
         idosrendermetadata.h
         idosrendermetadata.cpp
         idosrenderregistry.h
@@ -197,6 +201,16 @@ src/
         idosrenderview.cpp
         idosrenderserver.h
         idosrenderserver.cpp
+        idostoolmetadata.h
+        idostoolmetadata.cpp
+        idostoolregistry.h
+        idostoolregistry.cpp
+        idostoolprovider.h
+        idostoolprovider.cpp
+        idostoolbar.h
+        idostoolbar.cpp
+        idostool.h
+        idostool.cpp
 
     app/
         CMakeLists.txt
@@ -227,8 +241,6 @@ src/
         idoswellrenderprovider.cpp
         idoswellrendermetadata.h
         idoswellrendermetadata.cpp
-        idoswellrenderguiprovider.h
-        idoswellrenderguiprovider.cpp
         idoswelllogtrackview.h
         idoswelllogtrackview.cpp
         idoscreatewellcommand.h
@@ -247,12 +259,12 @@ src/
         idosgridrenderprovider.cpp
         idosgridrendermetadata.h
         idosgridrendermetadata.cpp
-        idosgridrenderguiprovider.h
-        idosgridrenderguiprovider.cpp
         idosdeletegridcommand.h
         idosdeletegridcommand.cpp
         idosdeletepropertycommand.h
         idosdeletepropertycommand.cpp
+        idosimportrestartresultscommand.h
+        idosimportrestartresultscommand.cpp
 
     app/case/
         idossimulationcasetreeprovider.h
@@ -300,8 +312,6 @@ src/
             idospointsetrenderprovider.cpp
             idospointsetrendermetadata.h
             idospointsetrendermetadata.cpp
-            idospointsetrenderguiprovider.h
-            idospointsetrenderguiprovider.cpp
 
     assistant/
         CMakeLists.txt
@@ -331,6 +341,7 @@ src/
 - 数据读取按已确定的来源或格式组织；井头与轨迹读取暂保留 `providers/well`，不擅自编造格式目录。
 - 被替代的旧树模型、节点子类、菜单 Provider、类型注册和具体 RenderObject 等在接通新调用路径后删除。
 - 具体命令 Metadata 的文件拆分尚未确定，实施相关功能前应明确清单，不据此自行增加新的抽象。
-- `IDOSInterface` 迁入 gui 时消除对 app 具体类型的依赖，不引入 gui 对 render 的依赖。
+- `IDOSInterface` 已位于 gui，仅前置声明 RenderRegistry 和 ToolRegistry，不引入对 app 具体类型及 render 的链接依赖。
+- 通用 Tool、ToolMetadata、ToolRegistry、ToolProvider、ToolBar 的头文件和实现放在 render 根部；内置具体工具放在 app 已有功能目录，插件工具放在插件内，不新增 tools 子目录。
 - 目录固定不代表直接批准删除任何未审查的既有文件；迁移前核对其职责和完整调用路径。
 

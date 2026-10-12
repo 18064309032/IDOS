@@ -35,7 +35,7 @@ bool IDOSPointSetTreeGuiProvider::supports(const IDOSTreeItem* item) const
 {
     if (item == nullptr)
     {
-        return true;
+        return false;
     }
     IDOSProject* project = item->tree() != nullptr ? item->tree()->project() : nullptr;
     IDOSDataObject* data = project != nullptr ? project->object(item->dataId()) : nullptr;
@@ -107,24 +107,16 @@ void IDOSPointSetTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
         return;
     }
     IDOSTreeItem* item = view->menuItem();
-    if (item == nullptr && (view->tree() == nullptr || view->tree()->name() != QString::fromLatin1("data")))
+    if (!supports(item))
     {
         return;
     }
-    QAction* action = menu->addAction(item == nullptr ? tr("Create Point Set") : tr("Delete Point Set"));
+    QAction* action = menu->addAction(tr("Delete Point Set"));
     m_actions.append(QPointer<QAction>(action));
     action->setProperty("project", QVariant::fromValue<QObject*>(view->project()));
-    action->setProperty("dataId", item != nullptr ? item->dataId() : QString());
-    if (item == nullptr)
-    {
-        action->setObjectName(QString::fromLatin1("createPointSetAction"));
-        connect(action, &QAction::triggered, this, &IDOSPointSetTreeGuiProvider::onCreatePointSet);
-    }
-    else
-    {
-        action->setObjectName(QString::fromLatin1("deletePointSetAction"));
-        connect(action, &QAction::triggered, this, &IDOSPointSetTreeGuiProvider::onDeletePointSet);
-    }
+    action->setProperty("dataId", item->dataId());
+    action->setObjectName(QString::fromLatin1("deletePointSetAction"));
+    connect(action, &QAction::triggered, this, &IDOSPointSetTreeGuiProvider::onDeletePointSet);
 }
 
 IDOSTreeView* IDOSPointSetTreeGuiProvider::actionView() const
@@ -138,22 +130,6 @@ IDOSTreeView* IDOSPointSetTreeGuiProvider::actionView() const
         return nullptr;
     }
     return view;
-}
-
-void IDOSPointSetTreeGuiProvider::onCreatePointSet()
-{
-    IDOSTreeView* view = actionView();
-    if (view == nullptr)
-    {
-        return;
-    }
-    QJsonObject arguments;
-    arguments.insert(QString::fromLatin1("name"), tr("Example points"));
-    view->project()->commandManager()->execute(QString::fromLatin1("pointset.create"), arguments);
-    if (!view->project()->commandManager()->error().isEmpty())
-    {
-        QMessageBox::warning(view, tr("Create Point Set"), view->project()->commandManager()->error());
-    }
 }
 
 void IDOSPointSetTreeGuiProvider::onDeletePointSet()

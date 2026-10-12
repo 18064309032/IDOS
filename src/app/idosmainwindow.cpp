@@ -19,6 +19,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSignalBlocker>
+#include <QSize>
 #include <QStatusBar>
 #include <QStringList>
 #include <QTimer>
@@ -29,6 +30,7 @@
 #include <DockAreaWidget.h>
 #include <DockManager.h>
 #include <DockWidget.h>
+#include <DockWidgetTab.h>
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
@@ -44,23 +46,24 @@
 #include "idosassistantservice.h"
 #include "idosassistantwidget.h"
 #include "idoscaseobject.h"
-#include "idosdataregistry.h"
 #include "idoscreatecasecommand.h"
 #include "idoscreatewellcommand.h"
+#include "idosdataregistry.h"
 #include "idosdebuginfowidget.h"
 #include "idosdeletecasecommand.h"
 #include "idosdeletegridcommand.h"
 #include "idosdeletepropertycommand.h"
 #include "idosdeletewellcommand.h"
-#include "idosgridrenderguiprovider.h"
 #include "idosgridrendermetadata.h"
 #include "idosgridtreeguiprovider.h"
 #include "idosgridtreemetadata.h"
+#include "idosimportrestartresultscommand.h"
 #include "idosnewprojectdialog.h"
+#include "idospluginmanagerwidget.h"
 #include "idospluginregistry.h"
-#include "idospythonconsolewidget.h"
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
+#include "idospythonconsolewidget.h"
 #include "idosrenameobjectcommand.h"
 #include "idosrenderobject.h"
 #include "idosrenderprovider.h"
@@ -72,6 +75,8 @@
 #include "idosruntimeinfowidget.h"
 #include "idossimulationcasetreeguiprovider.h"
 #include "idossimulationcasetreemetadata.h"
+#include "idostoolbar.h"
+#include "idostoolregistry.h"
 #include "idostree.h"
 #include "idostreeitem.h"
 #include "idostreemodel.h"
@@ -80,12 +85,10 @@
 #include "idostreeview.h"
 #include "idoswell.h"
 #include "idoswelllogtrackview.h"
-#include "idoswellrenderguiprovider.h"
 #include "idoswellrendermetadata.h"
 #include "idoswelltreeguiprovider.h"
 #include "idoswelltreemetadata.h"
 #include "log/idoslogger.h"
-#include "idospluginmanagerwidget.h"
 
 #include "idosmainwindow.h"
 
@@ -125,6 +128,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_treeRegistry(new IDOSTreeRegistry(this))
     , m_treeServer(new IDOSTreeServer(m_treeRegistry, this))
     , m_renderRegistry(new IDOSRenderRegistry(this))
+    , m_toolRegistry(new IDOSToolRegistry(this))
     , m_renderServer(new IDOSRenderServer(m_renderRegistry, this))
     , m_runtimeInfoWidget(nullptr)
     , m_pluginRegistry(nullptr)
@@ -290,8 +294,6 @@ void IDOSMainWindow::initProviders()
 
     m_renderRegistry->add(new IDOSGridRenderMetadata());
     m_renderRegistry->add(new IDOSWellRenderMetadata());
-    m_renderRegistry->addGuiProvider(new IDOSGridRenderGuiProvider(m_renderServer));
-    m_renderRegistry->addGuiProvider(new IDOSWellRenderGuiProvider());
     connect(m_renderServer, &IDOSRenderServer::objectsChanged, this, &IDOSMainWindow::onRenderObjectsChanged);
     connect(m_renderServer, &IDOSRenderServer::dataAboutToBeRemoved, this, &IDOSMainWindow::onRenderDataRemoving);
 }
@@ -350,6 +352,8 @@ void IDOSMainWindow::initDockWidgets()
     m_runtimeInfoWidget = new IDOSRuntimeInfoWidget(this);
     m_outputDock = new ads::CDockWidget(m_dockManager, tr("Output"));
     m_outputDock->setObjectName(QStringLiteral("outputDock"));
+    m_outputDock->setIcon(QIcon(QStringLiteral(":/images/gui-output.svg")));
+    m_outputDock->tabWidget()->setIconSize(QSize(16, 16));
     m_outputDock->setWidget(m_runtimeInfoWidget, ads::CDockWidget::ForceNoScrollArea);
     m_outputDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     ads::CDockAreaWidget* outputArea = m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_outputDock, m_renderDock->dockAreaWidget());
@@ -357,6 +361,8 @@ void IDOSMainWindow::initDockWidgets()
     m_debugInfoWidget = new IDOSDebugInfoWidget(this);
     m_debugDock = new ads::CDockWidget(m_dockManager, tr("Debug"));
     m_debugDock->setObjectName(QStringLiteral("debugDock"));
+    m_debugDock->setIcon(QIcon(QStringLiteral(":/images/gui-debug.svg")));
+    m_debugDock->tabWidget()->setIconSize(QSize(16, 16));
     m_debugDock->setWidget(m_debugInfoWidget, ads::CDockWidget::ForceNoScrollArea);
     m_debugDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidgetTabToArea(m_debugDock, outputArea);
@@ -365,6 +371,7 @@ void IDOSMainWindow::initDockWidgets()
     m_pythonConsoleDock = new ads::CDockWidget(m_dockManager, tr("Python Console"));
     m_pythonConsoleDock->setObjectName(QStringLiteral("pythonConsoleDock"));
     m_pythonConsoleDock->setIcon(QIcon(QStringLiteral(":/images/python-console.svg")));
+    m_pythonConsoleDock->tabWidget()->setIconSize(QSize(16, 16));
     m_pythonConsoleDock->setWidget(m_pythonConsoleWidget, ads::CDockWidget::ForceNoScrollArea);
     m_pythonConsoleDock->setFeatures(ads::CDockWidget::DockWidgetMovable
                                      | ads::CDockWidget::DockWidgetFloatable);
@@ -381,6 +388,7 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePropertyCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteWellCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSRenameObjectCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportRestartResultsCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportCaseCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportGridCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportPropertyCommandMetadata()));
@@ -388,12 +396,15 @@ void IDOSMainWindow::initDockWidgets()
     }
     m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
     m_assistantDock->setObjectName(QStringLiteral("assistantDock"));
+    m_assistantDock->setIcon(QIcon(QStringLiteral(":/images/assistant-chat.svg")));
+    m_assistantDock->tabWidget()->setIconSize(QSize(16, 16));
     m_assistantDock->setWidget(m_assistantWidget, ads::CDockWidget::ForceNoScrollArea);
     m_assistantDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidgetTabToArea(m_assistantDock, outputArea);
 
     // ---- 工况树 ----
     m_caseTreeView = new IDOSTreeView(this);
+    m_caseTreeView->setBlankMenuEnabled(true);
     m_caseTreeView->setModel(m_caseTreeModel);
     connect(m_caseTreeView, &QTreeView::clicked, this, &IDOSMainWindow::onCaseTreeItemClicked);
     connect(m_caseTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
@@ -749,6 +760,8 @@ IDOSMainWindow::~IDOSMainWindow()
     disconnect(m_renderServer, nullptr, this, nullptr);
     delete m_renderServer;
     delete m_renderRegistry;
+    delete m_toolRegistry;
+    m_toolRegistry = nullptr;
     for (const QPointer<IDOSRenderView>& view : m_views)
     {
         if (view != nullptr)
@@ -923,7 +936,6 @@ void IDOSMainWindow::updateViewPresetActions()
         return;
     }
     IDOSRenderView* view = activeView();
-    QAction* action = nullptr;
     for (QAction* preset : m_actionViewPresets->menu()->actions())
     {
         if (preset->isSeparator() || !preset->data().isValid())
@@ -1689,6 +1701,12 @@ IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool twoDimensiona
     m_renderServer->addView(view);
     view->setTwoDimensional(twoDimensional);
     view->setOrientation(twoDimensional ? IDOSOrientation::Top : IDOSOrientation::Isometric);
+    IDOSToolBar* toolBar = new IDOSToolBar();
+    toolBar->setRegistry(m_toolRegistry);
+    if (!view->setToolBar(toolBar))
+    {
+        delete toolBar;
+    }
     if (m_activeViewId.isEmpty())
     {
         setActiveView(id);
@@ -1855,6 +1873,11 @@ IDOSTreeRegistry* IDOSMainWindow::treeRegistry() const
 IDOSRenderRegistry* IDOSMainWindow::renderRegistry() const
 {
     return m_renderRegistry;
+}
+
+IDOSToolRegistry* IDOSMainWindow::toolRegistry() const
+{
+    return m_toolRegistry;
 }
 
 IDOSCommandRegistry* IDOSMainWindow::commandRegistry() const

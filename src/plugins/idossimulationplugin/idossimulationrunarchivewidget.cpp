@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationrunarchivewidget.h"
 
@@ -35,14 +36,15 @@ IDOSSimulationRunArchiveWidget::IDOSSimulationRunArchiveWidget(IDOSSimulationCas
 
     const QString runDirectory = m_runInfo.value(QStringLiteral("runDirectory")).toString();
     const QFileInfo runInfoFile(runDirectory);
-    const QString archiveName = QStringLiteral("%1_archive_%2")
-                                    .arg(runInfoFile.fileName(), QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")));
+    const QString archiveName =
+        QStringLiteral("%1_archive_%2")
+            .arg(runInfoFile.fileName(), QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")));
     const QString defaultArchiveDirectory = runInfoFile.dir().absoluteFilePath(archiveName);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
-    QLabel* descriptionLabel = new QLabel(
-        tr("Create a separate directory snapshot of this initialized run, including its inputs, generated files, and a run manifest."),
-        this);
+    QLabel* descriptionLabel = new QLabel(tr("Create a separate directory snapshot of this initialized run, including "
+                                             "its inputs, generated files, and a run manifest."),
+                                          this);
     descriptionLabel->setWordWrap(true);
     layout->addWidget(descriptionLabel);
 
@@ -53,10 +55,7 @@ IDOSSimulationRunArchiveWidget::IDOSSimulationRunArchiveWidget(IDOSSimulationCas
     QPushButton* browseButton = new QPushButton(tr("Browse…"), this);
     directoryLayout->addWidget(browseButton);
     layout->addLayout(directoryLayout);
-    connect(browseButton,
-            &QPushButton::clicked,
-            this,
-            &IDOSSimulationRunArchiveWidget::onBrowseDirectoryTriggered);
+    connect(browseButton, &QPushButton::clicked, this, &IDOSSimulationRunArchiveWidget::onBrowseDirectoryTriggered);
 
     m_outputEdit = new QPlainTextEdit(this);
     m_outputEdit->setReadOnly(true);
@@ -64,9 +63,7 @@ IDOSSimulationRunArchiveWidget::IDOSSimulationRunArchiveWidget(IDOSSimulationCas
 
     QPushButton* createArchiveButton = new QPushButton(tr("Create Archive Snapshot"), this);
     layout->addWidget(createArchiveButton);
-    connect(createArchiveButton,
-            &QPushButton::clicked,
-            this,
+    connect(createArchiveButton, &QPushButton::clicked, this,
             &IDOSSimulationRunArchiveWidget::onCreateArchiveTriggered);
     resize(760, 460);
 }
@@ -74,9 +71,7 @@ IDOSSimulationRunArchiveWidget::IDOSSimulationRunArchiveWidget(IDOSSimulationCas
 void IDOSSimulationRunArchiveWidget::onBrowseDirectoryTriggered()
 {
     const QString selectedDirectory = QFileDialog::getExistingDirectory(
-        this,
-        tr("Select archive parent directory"),
-        QFileInfo(m_archiveDirectoryEdit->text()).absolutePath());
+        this, tr("Select archive parent directory"), QFileInfo(m_archiveDirectoryEdit->text()).absolutePath());
     if (selectedDirectory.isEmpty())
     {
         return;
@@ -92,42 +87,43 @@ void IDOSSimulationRunArchiveWidget::onCreateArchiveTriggered()
     const QFileInfo sourceInfo(sourceDirectory);
     if (sourceDirectory.isEmpty() || !sourceInfo.isDir())
     {
-        m_outputEdit->setPlainText(tr("The initialized run directory is missing."));
+        showOutput(tr("The initialized run directory is missing."));
         return;
     }
 
     const QString archiveDirectory = QDir::cleanPath(QFileInfo(m_archiveDirectoryEdit->text()).absoluteFilePath());
     const QString relativeTarget = QDir(sourceDirectory).relativeFilePath(archiveDirectory);
-    const bool targetIsInsideSource = relativeTarget == QStringLiteral(".")
-        || (!QDir::isAbsolutePath(relativeTarget)
-            && !relativeTarget.startsWith(QStringLiteral("../"))
-            && !relativeTarget.startsWith(QStringLiteral("..\\")));
+    const bool targetIsInsideSource =
+        relativeTarget == QStringLiteral(".") ||
+        (!QDir::isAbsolutePath(relativeTarget) && !relativeTarget.startsWith(QStringLiteral("../")) &&
+         !relativeTarget.startsWith(QStringLiteral("..\\")));
     if (targetIsInsideSource)
     {
-        m_outputEdit->setPlainText(tr("Choose an archive directory outside the run directory."));
+        showOutput(tr("Choose an archive directory outside the run directory."));
         return;
     }
     if (QFileInfo::exists(archiveDirectory))
     {
-        m_outputEdit->setPlainText(tr("The archive directory already exists. Choose a new directory."));
+        showOutput(tr("The archive directory already exists. Choose a new directory."));
         return;
     }
 
     const QString archiveParent = QFileInfo(archiveDirectory).absolutePath();
     if (!QDir().mkpath(archiveParent))
     {
-        m_outputEdit->setPlainText(tr("Unable to create archive parent directory: %1").arg(archiveParent));
+        showOutput(tr("Unable to create archive parent directory: %1").arg(archiveParent));
         return;
     }
 
     QTemporaryDir stagingDirectory(QDir(archiveParent).absoluteFilePath(QStringLiteral(".idos_archive_XXXXXX")));
     if (!stagingDirectory.isValid())
     {
-        m_outputEdit->setPlainText(tr("Unable to create a temporary archive directory in %1.").arg(archiveParent));
+        showOutput(tr("Unable to create a temporary archive directory in %1.").arg(archiveParent));
         return;
     }
 
     QStringList archivedFiles;
+    IDOS_MESSAGE(tr("Creating run archive: %1").arg(archiveDirectory), IDOSLogLevel::Info);
     QStringList errors;
     QDirIterator iterator(sourceDirectory, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (iterator.hasNext())
@@ -165,7 +161,7 @@ void IDOSSimulationRunArchiveWidget::onCreateArchiveTriggered()
 
     if (!errors.isEmpty())
     {
-        m_outputEdit->setPlainText(errors.join(QLatin1Char('\n')));
+        showOutput(errors.join(QLatin1Char('\n')));
         return;
     }
 
@@ -184,24 +180,34 @@ void IDOSSimulationRunArchiveWidget::onCreateArchiveTriggered()
 
     const QByteArray manifestContents = QJsonDocument(manifest).toJson(QJsonDocument::Indented);
     QSaveFile manifestFile(QDir(stagingDirectory.path()).absoluteFilePath(QStringLiteral("idos_run_archive.json")));
-    if (!manifestFile.open(QIODevice::WriteOnly)
-        || manifestFile.write(manifestContents) != manifestContents.size()
-        || !manifestFile.commit())
+    if (!manifestFile.open(QIODevice::WriteOnly) || manifestFile.write(manifestContents) != manifestContents.size() ||
+        !manifestFile.commit())
     {
-        m_outputEdit->setPlainText(tr("Unable to write the run archive manifest."));
+        showOutput(tr("Unable to write the run archive manifest."));
         return;
     }
 
-    const bool renamed = QDir(archiveParent).rename(QFileInfo(stagingDirectory.path()).fileName(),
-                                                     QFileInfo(archiveDirectory).fileName());
+    const bool renamed =
+        QDir(archiveParent)
+            .rename(QFileInfo(stagingDirectory.path()).fileName(), QFileInfo(archiveDirectory).fileName());
     if (!renamed)
     {
-        m_outputEdit->setPlainText(tr("Unable to finalize the run archive: %1").arg(archiveDirectory));
+        showOutput(tr("Unable to finalize the run archive: %1").arg(archiveDirectory));
         return;
     }
 
     QStringList messages;
     messages.append(tr("Run archive created: %1").arg(archiveDirectory));
     messages.append(tr("Archived %1 file(s), plus the run manifest.").arg(archivedFiles.size()));
-    m_outputEdit->setPlainText(messages.join(QLatin1Char('\n')));
+    showOutput(messages.join(QLatin1Char('\n')), IDOSLogLevel::Info);
+}
+
+void IDOSSimulationRunArchiveWidget::showOutput(const QString& message, IDOSLogLevel level)
+{
+    m_outputEdit->setPlainText(message);
+    const QStringList lines = message.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines)
+    {
+        IDOSLogger::instance().message(line, level);
+    }
 }

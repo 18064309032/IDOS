@@ -1,15 +1,14 @@
 #ifndef IDOS_RENDER_REGISTRY_H
 #define IDOS_RENDER_REGISTRY_H
 
-#include <QMap>
 #include <QList>
+#include <QMap>
 #include <QObject>
 #include <QString>
 
 #include "idos_render.h"
 
 class IDOSRenderMetadata;
-class IDOSRenderGuiProvider;
 
 class RENDER_EXPORT IDOSRenderRegistry : public QObject
 {
@@ -23,9 +22,6 @@ class RENDER_EXPORT IDOSRenderRegistry : public QObject
     bool remove(const QString& dataTypeId);
     IDOSRenderMetadata* metadata(const QString& dataTypeId) const;
     QList<IDOSRenderMetadata*> metadata() const;
-    bool addGuiProvider(IDOSRenderGuiProvider* provider);
-    bool removeGuiProvider(const QString& name);
-    QList<IDOSRenderGuiProvider*> guiProviders() const;
     void clear();
 
   signals:
@@ -34,7 +30,6 @@ class RENDER_EXPORT IDOSRenderRegistry : public QObject
 
   private:
     QMap<QString, IDOSRenderMetadata*> m_metadataByTypeId;
-    QList<IDOSRenderGuiProvider*> m_guiProviders;
     bool m_changing;
 };
 

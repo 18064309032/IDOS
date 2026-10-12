@@ -217,7 +217,7 @@ void IDOSSimulationPlugin::initGui()
         m_runStatusAction = new QAction(tr("Run Status"), m_category);
         m_runStatusAction->setObjectName(QStringLiteral("simulationRunStatusAction"));
         m_runStatusAction->setIcon(QIcon(QStringLiteral(":/images/analysis-run.svg")));
-        m_runStatusAction->setToolTip(tr("Show initialization status and verify the prepared run inputs."));
+        m_runStatusAction->setToolTip(tr("Configure and run Flow, view live output and import results."));
         runPanel->addLargeAction(m_runStatusAction);
         connect(m_runStatusAction,
                 &QAction::triggered,
@@ -226,9 +226,10 @@ void IDOSSimulationPlugin::initGui()
 
         QAction* stopTaskAction = new QAction(tr("Stop Task"), m_category);
         stopTaskAction->setIcon(QIcon(QStringLiteral(":/images/simulation-stop.svg")));
-        stopTaskAction->setEnabled(false);
-        stopTaskAction->setToolTip(tr("Planned action; not implemented yet."));
+        stopTaskAction->setObjectName(QStringLiteral("simulationStopTaskAction"));
+        stopTaskAction->setToolTip(tr("Stop the Flow task in the run window."));
         runPanel->addLargeAction(stopTaskAction);
+        connect(stopTaskAction, &QAction::triggered, this, &IDOSSimulationPlugin::onStopTaskTriggered);
 
         SARibbonPanel* resultsPanel = m_category->addPanel(tr("Results"));
         m_resultFilesAction = new QAction(tr("Result Files"), m_category);
@@ -468,12 +469,21 @@ extern "C" IDOS_PLUGIN_EXPORT IDOSPlugin* classFactory(IDOSInterface* interface)
 
 bool IDOSSimulationPlugin::canUnload(QString& reason) const
 {
+    if (m_runStatusWidget != nullptr && m_runStatusWidget->isRunning())
+    {
+        reason = tr("Stop the simulation task before unloading this plugin.");
+        return false;
+    }
     reason.clear();
     return true;
 }
 
 void IDOSSimulationPlugin::onProjectChanged(IDOSProject* project)
 {
+    if (m_runStatusWidget != nullptr)
+    {
+        m_runStatusWidget->cancel();
+    }
     if (m_project != nullptr)
     {
         disconnect(m_project, nullptr, this, nullptr);
@@ -784,6 +794,11 @@ void IDOSSimulationPlugin::onRunPreflightTriggered()
 
 void IDOSSimulationPlugin::onInitializeTriggered()
 {
+    if (m_runStatusWidget != nullptr && m_runStatusWidget->isRunning())
+    {
+        m_runStatusWidget->show();
+        return;
+    }
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
     IDOSSimulationCaseObject* simulationCase = project != nullptr
         ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
@@ -821,6 +836,12 @@ void IDOSSimulationPlugin::onInitializeTriggered()
 
 void IDOSSimulationPlugin::onRunStatusTriggered()
 {
+    if (m_runStatusWidget != nullptr && m_runStatusWidget->isRunning())
+    {
+        m_runStatusWidget->show();
+        m_runStatusWidget->raise();
+        return;
+    }
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
     IDOSSimulationCaseObject* simulationCase = project != nullptr
         ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
@@ -839,6 +860,15 @@ void IDOSSimulationPlugin::onRunStatusTriggered()
 
     m_runStatusWidget = new IDOSSimulationRunStatusWidget(simulationCase, parent);
     m_runStatusWidget->show();
+}
+
+void IDOSSimulationPlugin::onStopTaskTriggered()
+{
+    if (m_runStatusWidget != nullptr)
+    {
+        m_runStatusWidget->stop();
+        m_runStatusWidget->show();
+    }
 }
 
 void IDOSSimulationPlugin::onResultFilesTriggered()

@@ -14,13 +14,13 @@
 #include <QVBoxLayout>
 
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 #include "idossimulationpreflightwidget.h"
 
 #include "idossimulationcaseinventoryreportwidget.h"
 
 IDOSSimulationCaseInventoryReportWidget::IDOSSimulationCaseInventoryReportWidget(
-    IDOSSimulationCaseObject* simulationCase,
-    QWidget* parent)
+    IDOSSimulationCaseObject* simulationCase, QWidget* parent)
     :
     QWidget(parent, Qt::Window)
     , m_reportHtml(buildReportHtml(simulationCase))
@@ -28,7 +28,8 @@ IDOSSimulationCaseInventoryReportWidget::IDOSSimulationCaseInventoryReportWidget
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setObjectName(QStringLiteral("simulationCaseInventoryReportWindow"));
-    setWindowTitle(tr("Case Inventory Report — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
+    setWindowTitle(
+        tr("Case Inventory Report — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     m_reportBrowser = new QTextBrowser(this);
@@ -41,10 +42,7 @@ IDOSSimulationCaseInventoryReportWidget::IDOSSimulationCaseInventoryReportWidget
     QPushButton* saveButton = new QPushButton(tr("Save HTML Report"), this);
     buttonLayout->addWidget(saveButton);
     layout->addLayout(buttonLayout);
-    connect(saveButton,
-            &QPushButton::clicked,
-            this,
-            &IDOSSimulationCaseInventoryReportWidget::onSaveReportTriggered);
+    connect(saveButton, &QPushButton::clicked, this, &IDOSSimulationCaseInventoryReportWidget::onSaveReportTriggered);
     resize(900, 680);
 }
 
@@ -71,9 +69,8 @@ QString IDOSSimulationCaseInventoryReportWidget::buildReportHtml(IDOSSimulationC
     const QString runDirectory = runInfo.value(QStringLiteral("runDirectory")).toString();
     const QStringList inputFiles = runInfo.value(QStringLiteral("files")).toStringList();
     IDOSSimulationPreflightWidget preflightWidget(simulationCase);
-    const QString preflightStatus = preflightWidget.hasBlockingIssues()
-        ? tr("Blocked")
-        : tr("No blocking issues found");
+    const QString preflightStatus =
+        preflightWidget.hasBlockingIssues() ? tr("Blocked") : tr("No blocking issues found");
 
     html += QStringLiteral("<h1>%1</h1>").arg(tr("Case Inventory Report").toHtmlEscaped());
     html += QStringLiteral("<p>%1</p>").arg(QDateTime::currentDateTime().toString(Qt::ISODate).toHtmlEscaped());
@@ -82,13 +79,15 @@ QString IDOSSimulationCaseInventoryReportWidget::buildReportHtml(IDOSSimulationC
                 .arg(tr("Case").toHtmlEscaped(), simulationCase->name().toHtmlEscaped());
     html += QStringLiteral("<tr><th>%1</th><td>%2</td></tr>")
                 .arg(tr("DATA file").toHtmlEscaped(), simulationCase->sourceFile().toHtmlEscaped());
-    html += QStringLiteral("<tr><th>%1</th><td>%2</td></tr>")
-                .arg(tr("DATA title").toHtmlEscaped(), summary.value(QStringLiteral("title")).toString().toHtmlEscaped());
+    html +=
+        QStringLiteral("<tr><th>%1</th><td>%2</td></tr>")
+            .arg(tr("DATA title").toHtmlEscaped(), summary.value(QStringLiteral("title")).toString().toHtmlEscaped());
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h2>%1</h2><table><tr><th>%2</th><th>%3</th></tr>")
                 .arg(tr("Input Sections").toHtmlEscaped(), tr("Section").toHtmlEscaped(), tr("Count").toHtmlEscaped());
-    for (QVariantMap::const_iterator iterator = sectionCounts.constBegin(); iterator != sectionCounts.constEnd(); ++iterator)
+    for (QVariantMap::const_iterator iterator = sectionCounts.constBegin(); iterator != sectionCounts.constEnd();
+         ++iterator)
     {
         html += QStringLiteral("<tr><td>%1</td><td>%2</td></tr>")
                     .arg(iterator.key().toHtmlEscaped(), iterator.value().toString().toHtmlEscaped());
@@ -97,7 +96,8 @@ QString IDOSSimulationCaseInventoryReportWidget::buildReportHtml(IDOSSimulationC
 
     html += QStringLiteral("<h2>%1</h2><table><tr><th>%2</th><th>%3</th></tr>")
                 .arg(tr("Keyword Records").toHtmlEscaped(), tr("Keyword").toHtmlEscaped(), tr("Count").toHtmlEscaped());
-    for (QVariantMap::const_iterator iterator = keywordCounts.constBegin(); iterator != keywordCounts.constEnd(); ++iterator)
+    for (QVariantMap::const_iterator iterator = keywordCounts.constBegin(); iterator != keywordCounts.constEnd();
+         ++iterator)
     {
         html += QStringLiteral("<tr><td>%1</td><td>%2</td></tr>")
                     .arg(iterator.key().toHtmlEscaped(), iterator.value().toString().toHtmlEscaped());
@@ -115,22 +115,23 @@ QString IDOSSimulationCaseInventoryReportWidget::buildReportHtml(IDOSSimulationC
         }
     }
     sourceFiles.sort(Qt::CaseInsensitive);
-    html += QStringLiteral("<h2>%1</h2><table><tr><th>%2</th><th>%3</th></tr>")
-                .arg(tr("Indexed Input Files").toHtmlEscaped(), tr("File").toHtmlEscaped(), tr("Status").toHtmlEscaped());
+    html +=
+        QStringLiteral("<h2>%1</h2><table><tr><th>%2</th><th>%3</th></tr>")
+            .arg(tr("Indexed Input Files").toHtmlEscaped(), tr("File").toHtmlEscaped(), tr("Status").toHtmlEscaped());
     for (const QString& filePath : sourceFiles)
     {
         const QFileInfo fileInfo(filePath);
         html += QStringLiteral("<tr><td>%1</td><td>%2</td></tr>")
-                    .arg(filePath.toHtmlEscaped(), fileInfo.exists() ? tr("Available").toHtmlEscaped()
-                                                                     : tr("Missing").toHtmlEscaped());
+                    .arg(filePath.toHtmlEscaped(),
+                         fileInfo.exists() ? tr("Available").toHtmlEscaped() : tr("Missing").toHtmlEscaped());
     }
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h2>%1</h2><table>").arg(tr("Run Preparation").toHtmlEscaped());
     html += QStringLiteral("<tr><th>%1</th><td>%2</td></tr>")
                 .arg(tr("Status").toHtmlEscaped(), runInfo.isEmpty()
-                         ? tr("Not initialized").toHtmlEscaped()
-                         : tr("Initialized; simulator not started").toHtmlEscaped());
+                                                       ? tr("Not initialized").toHtmlEscaped()
+                                                       : tr("Initialized; simulator not started").toHtmlEscaped());
     html += QStringLiteral("<tr><th>%1</th><td>%2</td></tr>")
                 .arg(tr("Run Preflight").toHtmlEscaped(), preflightStatus.toHtmlEscaped());
     if (!runInfo.isEmpty())
@@ -179,11 +180,9 @@ QString IDOSSimulationCaseInventoryReportWidget::buildReportHtml(IDOSSimulationC
 
 void IDOSSimulationCaseInventoryReportWidget::onSaveReportTriggered()
 {
-    const QString filePath = QFileDialog::getSaveFileName(
-        this,
-        tr("Save Case Inventory Report"),
-        QStringLiteral("case_inventory_report.html"),
-        tr("HTML files (*.html *.htm)"));
+    const QString filePath =
+        QFileDialog::getSaveFileName(this, tr("Save Case Inventory Report"),
+                                     QStringLiteral("case_inventory_report.html"), tr("HTML files (*.html *.htm)"));
     if (filePath.isEmpty())
     {
         return;
@@ -191,10 +190,14 @@ void IDOSSimulationCaseInventoryReportWidget::onSaveReportTriggered()
 
     const QByteArray contents = m_reportHtml.toUtf8();
     QSaveFile reportFile(filePath);
-    if (!reportFile.open(QIODevice::WriteOnly)
-        || reportFile.write(contents) != contents.size()
-        || !reportFile.commit())
+    if (!reportFile.open(QIODevice::WriteOnly) || reportFile.write(contents) != contents.size() || !reportFile.commit())
     {
-        m_reportBrowser->setHtml(QStringLiteral("<p>%1</p>").arg(tr("Unable to save the report file.").toHtmlEscaped()));
+        m_reportBrowser->setHtml(
+            QStringLiteral("<p>%1</p>").arg(tr("Unable to save the report file.").toHtmlEscaped()));
+        IDOS_MESSAGE(tr("Unable to save the report file."), IDOSLogLevel::Error);
+    }
+    else
+    {
+        IDOS_MESSAGE(tr("Case inventory report saved: %1").arg(filePath), IDOSLogLevel::Info);
     }
 }

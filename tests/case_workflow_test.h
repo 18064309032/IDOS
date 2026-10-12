@@ -15,14 +15,19 @@ class CaseWorkflowTest : public QObject
     CaseWorkflowTest();
   private slots:
     void onProvider();
+    void onProviderDimensions();
     void onViewDecorations();
     void onRenderLifecycle();
     void onRenderArchitecture();
     void onExamplePlugin();
     void onCreateAndImport();
     void onDialog();
+    void onFlowExecution();
+    void onSimulationOutput();
+    void onFlowOutputFraming();
 
   private:
+    void onCloseContextMenu();
     IDOSRenderObject* findRenderObject(IDOSRenderView* view, const QString& dataId) const;
     QString m_name;
     bool m_cancel;

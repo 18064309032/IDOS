@@ -67,7 +67,11 @@ IDOSTreeView* IDOSWellTreeGuiProvider::actionView() const
 
 bool IDOSWellTreeGuiProvider::supports(const IDOSTreeItem* item) const
 {
-    if (item == nullptr || item->key() == QStringLiteral("data.wells"))
+    if (item == nullptr)
+    {
+        return false;
+    }
+    if (item->key() == QStringLiteral("data.wells"))
     {
         return true;
     }
@@ -136,8 +140,11 @@ void IDOSWellTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
         return;
     }
     IDOSTreeItem* item = view->menuItem();
-
-    if (item == nullptr || item->key() == QStringLiteral("data.wells"))
+    if (item == nullptr)
+    {
+        return;
+    }
+    if (item->key() == QStringLiteral("data.wells"))
     {
         if (view->tree() == nullptr || view->tree()->name() != QStringLiteral("data"))
         {

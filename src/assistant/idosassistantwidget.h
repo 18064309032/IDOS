@@ -1,6 +1,7 @@
 #ifndef IDOS_ASSISTANT_WIDGET_H
 #define IDOS_ASSISTANT_WIDGET_H
 
+#include <QString>
 #include <QWidget>
 
 #include "idos_assistant.h"
@@ -25,9 +26,6 @@ class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
 
   protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
-
-  signals:
-    void statusChanged(const QString& status);
 
   private slots:
     void onSendClicked();

@@ -5,6 +5,8 @@
 #include <QStringList>
 #include <QWidget>
 
+#include "log/idosloglevel.h"
+
 class IDOSSimulationCaseObject;
 class QLineEdit;
 class QPlainTextEdit;
@@ -24,6 +26,7 @@ class IDOSSimulationInitializeWidget : public QWidget
     void onInitializeTriggered();
 
   private:
+    void showOutput(const QString& message, IDOSLogLevel level = IDOSLogLevel::Error);
     QStringList inputFiles(IDOSSimulationCaseObject* simulationCase) const;
     QString relativeInputPath(const QString& inputFile) const;
     bool validateInputs(QStringList* messages) const;

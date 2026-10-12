@@ -36,11 +36,6 @@ IDOSProject* IDOSRenderServer::project() const
     return m_project.data();
 }
 
-IDOSRenderRegistry* IDOSRenderServer::registry() const
-{
-    return m_registry.data();
-}
-
 void IDOSRenderServer::setProject(IDOSProject* project)
 {
     if (m_project == project)
@@ -52,10 +47,6 @@ void IDOSRenderServer::setProject(IDOSProject* project)
         disconnect(m_project.data(), nullptr, this, nullptr);
     }
     m_project = project;
-    for (IDOSRenderView* view : m_views)
-    {
-        view->setProject(project);
-    }
     if (project != nullptr)
     {
         connect(project, &QObject::destroyed, this, &IDOSRenderServer::onProjectDestroyed);
@@ -88,8 +79,6 @@ void IDOSRenderServer::addView(IDOSRenderView* view)
         return;
     }
     m_views.append(view);
-    view->setRegistry(m_registry);
-    view->setProject(m_project);
     connect(view, &QObject::destroyed, this, &IDOSRenderServer::onViewDestroyed);
     populate(view);
 }
@@ -102,8 +91,6 @@ void IDOSRenderServer::removeView(IDOSRenderView* view)
     }
     disconnect(view, nullptr, this, nullptr);
     view->scene()->clear();
-    view->setProject(nullptr);
-    view->setRegistry(nullptr);
 }
 
 QList<IDOSRenderView*> IDOSRenderServer::views() const
@@ -216,6 +203,18 @@ void IDOSRenderServer::update(const QStringList& ids, bool dataChanged)
                 created = update(view, data, dataChanged) || created;
             }
         }
+        if (dataChanged)
+        {
+            for (IDOSRenderObject* object : view->scene()->objects())
+            {
+                IDOSDataObject* source = object->provider()->dataSource();
+                if (source != nullptr && !ids.contains(source->objectId()) && object->provider()->dependsOn(ids))
+                {
+                    object->update();
+                    view->scene()->notifyChanged(object->id());
+                }
+            }
+        }
         emit objectsChanged(view, ids, dataChanged);
         view->scene()->endUpdate();
         if (created)
@@ -252,6 +251,14 @@ void IDOSRenderServer::onObjectAboutToBeRemoved(const QString& id)
         for (const QString& objectId : ids)
         {
             view->scene()->remove(objectId);
+        }
+        for (IDOSRenderObject* object : view->scene()->objects())
+        {
+            if (object->provider()->removeDataReference(id))
+            {
+                object->update();
+                view->scene()->notifyChanged(object->id());
+            }
         }
         view->scene()->endUpdate();
     }

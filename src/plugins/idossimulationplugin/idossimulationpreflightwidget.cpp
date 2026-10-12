@@ -13,11 +13,11 @@
 
 #include "idoscaseitemref.h"
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationpreflightwidget.h"
 
-IDOSSimulationPreflightWidget::IDOSSimulationPreflightWidget(IDOSSimulationCaseObject* simulationCase,
-                                                             QWidget* parent)
+IDOSSimulationPreflightWidget::IDOSSimulationPreflightWidget(IDOSSimulationCaseObject* simulationCase, QWidget* parent)
     :
     QWidget(parent, Qt::Window)
     , m_summaryLabel(nullptr)
@@ -36,10 +36,7 @@ IDOSSimulationPreflightWidget::IDOSSimulationPreflightWidget(IDOSSimulationCaseO
 
     m_resultsTable = new QTableWidget(this);
     m_resultsTable->setColumnCount(3);
-    m_resultsTable->setHorizontalHeaderLabels(QStringList()
-                                              << tr("Check")
-                                              << tr("Result")
-                                              << tr("Details"));
+    m_resultsTable->setHorizontalHeaderLabels(QStringList() << tr("Check") << tr("Result") << tr("Details"));
     m_resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_resultsTable->setAlternatingRowColors(true);
@@ -55,10 +52,12 @@ bool IDOSSimulationPreflightWidget::hasBlockingIssues() const
     return m_blockingCount > 0;
 }
 
-void IDOSSimulationPreflightWidget::addResult(const QString& checkName,
-                                              const QString& status,
-                                              const QString& details)
+void IDOSSimulationPreflightWidget::addResult(const QString& checkName, const QString& status, const QString& details)
 {
+    const QString message = checkName + QStringLiteral(": ") + status + QStringLiteral(" - ") + details;
+    const IDOSLogLevel level = status == tr("Blocked") ? IDOSLogLevel::Error
+                              : (status == tr("Warning") ? IDOSLogLevel::Warn : IDOSLogLevel::Info);
+    IDOSLogger::instance().message(message, level);
     const int row = m_resultsTable->rowCount();
     m_resultsTable->insertRow(row);
     m_resultsTable->setItem(row, 0, new QTableWidgetItem(checkName));
@@ -106,13 +105,14 @@ void IDOSSimulationPreflightWidget::runChecks(IDOSSimulationCaseObject* simulati
         }
         else
         {
-            addResult(tr("Parsed input summary"), tr("Passed"), tr("The DATA file was parsed when this case was imported."));
+            addResult(tr("Parsed input summary"), tr("Passed"),
+                      tr("The DATA file was parsed when this case was imported."));
         }
 
         const QVariantMap sectionCounts = summary.value(QStringLiteral("sectionCounts")).toMap();
-        const QStringList requiredSections = {
-            QStringLiteral("RUNSPEC"), QStringLiteral("GRID"), QStringLiteral("PROPS"),
-            QStringLiteral("SOLUTION"), QStringLiteral("SCHEDULE")};
+        const QStringList requiredSections = {QStringLiteral("RUNSPEC"), QStringLiteral("GRID"),
+                                              QStringLiteral("PROPS"), QStringLiteral("SOLUTION"),
+                                              QStringLiteral("SCHEDULE")};
         for (const QString& section : requiredSections)
         {
             const int count = sectionCounts.value(section).toInt();
@@ -122,7 +122,8 @@ void IDOSSimulationPreflightWidget::runChecks(IDOSSimulationCaseObject* simulati
             }
             else
             {
-                addResult(tr("Required section: %1").arg(section), tr("Blocked"), tr("The required section is missing."));
+                addResult(tr("Required section: %1").arg(section), tr("Blocked"),
+                          tr("The required section is missing."));
             }
         }
 
@@ -156,8 +157,8 @@ void IDOSSimulationPreflightWidget::runChecks(IDOSSimulationCaseObject* simulati
         }
 
         const QVariantMap keywordCounts = summary.value(QStringLiteral("keywordCounts")).toMap();
-        const int wellControlCount = keywordCounts.value(QStringLiteral("WCONPROD")).toInt()
-            + keywordCounts.value(QStringLiteral("WCONINJE")).toInt();
+        const int wellControlCount = keywordCounts.value(QStringLiteral("WCONPROD")).toInt() +
+                                     keywordCounts.value(QStringLiteral("WCONINJE")).toInt();
         if (wellControlCount == 0)
         {
             addResult(tr("Well controls"), tr("Warning"), tr("No WCONPROD or WCONINJE records were found."));
@@ -183,11 +184,10 @@ void IDOSSimulationPreflightWidget::runChecks(IDOSSimulationCaseObject* simulati
                 }
                 else
                 {
-                    const QString relativePath = QDir(sourceInfo.absolutePath())
-                        .relativeFilePath(QFileInfo(filePath).absoluteFilePath());
-                    if (relativePath == QStringLiteral("..")
-                        || relativePath.startsWith(QStringLiteral("../"))
-                        || relativePath.startsWith(QStringLiteral("..\\")))
+                    const QString relativePath =
+                        QDir(sourceInfo.absolutePath()).relativeFilePath(QFileInfo(filePath).absoluteFilePath());
+                    if (relativePath == QStringLiteral("..") || relativePath.startsWith(QStringLiteral("../")) ||
+                        relativePath.startsWith(QStringLiteral("..\\")))
                     {
                         externalFiles.append(filePath);
                     }
@@ -204,27 +204,26 @@ void IDOSSimulationPreflightWidget::runChecks(IDOSSimulationCaseObject* simulati
         }
         else if (!externalFiles.isEmpty())
         {
-            addResult(tr("Referenced input files"),
-                      tr("Blocked"),
-                      tr("Input files outside the DATA directory tree cannot be relocated safely:")
-                          + QLatin1Char('\n') + externalFiles.join(QLatin1Char('\n')));
+            addResult(tr("Referenced input files"), tr("Blocked"),
+                      tr("Input files outside the DATA directory tree cannot be relocated safely:") +
+                          QLatin1Char('\n') + externalFiles.join(QLatin1Char('\n')));
         }
         else
         {
-            addResult(tr("Referenced input files"), tr("Passed"), tr("All %1 indexed source file(s) exist.").arg(indexedFiles.size()));
+            addResult(tr("Referenced input files"), tr("Passed"),
+                      tr("All %1 indexed source file(s) exist.").arg(indexedFiles.size()));
         }
     }
 
     if (m_blockingCount > 0)
     {
-        m_summaryLabel->setText(tr("Preflight blocked: %1 blocking issue(s), %2 warning(s).")
-                                    .arg(m_blockingCount)
-                                    .arg(m_warningCount));
+        m_summaryLabel->setText(
+            tr("Preflight blocked: %1 blocking issue(s), %2 warning(s).").arg(m_blockingCount).arg(m_warningCount));
     }
     else if (m_warningCount > 0)
     {
-        m_summaryLabel->setText(tr("Preflight completed with %1 warning(s). No blocking issue was found.")
-                                    .arg(m_warningCount));
+        m_summaryLabel->setText(
+            tr("Preflight completed with %1 warning(s). No blocking issue was found.").arg(m_warningCount));
     }
     else
     {

@@ -79,6 +79,18 @@
         <source>Step %1</source>
         <translation>步 %1</translation>
     </message>
+    <message>
+        <source>Report-step playback started.</source>
+        <translation>报告步播放已开始。</translation>
+    </message>
+    <message>
+        <source>Report-step playback paused.</source>
+        <translation>报告步播放已暂停。</translation>
+    </message>
+    <message>
+        <source>Report-step playback completed.</source>
+        <translation>报告步播放已结束。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSSimulationPlugin</name>
@@ -282,6 +294,18 @@
         <source>Planned action; not implemented yet.</source>
         <translation>规划中的操作，暂未实现。</translation>
     </message>
+    <message>
+        <source>Configure and run Flow, view live output and import results.</source>
+        <translation>配置并运行 Flow，查看实时输出并导入结果。</translation>
+    </message>
+    <message>
+        <source>Stop the Flow task in the run window.</source>
+        <translation>停止运行窗口中的 Flow 任务。</translation>
+    </message>
+    <message>
+        <source>Stop the simulation task before unloading this plugin.</source>
+        <translation>请先停止模拟任务，再卸载此插件。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSSimulationInitializeWidget</name>
@@ -376,6 +400,14 @@
     <message>
         <source>Input files were copied and verified. The simulator has not been started.</source>
         <translation>输入文件已复制并校验，模拟器尚未启动。</translation>
+    </message>
+    <message>
+        <source>Preparing run directory: %1</source>
+        <translation>正在准备运行目录：%1</translation>
+    </message>
+    <message>
+        <source>Copying input file: %1</source>
+        <translation>正在复制输入文件：%1</translation>
     </message>
 </context>
 <context>
@@ -516,6 +548,10 @@
         <source>Unable to save the report file.</source>
         <translation>无法保存报告文件。</translation>
     </message>
+    <message>
+        <source>Case inventory report saved: %1</source>
+        <translation>工况清单报告已保存：%1</translation>
+    </message>
 </context>
 <context>
     <name>IDOSSimulationDataGenerationWidget</name>
@@ -602,6 +638,10 @@
     <message>
         <source>Unable to finalize the DATA package directory.</source>
         <translation>无法完成 DATA 数据包目录。</translation>
+    </message>
+    <message>
+        <source>Generating DATA package.</source>
+        <translation>正在生成 DATA 输入包。</translation>
     </message>
 </context>
 <context>
@@ -745,6 +785,14 @@
         <source>Run directory</source>
         <translation>运行目录</translation>
     </message>
+    <message>
+        <source>Review input preparation, Flow execution and result import for this case.</source>
+        <translation>查看当前工况的输入准备、Flow 运行和结果导入阶段。</translation>
+    </message>
+    <message>
+        <source>Open Run Status to configure and start Flow through WSL2.</source>
+        <translation>打开“运行状态”，配置并通过 WSL2 启动 Flow。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSSimulationRunStatusWidget</name>
@@ -795,6 +843,86 @@
     <message>
         <source>Initialized input files are missing. The simulator has not been started.</source>
         <translation>已初始化的输入文件存在缺失，模拟器尚未启动。</translation>
+    </message>
+    <message>
+        <source>Linux distribution</source>
+        <translation>Linux 发行版</translation>
+    </message>
+    <message>
+        <source>Flow executable</source>
+        <translation>Flow 可执行程序</translation>
+    </message>
+    <message>
+        <source>CPU threads</source>
+        <translation>CPU 线程数</translation>
+    </message>
+    <message>
+        <source>Start Flow</source>
+        <translation>启动 Flow</translation>
+    </message>
+    <message>
+        <source>Stop Task</source>
+        <translation>停止任务</translation>
+    </message>
+    <message>
+        <source>Initialize the case and configure a Linux distribution and absolute Flow path first.</source>
+        <translation>请先初始化工况，并配置 Linux 发行版和 Flow 的绝对路径。</translation>
+    </message>
+    <message>
+        <source>An initialized input file is missing: %1</source>
+        <translation>初始化输入文件缺失：%1</translation>
+    </message>
+    <message>
+        <source>The target grid is unavailable.</source>
+        <translation>目标网格不可用。</translation>
+    </message>
+    <message>
+        <source>Cannot create the simulation output directory.</source>
+        <translation>无法创建模拟输出目录。</translation>
+    </message>
+    <message>
+        <source>Flow is starting. Output directory: %1</source>
+        <translation>正在启动 Flow。输出目录：%1</translation>
+    </message>
+    <message>
+        <source>Stopping Flow...</source>
+        <translation>正在停止 Flow……</translation>
+    </message>
+    <message>
+        <source>The simulation was cancelled. Results were not imported.</source>
+        <translation>模拟已取消，未导入结果。</translation>
+    </message>
+    <message>
+        <source>Flow failed (exit code %1): %2</source>
+        <translation>Flow 运行失败（退出码 %1）：%2</translation>
+    </message>
+    <message>
+        <source>The project or target grid is unavailable. Results were not imported.</source>
+        <translation>工程或目标网格不可用，未导入结果。</translation>
+    </message>
+    <message>
+        <source>Flow finished, but exactly one UNRST result file is required.</source>
+        <translation>Flow 已结束，但必须有且仅有一个 UNRST 结果文件。</translation>
+    </message>
+    <message>
+        <source>Flow finished, but result import failed: %1</source>
+        <translation>Flow 已结束，但结果导入失败：%1</translation>
+    </message>
+    <message>
+        <source>The command manager is unavailable.</source>
+        <translation>命令管理器不可用。</translation>
+    </message>
+    <message>
+        <source>Flow completed and dynamic properties were imported. You can undo the import.</source>
+        <translation>Flow 计算完成，动态属性已导入。可以撤销此次导入。</translation>
+    </message>
+    <message>
+        <source>The case grid reference changed. Results were not imported.</source>
+        <translation>工况网格引用已改变，未导入结果。</translation>
+    </message>
+    <message>
+        <source>Importing Flow results: %1</source>
+        <translation>正在导入 Flow 结果：%1</translation>
     </message>
 </context>
 <context>
@@ -941,6 +1069,10 @@
     <message>
         <source>Archived %1 file(s), plus the run manifest.</source>
         <translation>已归档 %1 个文件，另含运行清单。</translation>
+    </message>
+    <message>
+        <source>Creating run archive: %1</source>
+        <translation>正在创建运行归档：%1</translation>
     </message>
 </context>
 <context>

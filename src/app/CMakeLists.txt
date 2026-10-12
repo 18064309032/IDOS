@@ -34,10 +34,6 @@ add_library(idos_app SHARED
     well/idoswelltreemetadata.h
     well/idoswelltreeprovider.cpp
     well/idoswelltreeprovider.h
-    well/idoswellrenderguiprovider.h
-    well/idoswellrenderguiprovider.cpp
-    grid/idosgridrenderguiprovider.h
-    grid/idosgridrenderguiprovider.cpp
     idos_app.h
     case/idoscasedialog.h
     case/idoscasedialog.cpp

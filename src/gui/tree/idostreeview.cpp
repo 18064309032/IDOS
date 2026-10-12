@@ -17,7 +17,7 @@
 IDOSTreeView::IDOSTreeView(QWidget* parent)
     :
     QTreeView(parent)
-
+    , m_blankMenuEnabled(false)
 {
     setExpandsOnDoubleClick(true);
     setHeaderHidden(true);
@@ -257,12 +257,6 @@ void IDOSTreeView::setTargetView(QObject* view)
     refreshCheckStates();
 }
 
-IDOSTreeItem* IDOSTreeView::currentItem() const
-{
-    IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    return treeModel != nullptr ? treeModel->nodeFromIndex(currentIndex()) : nullptr;
-}
-
 QList<IDOSTreeItem*> IDOSTreeView::selectedItems() const
 {
     QList<IDOSTreeItem*> result;
@@ -283,10 +277,19 @@ IDOSTreeItem* IDOSTreeView::menuItem() const
     return treeModel != nullptr ? treeModel->nodeFromIndex(m_menuIndex) : nullptr;
 }
 
+void IDOSTreeView::setBlankMenuEnabled(bool enabled)
+{
+    m_blankMenuEnabled = enabled;
+}
+
 QMenu* IDOSTreeView::createMenu(const QModelIndex& target)
 {
     m_menuIndex = target;
     QMenu* menu = new QMenu(this);
+    if (menuItem() == nullptr && !m_blankMenuEnabled)
+    {
+        return menu;
+    }
     if (m_registry != nullptr)
     {
         const QList<std::shared_ptr<IDOSTreeGuiProvider>> providers = m_registry->guiProviders();
@@ -298,7 +301,6 @@ QMenu* IDOSTreeView::createMenu(const QModelIndex& target)
             }
         }
     }
-    emit contextMenuAboutToShow(menu);
     return menu;
 }
 
@@ -331,6 +333,12 @@ void IDOSTreeView::contextMenuEvent(QContextMenuEvent* event)
 {
     const QModelIndex target = event->reason() == QContextMenuEvent::Keyboard
                                    ? currentIndex() : indexAt(event->pos());
+    if (!target.isValid() && !m_blankMenuEnabled)
+    {
+        m_menuIndex = QPersistentModelIndex();
+        event->accept();
+        return;
+    }
     QMenu* menu = createMenu(target);
     if (!menu->actions().isEmpty())
     {

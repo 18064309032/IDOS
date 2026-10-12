@@ -36,6 +36,7 @@ class IDOSPythonConsoleWidget;
 class IDOSPluginRegistry;
 class IDOSPluginManagerWidget;
 class IDOSAppInterface;
+class IDOSToolRegistry;
 
 namespace ads
 {
@@ -72,6 +73,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSDataRegistry* dataRegistry() const;
     IDOSTreeRegistry* treeRegistry() const;
     IDOSRenderRegistry* renderRegistry() const;
+    IDOSToolRegistry* toolRegistry() const;
     IDOSCommandRegistry* commandRegistry() const;
 
   signals:
@@ -184,6 +186,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSTreeRegistry* m_treeRegistry;
     IDOSTreeServer* m_treeServer;
     IDOSRenderRegistry* m_renderRegistry;
+    IDOSToolRegistry* m_toolRegistry;
     IDOSRenderServer* m_renderServer;
     QMap<QString, QPointer<IDOSRenderView>> m_views;
     QMap<QString, QString> m_viewContextIds;

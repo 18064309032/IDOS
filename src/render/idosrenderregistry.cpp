@@ -1,5 +1,4 @@
 #include "idosrendermetadata.h"
-#include "idosrenderguiprovider.h"
 
 #include "idosrenderregistry.h"
 
@@ -14,7 +13,6 @@ IDOSRenderRegistry::IDOSRenderRegistry(QObject* parent)
 IDOSRenderRegistry::~IDOSRenderRegistry()
 {
     clear();
-    qDeleteAll(m_guiProviders);
 }
 
 bool IDOSRenderRegistry::add(IDOSRenderMetadata* metadata)
@@ -70,45 +68,4 @@ void IDOSRenderRegistry::clear()
     {
         remove(type);
     }
-}
-
-bool IDOSRenderRegistry::addGuiProvider(IDOSRenderGuiProvider* provider)
-{
-    if (m_changing || provider == nullptr || provider->name().isEmpty())
-    {
-        return false;
-    }
-    for (const IDOSRenderGuiProvider* existing : m_guiProviders)
-    {
-        if (existing->name() == provider->name())
-        {
-            return false;
-        }
-    }
-    m_guiProviders.append(provider);
-    return true;
-}
-
-bool IDOSRenderRegistry::removeGuiProvider(const QString& name)
-{
-    if (m_changing)
-    {
-        return false;
-    }
-    for (int index = 0; index < m_guiProviders.size(); ++index)
-    {
-        IDOSRenderGuiProvider* provider = m_guiProviders.at(index);
-        if (provider->name() == name)
-        {
-            m_guiProviders.removeAt(index);
-            delete provider;
-            return true;
-        }
-    }
-    return false;
-}
-
-QList<IDOSRenderGuiProvider*> IDOSRenderRegistry::guiProviders() const
-{
-    return m_guiProviders;
 }

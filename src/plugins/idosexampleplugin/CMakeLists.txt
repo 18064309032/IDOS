@@ -8,7 +8,6 @@ add_library(idosexampleplugin SHARED
     idospointsettreeguiprovider.h idospointsettreeguiprovider.cpp
     idospointsetrenderprovider.h idospointsetrenderprovider.cpp
     idospointsetrendermetadata.h idospointsetrendermetadata.cpp
-    idospointsetrenderguiprovider.h idospointsetrenderguiprovider.cpp
 )
 target_include_directories(idosexampleplugin PRIVATE "${PROJECT_SOURCE_DIR}/src/plugins")
 target_link_libraries(idosexampleplugin PRIVATE

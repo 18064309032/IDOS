@@ -1,32 +1,41 @@
 #include <memory>
 
-#include <QMenu>
 #include <QAction>
 #include <QItemSelectionModel>
+#include <QKeyEvent>
+#include <QMenu>
 #include <QPersistentModelIndex>
 #include <QScopedPointer>
 #include <QSignalSpy>
 #include <QStringList>
 #include <QtTest>
 
+#include <QVTKOpenGLNativeWidget.h>
+#include <vtkCommand.h>
+#include <vtkObject.h>
+#include <vtkSmartPointer.h>
+
 #include "idoscaseitemref.h"
 #include "idosdatametadata.h"
 #include "idosdataregistry.h"
-#include "idoswellmetadata.h"
-#include "idosgridmetadata.h"
-#include "idossimulationcasemetadata.h"
-#include "idostreemodel.h"
-#include "idostreeview.h"
 #include "idosgrid.h"
+#include "idosgridmetadata.h"
 #include "idosgridproperty.h"
 #include "idosmainwindow.h"
 #include "idosproject.h"
+#include "idosrenderview.h"
+#include "idossimulationcasemetadata.h"
 #include "idossimulationcaseobject.h"
-#include "idoswell.h"
+#include "idostoolbar.h"
+#include "idostoolregistry.h"
 #include "idostree.h"
 #include "idostreeitem.h"
+#include "idostreemodel.h"
 #include "idostreeregistry.h"
 #include "idostreeserver.h"
+#include "idostreeview.h"
+#include "idoswell.h"
+#include "idoswellmetadata.h"
 #include "idoswelltreeguiprovider.h"
 #include "idoswelltreemetadata.h"
 
@@ -476,8 +485,8 @@ void TreeIncrementalTest::onRegistryLifecycle()
     QVERIFY(registry.addGuiProvider(gui));
     QVERIFY(!registry.addGuiProvider(gui));
     const QModelIndex index = model.indexFromDataId(id);
-    QVERIFY(model.setData(index, Qt::Unchecked, Qt::CheckStateRole));
-    QVERIFY(!well->isVisible());
+    QVERIFY(!model.setData(index, Qt::Unchecked, Qt::CheckStateRole));
+    QVERIFY(well->isVisible());
     QVERIFY(registry.remove(QStringLiteral("idos.well")));
     QCOMPARE(model.rowCount(), 0);
     QVERIFY(!registry.remove(QStringLiteral("idos.well")));
@@ -486,21 +495,6 @@ void TreeIncrementalTest::onRegistryLifecycle()
     QVERIFY(server.removeTree(&tree));
     QCOMPARE(model.rowCount(), 0);
     QCOMPARE(tree.project(), nullptr);
-}
-
-void TreeIncrementalTest::onTreeDataMetadataQuery()
-{
-    IDOSDataRegistry dataRegistry;
-    IDOSTreeRegistry treeRegistry;
-    QVERIFY(dataRegistry.add(new IDOSWellMetadata()));
-    QVERIFY(dataRegistry.add(new IDOSGridMetadata()));
-    QVERIFY(dataRegistry.add(new IDOSSimulationCaseMetadata()));
-    QVERIFY(treeRegistry.add(new IDOSWellTreeMetadata()));
-    const QList<const IDOSDataMetadata*> metadata = treeRegistry.dataMetadata(&dataRegistry);
-    QCOMPARE(metadata.size(), 1);
-    QCOMPARE(metadata.first()->typeId(), QStringLiteral("idos.well"));
-    QCOMPARE(metadata.first()->displayName(), QStringLiteral("Well"));
-    QVERIFY(treeRegistry.dataMetadata(nullptr).isEmpty());
 }
 
 void TreeIncrementalTest::onTreeOwnership()
@@ -545,6 +539,10 @@ void TreeIncrementalTest::onMenuTargets()
     view->selectionModel()->select(firstIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
     view->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
     QCOMPARE(view->selectedItems().size(), 2);
+    QScopedPointer<QMenu> blankMenu(view->createMenu(QModelIndex()));
+    QVERIFY(blankMenu->actions().isEmpty());
+    QVERIFY(view->menuItem() == nullptr);
+    QCOMPARE(view->selectedItems().size(), 2);
     QScopedPointer<QMenu> menu(view->createMenu(firstIndex));
     QCOMPARE(view->menuItem()->dataId(), first->objectId());
     QCOMPARE(view->selectedItems().size(), 2);
@@ -558,5 +556,285 @@ void TreeIncrementalTest::onMenuTargets()
     QCOMPARE(replacement.objects().size(), 0);
 }
 
+IDOSTestInputTool::IDOSTestInputTool(IDOSRenderView* view)
+    :
+    IDOSTool(view)
+    , consumed(false)
+    , inputs(0)
+    , observations(0)
+    , observedValue(0)
+    , registry(nullptr)
+    , removalAccepted(false)
+    , stopOnInput(false)
+{
+    connect(this, &IDOSTool::callbackFinished, this, &IDOSTestInputTool::onCallbackFinished);
+}
+
+void IDOSTestInputTool::onCallbackFinished(bool consumed)
+{
+    Q_UNUSED(consumed)
+    if (registry != nullptr)
+    {
+        removalAccepted = registry->remove(QStringLiteral("test.input"));
+    }
+}
+
+QString IDOSTestInputTool::exclusiveGroup() const
+{
+    return group;
+}
+
+bool IDOSTestInputTool::onEventFilter(QObject* watched, QEvent* event)
+{
+    Q_UNUSED(watched)
+    if (event->type() == QEvent::KeyPress)
+    {
+        ++inputs;
+        if (registry != nullptr)
+        {
+            removalAccepted = registry->remove(QStringLiteral("test.input"));
+        }
+        if (stopOnInput)
+        {
+            view()->disableTool(this);
+            QCoreApplication::processEvents();
+        }
+        return consumed;
+    }
+    return false;
+}
+
+void IDOSTestInputTool::observe(vtkObject* source)
+{
+    observeVtkEvent(source, vtkCommand::ModifiedEvent);
+}
+
+void IDOSTestInputTool::onVtkEvent(vtkObject* source, unsigned long eventId, void* callData)
+{
+    Q_UNUSED(source)
+    Q_UNUSED(eventId)
+    ++observations;
+    if (callData != nullptr)
+    {
+        observedValue = *static_cast<int*>(callData);
+    }
+    if (registry != nullptr)
+    {
+        removalAccepted = registry->remove(QStringLiteral("test.input"));
+    }
+}
+
+IDOSTestToolProvider::IDOSTestToolProvider(IDOSRenderView* view)
+    :
+    IDOSToolProvider(view)
+    , m_action(new QAction(tr("Test input"), this))
+    , m_menu(new QMenu(view))
+    , m_tool(new IDOSTestInputTool(view))
+{
+    m_tool->setParent(this);
+    m_action->setCheckable(true);
+    QAction* operation = m_menu->addAction(tr("Nested operation"));
+    connect(operation, &QAction::triggered, this, &IDOSTestToolProvider::onToggleTool);
+    m_action->setMenu(m_menu);
+}
+
+IDOSTestToolProvider::~IDOSTestToolProvider()
+{
+    delete m_menu;
+}
+
+QList<QAction*> IDOSTestToolProvider::actions() const
+{
+    return QList<QAction*>{m_action};
+}
+
+QList<IDOSTool*> IDOSTestToolProvider::tools() const
+{
+    return QList<IDOSTool*>{m_tool};
+}
+
+void IDOSTestToolProvider::updateState()
+{
+    m_action->setChecked(view()->axesVisible());
+}
+
+void IDOSTestToolProvider::onToggleTool()
+{
+    if (view()->isToolEnabled(m_tool))
+    {
+        view()->disableTool(m_tool);
+    }
+    else
+    {
+        view()->enableTool(m_tool);
+    }
+}
+
+IDOSTestToolMetadata::IDOSTestToolMetadata(const QString& id)
+    :
+    m_id(id)
+{
+}
+
+QString IDOSTestToolMetadata::id() const
+{
+    return m_id;
+}
+
+QString IDOSTestToolMetadata::name() const
+{
+    return QObject::tr("Test input");
+}
+
+QString IDOSTestToolMetadata::description() const
+{
+    return QObject::tr("Test input tool");
+}
+
+QString IDOSTestToolMetadata::iconPath() const
+{
+    return QString();
+}
+
+QString IDOSTestToolMetadata::groupId() const
+{
+    return QStringLiteral("interaction");
+}
+
+int IDOSTestToolMetadata::order() const
+{
+    return 0;
+}
+
+bool IDOSTestToolMetadata::supports(const IDOSRenderView* view) const
+{
+    return !view->isTwoDimensional();
+}
+
+IDOSToolProvider* IDOSTestToolMetadata::create(IDOSRenderView* view) const
+{
+    return new IDOSTestToolProvider(view);
+}
+
+void TreeIncrementalTest::onToolRegistryAndWindows()
+{
+    IDOSToolRegistry registry;
+    IDOSRenderView first;
+    IDOSRenderView second;
+    IDOSToolBar* firstBar = new IDOSToolBar();
+    IDOSToolBar* secondBar = new IDOSToolBar();
+    QVERIFY(firstBar->setRegistry(&registry));
+    QVERIFY(secondBar->setRegistry(&registry));
+    QVERIFY(firstBar->actions().isEmpty());
+    QVERIFY(first.setToolBar(firstBar));
+    QVERIFY(second.setToolBar(secondBar));
+    QVERIFY(firstBar->isHidden());
+    QVERIFY(!second.setToolBar(firstBar));
+    QVERIFY(registry.add(new IDOSTestToolMetadata()));
+    std::unique_ptr<IDOSTestToolMetadata> duplicate(new IDOSTestToolMetadata());
+    QVERIFY(!registry.add(duplicate.get()));
+    QCOMPARE(firstBar->actions().size(), 1);
+    QVERIFY(!firstBar->isHidden());
+    QCOMPARE(secondBar->actions().size(), 1);
+    QVERIFY(firstBar->actions().first() != secondBar->actions().first());
+    firstBar->actions().first()->menu()->actions().first()->trigger();
+    QCOMPARE(first.enabledTools().size(), 1);
+    QVERIFY(second.enabledTools().isEmpty());
+    firstBar->hide();
+    first.setAxesVisible(false);
+    QVERIFY(firstBar->isHidden());
+    QVERIFY(!firstBar->actions().first()->isChecked());
+    QVERIFY(secondBar->actions().first()->isChecked());
+    QPointer<QAction> oldAction = firstBar->actions().first();
+    second.setTwoDimensional(true);
+    QVERIFY(secondBar->actions().isEmpty());
+    QVERIFY(secondBar->isHidden());
+    second.setTwoDimensional(false);
+    QCOMPARE(secondBar->actions().size(), 1);
+    QVERIFY(registry.remove(QStringLiteral("test.input")));
+    QVERIFY(oldAction == nullptr);
+    QVERIFY(firstBar->isHidden());
+    QVERIFY(secondBar->isHidden());
+    QVERIFY(first.setToolBar(nullptr));
+    QVERIFY(first.toolBar() == nullptr);
+}
+
+void TreeIncrementalTest::onToolInputLifecycle()
+{
+    IDOSRenderView view;
+    IDOSRenderView other;
+    IDOSTestInputTool first(&view);
+    IDOSTestInputTool second(&view);
+    QVERIFY(!first.setActive(true));
+    QVERIFY(!other.enableTool(&first));
+    QVERIFY(view.enableTool(&first));
+    QVERIFY(view.enableTool(&second));
+    QKeyEvent event(QEvent::KeyPress, Qt::Key_F8, Qt::NoModifier);
+    QApplication::sendEvent(view.vtkWidget(), &event);
+    QCOMPARE(first.inputs, 1);
+    QCOMPARE(second.inputs, 1);
+    second.consumed = true;
+    QApplication::sendEvent(view.vtkWidget(), &event);
+    QCOMPARE(first.inputs, 1);
+    QCOMPARE(second.inputs, 2);
+    QVERIFY(view.captureTool(&first));
+    QVERIFY(!view.captureTool(&second));
+    view.releaseTool(&first);
+    QVERIFY(view.disableTool(&first));
+    QVERIFY(view.disableTool(&second));
+    first.group = QStringLiteral("test.exclusive");
+    second.group = QStringLiteral("test.exclusive");
+    QVERIFY(view.enableTool(&second));
+    QVERIFY(view.enableTool(&first));
+    QVERIFY(!second.isActive());
+    first.stopOnInput = true;
+    QApplication::sendEvent(view.vtkWidget(), &event);
+    QTRY_VERIFY(!first.isActive());
+    QVERIFY(view.enabledTools().isEmpty());
+    QApplication::sendEvent(view.vtkWidget(), &event);
+    QCOMPARE(first.inputs, 2);
+}
+
+void TreeIncrementalTest::onToolObserversAndUnregister()
+{
+    IDOSToolRegistry registry;
+    IDOSRenderView view;
+    IDOSToolBar* bar = new IDOSToolBar();
+    QVERIFY(bar->setRegistry(&registry));
+    QVERIFY(view.setToolBar(bar));
+    QVERIFY(registry.add(new IDOSTestToolMetadata()));
+    const QList<IDOSToolProvider*> providers = bar->findChildren<IDOSToolProvider*>();
+    QVERIFY(!providers.isEmpty());
+    IDOSTestInputTool* tool = static_cast<IDOSTestInputTool*>(providers.first()->tools().first());
+    tool->registry = &registry;
+    QVERIFY(view.enableTool(tool));
+    vtkSmartPointer<vtkObject> source = vtkSmartPointer<vtkObject>::New();
+    tool->observe(source);
+    source->Modified();
+    QCOMPARE(tool->observations, 1);
+    int eventValue = 42;
+    source->InvokeEvent(vtkCommand::ModifiedEvent, &eventValue);
+    QCOMPARE(tool->observations, 2);
+    QCOMPARE(tool->observedValue, eventValue);
+    vtkSmartPointer<vtkObject> temporarySource = vtkSmartPointer<vtkObject>::New();
+    tool->observe(temporarySource);
+    temporarySource = nullptr;
+    QVERIFY(!tool->removalAccepted);
+    QVERIFY(registry.metadata(QStringLiteral("test.input")) != nullptr);
+    QVERIFY(view.disableTool(tool));
+    source->Modified();
+    QCOMPARE(tool->observations, 2);
+    QVERIFY(view.enableTool(tool));
+    QKeyEvent event(QEvent::KeyPress, Qt::Key_F8, Qt::NoModifier);
+    QApplication::sendEvent(view.vtkWidget(), &event);
+    QVERIFY(!tool->removalAccepted);
+    QVERIFY(view.captureTool(tool));
+    QPointer<IDOSTestInputTool> guard = tool;
+    QVERIFY(registry.remove(QStringLiteral("test.input")));
+    QVERIFY(guard == nullptr);
+    QVERIFY(view.enabledTools().isEmpty());
+    QVERIFY(view.capturedTool() == nullptr);
+    QVERIFY(!source->HasObserver(vtkCommand::ModifiedEvent));
+}
+
 QTEST_MAIN(TreeIncrementalTest)
-#include "tree_incremental_test.moc"

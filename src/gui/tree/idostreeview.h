@@ -29,14 +29,11 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     IDOSProject* project() const;
     QObject* targetView() const;
     void setTargetView(QObject* view);
-    IDOSTreeItem* currentItem() const;
     QList<IDOSTreeItem*> selectedItems() const;
     IDOSTreeItem* menuItem() const;
+    void setBlankMenuEnabled(bool enabled);
     QMenu* createMenu(const QModelIndex& target);
     void refreshCheckStates();
-
-  signals:
-    void contextMenuAboutToShow(QMenu* menu);
 
   protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -59,6 +56,7 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     QPointer<QObject> m_targetView;
     QPersistentModelIndex m_menuIndex;
     QSet<QString> m_pendingExpandedPaths;
+    bool m_blankMenuEnabled;
 };
 
 #endif

@@ -6,6 +6,8 @@
 
 class QLineEdit;
 class QPlainTextEdit;
+#include "log/idosloglevel.h"
+
 class IDOSSimulationCaseObject;
 
 class IDOSSimulationRunArchiveWidget : public QWidget
@@ -21,6 +23,7 @@ class IDOSSimulationRunArchiveWidget : public QWidget
     void onCreateArchiveTriggered();
 
   private:
+    void showOutput(const QString& message, IDOSLogLevel level = IDOSLogLevel::Error);
     QString m_caseName;
     QVariantMap m_runInfo;
     QLineEdit* m_archiveDirectoryEdit;

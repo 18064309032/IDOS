@@ -25,6 +25,7 @@
         <file>gui-case-views.svg</file>
         <file>gui-case.svg</file>
         <file>gui-data-tree.svg</file>
+        <file>gui-debug.svg</file>
         <file>gui-faults.svg</file>
         <file>gui-field-management.svg</file>
         <file>gui-flow-diagnostics.svg</file>
@@ -40,6 +41,7 @@
         <file>gui-initial-conditions.svg</file>
         <file>gui-microseismic.svg</file>
         <file>gui-natural-fractures.svg</file>
+        <file>gui-output.svg</file>
         <file>gui-production.svg</file>
         <file>gui-rock-physics.svg</file>
         <file>gui-seismic.svg</file>

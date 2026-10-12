@@ -58,6 +58,7 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
     void onRunPreflightTriggered();
     void onInitializeTriggered();
     void onRunStatusTriggered();
+    void onStopTaskTriggered();
     void onResultFilesTriggered();
     void onRunArchiveTriggered();
     void onCaseInventoryReportTriggered();

@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QEvent>
+#include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -7,6 +8,7 @@
 #include <QPushButton>
 #include <QTextBrowser>
 #include <QTextCursor>
+#include <QTextDocument>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
@@ -30,17 +32,17 @@ IDOSAssistantWidget::IDOSAssistantWidget(QWidget* parent)
     m_transcript->setOpenLinks(false);
     m_transcript->setOpenExternalLinks(false);
     m_transcript->setFrameShape(QFrame::NoFrame);
+    const QFont interfaceFont = font();
+    m_transcript->setFont(interfaceFont);
+    m_transcript->document()->setDefaultFont(interfaceFont);
     m_input->setObjectName(QStringLiteral("assistantInput"));
     m_input->setPlaceholderText(tr("Enter a message (Shift+Enter for a new line, Enter to send)"));
-    m_input->setFixedHeight(76);
+    m_input->setFont(interfaceFont);
+    m_input->setFixedHeight(44);
     m_input->installEventFilter(this);
     m_sendButton->setObjectName(QStringLiteral("assistantSendButton"));
-    m_sendButton->setMinimumHeight(36);
+    m_sendButton->setFixedHeight(44);
     m_statusLabel->setObjectName(QStringLiteral("assistantStatusLabel"));
-    m_statusLabel->setStyleSheet(QStringLiteral("color: #687386; padding: 4px 2px;"));
-    setStyleSheet(QStringLiteral(
-        "QTextBrowser#assistantTranscript { background: #ffffff; border: 1px solid #d6dbe4; border-radius: 4px; }"
-        "QTextEdit#assistantInput { background: #ffffff; border: 1px solid #c9d0da; border-radius: 4px; padding: 6px; }"));
 
     QHBoxLayout* controlLayout = new QHBoxLayout();
     controlLayout->setContentsMargins(2, 0, 2, 0);
@@ -184,7 +186,6 @@ void IDOSAssistantWidget::onAssistantReady()
     m_startupPending = false;
     m_statusLabel->setText(tr("Ready"));
     IDOS_MESSAGE(tr("AI assistant started successfully."), IDOSLogLevel::Info);
-    emit statusChanged(m_statusLabel->text());
     if (!m_pendingMessage.isEmpty())
     {
         const QString message = m_pendingMessage;
@@ -202,7 +203,6 @@ void IDOSAssistantWidget::onAssistantStopped()
 {
     m_startupPending = false;
     m_statusLabel->setText(tr("Stopped"));
-    emit statusChanged(m_statusLabel->text());
     onControlsChanged();
 }
 
@@ -223,7 +223,6 @@ void IDOSAssistantWidget::onAssistantError(const QString& error)
         IDOS_MESSAGE(tr("AI assistant encountered an error: %1").arg(error),
                      IDOSLogLevel::Error);
     }
-    emit statusChanged(m_statusLabel->text());
     onControlsChanged();
 }
 
@@ -235,32 +234,16 @@ void IDOSAssistantWidget::onRequestFailed(const QString& error)
 
 void IDOSAssistantWidget::onMessage(const QString& role, const QString& message)
 {
-    const QString escapedMessage = message.toHtmlEscaped().replace(
-        QLatin1Char('\n'), QStringLiteral("<br>"));
-    QString messageHtml;
-    if (role == tr("You"))
+    QTextCursor cursor(m_transcript->document());
+    cursor.movePosition(QTextCursor::End);
+    if (!m_transcript->document()->isEmpty())
     {
-        messageHtml = QStringLiteral(
-                          "<table align=\"right\" cellspacing=\"0\" cellpadding=\"8\">"
-                          "<tr><td bgcolor=\"#e8f1ff\"><b>%1</b><br>%2</td></tr></table><br clear=\"all\">")
-                          .arg(role.toHtmlEscaped(), escapedMessage);
+        cursor.insertBlock();
+        cursor.insertBlock();
     }
-    else if (role == tr("System"))
-    {
-        messageHtml = QStringLiteral(
-                          "<p style=\"color:#7b8494;\"><i>%1: %2</i></p>")
-                          .arg(role.toHtmlEscaped(), escapedMessage);
-    }
-    else
-    {
-        messageHtml = QStringLiteral(
-                          "<table align=\"left\" cellspacing=\"0\" cellpadding=\"8\">"
-                          "<tr><td bgcolor=\"#f1f3f6\"><b>%1</b><br>%2</td></tr></table><br clear=\"all\">")
-                          .arg(role.toHtmlEscaped(), escapedMessage);
-    }
-
-    m_transcript->append(messageHtml);
-    m_transcript->moveCursor(QTextCursor::End);
+    cursor.insertText(tr("%1: %2").arg(role, message));
+    m_transcript->setTextCursor(cursor);
+    m_transcript->ensureCursorVisible();
 }
 
 void IDOSAssistantWidget::onControlsChanged()

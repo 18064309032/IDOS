@@ -2,18 +2,29 @@
 #include <type_traits>
 
 #include <QAction>
+#include <QApplication>
+#include <QContextMenuEvent>
+#include <QCoreApplication>
+#include <QDir>
 #include <QEvent>
 #include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopedPointer>
 #include <QSettings>
+#include <QSignalSpy>
+#include <QSlider>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
+#include <QVariantMap>
 #include <QVector3D>
+#include <QWidget>
 
 #include <vtkActor.h>
 #include <vtkCellData.h>
@@ -31,15 +42,16 @@
 #include "command/idoscommandregistry.h"
 #include "idosapplication.h"
 #include "idoscasedialog.h"
+#include "idoscaseitemref.h"
 #include "idosdatametadata.h"
 #include "idosdataprovider.h"
 #include "idosdataproviderregistry.h"
 #include "idosdataregistry.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
-#include "idosgridrenderguiprovider.h"
 #include "idosgridrendermetadata.h"
 #include "idosgridrenderprovider.h"
+#include "idosimportrestartresultscommand.h"
 #include "idosmainwindow.h"
 #include "idospluginregistry.h"
 #include "idosproject.h"
@@ -49,8 +61,12 @@
 #include "idosrenderscene.h"
 #include "idosrenderserver.h"
 #include "idosrenderview.h"
+#include "idosruntimeinfowidget.h"
 #include "idossimulationcaseobject.h"
 #include "idossimulationcasetreeguiprovider.h"
+#include "idossimulationinitializewidget.h"
+#include "idossimulationresultplaybackwidget.h"
+#include "idossimulationrunstatuswidget.h"
 #include "idostreemodel.h"
 #include "idostreeregistry.h"
 #include "idostreeview.h"
@@ -60,11 +76,265 @@
 #include "idoswellpathpoint.h"
 #include "idoswellrendermetadata.h"
 #include "idoswellrenderprovider.h"
+#include "log/idoslogger.h"
 
 #include "case_workflow_test.h"
 
 static_assert(!std::is_abstract<IDOSRenderObject>::value, "RenderObject must be concrete.");
 static_assert(std::is_abstract<IDOSRenderProvider>::value, "RenderProvider must remain abstract.");
+
+void CaseWorkflowTest::onFlowExecution()
+{
+    const QString source = qEnvironmentVariable("IDOS_FLOW_SMOKE_DATA");
+    if (source.isEmpty())
+    {
+        QSKIP("Set IDOS_FLOW_SMOKE_DATA to the SPE1 deck to test the installed WSL Flow.");
+    }
+    QTemporaryDir directory(QFileInfo(source).absolutePath() + QStringLiteral("/flow test XXXXXX"));
+    QVERIFY(directory.isValid());
+    QVERIFY(QFile::copy(source, directory.path() + QStringLiteral("/SPE1.DATA")));
+    IDOSProject project;
+    IDOSCommandRegistry registry;
+    QVERIFY(registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportRestartResultsCommandMetadata())));
+    project.commandManager()->setRegistry(&registry);
+    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+    QVERIFY(reader != nullptr);
+    const QList<IDOSDataObject*> objects = reader->read(directory.path() + QStringLiteral("/SPE1.DATA"));
+    QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
+    IDOSSimulationCaseObject* simulationCase = nullptr;
+    for (IDOSDataObject* object : objects)
+    {
+        if (qobject_cast<IDOSSimulationCaseObject*>(object) != nullptr)
+        {
+            simulationCase = qobject_cast<IDOSSimulationCaseObject*>(object);
+        }
+        project.add(object);
+    }
+    QVERIFY(simulationCase != nullptr);
+    const int initialCount = project.objects().size();
+    IDOSSimulationInitializeWidget initialize(simulationCase);
+    QLineEdit* runDirectory = initialize.findChild<QLineEdit*>();
+    QVERIFY(runDirectory != nullptr);
+    runDirectory->setText(directory.path() + QStringLiteral("/prepared run"));
+    QVERIFY(QMetaObject::invokeMethod(&initialize, "onInitializeTriggered", Qt::DirectConnection));
+    if (simulationCase->runInfo().isEmpty())
+    {
+        qInfo().noquote() << initialize.findChild<QPlainTextEdit*>()->toPlainText();
+    }
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("initialized"));
+    IDOSSimulationRunStatusWidget window(simulationCase);
+    QLineEdit* distribution = window.findChild<QLineEdit*>(QStringLiteral("flowDistributionEdit"));
+    QLineEdit* executable = window.findChild<QLineEdit*>(QStringLiteral("flowExecutableEdit"));
+    QPushButton* start = window.findChild<QPushButton*>(QStringLiteral("flowStartButton"));
+    QVERIFY(distribution != nullptr && executable != nullptr && start != nullptr);
+    distribution->setText(QStringLiteral("Ubuntu-24.04"));
+    executable->setText(QStringLiteral("/usr/bin/flow"));
+    start->click();
+    QTRY_VERIFY_WITH_TIMEOUT(!window.isRunning(), 120000);
+    qInfo().noquote() << simulationCase->runInfo().value(QStringLiteral("message")).toString();
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("succeeded"));
+    const QString screenshotRoot = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshotRoot.isEmpty())
+    {
+        window.grab().save(screenshotRoot + QStringLiteral("/flow-run.png"));
+    }
+    QVERIFY(project.objects().size() > initialCount);
+    const int importedCount = project.objects().size();
+    QVERIFY(project.commandManager()->canUndo());
+    project.commandManager()->undo();
+    QCOMPARE(project.objects().size(), initialCount);
+    project.commandManager()->redo();
+    QCOMPARE(project.objects().size(), importedCount);
+
+    executable->setText(QStringLiteral("/bin/true"));
+    start->click();
+    QTRY_VERIFY_WITH_TIMEOUT(!window.isRunning(), 15000);
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("importFailed"));
+    QCOMPARE(project.objects().size(), importedCount);
+    executable->setText(QStringLiteral("/no-such-flow"));
+    start->click();
+    QTRY_VERIFY_WITH_TIMEOUT(!window.isRunning(), 15000);
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("failed"));
+
+    QFile sleeper(directory.path() + QStringLiteral("/sleeper.sh"));
+    QVERIFY(sleeper.open(QIODevice::WriteOnly));
+    sleeper.write("#!/bin/sh\nprintf 'stage-'\nsleep 0.1\nprintf 'one\\r\\nstage-two\\rtail'\nexec /bin/sleep 60\n");
+    sleeper.close();
+    const QString linuxScript = QStringLiteral("/mnt/") + directory.path().left(1).toLower() + directory.path().mid(2) +
+                                QStringLiteral("/sleeper.sh");
+    QCOMPARE(QProcess::execute(QStringLiteral("wsl.exe"), QStringList()
+                                                              << QStringLiteral("-d") << QStringLiteral("Ubuntu-24.04")
+                                                              << QStringLiteral("--exec") << QStringLiteral("chmod")
+                                                              << QStringLiteral("+x") << linuxScript),
+             0);
+    executable->setText(linuxScript);
+    QSignalSpy logSpy(&IDOSLogger::instance(), &IDOSLogger::messagePosted);
+    start->click();
+    QVERIFY(window.isRunning());
+    QTRY_VERIFY_WITH_TIMEOUT(window.findChild<QPlainTextEdit*>()->toPlainText().contains(QStringLiteral("stage-two")), 10000);
+    window.close();
+    QVERIFY(window.isRunning());
+    window.cancel();
+    QTRY_VERIFY_WITH_TIMEOUT(!window.isRunning(), 20000);
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("cancelled"));
+    QCOMPARE(project.objects().size(), importedCount);
+    QVERIFY(!start->isEnabled());
+    int firstLineCount = 0;
+    int secondLineCount = 0;
+    int tailCount = 0;
+    for (const QList<QVariant>& arguments : logSpy)
+    {
+        const QString message = arguments.first().toString();
+        if (message == QStringLiteral("stage-one"))
+        {
+            ++firstLineCount;
+        }
+        if (message == QStringLiteral("stage-two"))
+        {
+            ++secondLineCount;
+        }
+        if (message.startsWith(QStringLiteral("tail")))
+        {
+            ++tailCount;
+        }
+    }
+    QCOMPARE(firstLineCount, 1);
+    QCOMPARE(secondLineCount, 1);
+    QCOMPARE(tailCount, 1);
+    const QString outputDirectory = simulationCase->runInfo().value(QStringLiteral("outputDirectory")).toString();
+    QFile pidFile(outputDirectory + QStringLiteral("/flow.pid"));
+    QVERIFY(pidFile.open(QIODevice::ReadOnly));
+    const qlonglong pid = pidFile.readAll().trimmed().toLongLong();
+    QVERIFY(pid > 1);
+    QVERIFY(QProcess::execute(QStringLiteral("wsl.exe"), QStringList()
+                                                             << QStringLiteral("-d") << QStringLiteral("Ubuntu-24.04")
+                                                             << QStringLiteral("--exec") << QStringLiteral("/bin/kill")
+                                                             << QStringLiteral("-0") << QStringLiteral("--")
+                                                             << QStringLiteral("-%1").arg(pid)) != 0);
+}
+
+void CaseWorkflowTest::onFlowOutputFraming()
+{
+    const QString source = qEnvironmentVariable("IDOS_FLOW_SMOKE_DATA");
+    if (source.isEmpty())
+    {
+        QSKIP("Set IDOS_FLOW_SMOKE_DATA to test WSL output framing.");
+    }
+    QTemporaryDir directory(QFileInfo(source).absolutePath() + QStringLiteral("/output test XXXXXX"));
+    QVERIFY(directory.isValid());
+    QVERIFY(QFile::copy(source, directory.path() + QStringLiteral("/input.DATA")));
+    QFile script(directory.path() + QStringLiteral("/output.sh"));
+    QVERIFY(script.open(QIODevice::WriteOnly));
+    script.write("#!/bin/sh\nprintf 'stage-'\nsleep 0.1\nprintf 'one\\r\\nstage-two\\rtail'\n");
+    script.close();
+    const QString linuxScript = QStringLiteral("/mnt/") + directory.path().left(1).toLower()
+        + directory.path().mid(2) + QStringLiteral("/output.sh");
+    QCOMPARE(QProcess::execute(QStringLiteral("wsl.exe"), QStringList() << QStringLiteral("-d")
+        << QStringLiteral("Ubuntu-24.04") << QStringLiteral("--exec") << QStringLiteral("chmod")
+        << QStringLiteral("+x") << linuxScript), 0);
+    IDOSProject project;
+    IDOSGrid* grid = new IDOSGrid();
+    grid->setDimensions(1, 1, 1);
+    project.add(grid);
+    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+    simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    QVariantMap info;
+    info.insert(QStringLiteral("runDirectory"), directory.path());
+    info.insert(QStringLiteral("dataFile"), QStringLiteral("input.DATA"));
+    simulationCase->setRunInfo(info);
+    project.add(simulationCase);
+    IDOSSimulationRunStatusWidget window(simulationCase);
+    window.findChild<QLineEdit*>(QStringLiteral("flowDistributionEdit"))->setText(QStringLiteral("Ubuntu-24.04"));
+    window.findChild<QLineEdit*>(QStringLiteral("flowExecutableEdit"))->setText(linuxScript);
+    QSignalSpy spy(&IDOSLogger::instance(), &IDOSLogger::messagePosted);
+    window.findChild<QPushButton*>(QStringLiteral("flowStartButton"))->click();
+    QTRY_VERIFY_WITH_TIMEOUT(!window.isRunning(), 15000);
+    QStringList lines;
+    for (const QList<QVariant>& arguments : spy)
+    {
+        lines.append(arguments.first().toString());
+    }
+    QCOMPARE(lines.count(QStringLiteral("stage-one")), 1);
+    QCOMPARE(lines.count(QStringLiteral("stage-two")), 1);
+    QCOMPARE(lines.count(QStringLiteral("tail")), 1);
+    QCOMPARE(simulationCase->runInfo().value(QStringLiteral("status")).toString(), QStringLiteral("importFailed"));
+}
+
+void CaseWorkflowTest::onSimulationOutput()
+{
+    IDOSProject project;
+    IDOSGrid* grid = new IDOSGrid();
+    grid->setDimensions(1, 1, 1);
+    project.add(grid);
+    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+    simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    project.add(simulationCase);
+    IDOSGridProperty* property = new IDOSGridProperty();
+    property->setGridId(grid->objectId());
+    property->setKeyword(QStringLiteral("SGAS"));
+    property->setKind(IDOSGridProperty::Kind::Dynamic);
+    property->setDimensions(1, 1, 1);
+    QVERIFY(property->setReportStepValues(1, QVector<double>{0.1}));
+    QVERIFY(property->setReportStepValues(3, QVector<double>{0.3}));
+    QVERIFY(property->setReportStepValues(8, QVector<double>{0.8}));
+    project.add(property);
+    IDOSRuntimeInfoWidget output;
+    QPlainTextEdit* text = output.findChild<QPlainTextEdit*>();
+    QVERIFY(text != nullptr);
+    IDOSSimulationResultPlaybackWidget playback;
+    QSignalSpy spy(&IDOSLogger::instance(), &IDOSLogger::messagePosted);
+    playback.setCurrentObject(simulationCase);
+    QCOMPARE(spy.size(), 1);
+    QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Displaying SGAS at report step 1.")));
+    QSlider* slider = playback.findChild<QSlider*>();
+    QVERIFY(slider != nullptr);
+    slider->setValue(1);
+    QCOMPARE(spy.size(), 2);
+    QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Displaying SGAS at report step 3.")));
+    QVERIFY(property->setCurrentReportStep(8));
+    QCOMPARE(spy.size(), 3);
+    QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Displaying SGAS at report step 8.")));
+    spy.clear();
+    QVERIFY(QMetaObject::invokeMethod(&playback, "onPlayTriggered", Qt::DirectConnection));
+    QTimer* timer = playback.findChild<QTimer*>();
+    QVERIFY(timer != nullptr);
+    QTRY_VERIFY_WITH_TIMEOUT(!timer->isActive(), 3000);
+    QCOMPARE(spy.size(), 5);
+    QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Report-step playback started.")));
+    QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Report-step playback completed.")));
+    QCOMPARE(property->currentReportStep(), 8);
+}
+
+void CaseWorkflowTest::onProviderDimensions()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QFile input(directory.path() + QStringLiteral("/injection.DATA"));
+    QVERIFY(input.open(QIODevice::WriteOnly));
+    input.write("RUNSPEC\nTITLE\nInjection test\nFIELD\nGRID\nPROPS\nSOLUTION\nSCHEDULE\n"
+                "WCONINJE\n'INJ' 'GAS' 'OPEN' 'RATE' 100000 1* 9014 /\n/\nEND\n");
+    input.close();
+    std::unique_ptr<IDOSDataProvider> reader =
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+    QVERIFY(reader != nullptr);
+    const QList<IDOSDataObject*> objects = reader->read(input.fileName());
+    QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
+    QCOMPARE(objects.size(), 1);
+    IDOSProject project;
+    project.add(objects.first());
+    IDOSSimulationCaseObject* simulationCase = qobject_cast<IDOSSimulationCaseObject*>(objects.first());
+    QVERIFY(simulationCase != nullptr);
+    QCOMPARE(simulationCase->wellControlRows().size(), 1);
+    const QVariantList keywordIndex = simulationCase->parsedSourceData().value(QStringLiteral("keywordIndex")).toList();
+    QVERIFY(!keywordIndex.isEmpty());
+    for (const QVariant& keyword : keywordIndex)
+    {
+        QCOMPARE(keyword.toMap().value(QStringLiteral("file")).toString(), QFileInfo(input.fileName()).absoluteFilePath());
+    }
+    const QVariantMap fields = simulationCase->wellControlRows().first().toMap().value(QStringLiteral("fields")).toMap();
+    QVERIFY(fields.contains(QStringLiteral("GAS_STEAM_RATIO")));
+    QVERIFY(fields.value(QStringLiteral("BHP")).toDouble() > 9014.0);
+}
 
 void CaseWorkflowTest::onExamplePlugin()
 {
@@ -87,7 +357,7 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(window.renderRegistry()->metadata(typeId) != nullptr);
     QVERIFY(window.commandRegistry()->find(QStringLiteral("pointset.create")) != nullptr);
     QScopedPointer<QMenu> blankMenu(window.dataTreeView()->createMenu(QModelIndex()));
-    QVERIFY(blankMenu->findChild<QAction*>(QStringLiteral("createPointSetAction")) != nullptr);
+    QVERIFY(blankMenu->actions().isEmpty());
     QJsonObject invalid;
     QVERIFY(!project.commandManager()->execute(QStringLiteral("pointset.create"), invalid)
                  .value(QStringLiteral("success")).toBool());
@@ -131,11 +401,9 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(secondObject != nullptr);
     QVERIFY(firstObject->id() != secondObject->id());
     const double originalSize = firstObject->provider()->actors().first()->GetProperty()->GetPointSize();
-    QScopedPointer<QMenu> renderMenu(secondView.createMenu(secondObject->id()));
-    QAction* sizeAction = renderMenu->findChild<QAction*>(QStringLiteral("increasePointSizeAction"));
-    QVERIFY(sizeAction != nullptr);
-    sizeAction->trigger();
-    QCOMPARE(secondObject->provider()->actors().first()->GetProperty()->GetPointSize(), originalSize + 2.0);
+    secondObject->setOpacity(0.5);
+    QCOMPARE(secondObject->provider()->actors().first()->GetProperty()->GetOpacity(), 0.5);
+    QCOMPARE(firstObject->opacity(), 1.0);
     QCOMPARE(firstObject->provider()->actors().first()->GetProperty()->GetPointSize(), originalSize);
     QCOMPARE(manager->undoText(), QObject::tr("Create Point Set"));
     secondView.resize(900, 600);
@@ -185,7 +453,6 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(!plugins->isLoaded(QStringLiteral("idosexampleplugin")));
     QVERIFY(window.dataRegistry()->metadata(typeId) == nullptr);
     QVERIFY(treeMenu->findChild<QAction*>(QStringLiteral("deletePointSetAction")) == nullptr);
-    QVERIFY(renderMenu->findChild<QAction*>(QStringLiteral("increasePointSizeAction")) == nullptr);
     QVERIFY(window.treeRegistry()->metadata(typeId) == nullptr);
     QVERIFY(window.renderRegistry()->metadata(typeId) == nullptr);
     QVERIFY(window.commandRegistry()->find(QStringLiteral("pointset.create")) == nullptr);
@@ -271,7 +538,6 @@ void CaseWorkflowTest::onRenderLifecycle()
     IDOSProject project;
     IDOSRenderRegistry registry;
     IDOSRenderServer server(&registry);
-    QVERIFY(registry.addGuiProvider(new IDOSGridRenderGuiProvider(&server)));
     QScopedPointer<IDOSRenderView> firstView(new IDOSRenderView());
     server.addView(firstView.data());
     registry.add(new IDOSGridRenderMetadata());
@@ -282,6 +548,7 @@ void CaseWorkflowTest::onRenderLifecycle()
     project.add(grid);
     IDOSRenderObject* object = findRenderObject(firstView.data(), grid->objectId());
     QVERIFY(object != nullptr);
+    object->setVisible(true);
     QVERIFY(object->id() != grid->objectId());
     const QString renderId = object->id();
     IDOSGridRenderProvider* provider = dynamic_cast<IDOSGridRenderProvider*>(object->provider());
@@ -294,6 +561,7 @@ void CaseWorkflowTest::onRenderLifecycle()
     property->setValues(QVector<double>{0.25});
     property->setVisible(true);
     project.add(property);
+    provider->setProperty(property);
     provider->update();
     QCOMPARE(provider->actors().size(), 1);
     QCOMPARE(provider->legends().size(), 1);
@@ -328,17 +596,37 @@ void CaseWorkflowTest::onRenderLifecycle()
     QVERIFY(!secondGrid->highlighted());
     QCOMPARE(dynamic_cast<IDOSGridRenderProvider*>(secondGrid->provider())->displayMode(), IDOSDisplayMode::Surface);
     grid->setVisible(false);
-    QVERIFY(!provider->visible());
+    QVERIFY(provider->visible());
     grid->setVisible(true);
     QCOMPARE(provider->actors().first(), gridActor);
     QCOMPARE(findRenderObject(firstView.data(), grid->objectId())->id(), renderId);
     QCOMPARE(provider->opacity(), 0.4);
     QCOMPARE(provider->displayMode(), IDOSDisplayMode::Wireframe);
+    IDOSGridRenderProvider* secondProvider = dynamic_cast<IDOSGridRenderProvider*>(secondGrid->provider());
+    QVERIFY(secondProvider != nullptr);
+    secondGrid->setVisible(true);
+    secondProvider->setProperty(property);
+    property->setValues(QVector<double>{0.5});
+    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    QCOMPARE(secondProvider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    QCOMPARE(provider->opacity(), 0.4);
+    QCOMPARE(provider->displayMode(), IDOSDisplayMode::Wireframe);
+    QVERIFY(provider->highlighted());
+    QCOMPARE(secondProvider->opacity(), 1.0);
+    QVERIFY(!secondProvider->highlighted());
+    project.beginUpdate();
+    property->setValues(QVector<double>{0.75});
+    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    project.endUpdate();
+    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.75);
     project.beginUpdate();
     IDOSDataObject* removedProperty = project.take(property->objectId());
+    QVERIFY(provider->property() == nullptr);
+    QVERIFY(secondProvider->property() == nullptr);
+    QVERIFY(provider->legends().isEmpty());
+    QVERIFY(secondProvider->legends().isEmpty());
     delete removedProperty;
     project.endUpdate();
-    provider->update();
     QVERIFY(provider->legends().isEmpty());
     project.beginUpdate();
     const QString gridId = grid->objectId();
@@ -415,6 +703,7 @@ void CaseWorkflowTest::onRenderArchitecture()
     QVERIFY(firstId != secondId);
     IDOSRenderObject* firstObject = first.scene()->object(firstId);
     IDOSRenderObject* secondObject = second.scene()->object(secondId);
+    secondObject->setVisible(true);
     QVERIFY(firstObject != secondObject);
     QVERIFY(firstObject->provider() != secondObject->provider());
     QVERIFY(firstObject->provider()->actors().first() != secondObject->provider()->actors().first());
@@ -426,6 +715,32 @@ void CaseWorkflowTest::onRenderArchitecture()
     QCOMPARE(selectionSpy.count(), 1);
     QVERIFY(firstObject->highlighted());
     QVERIFY(!secondObject->highlighted());
+    QWidget* vtkWidget = nullptr;
+    const QList<QWidget*> childWidgets = first.findChildren<QWidget*>();
+    for (QWidget* child : childWidgets)
+    {
+        if (child->inherits("QVTKOpenGLNativeWidget"))
+        {
+            vtkWidget = child;
+            break;
+        }
+    }
+    QVERIFY(vtkWidget != nullptr);
+    QTimer popupGuard;
+    popupGuard.setSingleShot(true);
+    connect(&popupGuard, &QTimer::timeout, this, &CaseWorkflowTest::onCloseContextMenu);
+    popupGuard.start(100);
+    QContextMenuEvent mouseContext(QContextMenuEvent::Mouse, QPoint(1, 1), vtkWidget->mapToGlobal(QPoint(1, 1)));
+    QCoreApplication::sendEvent(vtkWidget, &mouseContext);
+    popupGuard.stop();
+    QVERIFY(mouseContext.isAccepted());
+    popupGuard.start(100);
+    QContextMenuEvent keyboardContext(QContextMenuEvent::Keyboard, QPoint(1, 1), vtkWidget->mapToGlobal(QPoint(1, 1)));
+    QCoreApplication::sendEvent(vtkWidget, &keyboardContext);
+    popupGuard.stop();
+    QVERIFY(keyboardContext.isAccepted());
+    QVERIFY(first.findChildren<QMenu*>().isEmpty());
+    QCOMPARE(first.selection(), QList<QString>{firstId});
     firstObject->setOpacity(0.25);
     firstObject->setVisible(false);
     first.scene()->notifyChanged(firstId);
@@ -489,6 +804,15 @@ void CaseWorkflowTest::onRenderArchitecture()
     delete temporaryProject;
     QVERIFY(server.project() == nullptr);
     QVERIFY(second.scene()->objects().isEmpty());
+}
+
+void CaseWorkflowTest::onCloseContextMenu()
+{
+    QMenu* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+    if (menu != nullptr)
+    {
+        menu->close();
+    }
 }
 
 void CaseWorkflowTest::onProvider()
@@ -667,23 +991,25 @@ void CaseWorkflowTest::onCreateAndImport()
     QCOMPARE(project->objects().first()->name(), QStringLiteral("Base Case"));
     m_name = QStringLiteral("base case");
     m_expectDisabled = true;
-    QVERIFY(!IDOSSimulationCaseTreeGuiProvider::newCase(project, view));
+    menu->findChild<QAction*>(QStringLiteral("newCaseAction"))->trigger();
+    QCOMPARE(project->objects().size(), 1);
     m_name = QStringLiteral("   ");
-    QVERIFY(!IDOSSimulationCaseTreeGuiProvider::newCase(project, view));
+    menu->findChild<QAction*>(QStringLiteral("newCaseAction"))->trigger();
+    QCOMPARE(project->objects().size(), 1);
     m_expectDisabled = false;
     m_cancel = true;
     m_name = QStringLiteral("Cancelled");
-    QVERIFY(!IDOSSimulationCaseTreeGuiProvider::newCase(project, view));
+    menu->findChild<QAction*>(QStringLiteral("newCaseAction"))->trigger();
     QCOMPARE(project->objects().size(), 1);
-    const QString source = QFINDTESTDATA("data/case.DATA");
-    QVERIFY(!IDOSSimulationCaseTreeGuiProvider::importCase(project, source, view));
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+    menu->findChild<QAction*>(QStringLiteral("importCaseAction"))->trigger();
     QCOMPARE(project->objects().size(), 1);
     IDOSWell* well = new IDOSWell();
     well->setName(QStringLiteral("A10"));
     project->add(well);
     m_cancel = false;
     m_name = QStringLiteral("Imported Case");
-    QVERIFY(IDOSSimulationCaseTreeGuiProvider::importCase(project, source, view));
+    menu->findChild<QAction*>(QStringLiteral("importCaseAction"))->trigger();
     QCOMPARE(project->objects().size(), 3);
     QCOMPARE(model->rowCount(QModelIndex()), 2);
     IDOSSimulationCaseObject* imported = qobject_cast<IDOSSimulationCaseObject*>(project->objectByName(m_name));
@@ -701,7 +1027,7 @@ void CaseWorkflowTest::onCreateAndImport()
         }
     }
     m_expectDisabled = true;
-    QVERIFY(!IDOSSimulationCaseTreeGuiProvider::importCase(project, source, view));
+    menu->findChild<QAction*>(QStringLiteral("importCaseAction"))->trigger();
     QCOMPARE(project->objects().size(), 3);
     timer.stop();
 
@@ -747,6 +1073,20 @@ void CaseWorkflowTest::onCreateAndImport()
 
 void CaseWorkflowTest::onDialog()
 {
+    QFileDialog* fileDialog = qobject_cast<QFileDialog*>(QApplication::activeModalWidget());
+    if (fileDialog != nullptr)
+    {
+        if (m_cancel)
+        {
+            fileDialog->reject();
+        }
+        else
+        {
+            fileDialog->selectFile(QFINDTESTDATA("data/case.DATA"));
+            QMetaObject::invokeMethod(fileDialog, "accept", Qt::QueuedConnection);
+        }
+        return;
+    }
     QMessageBox* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
     if (message != nullptr)
     {

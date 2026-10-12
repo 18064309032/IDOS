@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QPointer>
+#include <QString>
 #include <QStringList>
 #include <QWidget>
 
@@ -41,6 +42,7 @@ class IDOSSimulationResultPlaybackWidget : public QWidget
     void refreshProperties();
     void refreshReportSteps();
     void updateControls();
+    void reportCurrentStep();
 
     QPointer<IDOSProject> m_project;
     QPointer<IDOSSimulationCaseObject> m_simulationCase;
@@ -52,9 +54,10 @@ class IDOSSimulationResultPlaybackWidget : public QWidget
     QToolButton* m_playButton;
     QToolButton* m_nextButton;
     QSpinBox* m_intervalSpinBox;
-    QLabel* m_statusLabel;
     QTimer* m_timer;
     QList<int> m_reportSteps;
+    QString m_loggedPropertyId;
+    int m_loggedReportStep;
 };
 
 #endif // IDOS_SIMULATION_RESULT_PLAYBACK_WIDGET_H

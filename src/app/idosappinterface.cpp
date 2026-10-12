@@ -6,7 +6,6 @@
 
 #include "idosmainwindow.h"
 #include "idosproject.h"
-#include "idostreeregistry.h"
 #include "log/idoslogger.h"
 
 #include "idosappinterface.h"
@@ -22,30 +21,6 @@ IDOSAppInterface::IDOSAppInterface(IDOSMainWindow* mainWindow)
 QMainWindow* IDOSAppInterface::mainWindow() const
 {
     return m_mainWindow;
-}
-
-SARibbonCategory* IDOSAppInterface::ribbonCategory(const QString& objectName) const
-{
-    if (m_mainWindow == nullptr || objectName.isEmpty())
-    {
-        IDOS_WARN(tr("Ribbon category lookup rejected: mainWindow=%1, objectName=%2")
-                      .arg(m_mainWindow == nullptr ? tr("null") : tr("valid"),
-                           objectName));
-        return nullptr;
-    }
-
-    SARibbonMainWindow* ribbonMainWindow = qobject_cast<SARibbonMainWindow*>(m_mainWindow);
-    if (ribbonMainWindow == nullptr || ribbonMainWindow->ribbonBar() == nullptr)
-    {
-        IDOS_ERROR(tr("Ribbon category lookup failed: ribbon main window or ribbon bar is null."));
-        return nullptr;
-    }
-
-    SARibbonCategory* category = ribbonMainWindow->ribbonBar()->categoryByObjectName(objectName);
-    IDOS_DEBUG(tr("Ribbon category lookup: objectName=%1, result=0x%2")
-                   .arg(objectName,
-                        QString::number(reinterpret_cast<quintptr>(category), 16)));
-    return category;
 }
 
 SARibbonCategory* IDOSAppInterface::addRibbonCategory(const QString& objectName,
@@ -260,11 +235,6 @@ IDOSDataRegistry* IDOSAppInterface::dataRegistry() const
     return m_mainWindow->dataRegistry();
 }
 
-QList<const IDOSDataMetadata*> IDOSAppInterface::treeDataMetadata() const
-{
-    return m_mainWindow->treeRegistry()->dataMetadata(m_mainWindow->dataRegistry());
-}
-
 IDOSTreeRegistry* IDOSAppInterface::treeRegistry() const
 {
     return m_mainWindow->treeRegistry();
@@ -273,6 +243,11 @@ IDOSTreeRegistry* IDOSAppInterface::treeRegistry() const
 IDOSRenderRegistry* IDOSAppInterface::renderRegistry() const
 {
     return m_mainWindow->renderRegistry();
+}
+
+IDOSToolRegistry* IDOSAppInterface::toolRegistry() const
+{
+    return m_mainWindow->toolRegistry();
 }
 
 IDOSCommandRegistry* IDOSAppInterface::commandRegistry() const

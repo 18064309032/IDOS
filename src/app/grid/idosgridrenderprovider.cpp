@@ -47,6 +47,21 @@ IDOSDataObject* IDOSGridRenderProvider::dataSource() const
     return m_dataObject.data();
 }
 
+bool IDOSGridRenderProvider::dependsOn(const QStringList& dataIds) const
+{
+    return m_property != nullptr && dataIds.contains(m_property->objectId());
+}
+
+bool IDOSGridRenderProvider::removeDataReference(const QString& dataId)
+{
+    if (m_property == nullptr || m_property->objectId() != dataId)
+    {
+        return false;
+    }
+    m_property = nullptr;
+    return true;
+}
+
 void IDOSGridRenderProvider::update()
 {
     m_actors.clear();

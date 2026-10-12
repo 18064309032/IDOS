@@ -18,7 +18,6 @@
 #include "idosinterface.h"
 #include "idospointsetcommands.h"
 #include "idospointsetmetadata.h"
-#include "idospointsetrenderguiprovider.h"
 #include "idospointsetrendermetadata.h"
 #include "idospointsettreeguiprovider.h"
 #include "idospointsettreemetadata.h"
@@ -38,7 +37,6 @@ IDOSExamplePlugin::IDOSExamplePlugin(IDOSInterface* interface)
     , m_dataAdded(false)
     , m_treeAdded(false)
     , m_renderAdded(false)
-    , m_renderGuiAdded(false)
     , m_createAdded(false)
     , m_deleteAdded(false)
 {
@@ -98,17 +96,11 @@ void IDOSExamplePlugin::initGui()
     {
         throw std::runtime_error(tr("Point set menu registration failed.").toStdString());
     }
-    std::unique_ptr<IDOSPointSetRenderGuiProvider> renderGui(new IDOSPointSetRenderGuiProvider());
-    m_renderGuiAdded = m_renderRegistry->addGuiProvider(renderGui.get());
-    if (m_renderGuiAdded)
-    {
-        renderGui.release();
-    }
     m_createAdded = m_commandRegistry->add(
         std::unique_ptr<IDOSCommandMetadata>(new IDOSCreatePointSetCommandMetadata(m_dataRegistry)));
     m_deleteAdded = m_commandRegistry->add(
         std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePointSetCommandMetadata()));
-    if (!m_dataAdded || !m_treeAdded || !m_renderAdded || !m_renderGuiAdded || !m_createAdded || !m_deleteAdded)
+    if (!m_dataAdded || !m_treeAdded || !m_renderAdded || !m_createAdded || !m_deleteAdded)
     {
         throw std::runtime_error(tr("Point set registration failed.").toStdString());
     }
@@ -210,10 +202,6 @@ void IDOSExamplePlugin::unload()
     m_createAction = nullptr;
     if (m_renderRegistry != nullptr)
     {
-        if (m_renderGuiAdded)
-        {
-            m_renderRegistry->removeGuiProvider(QString::fromLatin1("idos.example.pointset"));
-        }
         if (m_renderAdded)
         {
             m_renderRegistry->remove(QString::fromLatin1("idos.example.pointset"));
@@ -241,7 +229,6 @@ void IDOSExamplePlugin::unload()
     m_dataAdded = false;
     m_treeAdded = false;
     m_renderAdded = false;
-    m_renderGuiAdded = false;
     m_createAdded = false;
     m_deleteAdded = false;
 }

@@ -4,6 +4,8 @@
 #include <QStringList>
 #include <QWidget>
 
+#include "log/idosloglevel.h"
+
 class IDOSSimulationCaseObject;
 class QLineEdit;
 class QPlainTextEdit;
@@ -21,6 +23,7 @@ class IDOSSimulationDataGenerationWidget : public QWidget
     void onGeneratePackageTriggered();
 
   private:
+    void showOutput(const QString& message, IDOSLogLevel level = IDOSLogLevel::Error);
     QString generatedMainFileName() const;
     bool writePackage(const QString& parentDirectory, QString* packagePath, QString* errorMessage) const;
 

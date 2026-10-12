@@ -1,9 +1,9 @@
-#include <QComboBox>
 #include <QAction>
+#include <QComboBox>
 #include <QInputDialog>
 #include <QLineEdit>
-#include <QMessageBox>
 #include <QMenu>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopedPointer>
@@ -12,13 +12,12 @@
 #include <QTranslator>
 #include <QtTest>
 
-#include "idostreemodel.h"
-#include "idostreemodel.h"
-#include "idostreeview.h"
 #include "idosmainwindow.h"
 #include "idosnewprojectdialog.h"
 #include "idosproject.h"
 #include "idostreeitem.h"
+#include "idostreemodel.h"
+#include "idostreeview.h"
 #include "idoswell.h"
 
 class ProjectDialogTest : public QObject
@@ -33,7 +32,7 @@ class ProjectDialogTest : public QObject
         IDOSTreeView* view = window.dataTreeView();
         IDOSTreeModel* model = window.dataTreeModel();
         QScopedPointer<QMenu> emptyMenu(view->createMenu(view->currentIndex()));
-        QCOMPARE(emptyMenu->actions().size(), 2);
+        QVERIFY(emptyMenu->actions().isEmpty());
         view->setCurrentIndex(model->index(0, 0, QModelIndex()));
         QScopedPointer<QMenu> groupMenu(view->createMenu(view->currentIndex()));
         QVERIFY(groupMenu->actions().isEmpty());

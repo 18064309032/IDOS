@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <exception>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -41,7 +42,7 @@ QVariantList IDOSSimulationCaseEclipseProvider::buildDeckKeywordIndex(const Opm:
     {
         const Opm::DeckKeyword& deckKeyword = deck[index - 1];
         const Opm::KeywordLocation& location = deckKeyword.location();
-        const QString filePath = QString::fromStdString(deck.makeDeckPath(location.filename));
+        const QString filePath = QString::fromStdString(location.filename);
         const QString fileName = QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
         const qulonglong line = static_cast<qulonglong>(location.lineno);
         const qulonglong nextLine = nextLineByFile.value(fileName, 0);
@@ -166,6 +167,10 @@ QVariant IDOSSimulationCaseEclipseProvider::deckItemValue(const Opm::DeckItem& i
     }
     if (item.getType() == Opm::get_type<double>())
     {
+        if (item.getActiveDimensions().empty())
+        {
+            return item.get<double>(valueIndex);
+        }
         return item.getSIDouble(valueIndex);
     }
     if (item.getType() == Opm::get_type<std::string>())
@@ -642,7 +647,7 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
         }
         wellNames.removeDuplicates();
 
-        IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+        std::unique_ptr<IDOSSimulationCaseObject> simulationCase(new IDOSSimulationCaseObject());
         simulationCase->setName(caseName.trimmed());
         simulationCase->setSourceFile(QFileInfo(filePath).absoluteFilePath());
         simulationCase->setPendingWellNames(wellNames);
@@ -650,8 +655,8 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
         simulationCase->setCurveTables(buildRelativePermeabilityTables(deck));
         simulationCase->setWellControlRows(buildWellControlRows(deck));
 
-        result.append(simulationCase);
-        appendGridObjects(&result, simulationCase, deck);
+        result.append(simulationCase.release());
+        appendGridObjects(&result, qobject_cast<IDOSSimulationCaseObject*>(result.first()), deck);
     }
     catch (const std::exception& e)
     {

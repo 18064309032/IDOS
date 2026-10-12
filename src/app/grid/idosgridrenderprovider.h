@@ -3,6 +3,8 @@
 
 #include <QList>
 #include <QPointer>
+#include <QString>
+#include <QStringList>
 
 #include <vtkSmartPointer.h>
 
@@ -20,6 +22,8 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     ~IDOSGridRenderProvider() override;
     IDOSDataObject* dataSource() const override;
     void update() override;
+    bool dependsOn(const QStringList& dataIds) const override;
+    bool removeDataReference(const QString& dataId) override;
     QList<vtkActor*> actors() const override;
     QList<vtkSmartPointer<vtkProp>> legends() const override;
     bool highlighted() const override;

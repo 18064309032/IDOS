@@ -45,29 +45,10 @@
     </message>
   </context>
   <context>
-    <name>IDOSPointSetRenderGuiProvider</name>
-    <message>
-      <source>Increase Point Size</source>
-      <translation>增大点尺寸</translation>
-    </message>
-    <message>
-      <source>Delete Point Set</source>
-      <translation>删除点集</translation>
-    </message>
-  </context>
-  <context>
     <name>IDOSPointSetTreeGuiProvider</name>
     <message>
-      <source>Create Point Set</source>
-      <translation>创建点集</translation>
-    </message>
-    <message>
       <source>Delete Point Set</source>
       <translation>删除点集</translation>
-    </message>
-    <message>
-      <source>Example points</source>
-      <translation>示例点集</translation>
     </message>
   </context>
   <context>

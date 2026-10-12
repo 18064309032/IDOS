@@ -12,13 +12,12 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTemporaryDir>
+#include <QVariantList>
 #include <QVariantMap>
 #include <QVBoxLayout>
 
-#include <QVariantList>
-#include <QVariantMap>
-
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationinitializewidget.h"
 
@@ -39,9 +38,9 @@ IDOSSimulationInitializeWidget::IDOSSimulationInitializeWidget(IDOSSimulationCas
     setWindowTitle(tr("Initialize — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
 
     QVBoxLayout* layout = new QVBoxLayout(this);
-    QLabel* descriptionLabel = new QLabel(
-        tr("Prepare an isolated run directory and copy the DATA file with its indexed input files. The simulator will not be started."),
-        this);
+    QLabel* descriptionLabel = new QLabel(tr("Prepare an isolated run directory and copy the DATA file with its "
+                                             "indexed input files. The simulator will not be started."),
+                                          this);
     descriptionLabel->setWordWrap(true);
     layout->addWidget(descriptionLabel);
 
@@ -49,17 +48,14 @@ IDOSSimulationInitializeWidget::IDOSSimulationInitializeWidget(IDOSSimulationCas
     directoryLayout->addWidget(new QLabel(tr("Run directory"), this));
     m_directoryEdit = new QLineEdit(this);
     const QFileInfo sourceInfo(m_sourceFile);
-    const QString defaultDirectory = sourceInfo.dir().absoluteFilePath(
-        QStringLiteral("idos_runs/%1").arg(sourceInfo.completeBaseName()));
+    const QString defaultDirectory =
+        sourceInfo.dir().absoluteFilePath(QStringLiteral("idos_runs/%1").arg(sourceInfo.completeBaseName()));
     m_directoryEdit->setText(defaultDirectory);
     directoryLayout->addWidget(m_directoryEdit, 1);
     QPushButton* browseButton = new QPushButton(tr("Browse…"), this);
     directoryLayout->addWidget(browseButton);
     layout->addLayout(directoryLayout);
-    connect(browseButton,
-            &QPushButton::clicked,
-            this,
-            &IDOSSimulationInitializeWidget::onBrowseDirectoryTriggered);
+    connect(browseButton, &QPushButton::clicked, this, &IDOSSimulationInitializeWidget::onBrowseDirectoryTriggered);
 
     m_inputTable = new QTableWidget(this);
     m_inputTable->setColumnCount(2);
@@ -76,10 +72,7 @@ IDOSSimulationInitializeWidget::IDOSSimulationInitializeWidget(IDOSSimulationCas
 
     m_initializeButton = new QPushButton(tr("Prepare Run Directory"), this);
     layout->addWidget(m_initializeButton);
-    connect(m_initializeButton,
-            &QPushButton::clicked,
-            this,
-            &IDOSSimulationInitializeWidget::onInitializeTriggered);
+    connect(m_initializeButton, &QPushButton::clicked, this, &IDOSSimulationInitializeWidget::onInitializeTriggered);
 
     updateInputTable();
     resize(820, 620);
@@ -120,8 +113,8 @@ QString IDOSSimulationInitializeWidget::relativeInputPath(const QString& inputFi
     const QFileInfo sourceInfo(m_sourceFile);
     const QFileInfo inputInfo(inputFile);
     QString relativePath = QDir(sourceInfo.absolutePath()).relativeFilePath(inputInfo.absoluteFilePath());
-    if (relativePath == QStringLiteral("..") || relativePath.startsWith(QStringLiteral("../"))
-        || relativePath.startsWith(QStringLiteral("..\\")))
+    if (relativePath == QStringLiteral("..") || relativePath.startsWith(QStringLiteral("../")) ||
+        relativePath.startsWith(QStringLiteral("..\\")))
     {
         relativePath = QStringLiteral("_external/%1").arg(inputInfo.fileName());
     }
@@ -156,8 +149,8 @@ bool IDOSSimulationInitializeWidget::validateInputs(QStringList* messages) const
         const QString relativePath = relativeInputPath(inputFile);
         if (relativePath.startsWith(QStringLiteral("_external/")))
         {
-            messages->append(tr("Input file is outside the DATA directory tree and cannot be relocated safely: %1")
-                                 .arg(inputFile));
+            messages->append(
+                tr("Input file is outside the DATA directory tree and cannot be relocated safely: %1").arg(inputFile));
             valid = false;
         }
         if (targetPaths.contains(relativePath, Qt::CaseInsensitive))
@@ -184,9 +177,7 @@ void IDOSSimulationInitializeWidget::updateInputTable()
 void IDOSSimulationInitializeWidget::onBrowseDirectoryTriggered()
 {
     const QString selectedDirectory = QFileDialog::getExistingDirectory(
-        this,
-        tr("Select run directory parent"),
-        QFileInfo(m_directoryEdit->text()).absolutePath());
+        this, tr("Select run directory parent"), QFileInfo(m_directoryEdit->text()).absolutePath());
     if (selectedDirectory.isEmpty())
     {
         return;
@@ -201,7 +192,7 @@ void IDOSSimulationInitializeWidget::onInitializeTriggered()
     QStringList messages;
     if (!validateInputs(&messages))
     {
-        m_outputEdit->setPlainText(messages.join(QLatin1Char('\n')));
+        showOutput(messages.join(QLatin1Char('\n')));
         return;
     }
 
@@ -209,36 +200,37 @@ void IDOSSimulationInitializeWidget::onInitializeTriggered()
     const QFileInfo targetInfo(targetDirectory);
     if (targetDirectory.isEmpty() || targetDirectory == QFileInfo(m_sourceFile).absolutePath())
     {
-        m_outputEdit->setPlainText(tr("Choose a run directory separate from the source DATA directory."));
+        showOutput(tr("Choose a run directory separate from the source DATA directory."));
         return;
     }
     if (targetInfo.exists())
     {
-        m_outputEdit->setPlainText(tr("The run directory already exists. Choose a new directory to avoid overwriting existing files."));
+        showOutput(tr("The run directory already exists. Choose a new directory to avoid overwriting existing files."));
         return;
     }
 
     const QString parentDirectory = targetInfo.absolutePath();
     if (!QDir().mkpath(parentDirectory))
     {
-        m_outputEdit->setPlainText(tr("Unable to create the parent directory: %1").arg(parentDirectory));
+        showOutput(tr("Unable to create the parent directory: %1").arg(parentDirectory));
         return;
     }
 
     QTemporaryDir stagingDirectory(QDir(parentDirectory).absoluteFilePath(QStringLiteral(".idos_initialize_XXXXXX")));
     if (!stagingDirectory.isValid())
     {
-        m_outputEdit->setPlainText(tr("Unable to create a temporary initialization directory in %1.").arg(parentDirectory));
+        showOutput(tr("Unable to create a temporary initialization directory in %1.").arg(parentDirectory));
         return;
     }
 
     QStringList copiedPaths;
+    IDOS_MESSAGE(tr("Preparing run directory: %1").arg(targetDirectory), IDOSLogLevel::Info);
     for (const QString& inputFile : m_inputFiles)
     {
         const QString relativePath = relativeInputPath(inputFile);
+        IDOS_MESSAGE(tr("Copying input file: %1").arg(relativePath), IDOSLogLevel::Info);
         const QString stagedPath = QDir(stagingDirectory.path()).absoluteFilePath(relativePath);
-        if (!QDir().mkpath(QFileInfo(stagedPath).absolutePath())
-            || !QFile::copy(inputFile, stagedPath))
+        if (!QDir().mkpath(QFileInfo(stagedPath).absolutePath()) || !QFile::copy(inputFile, stagedPath))
         {
             messages.append(tr("Unable to copy input file: %1").arg(inputFile));
         }
@@ -259,15 +251,16 @@ void IDOSSimulationInitializeWidget::onInitializeTriggered()
 
     if (!messages.isEmpty())
     {
-        m_outputEdit->setPlainText(messages.join(QLatin1Char('\n')));
+        showOutput(messages.join(QLatin1Char('\n')));
         return;
     }
 
-    const bool renamed = QDir(parentDirectory).rename(QFileInfo(stagingDirectory.path()).fileName(),
-                                                       QFileInfo(targetDirectory).fileName());
+    const bool renamed =
+        QDir(parentDirectory)
+            .rename(QFileInfo(stagingDirectory.path()).fileName(), QFileInfo(targetDirectory).fileName());
     if (!renamed)
     {
-        m_outputEdit->setPlainText(tr("Unable to finalize the run directory: %1").arg(targetDirectory));
+        showOutput(tr("Unable to finalize the run directory: %1").arg(targetDirectory));
         return;
     }
 
@@ -275,7 +268,7 @@ void IDOSSimulationInitializeWidget::onInitializeTriggered()
     messages.append(tr("Copied %1 input file(s):").arg(copiedPaths.size()));
     messages.append(copiedPaths);
     messages.append(tr("Input files were copied and verified. The simulator has not been started."));
-    m_outputEdit->setPlainText(messages.join(QLatin1Char('\n')));
+    showOutput(messages.join(QLatin1Char('\n')), IDOSLogLevel::Info);
     if (m_simulationCase != nullptr)
     {
         QVariantMap runInfo;
@@ -287,4 +280,14 @@ void IDOSSimulationInitializeWidget::onInitializeTriggered()
         m_simulationCase->setRunInfo(runInfo);
     }
     m_initializeButton->setEnabled(false);
+}
+
+void IDOSSimulationInitializeWidget::showOutput(const QString& message, IDOSLogLevel level)
+{
+    m_outputEdit->setPlainText(message);
+    const QStringList lines = message.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines)
+    {
+        IDOSLogger::instance().message(line, level);
+    }
 }

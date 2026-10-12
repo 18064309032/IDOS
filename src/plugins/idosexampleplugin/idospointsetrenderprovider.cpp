@@ -102,16 +102,3 @@ void IDOSPointSetRenderProvider::setOpacity(double opacity)
 {
     m_actor->GetProperty()->SetOpacity(opacity);
 }
-
-double IDOSPointSetRenderProvider::pointSize() const
-{
-    return m_actor->GetProperty()->GetPointSize();
-}
-
-void IDOSPointSetRenderProvider::setPointSize(double size)
-{
-    if (size > 0.0)
-    {
-        m_actor->GetProperty()->SetPointSize(size);
-    }
-}

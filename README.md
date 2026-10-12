@@ -1,156 +1,123 @@
 # IDOS
 
-IDOS 是一款面向油气储层数值模拟的桌面前处理工作站，基于 **Qt 5.15 + CMake + MSVC** 构建。
-提供工程化的数据管理（井、网格、工况、测井曲线），并以 VTK 驱动的 3D 视图完成模型浏览与属性可视化。
+IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，提供井、网格和工况数据管理、VTK 可视化、可撤销业务命令，以及可扩展的 C++ 插件接口。数值模拟插件通过 WSL2 调用 OPM Flow，支持计算输出跟踪和动态属性结果导入。
 
-- 左侧 **数据树**：管理原始输入数据（井组、井头、井轨迹、测井曲线、地震等输入分组）
-- 底部 **工况树**：管理模型对象（工况 → 网格 → 属性场），勾选即渲染
-- 中央 **3D 视图**：网格 / 井轨迹 / 井口 / 属性场着色显示，支持对象高亮与拾取
-- 右侧 **属性面板**：展示当前选中对象的完整属性
-- 顶部 **Ribbon 工具栏**（SARibbon）+ 可自由停靠/浮动的面板布局（Qt Advanced Docking System）
+项目处于持续开发阶段。本文描述当前代码提供的能力；待实现功能单独列出，不将界面占位入口视为可用功能。
 
-## 目录结构
+## 功能
 
-```
-IDOS/
-├── CMakeLists.txt          # 根构建脚本：Qt/VTK/第三方库 + 架构边界守护
-├── CMakePresets.json       # win-x64-debug / win-x64-release 预设
-├── CMakeUserPresets.json   # 本机 Qt 路径（不入库，示例见 CMakeUserPresets.example.json）
-├── AGENTS.md               # 编码规范（AI 与人类共同遵守）
-├── .clang-format           # 格式化配置：Allman / 4 空格 / 120 列
-├── src/                    # 全部业务源码（见"架构分层"）
-├── tests/                  # Qt Test 单元/集成测试 + 样例数据
-├── i18n/                   # 翻译文件 idos_zh_CN.ts / .qm
-├── images/                 # SVG 图标（images.qrc 嵌入 idos_gui）
-├── resources/              # 程序动态加载资源（预留）
-├── thirdparty/             # 预编译第三方库（include/lib/bin 三段式）
-└── tools/                  # check_includes.ps1 架构守护脚本 + 回归用例
-```
+- **数据与工况**：井头、井轨迹、LAS 测井数据、ECLIPSE DATA 与网格导入；工况关联和树节点管理。
+- **可视化**：独立二维、三维窗口，网格与井展示、属性着色、选择高亮、标准视角、坐标轴、图例和截图。
+- **数值模拟**：DATA 浏览与生成、运行预检、输入初始化、WSL Flow 启停、实时输出、UNRST 动态属性导入及报告步播放。
+- **业务操作**：命令注册、参数验证、撤销与重做；界面和助手共用业务入口。
+- **插件扩展**：数据、树、渲染、命令和视图工具注册；加载管理与卸载保护。
+- **本地助手**：模型进程、HTTP 请求和命令调用，工程切换时隔离旧请求；Enter 发送、Shift+Enter 换行。
+- **视图工具框架**：每窗口独立实例、悬浮工具条、多操作菜单、Qt 输入过滤器和 VTK 成员函数事件监听。
 
-## 架构分层
+### 当前限制
 
-模块按严格单向依赖组织，越界 include 会在**每次构建时**被 `tools/check_includes.ps1`
-拦截并直接导致构建失败（同时注册为 CTest 用例）。
-
-```
-core ──────────── 领域模型：IDOSObject / IDOSProject / IDOSWell / IDOSGrid / 类型注册表
- │                （仅依赖 Qt5::Core、Qt5::Gui）
- ├── providers ─── 数据解析：LAS / Petrel DEV / Wellheader / ECLIPSE DATA·GRID
- │                 （链 OPM opmcommon 静态库）
- ├── render ────── VTK 9.6 渲染：Registry、Metadata、抽象 RenderObject/Provider、RenderServer、RenderScene 与 RenderView
- ├── gui ───────── 树控件体系：TreeModel / TreeView / TreeProvider / 右键菜单
- └── app ───────── 程序装配：主窗口、Ribbon、停靠面板；app/well、app/grid、app/case 提供具体数据的树、菜单、渲染与命令实现
-analysis / python / assistant ── 扩展占位模块（INTERFACE 目标，尚无实现）
-
-idos (exe) ────── src/main.cpp，只链接 idos_app + Qt
-```
-
-关键设计：
-
-| 机制 | 说明 |
+| 范围 | 状态 |
 |---|---|
-| 批量事务 | `IDOSProject::beginUpdate/endUpdate` + `IDOSProjectUpdateGuard`（RAII），一次导入只发一条批量信号，避免视图 O(N²) 重建 |
-| 类型注册表 | `IDOSTypeRegistry`：typeId → 元数据 + 工厂，区分输入树 / 模型树，官方与插件类型同一注册通道 |
-| Provider 注册表 | `IDOSDataProviderRegistry`（文件格式 → 解析器）、`IDOSRenderRegistry`（数据类型 → 渲染 Provider）、`IDOSTreeRegistry`（数据类型 → 树 Provider 和菜单扩展） |
-| 架构守护 | `check_includes` 构建目标：禁止跨目录回溯 include、禁止公开头引用内部类型，校验模块依赖方向及固定功能目录的公共接口 |
+| 工程打开、保存、另存为及设置 | 入口保留，当前禁用；新建工程和数据导入可用 |
+| 内置悬浮工具按钮 | 通用框架已接入，尚未注册具体工具；空工具条自动隐藏 |
+| Python | 控制台界面存在，运行时未接入，不能执行 Python 代码 |
+| 通用分析模块与拟合评价 | 待实现，不代表专业插件已经具备完整计算能力 |
+| Flow 运行环境 | 需要预先安装 WSL2、Linux 发行版和 Flow，未提供离线环境包 |
+| 支持平台 | 当前构建和验证针对 Windows x64、Qt 5.15.2、MSVC，其他平台未完成验证 |
 
-## 构建
+最新验收范围和计划见 [工作进度](docs/工作进度-CJW.md)。
+
+## 快速开始
 
 ### 环境要求
 
-- Windows x64，Visual Studio 2022（MSVC 工具集）
-- CMake ≥ 3.16（VS 2022 自带版本即可）
-- Qt 5.15.2 msvc2019_64（本机示例路径 `D:/Qt/Qt5.15.2/5.15.2/msvc2019_64`）
-- 第三方库已随仓库提供在 `thirdparty/`：SARibbon、Qt Advanced Docking System、OPM(opm-common)、VTK 9.6.0
+| 依赖 | 要求 |
+|---|---|
+| 编译器 | Visual Studio 2022，MSVC x64 C++ 工具链及 Windows SDK |
+| CMake | 建议 3.23 或更高，支持仓库 version 4 预设；代码使用 C++17 |
+| Qt | Qt 5.15.2 `msvc2019_64`，包含 Widgets、Network、LinguistTools；测试需要 Qt Test |
+| 第三方依赖 | `thirdparty/` 下的 VTK 9.6.0、SARibbon、Advanced Docking System、OPM opm-common |
+| 助手资源 | 当前构建部署依赖 `resources/assistant/` 的运行程序、配置及 GGUF 模型 |
 
-### 配置与编译
+部分依赖为预编译二进制，模型文件体积较大；只复制源码不足以完成当前构建。Flow 求解器独立于 opm-common 解析库，不是启动普通数据查看功能的必要条件。
 
-```powershell
-# 1) 指定 Qt 路径（一次性）：复制 CMakeUserPresets.example.json 为 CMakeUserPresets.json
-#    或设置环境变量 QTDIR
+### 配置与构建
 
-# 2) 配置
-cmake --preset win-x64-debug-local -B E:/CJW-Archive/build/win-x64-debug-local
-
-# 3) 编译（VS 多配置生成器）
-cmake --build E:/CJW-Archive/build/win-x64-debug-local --config Debug
-
-# 或直接用 VS 内置 cmake（PATH 中无 cmake 时）
-# "D:/Microsoft Visual Studio 2022/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
-```
-
-产物统一输出到 `<构建目录>/bin/<配置>/`，`idosd.exe`（Debug）/ `idos.exe`（Release）与全部依赖 DLL 同目录。
-POST_BUILD 步骤会自动完成 Qt 部署（windeployqt）、VC Debug 运行库、VTK / SARibbon / ADS DLL 与 `.qm` 翻译的拷贝。
-
-### 常用选项
-
-| 选项 | 默认 | 说明 |
-|---|---|---|
-| `IDOS_ENABLE_RENDER` | `ON` | 关闭后不链接 VTK，可无渲染模块编译 |
-| `IDOS_BUILD_TESTS` | `OFF` | 打开后构建 `tests/` 下的 Qt Test 目标 |
+在仓库根目录运行。当前工作约定使用唯一构建目录 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local`，禁止源码内构建。
 
 ```powershell
-cmake --preset win-x64-debug-local -B E:/CJW-Archive/build/win-x64-debug-local -DIDOS_BUILD_TESTS=ON -DIDOS_ENABLE_RENDER=ON
+cmake -S . -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local `
+    -G "Visual Studio 17 2022" -A x64 `
+    -DIDOS_QT_DIR="D:/Qt/Qt5.15.2/5.15.2/msvc2019_64" `
+    -DIDOS_ENABLE_RENDER=ON -DIDOS_BUILD_TESTS=ON
+
+cmake --build E:/CJW-Archive/IDOS-Build/win-x64-debug-local --config Debug --parallel 6
 ```
 
-### 架构检查
+Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local`；显式指定目录以确保配置、编译和测试使用同一位置。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/check_includes.ps1 -SourceRoot src
-ctest --test-dir E:/CJW-Archive/build/win-x64-debug-local -C Debug -R check_includes
-```
+Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
+
+`IDOS_BUILD_TESTS` 默认 `OFF`，开发验证应打开。`IDOS_ENABLE_RENDER` 默认 `ON`；当前源码仍使用 VTK 控件，不能将 `OFF` 视为已支持的无渲染构建模式。
+
+## 使用
+
+1. 启动程序并新建工程。
+2. 从数据树或工况入口导入井数据、网格或 DATA 工况。
+3. 选择对象并勾选支持展示的节点，在目标视图查看属性。
+4. 数值模拟先运行预检和初始化，再在运行状态窗口启动 Flow。
+5. 成功计算后检查动态属性，选择报告步或播放结果。
+
+运行信息进入底部输出面板，调试日志使用独立面板。完整步骤与常见问题见 [使用指南](docs/使用指南.md)。
+
+## 架构
+
+| 模块 | 职责 |
+|---|---|
+| `core` | 工程、领域数据、类型工厂、树结构/模型/同步、业务命令与历史 |
+| `providers` | 井数据、LAS、ECLIPSE 输入和结果等格式解析 |
+| `render` | 通用展示对象、Scene、View、Provider、注册与同步，以及工具框架 |
+| `gui` | 树界面、节点交互、公共插件访问接口和通用面板 |
+| `app` | 主窗口、服务装配、插件加载、内置具体展示和业务命令 |
+| `assistant` | 本地模型进程、请求服务、命令调用及助手界面 |
+| `plugins` | 数值模拟等专业扩展及点集示例 |
+| `analysis` / `python` | 保留的接口目标，通用算法及 Python 运行时待实现 |
+
+树和渲染分别通过 Server 同步工程；每个渲染窗口拥有独立 Scene 和显示状态。注册表拥有 Metadata，工厂创建具体 Provider，通用框架不判断业务子类。数据修改通过命令执行，局部显示操作作用于明确的目标视图。
+
+`gui` 与 `render` 不互相链接，插件通过 `IDOSInterface` 注册能力。工具遵循 `Registry → Metadata → ToolBar → Provider → Action / Tool`，Qt 处理输入，VTK 通过成员函数指针提供状态通知。
+
+详细接口与所有权见 [架构设计](docs/IDOS架构设计.md)，固定目录见 [源码目录](docs/IDOS源码目录.md)。
 
 ## 测试
 
-打开 `IDOS_BUILD_TESTS=ON` 后，`ctest` 提供：
-
-| 用例 | 内容 |
-|---|---|
-| `project_dialog` | 新建工程对话框流程 |
-| `well_import` | 井头 / 井轨迹 / 测井导入与井名汇合 |
-| `well_path` | Petrel `.dev` 轨迹解析、空间基准、井口几何解析 |
-| `case_workflow` | 工况创建、网格与属性导入、级联删除（依赖 OPM 解析 `case.DATA`） |
-| `tree_incremental` | 数据树/工况树增量刷新与批量事务 |
-
 ```powershell
-ctest --test-dir E:/CJW-Archive/build/win-x64-debug-local -C Debug --output-on-failure
+ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug --output-on-failure
 ```
 
-样例数据位于 `tests/data/`（`case.DATA`、`Wellheader.txt`、`A10.dev`、`case-wells.inc`）。
+测试包括 `command_registry`、`assistant_widget`、`project_dialog`、`well_import`、`well_path`、`case_workflow`、`tree_incremental`，以及两项 include 边界检查。`idos_render_header_checks` 构建目标验证公共头文件自包含。
 
-## 国际化
-
-所有用户可见文案使用 `tr()`（源文本英文），中文写入 `i18n/idos_zh_CN.ts`：
+实际 Flow 验证需准备可运行的 SPE1 输入包，并设置路径：
 
 ```powershell
-cmake --build <构建目录> --target lupdate       # 扫描 src 提取 tr() 到 .ts
-linguist i18n/idos_zh_CN.ts                      # 翻译
-cmake --build <构建目录> --target translations   # lrelease 生成 .qm（随 ALL 目标自动执行）
+$env:IDOS_FLOW_SMOKE_DATA = 'E:/CJW-Archive/IDOS-Build/win-x64-debug-local/flow-smoke/SPE1CASE1.DATA'
+ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug -R '^case_workflow$' --output-on-failure
 ```
 
-程序启动时按 `QLocale` 从 exe 目录自动加载 `idos_zh_CN.qm`。
+未设置该变量时，本机 Flow 用例跳过，不能将普通回归通过解释为求解器计算已验收。验证与翻译流程见 [开发指南](docs/开发指南.md)。
 
-## 代码规范
+## 文档
 
-完整规则见 [AGENTS.md](AGENTS.md)，要点：
+- [使用指南](docs/使用指南.md)：工程、数据、视图、Flow 和助手操作。
+- [开发指南](docs/开发指南.md)：依赖、构建、验证、翻译和贡献流程。
+- [架构设计](docs/IDOS架构设计.md)：模块边界、公共接口与生命周期。
+- [源码目录](docs/IDOS源码目录.md)：固定目录及类归属。
+- [工作进度](docs/工作进度-CJW.md)：状态、验收记录和后续计划。
+- [插件开发](src/plugins/README.md)与[点集示例](src/plugins/idosexampleplugin/README.md)。
+- [图标规范](images/README.md)。
 
-- 同名 `.h` / `.cpp` 必须同目录；固定目标目录见 [IDOS源码目录](docs/IDOS源码目录.md)，公共接口位于所属功能目录根部，目录调整须经用户确认
-- 禁止 `auto`、禁止 `struct`（类型一律 `class`）、禁止 lambda、禁止文件作用域静态函数
-- 头文件只放声明，函数实现（含一行函数）一律写在 `.cpp`
-- 控制语句与函数体大括号独占一行（Allman），`if`/`for` 等即使单条语句也必须加括号
-- 槽函数以 `on` 开头；构造函数初始化列表每项独占一行
-- 代码与测试用英文，中文仅出现在翻译文件；界面文案用 `tr()` 并同步更新 `i18n/idos_zh_CN.ts`
+## 贡献与授权
 
-格式化：`clang-format`（配置见 `.clang-format`，基于 Microsoft 风格）。
+修改前阅读 [AGENTS.md](AGENTS.md)。新增功能沿用注册及命令路径，同步测试、翻译和进度；第三方库不作批量风格改写。
 
-## 第三方库
-
-| 库 | 用途 | 形式 |
-|---|---|---|
-| Qt 5.15.2 | UI / 信号槽 / 模型视图 | 外部安装，`IDOS_QT_DIR` 或 `QTDIR` 指定 |
-| SARibbon | Ribbon 主窗 | 预编译，`SARibbon::SARibbonBar` IMPORTED |
-| Qt Advanced Docking System | 可停靠面板 | 预编译，`ADS::ADS` IMPORTED |
-| OPM (opm-common) | ECLIPSE `.DATA` 输入文件解析 | 静态库，`OPM::opmcommon`，仅 providers 使用 |
-| VTK 9.6.0 | 3D 渲染 | `find_package(VTK)`，render 与 app/render 的具体 Provider 使用 |
-
-第三方库不做批量风格改写；Qt 固定签名的事件重写函数保持框架要求的名称。
+当前仓库未提供顶层 `LICENSE` 文件。第三方库、运行程序和模型的授权以各自随附文件为准；本文不新增或声明项目许可证。

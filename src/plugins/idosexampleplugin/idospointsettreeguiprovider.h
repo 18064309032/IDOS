@@ -21,7 +21,6 @@ class IDOSPointSetTreeGuiProvider : public IDOSTreeGuiProvider
     bool setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view) override;
 
   private slots:
-    void onCreatePointSet();
     void onDeletePointSet();
 
   private:

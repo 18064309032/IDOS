@@ -17,11 +17,11 @@
 #include <QVBoxLayout>
 
 #include "command/idoscommandmanager.h"
-#include "grid/idosimportrestartresultscommand.h"
 #include "idoscaseitemref.h"
 #include "idosgrid.h"
 #include "idosproject.h"
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationresultfileswidget.h"
 
@@ -47,10 +47,7 @@ IDOSSimulationResultFilesWidget::IDOSSimulationResultFilesWidget(IDOSSimulationC
 
     m_filesTable = new QTableWidget(this);
     m_filesTable->setColumnCount(3);
-    m_filesTable->setHorizontalHeaderLabels(QStringList()
-                                            << tr("File")
-                                            << tr("Size")
-                                            << tr("Modified"));
+    m_filesTable->setHorizontalHeaderLabels(QStringList() << tr("File") << tr("Size") << tr("Modified"));
     m_filesTable->setEditTriggers(QTableWidget::NoEditTriggers);
     m_filesTable->setSelectionBehavior(QTableWidget::SelectRows);
     m_filesTable->horizontalHeader()->setStretchLastSection(true);
@@ -64,21 +61,13 @@ IDOSSimulationResultFilesWidget::IDOSSimulationResultFilesWidget(IDOSSimulationC
     QPushButton* openDirectoryButton = new QPushButton(tr("Open Run Directory"), this);
     buttonLayout->addWidget(openDirectoryButton);
     layout->addLayout(buttonLayout);
-    connect(openDirectoryButton,
-            &QPushButton::clicked,
-            this,
+    connect(openDirectoryButton, &QPushButton::clicked, this,
             &IDOSSimulationResultFilesWidget::onOpenRunDirectoryTriggered);
-    connect(m_filesTable,
-            &QTableWidget::cellDoubleClicked,
-            this,
+    connect(m_filesTable, &QTableWidget::cellDoubleClicked, this,
             &IDOSSimulationResultFilesWidget::onResultFileDoubleClicked);
-    connect(m_filesTable,
-            &QTableWidget::itemSelectionChanged,
-            this,
+    connect(m_filesTable, &QTableWidget::itemSelectionChanged, this,
             &IDOSSimulationResultFilesWidget::onSelectionChanged);
-    connect(m_importButton,
-            &QPushButton::clicked,
-            this,
+    connect(m_importButton, &QPushButton::clicked, this,
             &IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered);
 
     loadResultFiles(simulationCase);
@@ -138,11 +127,13 @@ void IDOSSimulationResultFilesWidget::loadResultFiles(IDOSSimulationCaseObject* 
 
     if (resultFiles.isEmpty())
     {
-        m_summaryLabel->setText(tr("No result files found. A simulator run has not produced output in this directory."));
+        m_summaryLabel->setText(
+            tr("No result files found. A simulator run has not produced output in this directory."));
         return;
     }
 
-    m_summaryLabel->setText(tr("Found %1 result file(s). Double-click a row to open the file.").arg(resultFiles.size()));
+    m_summaryLabel->setText(
+        tr("Found %1 result file(s). Double-click a row to open the file.").arg(resultFiles.size()));
     m_filesTable->setRowCount(resultFiles.size());
     for (int row = 0; row < resultFiles.size(); ++row)
     {
@@ -183,8 +174,8 @@ void IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered()
 {
     if (m_project.isNull() || m_gridId.isEmpty())
     {
-        QMessageBox::warning(this, tr("Import Dynamic Properties"),
-                             tr("The project or target grid is unavailable."));
+        IDOS_MESSAGE(tr("The project or target grid is unavailable."), IDOSLogLevel::Error);
+        QMessageBox::warning(this, tr("Import Dynamic Properties"), tr("The project or target grid is unavailable."));
         return;
     }
 
@@ -197,6 +188,7 @@ void IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered()
     const QString filePath = QDir(m_runDirectory).absoluteFilePath(item->text());
     if (QFileInfo(filePath).suffix().compare(QStringLiteral("UNRST"), Qt::CaseInsensitive) != 0)
     {
+        IDOS_MESSAGE(tr("The selected file is not a unified Eclipse restart file."), IDOSLogLevel::Error);
         QMessageBox::warning(this, tr("Import Dynamic Properties"),
                              tr("The selected file is not a unified Eclipse restart file."));
         return;
@@ -207,8 +199,14 @@ void IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered()
     {
         return;
     }
-    if (!commandManager->execute(new IDOSImportRestartResultsCommand(m_project, m_gridId, filePath)))
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("gridId"), m_gridId);
+    arguments.insert(QStringLiteral("filePath"), filePath);
+    if (!commandManager->execute(QStringLiteral("simulation.results.import"), arguments)
+             .value(QStringLiteral("success"))
+             .toBool())
     {
+        IDOS_MESSAGE(commandManager->error(), IDOSLogLevel::Error);
         QMessageBox::warning(this, tr("Import Dynamic Properties"), commandManager->error());
         return;
     }
@@ -219,12 +217,13 @@ void IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered()
                                 .arg(result.value(QStringLiteral("reportStepCount")).toInt())
                                 .arg(result.value(QStringLiteral("firstReportStep")).toInt())
                                 .arg(result.value(QStringLiteral("lastReportStep")).toInt()));
+    IDOS_MESSAGE(m_summaryLabel->text(), IDOSLogLevel::Info);
 }
 
 void IDOSSimulationResultFilesWidget::onSelectionChanged()
 {
     QTableWidgetItem* item = m_filesTable->item(m_filesTable->currentRow(), 0);
-    const bool isRestartFile = item != nullptr &&
-        QFileInfo(item->text()).suffix().compare(QStringLiteral("UNRST"), Qt::CaseInsensitive) == 0;
+    const bool isRestartFile =
+        item != nullptr && QFileInfo(item->text()).suffix().compare(QStringLiteral("UNRST"), Qt::CaseInsensitive) == 0;
     m_importButton->setEnabled(!m_project.isNull() && !m_gridId.isEmpty() && isRestartFile);
 }

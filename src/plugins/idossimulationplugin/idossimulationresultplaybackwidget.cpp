@@ -16,6 +16,7 @@
 #include "idosgridproperty.h"
 #include "idosproject.h"
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationresultplaybackwidget.h"
 
@@ -32,9 +33,10 @@ IDOSSimulationResultPlaybackWidget::IDOSSimulationResultPlaybackWidget(QWidget* 
     , m_playButton(nullptr)
     , m_nextButton(nullptr)
     , m_intervalSpinBox(nullptr)
-    , m_statusLabel(nullptr)
     , m_timer(new QTimer(this))
     , m_reportSteps()
+    , m_loggedPropertyId()
+    , m_loggedReportStep(-1)
 {
     setObjectName(QStringLiteral("simulationResultPlaybackWidget"));
     setMinimumWidth(300);
@@ -94,39 +96,16 @@ IDOSSimulationResultPlaybackWidget::IDOSSimulationResultPlaybackWidget(QWidget* 
     intervalLayout->addWidget(m_intervalSpinBox);
     layout->addLayout(intervalLayout);
 
-    m_statusLabel = new QLabel(tr("Select a simulation case to browse imported results."), this);
-    m_statusLabel->setWordWrap(true);
-    layout->addWidget(m_statusLabel);
-
     m_timer->setInterval(m_intervalSpinBox->value());
-    connect(m_propertyCombo,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,
+    connect(m_propertyCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &IDOSSimulationResultPlaybackWidget::onPropertyChanged);
-    connect(m_reportStepSlider,
-            &QSlider::valueChanged,
-            this,
-            &IDOSSimulationResultPlaybackWidget::onReportStepChanged);
-    connect(m_previousButton,
-            &QToolButton::clicked,
-            this,
-            &IDOSSimulationResultPlaybackWidget::onPreviousTriggered);
-    connect(m_playButton,
-            &QToolButton::clicked,
-            this,
-            &IDOSSimulationResultPlaybackWidget::onPlayTriggered);
-    connect(m_nextButton,
-            &QToolButton::clicked,
-            this,
-            &IDOSSimulationResultPlaybackWidget::onNextTriggered);
-    connect(m_intervalSpinBox,
-            QOverload<int>::of(&QSpinBox::valueChanged),
-            this,
+    connect(m_reportStepSlider, &QSlider::valueChanged, this, &IDOSSimulationResultPlaybackWidget::onReportStepChanged);
+    connect(m_previousButton, &QToolButton::clicked, this, &IDOSSimulationResultPlaybackWidget::onPreviousTriggered);
+    connect(m_playButton, &QToolButton::clicked, this, &IDOSSimulationResultPlaybackWidget::onPlayTriggered);
+    connect(m_nextButton, &QToolButton::clicked, this, &IDOSSimulationResultPlaybackWidget::onNextTriggered);
+    connect(m_intervalSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
             &IDOSSimulationResultPlaybackWidget::onIntervalChanged);
-    connect(m_timer,
-            &QTimer::timeout,
-            this,
-            &IDOSSimulationResultPlaybackWidget::onTimerTimeout);
+    connect(m_timer, &QTimer::timeout, this, &IDOSSimulationResultPlaybackWidget::onTimerTimeout);
 
     updateControls();
 }
@@ -134,9 +113,7 @@ IDOSSimulationResultPlaybackWidget::IDOSSimulationResultPlaybackWidget(QWidget* 
 void IDOSSimulationResultPlaybackWidget::setCurrentObject(IDOSDataObject* object)
 {
     IDOSSimulationCaseObject* simulationCase = resolveSimulationCase(object);
-    IDOSProject* project = simulationCase != nullptr
-        ? qobject_cast<IDOSProject*>(simulationCase->parent())
-        : nullptr;
+    IDOSProject* project = simulationCase != nullptr ? qobject_cast<IDOSProject*>(simulationCase->parent()) : nullptr;
     if (m_project != project)
     {
         if (m_project != nullptr)
@@ -146,13 +123,9 @@ void IDOSSimulationResultPlaybackWidget::setCurrentObject(IDOSDataObject* object
         m_project = project;
         if (m_project != nullptr)
         {
-            connect(m_project,
-                    &IDOSProject::objectsAdded,
-                    this,
+            connect(m_project, &IDOSProject::objectsAdded, this,
                     &IDOSSimulationResultPlaybackWidget::onProjectObjectsChanged);
-            connect(m_project,
-                    &IDOSProject::objectsRemoved,
-                    this,
+            connect(m_project, &IDOSProject::objectsRemoved, this,
                     &IDOSSimulationResultPlaybackWidget::onProjectObjectsChanged);
         }
     }
@@ -174,9 +147,7 @@ void IDOSSimulationResultPlaybackWidget::onPropertyChanged(int index)
     m_playButton->setToolTip(tr("Play report steps in sequence."));
     if (!m_property.isNull())
     {
-        disconnect(m_property.data(),
-                   &IDOSDataObject::dataChanged,
-                   this,
+        disconnect(m_property.data(), &IDOSDataObject::dataChanged, this,
                    &IDOSSimulationResultPlaybackWidget::onPropertyDataChanged);
     }
     if (index < 0 || m_project.isNull())
@@ -187,13 +158,10 @@ void IDOSSimulationResultPlaybackWidget::onPropertyChanged(int index)
         return;
     }
 
-    m_property = qobject_cast<IDOSGridProperty*>(
-        m_project->object(m_propertyCombo->itemData(index).toString()));
+    m_property = qobject_cast<IDOSGridProperty*>(m_project->object(m_propertyCombo->itemData(index).toString()));
     if (!m_property.isNull())
     {
-        connect(m_property.data(),
-                &IDOSDataObject::dataChanged,
-                this,
+        connect(m_property.data(), &IDOSDataObject::dataChanged, this,
                 &IDOSSimulationResultPlaybackWidget::onPropertyDataChanged);
     }
     refreshReportSteps();
@@ -210,13 +178,11 @@ void IDOSSimulationResultPlaybackWidget::onReportStepChanged(int index)
     const int reportStep = m_reportSteps.at(index);
     if (!m_property->setCurrentReportStep(reportStep))
     {
-        m_statusLabel->setText(tr("The selected report step is unavailable."));
+        IDOS_MESSAGE(tr("The selected report step is unavailable."), IDOSLogLevel::Error);
         return;
     }
     m_reportStepLabel->setText(tr("Step %1").arg(reportStep));
-    m_statusLabel->setText(tr("Displaying %1 at report step %2.")
-                               .arg(m_property->keyword())
-                               .arg(reportStep));
+    reportCurrentStep();
     updateControls();
 }
 
@@ -233,6 +199,7 @@ void IDOSSimulationResultPlaybackWidget::onPlayTriggered()
     if (m_timer->isActive())
     {
         m_timer->stop();
+        IDOS_MESSAGE(tr("Report-step playback paused."), IDOSLogLevel::Info);
         m_playButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
         m_playButton->setAccessibleName(tr("Play"));
         m_playButton->setToolTip(tr("Play report steps in sequence."));
@@ -247,6 +214,7 @@ void IDOSSimulationResultPlaybackWidget::onPlayTriggered()
         m_reportStepSlider->setValue(m_reportStepSlider->minimum());
     }
     m_timer->start();
+    IDOS_MESSAGE(tr("Report-step playback started."), IDOSLogLevel::Info);
     m_playButton->setIcon(style()->standardIcon(QStyle::SP_MediaPause));
     m_playButton->setAccessibleName(tr("Pause"));
     m_playButton->setToolTip(tr("Pause report-step playback."));
@@ -270,6 +238,7 @@ void IDOSSimulationResultPlaybackWidget::onTimerTimeout()
     if (m_reportStepSlider->value() >= m_reportStepSlider->maximum())
     {
         m_timer->stop();
+        IDOS_MESSAGE(tr("Report-step playback completed."), IDOSLogLevel::Info);
         m_playButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
         m_playButton->setAccessibleName(tr("Play"));
         m_playButton->setToolTip(tr("Play report steps in sequence."));
@@ -294,6 +263,7 @@ void IDOSSimulationResultPlaybackWidget::onPropertyDataChanged()
     m_reportStepSlider->setValue(reportStepIndex);
     m_reportStepSlider->blockSignals(false);
     m_reportStepLabel->setText(tr("Step %1").arg(m_property->currentReportStep()));
+    reportCurrentStep();
     updateControls();
 }
 
@@ -303,8 +273,7 @@ void IDOSSimulationResultPlaybackWidget::onProjectObjectsChanged(const QStringLi
     refreshProperties();
 }
 
-IDOSSimulationCaseObject* IDOSSimulationResultPlaybackWidget::resolveSimulationCase(
-    IDOSDataObject* object) const
+IDOSSimulationCaseObject* IDOSSimulationResultPlaybackWidget::resolveSimulationCase(IDOSDataObject* object) const
 {
     IDOSSimulationCaseObject* simulationCase = qobject_cast<IDOSSimulationCaseObject*>(object);
     if (simulationCase != nullptr)
@@ -359,9 +328,7 @@ void IDOSSimulationResultPlaybackWidget::refreshProperties()
     const QString previousPropertyId = m_propertyCombo->currentData().toString();
     if (!m_property.isNull())
     {
-        disconnect(m_property.data(),
-                   &IDOSDataObject::dataChanged,
-                   this,
+        disconnect(m_property.data(), &IDOSDataObject::dataChanged, this,
                    &IDOSSimulationResultPlaybackWidget::onPropertyDataChanged);
     }
     m_property = nullptr;
@@ -372,7 +339,7 @@ void IDOSSimulationResultPlaybackWidget::refreshProperties()
     if (m_project.isNull() || m_simulationCase.isNull())
     {
         m_propertyCombo->blockSignals(false);
-        m_statusLabel->setText(tr("Select a simulation case to browse imported results."));
+        m_propertyCombo->setToolTip(tr("Select a simulation case to browse imported results."));
         updateControls();
         return;
     }
@@ -380,8 +347,8 @@ void IDOSSimulationResultPlaybackWidget::refreshProperties()
     QString gridId;
     for (const IDOSCaseItemRef& reference : m_simulationCase->itemRefs())
     {
-        if (reference.role() == QStringLiteral("case.grid")
-            && qobject_cast<IDOSGrid*>(m_project->object(reference.objectId())) != nullptr)
+        if (reference.role() == QStringLiteral("case.grid") &&
+            qobject_cast<IDOSGrid*>(m_project->object(reference.objectId())) != nullptr)
         {
             gridId = reference.objectId();
             break;
@@ -391,9 +358,8 @@ void IDOSSimulationResultPlaybackWidget::refreshProperties()
     for (IDOSDataObject* object : m_project->objects())
     {
         IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
-        if (property == nullptr || property->gridId() != gridId
-            || property->kind() != IDOSGridProperty::Kind::Dynamic
-            || property->reportSteps().isEmpty())
+        if (property == nullptr || property->gridId() != gridId ||
+            property->kind() != IDOSGridProperty::Kind::Dynamic || property->reportSteps().isEmpty())
         {
             continue;
         }
@@ -409,11 +375,30 @@ void IDOSSimulationResultPlaybackWidget::refreshProperties()
 
     if (m_propertyCombo->count() == 0)
     {
-        m_statusLabel->setText(tr("No imported report-step data is available. Import an UNRST file first."));
+        m_propertyCombo->setToolTip(tr("No imported report-step data is available. Import an UNRST file first."));
         updateControls();
         return;
     }
     onPropertyChanged(m_propertyCombo->currentIndex());
+    m_propertyCombo->setToolTip(tr("Select a dynamic property to browse."));
+}
+
+void IDOSSimulationResultPlaybackWidget::reportCurrentStep()
+{
+    if (m_property.isNull())
+    {
+        return;
+    }
+    const int step = m_property->currentReportStep();
+    if (m_loggedPropertyId == m_property->objectId() && m_loggedReportStep == step)
+    {
+        return;
+    }
+    m_loggedPropertyId = m_property->objectId();
+    m_loggedReportStep = step;
+    IDOS_MESSAGE(tr("Displaying %1 at report step %2.")
+                  .arg(m_property->keyword().isEmpty() ? m_property->name() : m_property->keyword())
+                  .arg(step), IDOSLogLevel::Info);
 }
 
 void IDOSSimulationResultPlaybackWidget::refreshReportSteps()

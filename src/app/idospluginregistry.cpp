@@ -14,6 +14,7 @@
 
 #include "idosinterface.h"
 #include "idosplugin.h"
+#include "idostoolregistry.h"
 #include "log/idoslogger.h"
 
 #include "idospluginregistry.h"
@@ -337,6 +338,14 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
     }
 
     IDOSPlugin* instance = m_plugins.constFind(key).value().plugin();
+    if (m_idosInterface != nullptr && m_idosInterface->toolRegistry() != nullptr &&
+        m_idosInterface->toolRegistry()->isBusy())
+    {
+        const QString reason = tr("A view tool callback is still running.");
+        m_pluginErrors.insert(key, reason);
+        IDOS_MESSAGE(reason, IDOSLogLevel::Warn);
+        return;
+    }
     QString unloadBlockReason;
     if (instance != nullptr && !instance->canUnload(unloadBlockReason))
     {

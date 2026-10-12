@@ -1,6 +1,14 @@
 add_library(idos_render SHARED
-    idosrenderguiprovider.h
-    idosrenderguiprovider.cpp
+    idostool.h
+    idostool.cpp
+    idostoolmetadata.h
+    idostoolmetadata.cpp
+    idostoolregistry.h
+    idostoolregistry.cpp
+    idostoolprovider.h
+    idostoolprovider.cpp
+    idostoolbar.h
+    idostoolbar.cpp
     idosrenderserver.h
     idosrenderserver.cpp
     idosrendermetadata.h

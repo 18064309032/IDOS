@@ -4,24 +4,12 @@
   <context>
     <name>IDOSAppInterface</name>
     <message>
-      <source>Ribbon category lookup rejected: mainWindow=%1, objectName=%2</source>
-      <translation>Ribbon 页查找被拒绝：主窗口=%1，对象名称=%2</translation>
-    </message>
-    <message>
       <source>null</source>
       <translation>空值</translation>
     </message>
     <message>
       <source>valid</source>
       <translation>有效</translation>
-    </message>
-    <message>
-      <source>Ribbon category lookup failed: ribbon main window or ribbon bar is null.</source>
-      <translation>Ribbon 页查找失败：Ribbon 主窗口或工具栏为空。</translation>
-    </message>
-    <message>
-      <source>Ribbon category lookup: objectName=%1, result=0x%2</source>
-      <translation>查找 Ribbon 页：对象名称=%1，结果=0x%2</translation>
     </message>
     <message>
       <source>Ribbon category creation rejected: objectName=%1, title=%2</source>
@@ -116,6 +104,10 @@
   </context>
   <context>
     <name>IDOSAssistantWidget</name>
+    <message>
+      <source>%1: %2</source>
+      <translation>%1：%2</translation>
+    </message>
     <message>
       <source>Send</source>
       <translation>发送</translation>
@@ -400,33 +392,6 @@
     <message>
       <source>IDOSGridProperty::setValueAt: index out of range (%1, %2, %3)</source>
       <translation>IDOSGridProperty::setValueAt：索引越界（%1，%2，%3）</translation>
-    </message>
-  </context>
-  <context>
-    <name>IDOSGridRenderGuiProvider</name>
-    <message>
-      <source>Display Mode</source>
-      <translation>显示模式</translation>
-    </message>
-    <message>
-      <source>Surface</source>
-      <translation>表面</translation>
-    </message>
-    <message>
-      <source>Wireframe</source>
-      <translation>线框</translation>
-    </message>
-    <message>
-      <source>Surface with Edges</source>
-      <translation>表面及边线</translation>
-    </message>
-    <message>
-      <source>Points</source>
-      <translation>点</translation>
-    </message>
-    <message>
-      <source>Delete Grid</source>
-      <translation>删除网格</translation>
     </message>
   </context>
   <context>
@@ -1212,6 +1177,10 @@ It will be removed from all cases that reference it.</source>
   <context>
     <name>IDOSPluginRegistry</name>
     <message>
+        <source>A view tool callback is still running.</source>
+        <translation>视图工具回调仍在执行。</translation>
+    </message>
+    <message>
       <source>Cannot restore plugins without a host interface.</source>
       <translation>缺少宿主接口，无法恢复插件。</translation>
     </message>
@@ -1365,56 +1334,10 @@ It will be removed from all cases that reference it.</source>
     </message>
   </context>
   <context>
-    <name>IDOSPointSetRenderGuiProvider</name>
-    <message>
-      <source>Increase Point Size</source>
-      <translation>增大点尺寸</translation>
-    </message>
-    <message>
-      <source>Delete Point Set</source>
-      <translation>删除点集</translation>
-    </message>
-  </context>
-  <context>
     <name>IDOSPointSetTreeGuiProvider</name>
     <message>
-      <source>Create Point Set</source>
-      <translation>创建点集</translation>
-    </message>
-    <message>
       <source>Delete Point Set</source>
       <translation>删除点集</translation>
-    </message>
-    <message>
-      <source>Example points</source>
-      <translation>示例点集</translation>
-    </message>
-  </context>
-  <context>
-    <name>IDOSRenderView</name>
-    <message>
-      <source>Fit to Object</source>
-      <translation>适配对象</translation>
-    </message>
-    <message>
-      <source>Opacity...</source>
-      <translation>不透明度…</translation>
-    </message>
-    <message>
-      <source>Hide</source>
-      <translation>隐藏</translation>
-    </message>
-    <message>
-      <source>Fit All</source>
-      <translation>适配全部对象</translation>
-    </message>
-    <message>
-      <source>Opacity</source>
-      <translation>不透明度</translation>
-    </message>
-    <message>
-      <source>Opacity:</source>
-      <translation>不透明度：</translation>
     </message>
   </context>
   <context>
@@ -1631,13 +1554,6 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
       <source>Fit all depths</source>
       <translation>适应全井深度</translation>
-    </message>
-  </context>
-  <context>
-    <name>IDOSWellRenderGuiProvider</name>
-    <message>
-      <source>Delete Well</source>
-      <translation>删除井</translation>
     </message>
   </context>
   <context>
@@ -2311,6 +2227,26 @@ It will be removed from all cases that reference it.</source>
         <source>Unable to read the restart file: %1</source>
         <translation>无法读取重启文件：%1</translation>
     </message>
-    </context>
+        <message>
+        <source>Import dynamic properties from a unified Eclipse restart file.</source>
+        <translation>从统一 Eclipse 重启文件导入动态属性。</translation>
+    </message>
+    <message>
+        <source>Grid object ID.</source>
+        <translation>网格对象 ID。</translation>
+    </message>
+    <message>
+        <source>Unified Eclipse restart file path.</source>
+        <translation>统一 Eclipse 重启文件路径。</translation>
+    </message>
+</context>
+
+<context>
+    <name>IDOSToolBar</name>
+    <message>
+        <source>More tools</source>
+        <translation>更多工具</translation>
+    </message>
+</context>
 
 </TS>

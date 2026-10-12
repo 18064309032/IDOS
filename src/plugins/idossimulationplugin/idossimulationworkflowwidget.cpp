@@ -28,7 +28,7 @@ IDOSSimulationWorkflowWidget::IDOSSimulationWorkflowWidget(IDOSSimulationCaseObj
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     QLabel* descriptionLabel = new QLabel(
-        tr("Review the preparation and result stages for this case. Simulator execution is not available yet."),
+        tr("Review input preparation, Flow execution and result import for this case."),
         this);
     descriptionLabel->setWordWrap(true);
     layout->addWidget(descriptionLabel);
@@ -77,8 +77,8 @@ IDOSSimulationWorkflowWidget::IDOSSimulationWorkflowWidget(IDOSSimulationCaseObj
                 initialized ? runDirectory : tr("Prepare an isolated run directory after preflight."));
 
         addStep(tr("Run Simulator"),
-                tr("Unavailable"),
-                tr("No simulator executable is configured or launched by this plugin."));
+                initialized ? tr("Available") : tr("Not initialized"),
+                tr("Open Run Status to configure and start Flow through WSL2."));
 
         const QStringList inputFiles = runInfo.value(QStringLiteral("files")).toStringList();
         int resultFileCount = 0;

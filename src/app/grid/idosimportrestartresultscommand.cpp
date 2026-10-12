@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QSet>
@@ -24,6 +25,46 @@
 #include "idosproject.h"
 
 #include "idosimportrestartresultscommand.h"
+
+IDOSImportRestartResultsCommandMetadata::IDOSImportRestartResultsCommandMetadata()
+    :
+    IDOSCommandMetadata(QStringLiteral("simulation.results.import"),
+                        QObject::tr("Import simulation results"),
+                        QObject::tr("Import dynamic properties from a unified Eclipse restart file."),
+                        IDOSCommand::Type::Action)
+{
+}
+
+IDOSImportRestartResultsCommandMetadata::~IDOSImportRestartResultsCommandMetadata() = default;
+
+QJsonObject IDOSImportRestartResultsCommandMetadata::schema() const
+{
+    QJsonObject grid;
+    grid.insert(QStringLiteral("type"), QStringLiteral("string"));
+    grid.insert(QStringLiteral("description"), QObject::tr("Grid object ID."));
+    QJsonObject file;
+    file.insert(QStringLiteral("type"), QStringLiteral("string"));
+    file.insert(QStringLiteral("description"), QObject::tr("Unified Eclipse restart file path."));
+    QJsonObject properties;
+    properties.insert(QStringLiteral("gridId"), grid);
+    properties.insert(QStringLiteral("filePath"), file);
+    QJsonArray required;
+    required.append(QStringLiteral("gridId"));
+    required.append(QStringLiteral("filePath"));
+    QJsonObject schema;
+    schema.insert(QStringLiteral("type"), QStringLiteral("object"));
+    schema.insert(QStringLiteral("properties"), properties);
+    schema.insert(QStringLiteral("required"), required);
+    schema.insert(QStringLiteral("additionalProperties"), false);
+    return schema;
+}
+
+IDOSCommand* IDOSImportRestartResultsCommandMetadata::create(const QJsonObject& arguments, IDOSProject* project) const
+{
+    return new IDOSImportRestartResultsCommand(project,
+                                               arguments.value(QStringLiteral("gridId")).toString(),
+                                               arguments.value(QStringLiteral("filePath")).toString());
+}
 
 IDOSImportRestartResultsCommand::IDOSImportRestartResultsCommand(IDOSProject* project,
                                                                  QString gridId,

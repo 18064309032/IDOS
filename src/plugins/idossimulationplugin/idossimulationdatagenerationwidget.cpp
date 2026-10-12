@@ -17,12 +17,12 @@
 #include <QVBoxLayout>
 
 #include "idossimulationcaseobject.h"
+#include "log/idoslogger.h"
 
 #include "idossimulationdatagenerationwidget.h"
 
-IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(
-    IDOSSimulationCaseObject* simulationCase,
-    QWidget* parent)
+IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(IDOSSimulationCaseObject* simulationCase,
+                                                                       QWidget* parent)
     :
     QWidget(parent, Qt::Window)
     , m_caseName(simulationCase != nullptr ? simulationCase->name() : QString())
@@ -37,28 +37,28 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(
 
     if (simulationCase != nullptr)
     {
-        const QVariantList keywordIndex = simulationCase->parsedSourceData()
-                                              .value(QStringLiteral("keywordIndex"))
-                                              .toList();
+        const QVariantList keywordIndex =
+            simulationCase->parsedSourceData().value(QStringLiteral("keywordIndex")).toList();
         for (const QVariant& keywordValue : keywordIndex)
         {
-            const QString filePath = QFileInfo(keywordValue.toMap().value(QStringLiteral("file")).toString())
-                                         .absoluteFilePath();
+            const QString filePath =
+                QFileInfo(keywordValue.toMap().value(QStringLiteral("file")).toString()).absoluteFilePath();
             if (!filePath.isEmpty() && !m_sourceFiles.contains(filePath, Qt::CaseInsensitive))
             {
                 m_sourceFiles.append(filePath);
             }
         }
     }
-    if (!m_sourceFile.isEmpty() && !m_sourceFiles.contains(QFileInfo(m_sourceFile).absoluteFilePath(), Qt::CaseInsensitive))
+    if (!m_sourceFile.isEmpty() &&
+        !m_sourceFiles.contains(QFileInfo(m_sourceFile).absoluteFilePath(), Qt::CaseInsensitive))
     {
         m_sourceFiles.prepend(QFileInfo(m_sourceFile).absoluteFilePath());
     }
 
     QVBoxLayout* layout = new QVBoxLayout(this);
-    QLabel* descriptionLabel = new QLabel(
-        tr("Edit the original DATA text and export it with its indexed input files. The source files will not be changed."),
-        this);
+    QLabel* descriptionLabel = new QLabel(tr("Edit the original DATA text and export it with its indexed input files. "
+                                             "The source files will not be changed."),
+                                          this);
     descriptionLabel->setWordWrap(true);
     layout->addWidget(descriptionLabel);
 
@@ -76,7 +76,7 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(
         m_outputEdit = new QPlainTextEdit(this);
         m_outputEdit->setReadOnly(true);
         m_outputEdit->setMaximumHeight(90);
-        m_outputEdit->setPlainText(tr("Unable to read the source DATA file: %1").arg(m_sourceFile));
+        showOutput(tr("Unable to read the source DATA file: %1").arg(m_sourceFile));
         layout->addWidget(m_outputEdit);
     }
 
@@ -87,9 +87,7 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(
     QPushButton* browseButton = new QPushButton(tr("Browse…"), this);
     directoryLayout->addWidget(browseButton);
     layout->addLayout(directoryLayout);
-    connect(browseButton,
-            &QPushButton::clicked,
-            this,
+    connect(browseButton, &QPushButton::clicked, this,
             &IDOSSimulationDataGenerationWidget::onBrowseParentDirectoryTriggered);
 
     if (m_outputEdit == nullptr)
@@ -102,19 +100,15 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(
 
     QPushButton* generateButton = new QPushButton(tr("Generate DATA Package"), this);
     layout->addWidget(generateButton);
-    connect(generateButton,
-            &QPushButton::clicked,
-            this,
+    connect(generateButton, &QPushButton::clicked, this,
             &IDOSSimulationDataGenerationWidget::onGeneratePackageTriggered);
     resize(1000, 760);
 }
 
 void IDOSSimulationDataGenerationWidget::onBrowseParentDirectoryTriggered()
 {
-    const QString selectedDirectory = QFileDialog::getExistingDirectory(
-        this,
-        tr("Select package parent directory"),
-        m_parentDirectoryEdit->text());
+    const QString selectedDirectory =
+        QFileDialog::getExistingDirectory(this, tr("Select package parent directory"), m_parentDirectoryEdit->text());
     if (!selectedDirectory.isEmpty())
     {
         m_parentDirectoryEdit->setText(selectedDirectory);
@@ -123,14 +117,15 @@ void IDOSSimulationDataGenerationWidget::onBrowseParentDirectoryTriggered()
 
 void IDOSSimulationDataGenerationWidget::onGeneratePackageTriggered()
 {
+    IDOS_MESSAGE(tr("Generating DATA package."), IDOSLogLevel::Info);
     QString packagePath;
     QString errorMessage;
     if (!writePackage(m_parentDirectoryEdit->text(), &packagePath, &errorMessage))
     {
-        m_outputEdit->setPlainText(errorMessage);
+        showOutput(errorMessage);
         return;
     }
-    m_outputEdit->setPlainText(tr("DATA package created: %1").arg(packagePath));
+    showOutput(tr("DATA package created: %1").arg(packagePath), IDOSLogLevel::Info);
 }
 
 QString IDOSSimulationDataGenerationWidget::generatedMainFileName() const
@@ -144,8 +139,7 @@ QString IDOSSimulationDataGenerationWidget::generatedMainFileName() const
     return QStringLiteral("%1_generated.%2").arg(sourceInfo.completeBaseName(), extension);
 }
 
-bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirectory,
-                                                      QString* packagePath,
+bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirectory, QString* packagePath,
                                                       QString* errorMessage) const
 {
     const QFileInfo sourceInfo(m_sourceFile);
@@ -187,7 +181,8 @@ bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirec
         return false;
     }
 
-    QTemporaryDir temporaryDirectory(QDir(parentDirectory).absoluteFilePath(QStringLiteral(".idos_data_package_XXXXXX")));
+    QTemporaryDir temporaryDirectory(
+        QDir(parentDirectory).absoluteFilePath(QStringLiteral(".idos_data_package_XXXXXX")));
     if (!temporaryDirectory.isValid())
     {
         *errorMessage = tr("Unable to create a temporary package directory.");
@@ -215,19 +210,20 @@ bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirec
             continue;
         }
 
-        const QString relativePath = QDir::fromNativeSeparators(
-            QDir(sourceRoot).relativeFilePath(inputInfo.absoluteFilePath()));
-        if (relativePath == QStringLiteral("..") || relativePath.startsWith(QStringLiteral("../"))
-            || QDir::isAbsolutePath(relativePath))
+        const QString relativePath =
+            QDir::fromNativeSeparators(QDir(sourceRoot).relativeFilePath(inputInfo.absoluteFilePath()));
+        if (relativePath == QStringLiteral("..") || relativePath.startsWith(QStringLiteral("../")) ||
+            QDir::isAbsolutePath(relativePath))
         {
-            *errorMessage = tr("An indexed input file is outside the DATA directory tree and cannot be relocated safely: %1")
-                                .arg(filePath);
+            *errorMessage =
+                tr("An indexed input file is outside the DATA directory tree and cannot be relocated safely: %1")
+                    .arg(filePath);
             return false;
         }
         if (relativePath.compare(generatedFileName, Qt::CaseInsensitive) == 0)
         {
-            *errorMessage = tr("An indexed input file conflicts with the generated DATA filename: %1")
-                                .arg(relativePath);
+            *errorMessage =
+                tr("An indexed input file conflicts with the generated DATA filename: %1").arg(relativePath);
             return false;
         }
         const QString relativePathKey = relativePath.toCaseFolded();
@@ -239,7 +235,8 @@ bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirec
 
         const QString destinationPath = QDir(temporaryDirectory.path()).absoluteFilePath(relativePath);
         const QFileInfo destinationInfo(destinationPath);
-        if (!QDir().mkpath(destinationInfo.absolutePath()) || !QFile::copy(inputInfo.absoluteFilePath(), destinationPath))
+        if (!QDir().mkpath(destinationInfo.absolutePath()) ||
+            !QFile::copy(inputInfo.absoluteFilePath(), destinationPath))
         {
             *errorMessage = tr("Unable to copy indexed input file into package: %1").arg(relativePath);
             return false;
@@ -249,9 +246,8 @@ bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirec
     const QString generatedFilePath = QDir(temporaryDirectory.path()).absoluteFilePath(generatedFileName);
     QSaveFile generatedFile(generatedFilePath);
     const QByteArray generatedContents = m_dataEditor->toPlainText().toUtf8();
-    if (!generatedFile.open(QIODevice::WriteOnly)
-        || generatedFile.write(generatedContents) != generatedContents.size()
-        || !generatedFile.commit())
+    if (!generatedFile.open(QIODevice::WriteOnly) ||
+        generatedFile.write(generatedContents) != generatedContents.size() || !generatedFile.commit())
     {
         *errorMessage = tr("Unable to write the generated DATA file.");
         return false;
@@ -266,4 +262,14 @@ bool IDOSSimulationDataGenerationWidget::writePackage(const QString& parentDirec
     }
     *packagePath = destinationDirectory;
     return true;
+}
+
+void IDOSSimulationDataGenerationWidget::showOutput(const QString& message, IDOSLogLevel level)
+{
+    m_outputEdit->setPlainText(message);
+    const QStringList lines = message.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines)
+    {
+        IDOSLogger::instance().message(line, level);
+    }
 }

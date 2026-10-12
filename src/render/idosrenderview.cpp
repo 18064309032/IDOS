@@ -1,20 +1,17 @@
-#include <QAction>
-#include <QContextMenuEvent>
 #include <QEasingCurve>
 #include <QEvent>
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QHash>
-#include <QInputDialog>
 #include <QList>
-#include <QMenu>
 #include <QMouseEvent>
 #include <QPoint>
 #include <QPropertyAnimation>
 #include <QString>
+#include <QThread>
 #include <QVBoxLayout>
-#include <QVTKOpenGLNativeWidget.h>
 
+#include <QVTKOpenGLNativeWidget.h>
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
@@ -29,12 +26,11 @@
 #include <vtkSmartPointer.h>
 #include <vtkStringOutputWindow.h>
 
-#include "idosproject.h"
-#include "idosrenderguiprovider.h"
 #include "idosrenderobject.h"
 #include "idosrenderprovider.h"
-#include "idosrenderregistry.h"
 #include "idosrenderscene.h"
+#include "idostool.h"
+#include "idostoolbar.h"
 
 #include "idosrenderview.h"
 
@@ -48,6 +44,8 @@ void IDOSRenderView::configureVtkOutputWindow()
 IDOSRenderView::IDOSRenderView(QWidget* parent)
     :
     QWidget(parent)
+    , m_toolsChanging(false)
+    , m_pendingClick(false)
     , m_vtkWidget(nullptr)
     , m_activeBorder(nullptr)
     , m_flashOverlay(nullptr)
@@ -113,6 +111,9 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
 
 IDOSRenderView::~IDOSRenderView()
 {
+    clearEnabledTools();
+    delete m_toolBar.data();
+    m_toolBar = nullptr;
     disconnect(m_scene, nullptr, this, nullptr);
     m_renderer->RemoveAllViewProps();
     delete m_scene;
@@ -136,6 +137,7 @@ void IDOSRenderView::setAxesVisible(bool visible)
         m_orientationMarker->InteractiveOff();
     }
     emit decorationsChanged();
+    emit viewStateChanged();
     m_renderWindow->Render();
 }
 
@@ -157,6 +159,7 @@ void IDOSRenderView::setLegendVisible(bool visible)
         m_legends.at(index)->SetVisibility(visible);
     }
     emit decorationsChanged();
+    emit viewStateChanged();
     m_renderWindow->Render();
 }
 
@@ -164,10 +167,15 @@ void IDOSRenderView::resetCamera()
 {
     m_renderer->ResetCamera();
     m_renderWindow->Render();
+    emit viewStateChanged();
 }
 
 void IDOSRenderView::setTwoDimensional(bool enabled)
 {
+    if (isTwoDimensional() == enabled)
+    {
+        return;
+    }
     vtkCamera* camera = m_renderer->GetActiveCamera();
     camera->SetParallelProjection(enabled ? 1 : 0);
     if (enabled)
@@ -179,6 +187,8 @@ void IDOSRenderView::setTwoDimensional(bool enabled)
         m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
     }
     m_renderWindow->Render();
+    emit viewModeChanged();
+    emit viewStateChanged();
 }
 
 bool IDOSRenderView::isTwoDimensional() const
@@ -207,6 +217,7 @@ void IDOSRenderView::setBackground(const QColor& color)
 
     m_renderer->SetBackground(color.redF(), color.greenF(), color.blueF());
     m_renderWindow->Render();
+    emit viewStateChanged();
 }
 
 void IDOSRenderView::setActive(bool active)
@@ -218,11 +229,6 @@ void IDOSRenderView::setActive(bool active)
 
     m_active = active;
     updateActiveBorder();
-}
-
-bool IDOSRenderView::isActive() const
-{
-    return m_active;
 }
 
 void IDOSRenderView::updateActiveBorder()
@@ -322,6 +328,7 @@ bool IDOSRenderView::setOrientation(IDOSOrientation orientation)
     }
     m_orientation = orientation;
     m_renderWindow->Render();
+    emit viewStateChanged();
     return true;
 }
 
@@ -331,19 +338,17 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
     {
         if (event->type() == QEvent::ContextMenu)
         {
-            QContextMenuEvent* context = static_cast<QContextMenuEvent*>(event);
-            IDOSRenderObject* object = context->reason() == QContextMenuEvent::Keyboard
-                                          ? (!selectedObjects().isEmpty() ? selectedObjects().first() : nullptr)
-                                          : pick(context->pos());
-            QMenu* menu = createMenu(object != nullptr ? object->id() : QString());
-            menu->exec(context->globalPos());
-            delete menu;
-            m_menuId.clear();
+            event->accept();
             return true;
         }
         if (event->type() == QEvent::Resize)
         {
             m_flashOverlay->setGeometry(m_vtkWidget->rect());
+            positionToolBar();
+        }
+        if (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide)
+        {
+            cancelToolInteraction();
         }
 
         if (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
@@ -365,7 +370,16 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
             QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton && (mouseEvent->pos() - m_pressedPosition).manhattanLength() < 4)
             {
-                activateObjectAt(mouseEvent->pos());
+                if (m_enabledTools.isEmpty())
+                {
+                    activateObjectAt(mouseEvent->pos());
+                }
+                else
+                {
+                    m_pendingClick = true;
+                    m_clickPosition = mouseEvent->pos();
+                    QMetaObject::invokeMethod(this, "onCanvasClick", Qt::QueuedConnection);
+                }
             }
         }
     }
@@ -454,7 +468,12 @@ void IDOSRenderView::setSelection(const QList<QString>& ids)
             valid.append(id);
         }
     }
-    if (valid == m_selection)
+    bool unchanged = valid.size() == m_selection.size();
+    for (int index = 0; unchanged && index < valid.size(); ++index)
+    {
+        unchanged = valid.at(index) == m_selection.at(index);
+    }
+    if (unchanged)
     {
         return;
     }
@@ -472,6 +491,7 @@ void IDOSRenderView::setSelection(const QList<QString>& ids)
     }
     m_scene->endUpdate();
     emit selectionChanged(m_selection);
+    emit viewStateChanged();
 }
 
 void IDOSRenderView::onObjectAboutToBeRemoved(const QString& id)
@@ -489,6 +509,7 @@ void IDOSRenderView::onObjectAboutToBeRemoved(const QString& id)
 void IDOSRenderView::onSceneChanged()
 {
     rebuildActors();
+    emit viewStateChanged();
 }
 
 void IDOSRenderView::render()
@@ -496,158 +517,293 @@ void IDOSRenderView::render()
     m_renderWindow->Render();
 }
 
-void IDOSRenderView::fit(const QList<QString>& ids)
+QVTKOpenGLNativeWidget* IDOSRenderView::vtkWidget() const
 {
-    double bounds[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    bool found = false;
-    for (const QString& id : ids)
+    return m_vtkWidget;
+}
+
+IDOSToolBar* IDOSRenderView::toolBar() const
+{
+    return m_toolBar.data();
+}
+
+bool IDOSRenderView::isToolTransitioning() const
+{
+    return m_toolsChanging;
+}
+
+bool IDOSRenderView::toolsBusy() const
+{
+    for (const QPointer<IDOSTool>& tool : m_enabledTools)
     {
-        IDOSRenderObject* object = m_scene->object(id);
-        if (object == nullptr)
+        if (tool != nullptr && tool->isBusy())
         {
-            continue;
-        }
-        const QList<vtkActor*> actors = object->provider()->actors();
-        for (vtkActor* actor : actors)
-        {
-            const double* actorBounds = actor->GetBounds();
-            if (actorBounds == nullptr || actorBounds[0] > actorBounds[1])
-            {
-                continue;
-            }
-            for (int axis = 0; axis < 3; ++axis)
-            {
-                bounds[axis * 2] = found ? qMin(bounds[axis * 2], actorBounds[axis * 2]) : actorBounds[axis * 2];
-                bounds[axis * 2 + 1] =
-                    found ? qMax(bounds[axis * 2 + 1], actorBounds[axis * 2 + 1]) : actorBounds[axis * 2 + 1];
-            }
-            found = true;
+            return true;
         }
     }
-    if (found)
+    return false;
+}
+
+bool IDOSRenderView::setToolBar(IDOSToolBar* toolBar)
+{
+    if (QThread::currentThread() != thread() || toolsBusy() || m_toolsChanging ||
+        (toolBar != nullptr && (toolBar->thread() != thread() ||
+         (toolBar->view() != nullptr && toolBar->view() != this))) ||
+        (toolBar != nullptr && toolBar->isBusy()) ||
+        (m_toolBar != nullptr && m_toolBar->isBusy()))
     {
-        m_renderer->ResetCamera(bounds);
-        render();
+        return false;
     }
-}
-
-void IDOSRenderView::setRegistry(IDOSRenderRegistry* registry)
-{
-    m_registry = registry;
-}
-
-void IDOSRenderView::setProject(IDOSProject* project)
-{
-    m_project = project;
-}
-
-IDOSProject* IDOSRenderView::project() const
-{
-    return m_project.data();
-}
-
-IDOSRenderObject* IDOSRenderView::menuObject() const
-{
-    return m_scene->object(m_menuId);
-}
-
-QList<IDOSRenderObject*> IDOSRenderView::selectedObjects() const
-{
-    QList<IDOSRenderObject*> result;
-    for (const QString& id : m_selection)
+    if (m_toolBar == toolBar)
     {
-        IDOSRenderObject* object = m_scene->object(id);
-        if (object != nullptr)
+        return true;
+    }
+    delete m_toolBar.data();
+    m_toolBar = toolBar;
+    if (toolBar != nullptr)
+    {
+        connect(toolBar, &QObject::destroyed, this, &IDOSRenderView::onToolBarDestroyed);
+        connect(toolBar, &IDOSToolBar::layoutChanged, this, &IDOSRenderView::onToolBarLayoutChanged);
+        toolBar->setView(this);
+        positionToolBar();
+    }
+    return true;
+}
+
+void IDOSRenderView::positionToolBar()
+{
+    if (m_toolBar == nullptr)
+    {
+        return;
+    }
+    const QSize preferred = m_toolBar->sizeHint();
+    const int available = qMax(0, m_vtkWidget->width() - 16);
+    const int width = qMin(available, preferred.width());
+    m_toolBar->setGeometry((m_vtkWidget->width() - width) / 2, 8, width, preferred.height());
+    m_toolBar->raise();
+}
+
+bool IDOSRenderView::enableTool(IDOSTool* tool)
+{
+    if (tool == nullptr || tool->view() != this || QThread::currentThread() != thread() || m_toolsChanging)
+    {
+        return false;
+    }
+    if (toolsBusy())
+    {
+        m_pendingTools.append(QPointer<IDOSTool>(tool));
+        m_pendingEnabled.append(true);
+        QMetaObject::invokeMethod(this, "onPendingTools", Qt::QueuedConnection);
+        return true;
+    }
+    if (isToolEnabled(tool))
+    {
+        return true;
+    }
+    const QString group = tool->exclusiveGroup();
+    const QList<QPointer<IDOSTool>> existing = m_enabledTools;
+    for (const QPointer<IDOSTool>& other : existing)
+    {
+        if (other != nullptr && !group.isEmpty() && other->exclusiveGroup() == group)
         {
-            result.append(object);
+            disableTool(other);
+        }
+    }
+    m_toolsChanging = true;
+    m_enabledTools.append(QPointer<IDOSTool>(tool));
+    connect(tool, &QObject::destroyed, this, &IDOSRenderView::onToolDestroyed);
+    connect(tool, &IDOSTool::callbackFinished, this, &IDOSRenderView::onToolCallbackFinished);
+    tool->setActive(true);
+    emit toolEnabled(tool);
+    m_toolsChanging = false;
+    emit viewStateChanged();
+    return true;
+}
+
+bool IDOSRenderView::disableTool(IDOSTool* tool)
+{
+    if (tool == nullptr || QThread::currentThread() != thread() || m_toolsChanging)
+    {
+        return false;
+    }
+    if (toolsBusy())
+    {
+        m_pendingTools.append(QPointer<IDOSTool>(tool));
+        m_pendingEnabled.append(false);
+        QMetaObject::invokeMethod(this, "onPendingTools", Qt::QueuedConnection);
+        return true;
+    }
+    if (!isToolEnabled(tool))
+    {
+        return false;
+    }
+    m_toolsChanging = true;
+    releaseTool(tool);
+    tool->cancel();
+    m_enabledTools.removeAll(QPointer<IDOSTool>(tool));
+    tool->setActive(false);
+    disconnect(tool, &QObject::destroyed, this, &IDOSRenderView::onToolDestroyed);
+    emit toolDisabled(tool);
+    disconnect(tool, &IDOSTool::callbackFinished, this, &IDOSRenderView::onToolCallbackFinished);
+    m_toolsChanging = false;
+    emit viewStateChanged();
+    return true;
+}
+
+bool IDOSRenderView::isToolEnabled(const IDOSTool* tool) const
+{
+    for (const QPointer<IDOSTool>& enabled : m_enabledTools)
+    {
+        if (enabled != nullptr && enabled.data() == tool)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+QList<IDOSTool*> IDOSRenderView::enabledTools() const
+{
+    QList<IDOSTool*> result;
+    for (const QPointer<IDOSTool>& tool : m_enabledTools)
+    {
+        if (tool != nullptr)
+        {
+            result.append(tool.data());
         }
     }
     return result;
 }
 
-QMenu* IDOSRenderView::createMenu(const QString& objectId)
+bool IDOSRenderView::captureTool(IDOSTool* tool)
 {
-    m_menuId = objectId;
-    QMenu* menu = new QMenu(this);
-    IDOSRenderObject* object = menuObject();
-    if (object != nullptr)
+    if (!isToolEnabled(tool) || (m_capturedTool != nullptr && m_capturedTool != tool))
     {
-        QAction* fitAction = menu->addAction(tr("Fit to Object"));
-        fitAction->setData(objectId);
-        connect(fitAction, &QAction::triggered, this, &IDOSRenderView::onFitObject);
-        QAction* opacityAction = menu->addAction(tr("Opacity..."));
-        opacityAction->setData(objectId);
-        connect(opacityAction, &QAction::triggered, this, &IDOSRenderView::onOpacity);
-        QAction* hideAction = menu->addAction(tr("Hide"));
-        hideAction->setData(objectId);
-        connect(hideAction, &QAction::triggered, this, &IDOSRenderView::onHideObject);
+        return false;
     }
-    if (m_registry != nullptr)
+    m_capturedTool = tool;
+    if (m_vtkWidget->isVisible())
     {
-        QList<QPointer<IDOSRenderGuiProvider>> providers;
-        for (IDOSRenderGuiProvider* provider : m_registry->guiProviders())
+        m_vtkWidget->grabMouse();
+    }
+    return true;
+}
+
+void IDOSRenderView::releaseTool(IDOSTool* tool)
+{
+    if (tool != nullptr && m_capturedTool == tool)
+    {
+        m_capturedTool = nullptr;
+        if (QWidget::mouseGrabber() == m_vtkWidget)
         {
-            providers.append(provider);
-        }
-        for (const QPointer<IDOSRenderGuiProvider>& provider : providers)
-        {
-            if (provider != nullptr && provider->supports(menuObject()))
-            {
-                provider->populateMenu(menu, this);
-            }
+            m_vtkWidget->releaseMouse();
         }
     }
-    QAction* reset = menu->addAction(tr("Fit All"));
-    connect(reset, &QAction::triggered, this, &IDOSRenderView::onResetCamera);
-    emit contextMenuAboutToShow(menu);
-    return menu;
 }
 
-IDOSRenderObject* IDOSRenderView::actionObject() const
+IDOSTool* IDOSRenderView::capturedTool() const
 {
-    QAction* action = qobject_cast<QAction*>(sender());
-    return action != nullptr ? m_scene->object(action->data().toString()) : nullptr;
+    return m_capturedTool.data();
 }
 
-void IDOSRenderView::onFitObject()
+void IDOSRenderView::cancelToolInteraction()
 {
-    IDOSRenderObject* object = actionObject();
-    if (object != nullptr)
+    m_pendingClick = false;
+    releaseTool(m_capturedTool.data());
+    const QList<QPointer<IDOSTool>> tools = m_enabledTools;
+    for (const QPointer<IDOSTool>& tool : tools)
     {
-        fit(QList<QString>{object->id()});
+        if (tool != nullptr)
+        {
+            tool->cancel();
+        }
     }
 }
 
-void IDOSRenderView::onOpacity()
+void IDOSRenderView::onCanvasClick()
 {
-    IDOSRenderObject* object = actionObject();
-    if (object == nullptr)
+    if (m_pendingClick)
+    {
+        m_pendingClick = false;
+        activateObjectAt(m_clickPosition);
+    }
+}
+
+void IDOSRenderView::clearEnabledTools()
+{
+    const QList<QPointer<IDOSTool>> tools = m_enabledTools;
+    for (const QPointer<IDOSTool>& tool : tools)
+    {
+        if (tool != nullptr)
+        {
+            disableTool(tool);
+        }
+    }
+    m_pendingTools.clear();
+    m_pendingEnabled.clear();
+}
+
+void IDOSRenderView::onToolDestroyed(QObject* object)
+{
+    Q_UNUSED(object)
+    for (int index = m_enabledTools.size() - 1; index >= 0; --index)
+    {
+        if (m_enabledTools.at(index) == nullptr)
+        {
+            m_enabledTools.removeAt(index);
+        }
+    }
+    if (m_capturedTool == nullptr && QWidget::mouseGrabber() == m_vtkWidget)
+    {
+        m_vtkWidget->releaseMouse();
+    }
+}
+
+void IDOSRenderView::onToolBarDestroyed(QObject* object)
+{
+    Q_UNUSED(object)
+    m_toolBar = nullptr;
+}
+
+void IDOSRenderView::onPendingTools()
+{
+    if (toolsBusy() || m_toolsChanging)
     {
         return;
     }
-    const QString id = object->id();
-    bool accepted = false;
-    const double opacity = QInputDialog::getDouble(this, tr("Opacity"), tr("Opacity:"),
-                                                  object->opacity(), 0.0, 1.0, 2, &accepted);
-    object = m_scene->object(id);
-    if (accepted && object != nullptr)
+    const QList<QPointer<IDOSTool>> pending = m_pendingTools;
+    const QList<bool> enabled = m_pendingEnabled;
+    m_pendingTools.clear();
+    m_pendingEnabled.clear();
+    for (int index = 0; index < pending.size(); ++index)
     {
-        object->setOpacity(opacity);
-        m_scene->notifyChanged(id);
+        if (pending.at(index) != nullptr)
+        {
+            if (enabled.at(index))
+            {
+                enableTool(pending.at(index));
+            }
+            else
+            {
+                disableTool(pending.at(index));
+            }
+        }
     }
 }
 
-void IDOSRenderView::onHideObject()
+void IDOSRenderView::onToolCallbackFinished(bool consumed)
 {
-    IDOSRenderObject* object = actionObject();
-    if (object != nullptr)
+    if (consumed)
     {
-        object->setVisible(false);
-        m_scene->notifyChanged(object->id());
+        m_pendingClick = false;
+    }
+    if (!m_pendingTools.isEmpty())
+    {
+        QMetaObject::invokeMethod(this, "onPendingTools", Qt::QueuedConnection);
     }
 }
 
-void IDOSRenderView::onResetCamera()
+void IDOSRenderView::onToolBarLayoutChanged()
 {
-    resetCamera();
+    positionToolBar();
 }

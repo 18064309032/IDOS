@@ -15,12 +15,12 @@
 #include "idos_render.h"
 #include "idosrendertypes.h"
 
+class IDOSTool;
+class IDOSToolBar;
+
 class IDOSRenderObject;
-class IDOSProject;
-class IDOSRenderRegistry;
 class IDOSRenderScene;
 class QFrame;
-class QMenu;
 class QGraphicsOpacityEffect;
 class QPropertyAnimation;
 class QVTKOpenGLNativeWidget;
@@ -43,16 +43,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
 
     // The view owns this scene for its entire lifetime.
     IDOSRenderScene* scene() const;
-    void setRegistry(IDOSRenderRegistry* registry);
-    void setProject(IDOSProject* project);
-    IDOSProject* project() const;
-    IDOSRenderObject* menuObject() const;
-    QList<IDOSRenderObject*> selectedObjects() const;
-    QMenu* createMenu(const QString& objectId);
 
     QList<QString> selection() const;
     void setSelection(const QList<QString>& ids);
-    void fit(const QList<QString>& ids);
     void render();
     void resetCamera();
     void setTwoDimensional(bool enabled);
@@ -61,7 +54,6 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QColor background() const;
     void setBackground(const QColor& color);
     void setActive(bool active);
-    bool isActive() const;
     QImage captureImage();
     void flashScreenshot();
     bool axesVisible() const;
@@ -70,13 +62,27 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool legendAvailable() const;
     void setLegendVisible(bool visible);
     bool setOrientation(IDOSOrientation orientation);
+    bool setToolBar(IDOSToolBar* toolBar);
+    IDOSToolBar* toolBar() const;
+    QVTKOpenGLNativeWidget* vtkWidget() const;
+    bool enableTool(IDOSTool* tool);
+    bool disableTool(IDOSTool* tool);
+    bool isToolEnabled(const IDOSTool* tool) const;
+    QList<IDOSTool*> enabledTools() const;
+    bool captureTool(IDOSTool* tool);
+    void releaseTool(IDOSTool* tool);
+    IDOSTool* capturedTool() const;
+    bool isToolTransitioning() const;
 
   signals:
     void focused();
     void selectionChanged(const QList<QString>& ids);
     void decorationsChanged();
     void activated(const QString& objectId);
-    void contextMenuAboutToShow(QMenu* menu);
+    void toolEnabled(IDOSTool* tool);
+    void toolDisabled(IDOSTool* tool);
+    void viewStateChanged();
+    void viewModeChanged();
 
   protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -84,17 +90,30 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
   private slots:
     void onObjectAboutToBeRemoved(const QString& id);
     void onSceneChanged();
-    void onFitObject();
-    void onOpacity();
-    void onHideObject();
-    void onResetCamera();
+    void onToolDestroyed(QObject* object);
+    void onToolBarDestroyed(QObject* object);
+    void onPendingTools();
+    void onCanvasClick();
+    void onToolCallbackFinished(bool consumed);
+    void onToolBarLayoutChanged();
 
   private:
+    bool toolsBusy() const;
+    void positionToolBar();
+    void cancelToolInteraction();
+    void clearEnabledTools();
+    QPointer<IDOSToolBar> m_toolBar;
+    QList<QPointer<IDOSTool>> m_enabledTools;
+    QPointer<IDOSTool> m_capturedTool;
+    QList<QPointer<IDOSTool>> m_pendingTools;
+    QList<bool> m_pendingEnabled;
+    bool m_toolsChanging;
+    bool m_pendingClick;
+    QPoint m_clickPosition;
     void configureVtkOutputWindow();
     void rebuildActors();
     void activateObjectAt(const QPoint& position);
     IDOSRenderObject* pick(const QPoint& position) const;
-    IDOSRenderObject* actionObject() const;
     void updateActiveBorder();
 
     QVTKOpenGLNativeWidget* m_vtkWidget;
@@ -109,9 +128,6 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkAxesActor> m_axesActor;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
-    QPointer<IDOSProject> m_project;
-    QPointer<IDOSRenderRegistry> m_registry;
-    QString m_menuId;
     QHash<vtkActor*, QString> m_actorObjectIds;
     QPoint m_pressedPosition;
     QList<QString> m_selection;

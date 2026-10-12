@@ -5,6 +5,68 @@
 #include <QModelIndex>
 #include <QObject>
 
+#include "idostool.h"
+#include "idostoolmetadata.h"
+#include "idostoolprovider.h"
+
+class IDOSToolRegistry;
+class QMenu;
+
+class IDOSTestInputTool : public IDOSTool
+{
+    Q_OBJECT
+public:
+    explicit IDOSTestInputTool(IDOSRenderView* view);
+    void observe(vtkObject* source);
+    QString exclusiveGroup() const override;
+    bool consumed;
+    int inputs;
+    int observations;
+    int observedValue;
+    QString group;
+    IDOSToolRegistry* registry;
+    bool removalAccepted;
+    bool stopOnInput;
+protected:
+    bool onEventFilter(QObject* watched, QEvent* event) override;
+    void onVtkEvent(vtkObject* source, unsigned long eventId, void* callData) override;
+private slots:
+    void onCallbackFinished(bool consumed);
+};
+
+class IDOSTestToolProvider : public IDOSToolProvider
+{
+    Q_OBJECT
+public:
+    explicit IDOSTestToolProvider(IDOSRenderView* view);
+    ~IDOSTestToolProvider() override;
+    QList<QAction*> actions() const override;
+    QList<IDOSTool*> tools() const override;
+    void updateState() override;
+private slots:
+    void onToggleTool();
+private:
+    QAction* m_action;
+    QMenu* m_menu;
+    IDOSTestInputTool* m_tool;
+};
+
+class IDOSTestToolMetadata : public IDOSToolMetadata
+{
+public:
+    explicit IDOSTestToolMetadata(const QString& id = QStringLiteral("test.input"));
+    QString id() const override;
+    QString name() const override;
+    QString description() const override;
+    QString iconPath() const override;
+    QString groupId() const override;
+    int order() const override;
+    bool supports(const IDOSRenderView* view) const override;
+    IDOSToolProvider* create(IDOSRenderView* view) const override;
+private:
+    QString m_id;
+};
+
 class TreeIncrementalTest : public QObject
 {
     Q_OBJECT
@@ -17,9 +79,11 @@ class TreeIncrementalTest : public QObject
     void onProjectUpdateTransactionBatchesSignals();
     void onCaseTreeReferenceRefreshAndCheckPreserved();
     void onRegistryLifecycle();
-    void onTreeDataMetadataQuery();
     void onTreeOwnership();
     void onMenuTargets();
+    void onToolRegistryAndWindows();
+    void onToolInputLifecycle();
+    void onToolObserversAndUnregister();
 
   private slots:
     void onDataTreeReset();
