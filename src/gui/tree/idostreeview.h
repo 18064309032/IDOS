@@ -27,10 +27,13 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void setModel(QAbstractItemModel* model) override;
     IDOSTree* tree() const;
     IDOSProject* project() const;
+    QObject* targetView() const;
+    void setTargetView(QObject* view);
     IDOSTreeItem* currentItem() const;
     QList<IDOSTreeItem*> selectedItems() const;
     IDOSTreeItem* menuItem() const;
     QMenu* createMenu(const QModelIndex& target);
+    void refreshCheckStates();
 
   signals:
     void contextMenuAboutToShow(QMenu* menu);
@@ -45,6 +48,7 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void onCheckRequested(IDOSTreeItem* item, bool checked, bool* accepted);
     void onGuiProvidersChanged();
     void onDataChanged(const QModelIndex& first, const QModelIndex& last);
+    void onCheckStateChanged();
 
   private:
     QString nodePath(const QModelIndex& index) const;
@@ -52,6 +56,7 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void restoreExpandedPaths(const QModelIndex& index);
     void refreshChecks(IDOSTreeItem* item);
     QPointer<IDOSTreeRegistry> m_registry;
+    QPointer<QObject> m_targetView;
     QPersistentModelIndex m_menuIndex;
     QSet<QString> m_pendingExpandedPaths;
 };

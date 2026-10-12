@@ -8,6 +8,7 @@ IDOSGridProperty::IDOSGridProperty(QObject* parent)
     , m_nx(0)
     , m_ny(0)
     , m_nz(0)
+    , m_currentReportStep(-1)
 {
 }
 
@@ -94,6 +95,8 @@ void IDOSGridProperty::setDimensions(int nx, int ny, int nz)
 
     // 维度变化后旧数据布局失效，重置为空数组（由导入方重新填入）
     m_values.clear();
+    m_reportStepValues.clear();
+    m_currentReportStep = -1;
 
     emit dimensionsChanged(nx, ny, nz);
     emit dataChanged();
@@ -106,7 +109,60 @@ int IDOSGridProperty::totalCellCount() const
 
 const QVector<double>& IDOSGridProperty::values() const
 {
+    QMap<int, QVector<double>>::const_iterator iterator =
+        m_reportStepValues.constFind(m_currentReportStep);
+    if (iterator != m_reportStepValues.constEnd())
+    {
+        return iterator.value();
+    }
     return m_values;
+}
+
+QList<int> IDOSGridProperty::reportSteps() const
+{
+    return m_reportStepValues.keys();
+}
+
+int IDOSGridProperty::currentReportStep() const
+{
+    return m_currentReportStep;
+}
+
+bool IDOSGridProperty::setReportStepValues(int reportStep, const QVector<double>& values)
+{
+    if (kind() != Kind::Dynamic || reportStep < 0 || values.size() != totalCellCount())
+    {
+        return false;
+    }
+
+    m_reportStepValues.insert(reportStep, values);
+    if (m_currentReportStep < 0)
+    {
+        m_currentReportStep = reportStep;
+    }
+    if (m_currentReportStep == reportStep)
+    {
+        emit valuesChanged();
+        emit dataChanged();
+    }
+    return true;
+}
+
+bool IDOSGridProperty::setCurrentReportStep(int reportStep)
+{
+    if (!m_reportStepValues.contains(reportStep))
+    {
+        return false;
+    }
+    if (m_currentReportStep == reportStep)
+    {
+        return true;
+    }
+
+    m_currentReportStep = reportStep;
+    emit valuesChanged();
+    emit dataChanged();
+    return true;
 }
 
 bool IDOSGridProperty::setValues(const QVector<double>& values)
@@ -129,13 +185,14 @@ bool IDOSGridProperty::setValues(const QVector<double>& values)
 
 double IDOSGridProperty::valueAt(int i, int j, int k) const
 {
-    return m_values.value(cellIndex(i, j, k, m_nx, m_ny), 0.0);
+    const QVector<double>& currentValues = values();
+    return currentValues.value(cellIndex(i, j, k, m_nx, m_ny), 0.0);
 }
 
 void IDOSGridProperty::setValueAt(int i, int j, int k, double value)
 {
     const int index = cellIndex(i, j, k, m_nx, m_ny);
-    if (index < 0 || index >= m_values.size())
+    if (index < 0 || index >= values().size())
     {
         IDOS_WARN(tr("IDOSGridProperty::setValueAt: index out of range (%1, %2, %3)")
                       .arg(i)
@@ -144,12 +201,26 @@ void IDOSGridProperty::setValueAt(int i, int j, int k, double value)
         return;
     }
 
-    if (m_values.at(index) == value)
+    if (m_reportStepValues.contains(m_currentReportStep))
     {
-        return;
+        QMap<int, QVector<double>>::iterator iterator = m_reportStepValues.find(m_currentReportStep);
+        if (iterator.value().at(index) == value)
+        {
+            return;
+        }
+
+        iterator.value()[index] = value;
+    }
+    else
+    {
+        if (m_values.at(index) == value)
+        {
+            return;
+        }
+
+        m_values[index] = value;
     }
 
-    m_values[index] = value;
     emit valuesChanged();
     emit dataChanged();
 }

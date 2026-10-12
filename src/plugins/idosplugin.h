@@ -90,7 +90,7 @@ public:
 
     virtual void initGui() = 0;
     virtual void unload() = 0;
-    virtual bool canUnload() const = 0;
+    virtual bool canUnload(QString& reason) const = 0;
 
 private:
     QString m_name;

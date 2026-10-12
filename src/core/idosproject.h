@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QPointer>
 #include <QSet>
 #include <QString>
 #include <QStringList>
@@ -38,6 +39,8 @@ class CORE_EXPORT IDOSProject : public QObject
     const IDOSProjectMetadata& metadata() const;
     bool setMetadata(const IDOSProjectMetadata& metadata);
     IDOSCommandManager* commandManager() const;
+    IDOSDataObject* currentObject() const;
+    void setCurrentObject(IDOSDataObject* object);
 
     /** 将数据对象加入工程，接管所有权。已存在同 objectId 则替换。 */
     void add(IDOSDataObject* object);
@@ -71,6 +74,7 @@ class CORE_EXPORT IDOSProject : public QObject
 
   signals:
     void metadataChanged();
+    void currentObjectChanged(IDOSDataObject* object);
 
     /** 新对象加入。 */
     void objectAdded(const QString& objectId);
@@ -110,6 +114,7 @@ class CORE_EXPORT IDOSProject : public QObject
     QHash<QString, IDOSDataObject*> m_objects; // All data objects use Qt parent-child ownership.
     IDOSProjectMetadata m_metadata;
     IDOSCommandManager* m_commandManager;
+    QPointer<IDOSDataObject> m_currentObject;
     int m_updateDepth;
     QSet<QString> m_pendingAdded;
     QSet<QString> m_pendingRemoved;

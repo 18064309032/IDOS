@@ -8,8 +8,8 @@
 class IDOSAssistantService;
 class IDOSProject;
 class QLabel;
-class QLineEdit;
 class QPushButton;
+class QTextBrowser;
 class QTextEdit;
 
 class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
@@ -20,14 +20,16 @@ class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
     explicit IDOSAssistantWidget(QWidget* parent = nullptr);
     ~IDOSAssistantWidget() override;
     void setProject(IDOSProject* project);
+    void startAssistant();
     IDOSAssistantService* service() const;
+
+  protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
   signals:
     void statusChanged(const QString& status);
 
   private slots:
-    void onStartClicked();
-    void onStopClicked();
     void onSendClicked();
     void onAssistantReady();
     void onAssistantStopped();
@@ -38,12 +40,12 @@ class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
 
   private:
     IDOSAssistantService* m_service;
-    QTextEdit* m_transcript;
-    QLineEdit* m_input;
-    QPushButton* m_startButton;
-    QPushButton* m_stopButton;
+    QTextBrowser* m_transcript;
+    QTextEdit* m_input;
     QPushButton* m_sendButton;
     QLabel* m_statusLabel;
+    bool m_startupPending;
+    QString m_pendingMessage;
 };
 
 #endif

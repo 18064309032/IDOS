@@ -162,7 +162,8 @@ extern "C" IDOS_PLUGIN_EXPORT IDOSPlugin* classFactory(IDOSInterface* interface)
     return new IDOSFractureModelingPlugin(interface);
 }
 
-bool IDOSFractureModelingPlugin::canUnload() const
+bool IDOSFractureModelingPlugin::canUnload(QString& reason) const
 {
+    reason.clear();
     return true;
 }

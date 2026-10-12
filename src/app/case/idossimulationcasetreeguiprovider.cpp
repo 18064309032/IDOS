@@ -6,6 +6,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPointer>
+#include <QStringList>
 #include <QVariant>
 
 #include "command/idoscommandmanager.h"
@@ -114,7 +115,7 @@ void IDOSSimulationCaseTreeGuiProvider::onNewCase()
     }
     QAction* action = qobject_cast<QAction*>(sender());
     Q_UNUSED(action);
-    IDOSSimulationCaseTreeGuiProvider::newCase(view->project(), view);
+    newCase(view);
 }
 
 void IDOSSimulationCaseTreeGuiProvider::onImportCase()
@@ -126,7 +127,7 @@ void IDOSSimulationCaseTreeGuiProvider::onImportCase()
     }
     QAction* action = qobject_cast<QAction*>(sender());
     Q_UNUSED(action);
-    IDOSSimulationCaseTreeGuiProvider::importCase(view->project(), view);
+    importCase(view);
 }
 
 void IDOSSimulationCaseTreeGuiProvider::onImportGrid()
@@ -140,7 +141,7 @@ void IDOSSimulationCaseTreeGuiProvider::onImportGrid()
     const QString caseId = action->property("caseId").toString();
     if (qobject_cast<IDOSCaseObject*>(view->project()->object(caseId)) != nullptr)
     {
-        IDOSSimulationCaseTreeGuiProvider::importGrid(view->project(), caseId, view);
+        importGrid(view, caseId);
     }
 }
 
@@ -155,27 +156,27 @@ void IDOSSimulationCaseTreeGuiProvider::onDeleteCase()
     const QString id = action->property("dataId").toString();
     if (qobject_cast<IDOSCaseObject*>(view->project()->object(id)) != nullptr)
     {
-        IDOSSimulationCaseTreeGuiProvider::deleteCase(view->project(), id, view);
+        deleteCase(view, id);
     }
 }
 
 
-QStringList IDOSSimulationCaseTreeGuiProvider::collectGridPropertyIds(const IDOSProject* project, const QString& gridId)
+int IDOSSimulationCaseTreeGuiProvider::gridPropertyCount(const IDOSTreeView* view, const QString& gridId) const
 {
-    QStringList ids;
-    if (project == nullptr || gridId.isEmpty())
+    if (view == nullptr || view->project() == nullptr || gridId.isEmpty())
     {
-        return ids;
+        return 0;
     }
-    for (IDOSDataObject* object : project->objects())
+    int count = 0;
+    for (IDOSDataObject* object : view->project()->objects())
     {
         IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
         if (property != nullptr && property->gridId() == gridId)
         {
-            ids.append(property->objectId());
+            ++count;
         }
     }
-    return ids;
+    return count;
 }
 
 QString IDOSSimulationCaseTreeGuiProvider::referencedGridId(const IDOSCaseObject* caseObj)
@@ -195,9 +196,13 @@ QString IDOSSimulationCaseTreeGuiProvider::referencedGridId(const IDOSCaseObject
     return QString();
 }
 
-bool IDOSSimulationCaseTreeGuiProvider::caseNameExists(const IDOSProject* project, const QString& name)
+bool IDOSSimulationCaseTreeGuiProvider::caseNameExists(const IDOSTreeView* view, const QString& name) const
 {
-    for (IDOSDataObject* object : project->objects())
+    if (view == nullptr || view->project() == nullptr)
+    {
+        return false;
+    }
+    for (IDOSDataObject* object : view->project()->objects())
     {
         if (qobject_cast<IDOSCaseObject*>(object) != nullptr &&
             object->name().trimmed().compare(name, Qt::CaseInsensitive) == 0)
@@ -208,21 +213,21 @@ bool IDOSSimulationCaseTreeGuiProvider::caseNameExists(const IDOSProject* projec
     return false;
 }
 
-bool IDOSSimulationCaseTreeGuiProvider::newCase(IDOSProject* project, QWidget* parent)
+bool IDOSSimulationCaseTreeGuiProvider::newCase(IDOSTreeView* view)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull())
+    if (view == nullptr || view->project() == nullptr)
     {
         return false;
     }
-    IDOSCaseDialog dialog(QString(), QString(), {}, target, parent);
+    QPointer<IDOSProject> target(view->project());
+    IDOSCaseDialog dialog(QString(), QString(), {}, target, view);
     if (dialog.exec() != QDialog::Accepted || target.isNull())
     {
         return false;
     }
-    if (caseNameExists(target, dialog.caseName()))
+    if (caseNameExists(view, dialog.caseName()))
     {
-        QMessageBox::warning(parent, tr("New Case"), tr("A case with this name already exists."));
+        QMessageBox::warning(view, tr("New Case"), tr("A case with this name already exists."));
         return false;
     }
     IDOSCommandManager* commandManager = target->commandManager();
@@ -234,22 +239,16 @@ bool IDOSSimulationCaseTreeGuiProvider::newCase(IDOSProject* project, QWidget* p
     return commandManager->execute(new IDOSCreateCaseCommand(target, dialog.caseName()));
 }
 
-bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSProject* project, QWidget* parent)
+bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSTreeView* view)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull())
+    if (view == nullptr || view->project() == nullptr)
     {
         return false;
     }
-    const QString file = QFileDialog::getOpenFileName(parent, tr("Select ECLIPSE Case"), QString(),
+    QPointer<IDOSProject> target(view->project());
+    const QString file = QFileDialog::getOpenFileName(view, tr("Select ECLIPSE Case"), QString(),
                                                       tr("ECLIPSE Cases (*.DATA *.data);;All Files (*)"));
-    return importCase(target, file, parent);
-}
-
-bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSProject* project, const QString& filePath, QWidget* parent)
-{
-    QPointer<IDOSProject> target(project);
-    if (target.isNull() || filePath.isEmpty())
+    if (file.isEmpty() || target.isNull())
     {
         return false;
     }
@@ -258,10 +257,10 @@ bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSProject* project, const Q
     if (!reader)
     {
         IDOS_ERROR(tr("The simulation case reader is unavailable."));
-        QMessageBox::warning(parent, tr("Import Case"), tr("The simulation case reader is unavailable."));
+        QMessageBox::warning(view, tr("Import Case"), tr("The simulation case reader is unavailable."));
         return false;
     }
-    QList<IDOSDataObject*> objects = reader->read(filePath);
+    QList<IDOSDataObject*> objects = reader->read(file);
     IDOSSimulationCaseObject* simulationCase = nullptr;
     for (IDOSDataObject* object : objects)
     {
@@ -275,24 +274,24 @@ bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSProject* project, const Q
     if (simulationCase == nullptr)
     {
         IDOS_ERROR(tr("Simulation case parsing failed for %1: %2")
-                       .arg(filePath, reader->lastError()));
+                       .arg(file, reader->lastError()));
         qDeleteAll(objects);
-        QMessageBox::warning(parent, tr("Import Case"), reader->lastError());
+        QMessageBox::warning(view, tr("Import Case"), reader->lastError());
         return false;
     }
     IDOSCaseDialog dialog(simulationCase->name(), simulationCase->sourceFile(), simulationCase->pendingWellNames(),
-                          target, parent);
+                          target, view);
     if (dialog.exec() != QDialog::Accepted || target.isNull())
     {
         qDeleteAll(objects);
         return false;
     }
-    if (caseNameExists(target, dialog.caseName()))
+    if (caseNameExists(view, dialog.caseName()))
     {
         IDOS_WARN(tr("Case import rejected because the name already exists: %1")
                       .arg(dialog.caseName()));
         qDeleteAll(objects);
-        QMessageBox::warning(parent, tr("Import Case"), tr("A case with this name already exists."));
+        QMessageBox::warning(view, tr("Import Case"), tr("A case with this name already exists."));
         return false;
     }
     qDeleteAll(objects);
@@ -304,25 +303,25 @@ bool IDOSSimulationCaseTreeGuiProvider::importCase(IDOSProject* project, const Q
     }
 
     QJsonObject arguments;
-    arguments.insert(QStringLiteral("filePath"), filePath);
+    arguments.insert(QStringLiteral("filePath"), file);
     arguments.insert(QStringLiteral("caseName"), dialog.caseName());
     IDOSImportObjectsCommand* command =
         new IDOSImportObjectsCommand(target, QStringLiteral("case.import"), arguments);
     const bool success = commandManager->execute(command);
     if (!success)
     {
-        QMessageBox::warning(parent, tr("Import Case"), commandManager->error());
+        QMessageBox::warning(view, tr("Import Case"), commandManager->error());
     }
     return success;
 }
 
-bool IDOSSimulationCaseTreeGuiProvider::deleteCase(IDOSProject* project, const QString& caseId, QWidget* parent)
+bool IDOSSimulationCaseTreeGuiProvider::deleteCase(IDOSTreeView* view, const QString& caseId)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull() || caseId.isEmpty())
+    if (view == nullptr || view->project() == nullptr || caseId.isEmpty())
     {
         return false;
     }
+    QPointer<IDOSProject> target(view->project());
     IDOSDataObject* obj = target->object(caseId);
     IDOSCaseObject* caseObj = qobject_cast<IDOSCaseObject*>(obj);
     if (caseObj == nullptr)
@@ -338,11 +337,11 @@ bool IDOSSimulationCaseTreeGuiProvider::deleteCase(IDOSProject* project, const Q
         if (ref.role() == QStringLiteral("case.grid"))
         {
             gridIds.append(ref.objectId());
-            propertyTotal += collectGridPropertyIds(target.data(), ref.objectId()).size();
+            propertyTotal += gridPropertyCount(view, ref.objectId());
         }
     }
     const QMessageBox::StandardButton btn =
-        QMessageBox::question(parent, tr("Delete Case"),
+        QMessageBox::question(view, tr("Delete Case"),
                                tr("Are you sure you want to delete case \"%1\"?\n"
                                   "Its %2 grid(s) and %3 propert(ies) will also be deleted. "
                                   "Referenced wells are kept.")
@@ -363,13 +362,13 @@ bool IDOSSimulationCaseTreeGuiProvider::deleteCase(IDOSProject* project, const Q
     return commandManager->execute(new IDOSDeleteCaseCommand(target, caseId));
 }
 
-bool IDOSSimulationCaseTreeGuiProvider::importGrid(IDOSProject* project, const QString& targetCaseId, QWidget* parent)
+bool IDOSSimulationCaseTreeGuiProvider::importGrid(IDOSTreeView* view, const QString& targetCaseId)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull() || targetCaseId.isEmpty())
+    if (view == nullptr || view->project() == nullptr || targetCaseId.isEmpty())
     {
         return false;
     }
+    QPointer<IDOSProject> target(view->project());
     IDOSCaseObject* caseObj = qobject_cast<IDOSCaseObject*>(target->object(targetCaseId));
     if (caseObj == nullptr)
     {
@@ -382,9 +381,9 @@ bool IDOSSimulationCaseTreeGuiProvider::importGrid(IDOSProject* project, const Q
     {
         IDOSGrid* existingGrid = qobject_cast<IDOSGrid*>(target->object(existingGridId));
         const QString gridName = existingGrid != nullptr ? existingGrid->name() : existingGridId;
-        const int propertyCount = collectGridPropertyIds(target.data(), existingGridId).size();
+        const int propertyCount = gridPropertyCount(view, existingGridId);
         const QMessageBox::StandardButton btn = QMessageBox::question(
-            parent, tr("Import Grid"),
+            view, tr("Import Grid"),
             tr("Case \"%1\" already has grid \"%2\".\n"
                "Importing a new grid will delete it along with %3 propert(ies). Continue?")
                 .arg(caseObj->name())
@@ -398,7 +397,7 @@ bool IDOSSimulationCaseTreeGuiProvider::importGrid(IDOSProject* project, const Q
         replacing = true;
     }
     const QString file = QFileDialog::getOpenFileName(
-        parent, tr("Import Grid"), QString(),
+        view, tr("Import Grid"), QString(),
         tr("ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)"));
     if (file.isEmpty() || target.isNull())
     {
@@ -420,7 +419,7 @@ bool IDOSSimulationCaseTreeGuiProvider::importGrid(IDOSProject* project, const Q
     const bool success = commandManager->execute(command);
     if (!success)
     {
-        QMessageBox::warning(parent, tr("Import Grid"), commandManager->error());
+        QMessageBox::warning(view, tr("Import Grid"), commandManager->error());
     }
     return success;
 }

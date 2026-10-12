@@ -153,15 +153,9 @@ void IDOSExamplePlugin::onCreatePointSet()
     }
 }
 
-bool IDOSExamplePlugin::canUnload() const
+bool IDOSExamplePlugin::canUnload(QString& reason) const
 {
-    const IDOSPointSetMetadata* metadata = m_dataRegistry != nullptr
-        ? dynamic_cast<const IDOSPointSetMetadata*>(m_dataRegistry->metadata(QString::fromLatin1("idos.example.pointset")))
-        : nullptr;
-    if (metadata != nullptr && metadata->isInUse())
-    {
-        return false;
-    }
+    reason.clear();
     for (const QPointer<IDOSProject>& project : m_projects)
     {
         if (project == nullptr)
@@ -171,15 +165,25 @@ bool IDOSExamplePlugin::canUnload() const
         if (project->commandManager()->contains(QString::fromLatin1("pointset.create")) ||
             project->commandManager()->contains(QString::fromLatin1("pointset.delete")))
         {
+            reason = tr("Point set commands remain in the undo or redo history.");
             return false;
         }
         for (IDOSDataObject* data : project->objects())
         {
             if (data->typeId() == QString::fromLatin1("idos.example.pointset"))
             {
+                reason = tr("Point set data still exists in a project.");
                 return false;
             }
         }
+    }
+    const IDOSPointSetMetadata* metadata = m_dataRegistry != nullptr
+        ? dynamic_cast<const IDOSPointSetMetadata*>(m_dataRegistry->metadata(QString::fromLatin1("idos.example.pointset")))
+        : nullptr;
+    if (metadata != nullptr && metadata->isInUse())
+    {
+        reason = tr("Point set instances are still alive outside project history.");
+        return false;
     }
     return true;
 }

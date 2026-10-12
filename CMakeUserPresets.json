@@ -5,7 +5,6 @@
             "name": "win-x64-debug-local",
             "inherits": "win-x64-debug",
             "displayName": "Windows x64 Debug (local)",
-            "binaryDir": "${sourceDir}/../IDOS-Build/${presetName}",
             "cacheVariables": {
                 "IDOS_QT_DIR": {
                     "type": "PATH",
@@ -17,7 +16,6 @@
             "name": "win-x64-release-local",
             "inherits": "win-x64-release",
             "displayName": "Windows x64 Release (local)",
-            "binaryDir": "${sourceDir}/../IDOS-Build/${presetName}",
             "cacheVariables": {
                 "IDOS_QT_DIR": {
                     "type": "PATH",

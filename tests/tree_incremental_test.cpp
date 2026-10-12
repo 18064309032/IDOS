@@ -10,8 +10,11 @@
 #include <QtTest>
 
 #include "idoscaseitemref.h"
-#include "idostreemodel.h"
-#include "idostreeview.h"
+#include "idosdatametadata.h"
+#include "idosdataregistry.h"
+#include "idoswellmetadata.h"
+#include "idosgridmetadata.h"
+#include "idossimulationcasemetadata.h"
 #include "idostreemodel.h"
 #include "idostreeview.h"
 #include "idosgrid.h"
@@ -483,6 +486,21 @@ void TreeIncrementalTest::onRegistryLifecycle()
     QVERIFY(server.removeTree(&tree));
     QCOMPARE(model.rowCount(), 0);
     QCOMPARE(tree.project(), nullptr);
+}
+
+void TreeIncrementalTest::onTreeDataMetadataQuery()
+{
+    IDOSDataRegistry dataRegistry;
+    IDOSTreeRegistry treeRegistry;
+    QVERIFY(dataRegistry.add(new IDOSWellMetadata()));
+    QVERIFY(dataRegistry.add(new IDOSGridMetadata()));
+    QVERIFY(dataRegistry.add(new IDOSSimulationCaseMetadata()));
+    QVERIFY(treeRegistry.add(new IDOSWellTreeMetadata()));
+    const QList<const IDOSDataMetadata*> metadata = treeRegistry.dataMetadata(&dataRegistry);
+    QCOMPARE(metadata.size(), 1);
+    QCOMPARE(metadata.first()->typeId(), QStringLiteral("idos.well"));
+    QCOMPARE(metadata.first()->displayName(), QStringLiteral("Well"));
+    QVERIFY(treeRegistry.dataMetadata(nullptr).isEmpty());
 }
 
 void TreeIncrementalTest::onTreeOwnership()

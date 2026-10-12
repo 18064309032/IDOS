@@ -32,6 +32,7 @@ class IDOSWellLogTrackView;
 class IDOSAssistantWidget;
 class IDOSDebugInfoWidget;
 class IDOSRuntimeInfoWidget;
+class IDOSPythonConsoleWidget;
 class IDOSPluginRegistry;
 class IDOSPluginManagerWidget;
 class IDOSAppInterface;
@@ -91,6 +92,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onRedoTriggered();
     void onCommandStateChanged();
     void onDataTreeItemActivated(const QModelIndex& index);
+    void onDataTreeItemClicked(const QModelIndex& index);
+    void onCaseTreeItemClicked(const QModelIndex& index);
     void onDataTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
     void onCaseTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
     void onRenderObjectActivated(const QString& viewId, const QString& objectId);
@@ -105,6 +108,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onCaptureScreenshotTriggered();
     void onExportImageTriggered();
     void onAssistantTriggered();
+    void onPythonConsoleTriggered();
     void onNew3DWindowTriggered();
     void onNew2DWindowTriggered();
     void onWindowLayoutTriggered(QAction* action);
@@ -122,7 +126,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void initProviders();
     IDOSRenderView* activeView() const;
     QString activeViewId() const;
-    IDOSRenderView* createView(const QString& id, bool parallel);
+    IDOSRenderView* createView(const QString& id, bool twoDimensional);
     void removeView(const QString& id);
     void setActiveView(const QString& id);
     QString viewContextId() const;
@@ -133,7 +137,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void initRibbonAction();
     void initDockWidgets();
     void initPluginManager();
-    void createRenderView(bool parallelProjection);
+    void createRenderView(bool twoDimensional);
+    void updateViewPresetActions();
     void applyWindowLayout(const QString& layout);
     void updateTreeSelection(const QString& viewId);
     void setViewTreeContext(const QString& viewId, const QString& objectId, const QString& caseId);
@@ -162,6 +167,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionCaptureScreenshot;
     QAction* m_actionExportImage;
     QAction* m_actionAssistant;
+    QAction* m_actionPythonConsole;
     QAction* m_actionNew3DWindow;
     QAction* m_actionNew2DWindow;
     QAction* m_actionWindowLayout;
@@ -188,16 +194,19 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSAppInterface* m_appInterface;
     IDOSDebugInfoWidget* m_debugInfoWidget;
     IDOSAssistantWidget* m_assistantWidget;
+    IDOSPythonConsoleWidget* m_pythonConsoleWidget;
 
     ads::CDockManager* m_dockManager;
     ads::CDockWidget* m_renderDock;
     ads::CDockWidget* m_outputDock;
     ads::CDockWidget* m_debugDock;
+    ads::CDockWidget* m_pythonConsoleDock;
     ads::CDockWidget* m_assistantDock;
     QMap<QString, QPointer<ads::CDockWidget>> m_viewDocks;
     QMap<QString, QString> m_viewCaseIds;
     int m_nextViewIndex;
     QString m_currentWindowLayout;
+    bool m_syncingTreeSelection;
 };
 
 #endif // IDOS_MAIN_WINDOW_H

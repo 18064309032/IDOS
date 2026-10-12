@@ -19,6 +19,8 @@
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
 #include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkInteractorStyleImage.h>
+#include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutputWindow.h>
 #include <vtkProp.h>
@@ -53,12 +55,15 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_flashAnimation(nullptr)
     , m_renderWindow(vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New())
     , m_renderer(vtkSmartPointer<vtkRenderer>::New())
+    , m_twoDInteractorStyle(vtkSmartPointer<vtkInteractorStyleImage>::New())
+    , m_threeDInteractorStyle(vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New())
     , m_axesActor(vtkSmartPointer<vtkAxesActor>::New())
     , m_orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
     , m_scene(new IDOSRenderScene(this))
     , m_actorObjectIds()
     , m_pressedPosition()
     , m_selection()
+    , m_orientation(IDOSOrientation::Isometric)
     , m_active(false)
     , m_legendVisible(true)
     , m_legends()
@@ -92,6 +97,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     updateActiveBorder();
 
     m_vtkWidget->setRenderWindow(m_renderWindow);
+    m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
     m_renderWindow->AddRenderer(m_renderer);
     m_renderer->SetBackground(0.08, 0.09, 0.11);
 
@@ -160,16 +166,29 @@ void IDOSRenderView::resetCamera()
     m_renderWindow->Render();
 }
 
-void IDOSRenderView::setParallelProjection(bool enabled)
+void IDOSRenderView::setTwoDimensional(bool enabled)
 {
     vtkCamera* camera = m_renderer->GetActiveCamera();
     camera->SetParallelProjection(enabled ? 1 : 0);
+    if (enabled)
+    {
+        m_vtkWidget->interactor()->SetInteractorStyle(m_twoDInteractorStyle);
+    }
+    else
+    {
+        m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
+    }
     m_renderWindow->Render();
 }
 
-bool IDOSRenderView::parallelProjection() const
+bool IDOSRenderView::isTwoDimensional() const
 {
     return m_renderer->GetActiveCamera()->GetParallelProjection() != 0;
+}
+
+IDOSOrientation IDOSRenderView::orientation() const
+{
+    return m_orientation;
 }
 
 QColor IDOSRenderView::background() const
@@ -236,10 +255,7 @@ bool IDOSRenderView::setOrientation(IDOSOrientation orientation)
 {
     double bounds[6];
     m_renderer->ComputeVisiblePropBounds(bounds);
-    if (bounds[0] > bounds[1] || bounds[2] > bounds[3] || bounds[4] > bounds[5])
-    {
-        return false;
-    }
+    const bool hasVisibleBounds = bounds[0] <= bounds[1] && bounds[2] <= bounds[3] && bounds[4] <= bounds[5];
 
     double direction[3] = {0.0, 0.0, 0.0};
     double viewUp[3] = {0.0, 0.0, 1.0};
@@ -280,14 +296,31 @@ bool IDOSRenderView::setOrientation(IDOSOrientation orientation)
         break;
     }
 
-    double focalPoint[3] = {(bounds[0] + bounds[1]) * 0.5, (bounds[2] + bounds[3]) * 0.5,
-                            (bounds[4] + bounds[5]) * 0.5};
     vtkCamera* camera = m_renderer->GetActiveCamera();
+    double focalPoint[3];
+    camera->GetFocalPoint(focalPoint);
+    if (hasVisibleBounds)
+    {
+        focalPoint[0] = (bounds[0] + bounds[1]) * 0.5;
+        focalPoint[1] = (bounds[2] + bounds[3]) * 0.5;
+        focalPoint[2] = (bounds[4] + bounds[5]) * 0.5;
+    }
+    const double distance = camera->GetDistance();
     camera->SetFocalPoint(focalPoint);
     camera->SetPosition(focalPoint[0] + direction[0], focalPoint[1] + direction[1], focalPoint[2] + direction[2]);
     camera->SetViewUp(viewUp);
     camera->OrthogonalizeViewUp();
-    m_renderer->ResetCamera();
+    if (hasVisibleBounds)
+    {
+        m_renderer->ResetCamera();
+    }
+    else
+    {
+        camera->SetPosition(focalPoint[0] + direction[0] * distance,
+                            focalPoint[1] + direction[1] * distance,
+                            focalPoint[2] + direction[2] * distance);
+    }
+    m_orientation = orientation;
     m_renderWindow->Render();
     return true;
 }

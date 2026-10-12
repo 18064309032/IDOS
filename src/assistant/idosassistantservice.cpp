@@ -80,8 +80,11 @@ bool IDOSAssistantService::start(const QString& assistantRoot, QString& error)
 
     if (!m_process->start(assistantRoot, error))
     {
-        m_starting = false;
-        emit errorOccurred(error);
+        if (m_starting)
+        {
+            m_starting = false;
+            emit errorOccurred(error);
+        }
         return false;
     }
 

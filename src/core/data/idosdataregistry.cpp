@@ -50,3 +50,13 @@ const IDOSDataMetadata* IDOSDataRegistry::metadata(const QString& typeId) const
 {
     return m_metadata.value(typeId, nullptr);
 }
+
+QList<const IDOSDataMetadata*> IDOSDataRegistry::metadata() const
+{
+    QList<const IDOSDataMetadata*> result;
+    for (const IDOSDataMetadata* value : m_metadata)
+    {
+        result.append(value);
+    }
+    return result;
+}

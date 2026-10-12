@@ -1,5 +1,5 @@
 # idos_core: business data and type registry
-# Dependency chain: no custom module dependencies, only Qt5::Core, Qt5::Gui, and Qt5::Widgets
+# Dependency chain: no custom module dependencies; Qt Widgets is required by the tree model.
 add_library(idos_core SHARED
     tree/idostree.cpp
     tree/idostree.h

@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <QContextMenuEvent>
 #include <QItemSelectionModel>
 #include <QMenu>
@@ -22,7 +24,7 @@ IDOSTreeView::IDOSTreeView(QWidget* parent)
     setIconSize(QSize(16, 16));
     setAnimated(true);
     setUniformRowHeights(true);
-    setSelectionMode(QAbstractItemView::ExtendedSelection);
+    setSelectionMode(QAbstractItemView::SingleSelection);
     setSelectionBehavior(QAbstractItemView::SelectRows);
 }
 
@@ -185,7 +187,7 @@ void IDOSTreeView::refreshChecks(IDOSTreeItem* item)
     if (responsible && !conflict)
     {
         item->setCheckable(responsible->isCheckable(item));
-        item->setChecked(responsible->isChecked(item));
+        item->setChecked(responsible->isChecked(item, this));
     }
     for (IDOSTreeItem* child : item->children())
     {
@@ -195,10 +197,32 @@ void IDOSTreeView::refreshChecks(IDOSTreeItem* item)
 
 void IDOSTreeView::onGuiProvidersChanged()
 {
+    if (m_registry != nullptr)
+    {
+        const QList<std::shared_ptr<IDOSTreeGuiProvider>> providers = m_registry->guiProviders();
+        for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : providers)
+        {
+            disconnect(provider.get(), nullptr, this, nullptr);
+            connect(provider.get(),
+                    &IDOSTreeGuiProvider::checkStateChanged,
+                    this,
+                    &IDOSTreeView::onCheckStateChanged);
+        }
+    }
+    refreshCheckStates();
+}
+
+void IDOSTreeView::refreshCheckStates()
+{
     if (tree() != nullptr)
     {
         refreshChecks(tree()->root());
     }
+}
+
+void IDOSTreeView::onCheckStateChanged()
+{
+    refreshCheckStates();
 }
 
 void IDOSTreeView::onDataChanged(const QModelIndex& first, const QModelIndex& last)
@@ -220,6 +244,17 @@ IDOSTree* IDOSTreeView::tree() const
 IDOSProject* IDOSTreeView::project() const
 {
     return tree() != nullptr ? tree()->project() : nullptr;
+}
+
+QObject* IDOSTreeView::targetView() const
+{
+    return m_targetView.data();
+}
+
+void IDOSTreeView::setTargetView(QObject* view)
+{
+    m_targetView = view;
+    refreshCheckStates();
 }
 
 IDOSTreeItem* IDOSTreeView::currentItem() const
@@ -288,7 +323,7 @@ void IDOSTreeView::onCheckRequested(IDOSTreeItem* item, bool checked, bool* acce
     }
     if (responsible)
     {
-        *accepted = responsible->setChecked(item, checked);
+        *accepted = responsible->setChecked(item, checked, this);
     }
 }
 

@@ -80,3 +80,42 @@ void IDOSSimulationCaseObject::setSourceFile(const QString& path)
     m_sourceFile = path;
     emit dataChanged();
 }
+QVariantMap IDOSSimulationCaseObject::parsedSourceData() const
+{
+    return m_parsedSourceData;
+}
+void IDOSSimulationCaseObject::setParsedSourceData(const QVariantMap& data)
+{
+    m_parsedSourceData = data;
+    emit dataChanged();
+}
+QVariantList IDOSSimulationCaseObject::curveTables() const
+{
+    return m_curveTables;
+}
+void IDOSSimulationCaseObject::setCurveTables(const QVariantList& tables)
+{
+    m_curveTables = tables;
+    emit dataChanged();
+}
+QVariantList IDOSSimulationCaseObject::wellControlRows() const
+{
+    return m_wellControlRows;
+}
+
+QVariantMap IDOSSimulationCaseObject::runInfo() const
+{
+    return m_runInfo;
+}
+
+void IDOSSimulationCaseObject::setRunInfo(const QVariantMap& runInfo)
+{
+    m_runInfo = runInfo;
+    emit dataChanged();
+}
+
+void IDOSSimulationCaseObject::setWellControlRows(const QVariantList& rows)
+{
+    m_wellControlRows = rows;
+    emit dataChanged();
+}

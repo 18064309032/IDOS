@@ -23,7 +23,13 @@
 #include "idosdeletewellcommand.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
+#include "idosgridrenderprovider.h"
+#include "idosimportrestartresultscommand.h"
 #include "idosproject.h"
+#include "idosrenderobject.h"
+#include "idosrenderprovider.h"
+#include "idosrenderscene.h"
+#include "idosrenderview.h"
 #include "idossimulationcaseobject.h"
 #include "idostree.h"
 #include "idostreeitem.h"
@@ -71,6 +77,31 @@ bool IDOSGridTreeGuiProvider::supports(const IDOSTreeItem* item) const
     return qobject_cast<IDOSGrid*>(data) != nullptr || qobject_cast<IDOSGridProperty*>(data) != nullptr;
 }
 
+bool IDOSGridTreeGuiProvider::isChecked(const IDOSTreeItem* item, const IDOSTreeView* treeView) const
+{
+    IDOSRenderView* view = treeView != nullptr ? qobject_cast<IDOSRenderView*>(treeView->targetView()) : nullptr;
+    if (item == nullptr || view == nullptr)
+    {
+        return false;
+    }
+    IDOSDataObject* data = item->tree() != nullptr && item->tree()->project() != nullptr
+                               ? item->tree()->project()->object(item->dataId())
+                               : nullptr;
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(data);
+    IDOSRenderObject* object = gridRenderObject(property != nullptr ? property->gridId()
+                                                                    : item->dataId(), view);
+    IDOSGridRenderProvider* provider = object != nullptr
+                                           ? dynamic_cast<IDOSGridRenderProvider*>(object->provider())
+                                           : nullptr;
+    if (provider == nullptr)
+    {
+        return false;
+    }
+    return property != nullptr
+               ? provider->property() == property
+               : object->visible();
+}
+
 void IDOSGridTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
 {
     if (view->project() == nullptr)
@@ -86,9 +117,19 @@ void IDOSGridTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
     IDOSDataObject* data = view->project()->object(item->dataId());
     if (item->isGroup())
     {
-        QAction* import = addAction(menu, view, tr("Import Property..."));
-        import->setObjectName(QStringLiteral("importPropertyAction"));
-        connect(import, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onImportProperty);
+        if (item->key() == QStringLiteral("grid.dynamicProperties"))
+        {
+            QAction* import = addAction(menu, view, tr("Import Dynamic Properties..."));
+            import->setObjectName(QStringLiteral("importDynamicPropertiesAction"));
+            connect(import, &QAction::triggered, this,
+                    &IDOSGridTreeGuiProvider::onImportDynamicProperties);
+        }
+        else
+        {
+            QAction* import = addAction(menu, view, tr("Import Property..."));
+            import->setObjectName(QStringLiteral("importPropertyAction"));
+            connect(import, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onImportProperty);
+        }
     }
     else if (qobject_cast<IDOSGridProperty*>(data) != nullptr)
     {
@@ -115,7 +156,22 @@ void IDOSGridTreeGuiProvider::onImportProperty()
     const QString gridId = action->property("dataId").toString();
     if (qobject_cast<IDOSGrid*>(view->project()->object(gridId)) != nullptr)
     {
-        IDOSGridTreeGuiProvider::importProperty(view->project(), gridId, action->property("caseId").toString(), view);
+        importProperty(view, gridId, action->property("caseId").toString());
+    }
+}
+
+void IDOSGridTreeGuiProvider::onImportDynamicProperties()
+{
+    IDOSTreeView* view = actionView();
+    if (view == nullptr)
+    {
+        return;
+    }
+    QAction* action = qobject_cast<QAction*>(sender());
+    const QString gridId = action->property("dataId").toString();
+    if (qobject_cast<IDOSGrid*>(view->project()->object(gridId)) != nullptr)
+    {
+        importDynamicProperties(view, gridId);
     }
 }
 
@@ -130,7 +186,7 @@ void IDOSGridTreeGuiProvider::onDeleteProperty()
     const QString id = action->property("dataId").toString();
     if (qobject_cast<IDOSGridProperty*>(view->project()->object(id)) != nullptr)
     {
-        IDOSGridTreeGuiProvider::deleteProperty(view->project(), id, view);
+        deleteProperty(view, id);
     }
 }
 
@@ -145,13 +201,16 @@ void IDOSGridTreeGuiProvider::onDeleteGrid()
     const QString id = action->property("dataId").toString();
     if (qobject_cast<IDOSGrid*>(view->project()->object(id)) != nullptr)
     {
-        IDOSGridTreeGuiProvider::deleteGrid(view->project(), id, view);
+        deleteGrid(view, id);
     }
 }
 
-bool IDOSGridTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked)
+bool IDOSGridTreeGuiProvider::setChecked(IDOSTreeItem* item,
+                                         bool checked,
+                                         IDOSTreeView* treeView)
 {
-    if (item == nullptr || item->tree() == nullptr || item->tree()->project() == nullptr)
+    IDOSRenderView* view = treeView != nullptr ? qobject_cast<IDOSRenderView*>(treeView->targetView()) : nullptr;
+    if (item == nullptr || item->tree() == nullptr || item->tree()->project() == nullptr || view == nullptr)
     {
         return false;
     }
@@ -163,74 +222,96 @@ bool IDOSGridTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked)
     {
         return false;
     }
-    project->beginUpdate();
-    if (property != nullptr && checked)
+    IDOSRenderObject* object = gridRenderObject(property != nullptr ? property->gridId()
+                                                                   : grid->objectId(), view);
+    IDOSGridRenderProvider* provider = object != nullptr
+                                           ? dynamic_cast<IDOSGridRenderProvider*>(object->provider())
+                                           : nullptr;
+    if (provider == nullptr)
     {
-        for (IDOSDataObject* candidate : project->objects())
+        return false;
+    }
+
+    if (grid != nullptr)
+    {
+        object->setVisible(checked);
+        if (!checked)
         {
-            IDOSGridProperty* other = qobject_cast<IDOSGridProperty*>(candidate);
-            if (other != nullptr && other != property)
-            {
-                other->setVisible(false);
-            }
-        }
-        IDOSDataObject* parentGrid = project->object(property->gridId());
-        if (parentGrid != nullptr)
-        {
-            parentGrid->setVisible(true);
+            provider->setProperty(nullptr);
         }
     }
-    if (grid != nullptr && !checked)
+    else if (checked)
     {
-        for (IDOSDataObject* candidate : project->objects())
-        {
-            IDOSGridProperty* child = qobject_cast<IDOSGridProperty*>(candidate);
-            if (child != nullptr && child->gridId() == grid->objectId())
-            {
-                child->setVisible(false);
-            }
-        }
+        provider->setProperty(property);
+        object->setVisible(true);
     }
-    data->setVisible(checked);
-    project->endUpdate();
+    else if (provider->property() == property)
+    {
+        provider->setProperty(nullptr);
+    }
+    view->scene()->notifyChanged(object->id());
+    if (checked)
+    {
+        view->resetCamera();
+    }
+    emit checkStateChanged();
     return true;
 }
 
-
-QStringList IDOSGridTreeGuiProvider::collectGridPropertyIds(const IDOSProject* project, const QString& gridId)
+IDOSRenderObject* IDOSGridTreeGuiProvider::gridRenderObject(const QString& gridId,
+                                                            IDOSRenderView* view) const
 {
-    QStringList ids;
-    if (project == nullptr || gridId.isEmpty())
+    if (view == nullptr)
     {
-        return ids;
+        return nullptr;
     }
-    for (IDOSDataObject* object : project->objects())
+    for (IDOSRenderObject* object : view->scene()->objects())
+    {
+        IDOSDataObject* source = object->provider()->dataSource();
+        if (source != nullptr && source->objectId() == gridId &&
+            dynamic_cast<IDOSGridRenderProvider*>(object->provider()) != nullptr)
+        {
+            return object;
+        }
+    }
+    return nullptr;
+}
+
+
+int IDOSGridTreeGuiProvider::gridPropertyCount(const IDOSTreeView* view, const QString& gridId) const
+{
+    if (view == nullptr || view->project() == nullptr || gridId.isEmpty())
+    {
+        return 0;
+    }
+    int count = 0;
+    for (IDOSDataObject* object : view->project()->objects())
     {
         IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
         if (property != nullptr && property->gridId() == gridId)
         {
-            ids.append(property->objectId());
+            ++count;
         }
     }
-    return ids;
+    return count;
 }
 
-bool IDOSGridTreeGuiProvider::deleteGrid(IDOSProject* project, const QString& gridId, QWidget* parent)
+bool IDOSGridTreeGuiProvider::deleteGrid(IDOSTreeView* view, const QString& gridId)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull() || gridId.isEmpty())
+    if (view == nullptr || view->project() == nullptr || gridId.isEmpty())
     {
         return false;
     }
+    QPointer<IDOSProject> target(view->project());
     IDOSDataObject* obj = target->object(gridId);
     IDOSGrid* grid = qobject_cast<IDOSGrid*>(obj);
     if (grid == nullptr)
     {
         return false;
     }
-    const int propertyCount = collectGridPropertyIds(target.data(), gridId).size();
+    const int propertyCount = gridPropertyCount(view, gridId);
     const QMessageBox::StandardButton btn =
-        QMessageBox::question(parent, tr("Delete Grid"),
+        QMessageBox::question(view, tr("Delete Grid"),
                                tr("Are you sure you want to delete grid \"%1\"?\n"
                                   "It will also delete %2 propert(ies) under this grid "
                                   "and remove it from its case.")
@@ -250,20 +331,20 @@ bool IDOSGridTreeGuiProvider::deleteGrid(IDOSProject* project, const QString& gr
     return commandManager->execute(new IDOSDeleteGridCommand(target, gridId));
 }
 
-bool IDOSGridTreeGuiProvider::deleteProperty(IDOSProject* project, const QString& propertyId, QWidget* parent)
+bool IDOSGridTreeGuiProvider::deleteProperty(IDOSTreeView* view, const QString& propertyId)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull() || propertyId.isEmpty())
+    if (view == nullptr || view->project() == nullptr || propertyId.isEmpty())
     {
         return false;
     }
+    QPointer<IDOSProject> target(view->project());
     IDOSDataObject* obj = target->object(propertyId);
     if (qobject_cast<IDOSGridProperty*>(obj) == nullptr)
     {
         return false;
     }
     const QMessageBox::StandardButton btn =
-        QMessageBox::question(parent, tr("Delete Property"),
+        QMessageBox::question(view, tr("Delete Property"),
                                tr("Are you sure you want to delete property \"%1\"?\n"
                                   "It will be removed from all cases that reference it.")
                                    .arg(obj->name()),
@@ -281,18 +362,18 @@ bool IDOSGridTreeGuiProvider::deleteProperty(IDOSProject* project, const QString
     return commandManager->execute(new IDOSDeletePropertyCommand(target, propertyId));
 }
 
-bool IDOSGridTreeGuiProvider::importProperty(IDOSProject* project, const QString& targetGridId,
-                                            const QString& targetCaseId, QWidget* parent)
+bool IDOSGridTreeGuiProvider::importProperty(IDOSTreeView* view, const QString& targetGridId,
+                                            const QString& targetCaseId)
 {
-    QPointer<IDOSProject> target(project);
-    if (target.isNull())
+    if (view == nullptr || view->project() == nullptr)
     {
         return false;
     }
+    QPointer<IDOSProject> target(view->project());
     // 当前能产出网格属性的可识别格式为 ECLIPSE .DATA；后续新增 .GRDECL/.INIT/.UNRST
     // provider 后在此扩充过滤项
     const QString file = QFileDialog::getOpenFileName(
-        parent, tr("Import Grid Property"), QString(),
+        view, tr("Import Grid Property"), QString(),
         tr("ECLIPSE Data Files (*.DATA *.data);;All Files (*)"));
     if (file.isEmpty() || target.isNull())
     {
@@ -314,12 +395,52 @@ bool IDOSGridTreeGuiProvider::importProperty(IDOSProject* project, const QString
     const bool success = commandManager->execute(command);
     if (!success)
     {
-        QMessageBox::warning(parent, tr("Import Grid Property"), commandManager->error());
+        QMessageBox::warning(view, tr("Import Grid Property"), commandManager->error());
         return false;
     }
 
     const int importedCount = commandManager->result().value(QStringLiteral("objectCount")).toInt();
-    QMessageBox::information(parent, tr("Import Grid Property"),
+    QMessageBox::information(view, tr("Import Grid Property"),
                              tr("Imported %1 properties.").arg(importedCount));
+    return true;
+}
+
+bool IDOSGridTreeGuiProvider::importDynamicProperties(IDOSTreeView* view, const QString& targetGridId)
+{
+    if (view == nullptr || view->project() == nullptr)
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(view->project());
+    const QString file = QFileDialog::getOpenFileName(
+        view, tr("Import Dynamic Properties"), QString(),
+        tr("Unified Eclipse restart files (*.UNRST *.unrst)"));
+    if (file.isEmpty() || target.isNull())
+    {
+        return false;
+    }
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    const bool success = commandManager->execute(
+        new IDOSImportRestartResultsCommand(target, targetGridId, file));
+    if (!success)
+    {
+        QMessageBox::warning(view, tr("Import Dynamic Properties"), commandManager->error());
+        return false;
+    }
+
+    const QJsonObject result = commandManager->result();
+    QMessageBox::information(
+        view, tr("Import Dynamic Properties"),
+        tr("Imported %1 dynamic properties across %2 report steps (%3–%4).")
+            .arg(result.value(QStringLiteral("propertyCount")).toInt())
+            .arg(result.value(QStringLiteral("reportStepCount")).toInt())
+            .arg(result.value(QStringLiteral("firstReportStep")).toInt())
+            .arg(result.value(QStringLiteral("lastReportStep")).toInt()));
     return true;
 }

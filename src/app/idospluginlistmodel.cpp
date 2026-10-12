@@ -148,8 +148,9 @@ bool IDOSPluginListModel::setData(const QModelIndex& modelIndex,
                    .arg(pluginPath));
     m_registry->setPluginEnabled(pluginPath, enabled);
 
-    plugin.insert(QStringLiteral("enabled"), enabled);
-    plugin.insert(QStringLiteral("loaded"), m_registry->isLoaded(pluginKey));
+    const bool loaded = m_registry->isLoaded(pluginKey);
+    plugin.insert(QStringLiteral("enabled"), enabled || loaded);
+    plugin.insert(QStringLiteral("loaded"), loaded);
     plugin.insert(QStringLiteral("error"), m_registry->pluginError(pluginKey));
     m_plugins.replace(modelIndex.row(), plugin);
     IDOS_DEBUG(tr("Plugin manager checkbox handling finished: key=%1, enabled=%2, loaded=%3, error=%4")
@@ -222,13 +223,13 @@ int IDOSPluginListModel::rowForKey(const QString& key) const
 
 QString IDOSPluginListModel::statusText(const QVariantMap& plugin) const
 {
-    if (!plugin.value(QStringLiteral("error")).toString().isEmpty())
-    {
-        return tr("Load error");
-    }
     if (plugin.value(QStringLiteral("loaded")).toBool())
     {
         return tr("Loaded");
+    }
+    if (!plugin.value(QStringLiteral("error")).toString().isEmpty())
+    {
+        return tr("Load error");
     }
     if (plugin.value(QStringLiteral("enabled")).toBool())
     {

@@ -16,6 +16,18 @@
       <translation>点集注册失败。</translation>
     </message>
     <message>
+      <source>Point set commands remain in the undo or redo history.</source>
+      <translation>撤销或重做历史中仍保留点集命令。</translation>
+    </message>
+    <message>
+      <source>Point set data still exists in a project.</source>
+      <translation>工程中仍存在点集数据。</translation>
+    </message>
+    <message>
+      <source>Point set instances are still alive outside project history.</source>
+      <translation>命令历史之外仍有点集实例存活。</translation>
+    </message>
+    <message>
       <source>Example</source>
       <translation>示例</translation>
     </message>

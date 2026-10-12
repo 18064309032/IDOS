@@ -11,17 +11,14 @@ $headers = @($files | Where-Object { $_.Extension -in '.h','.hpp' })
 $violations = New-Object 'System.Collections.Generic.List[string]'
 $allowed = @{
     core = @()
-    gui = @('core','render_core','render_qt','render_adapters','assistant')
+    gui = @('core')
     providers = @('core')
     render = @('core')
-    render_core = @()
-    render_qt = @('render_core')
-    render_adapters = @('core','render_core')
     analysis = @('core')
     python = @('core')
     assistant = @('core')
-    app = @('core','gui','providers','render','render_core','render_qt','render_adapters','analysis','python','assistant')
-    plugins = @('core','app','gui','render','providers')
+    app = @('core','gui','providers','render','analysis','python','assistant')
+    plugins = @('core','gui','render','providers')
 }
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
 function IsPublic($rel) {

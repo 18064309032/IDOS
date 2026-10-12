@@ -2,6 +2,7 @@
 #define IDOS_DATA_REGISTRY_H
 
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QString>
 
@@ -20,6 +21,7 @@ class CORE_EXPORT IDOSDataRegistry : public QObject
     bool add(IDOSDataMetadata* metadata);
     bool remove(const QString& typeId);
     const IDOSDataMetadata* metadata(const QString& typeId) const;
+    QList<const IDOSDataMetadata*> metadata() const;
 
   signals:
     void added(const QString& typeId);

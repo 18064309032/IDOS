@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#include <QString>
+#include <QVariant>
+#include <QVariantList>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idosdataprovider.h"
@@ -14,6 +18,7 @@ class IDOSSimulationCaseObject;
 namespace Opm
 {
 class Deck;
+class DeckItem;
 class EclipseGrid;
 class FieldPropsManager;
 } // namespace Opm
@@ -33,6 +38,13 @@ class PROVIDERS_EXPORT IDOSSimulationCaseEclipseProvider : public IDOSDataProvid
     QList<IDOSDataObject*> read(const QString& filePath) override;
 
   private:
+    QVariantMap buildParsedSourceData(const Opm::Deck& deck, const QString& filePath) const;
+    QVariantList buildDeckKeywordIndex(const Opm::Deck& deck) const;
+    QVariantList buildRelativePermeabilityTables(const Opm::Deck& deck) const;
+    QVariantList buildWellControlRows(const Opm::Deck& deck) const;
+    QVariantMap buildSummary(const Opm::Deck& deck, const QString& filePath) const;
+    QVariantList deckItemValues(const Opm::DeckItem& item) const;
+    QVariant deckItemValue(const Opm::DeckItem& item, std::size_t valueIndex) const;
     bool convertEclipseGrid(const Opm::EclipseGrid& eclipseGrid, QVector<double>* coord, QVector<double>* zcorn,
                             QVector<int>* actnum, QString* error) const;
     QVector<double> doubleVectorToQVector(const std::vector<double>& values) const;

@@ -8,6 +8,7 @@
 #include "idosinterface.h"
 
 class IDOSMainWindow;
+class IDOSDataMetadata;
 class SARibbonCategory;
 
 class APP_EXPORT IDOSAppInterface : public IDOSInterface
@@ -20,6 +21,7 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     QMainWindow* mainWindow() const override;
     IDOSProject* project() const override;
     IDOSDataRegistry* dataRegistry() const override;
+    QList<const IDOSDataMetadata*> treeDataMetadata() const override;
     IDOSTreeRegistry* treeRegistry() const override;
     IDOSRenderRegistry* renderRegistry() const override;
     IDOSCommandRegistry* commandRegistry() const override;

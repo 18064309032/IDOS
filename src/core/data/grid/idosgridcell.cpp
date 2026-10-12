@@ -33,7 +33,7 @@ void IDOSGridCell::setActive(bool active)
 }
 
 // 四面体有向体积，结果可能为负，取绝对值
-static double tetrahedronVolume(const QVector3D& a, const QVector3D& b, const QVector3D& c, const QVector3D& d)
+double IDOSGridCell::tetrahedronVolume(const QVector3D& a, const QVector3D& b, const QVector3D& c, const QVector3D& d) const
 {
     QVector3D ba = b - a;
     QVector3D ca = c - a;

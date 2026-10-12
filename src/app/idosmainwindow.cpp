@@ -18,14 +18,15 @@
 #include <QList>
 #include <QMenu>
 #include <QMessageBox>
-#include <QPushButton>
 #include <QSignalBlocker>
 #include <QStatusBar>
 #include <QStringList>
+#include <QTimer>
 #include <QToolButton>
 #include <QTreeView>
 #include <QWidget>
 
+#include <DockAreaWidget.h>
 #include <DockManager.h>
 #include <DockWidget.h>
 #include <SARibbonBar.h>
@@ -57,6 +58,7 @@
 #include "idosgridtreemetadata.h"
 #include "idosnewprojectdialog.h"
 #include "idospluginregistry.h"
+#include "idospythonconsolewidget.h"
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
 #include "idosrenameobjectcommand.h"
@@ -107,6 +109,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionCaptureScreenshot(nullptr)
     , m_actionExportImage(nullptr)
     , m_actionAssistant(nullptr)
+    , m_actionPythonConsole(nullptr)
     , m_actionNew3DWindow(nullptr)
     , m_actionNew2DWindow(nullptr)
     , m_actionWindowLayout(nullptr)
@@ -129,14 +132,17 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_appInterface(new IDOSAppInterface(this))
     , m_debugInfoWidget(nullptr)
     , m_assistantWidget(nullptr)
+    , m_pythonConsoleWidget(nullptr)
     , m_dockManager(nullptr)
     , m_renderDock(nullptr)
     , m_outputDock(nullptr)
     , m_debugDock(nullptr)
+    , m_pythonConsoleDock(nullptr)
     , m_assistantDock(nullptr)
     , m_viewCaseIds()
     , m_nextViewIndex(1)
     , m_currentWindowLayout(QStringLiteral("single"))
+    , m_syncingTreeSelection(false)
 {
     IDOSApplication* application = qobject_cast<IDOSApplication*>(QApplication::instance());
     m_dataRegistry = application != nullptr ? application->dataRegistry() : new IDOSDataRegistry(this);
@@ -149,6 +155,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     initDockWidgets();
     IDOS_MESSAGE(tr("Application started."), IDOSLogLevel::Info);
     initPluginManager();
+    QTimer::singleShot(0, m_assistantWidget, &IDOSAssistantWidget::startAssistant);
 }
 
 void IDOSMainWindow::initProviders()
@@ -329,6 +336,7 @@ void IDOSMainWindow::initDockWidgets()
     m_dataTreeView = new IDOSTreeView(this);
     m_dataTreeView->setModel(m_dataTreeModel);
     connect(m_dataTreeView, &QTreeView::doubleClicked, this, &IDOSMainWindow::onDataTreeItemActivated);
+    connect(m_dataTreeView, &QTreeView::clicked, this, &IDOSMainWindow::onDataTreeItemClicked);
     connect(m_dataTreeView->selectionModel(), &QItemSelectionModel::currentChanged,this, &IDOSMainWindow::onDataTreeCurrentChanged);
 
     m_dataTreeView->setRegistry(m_treeRegistry);
@@ -352,6 +360,15 @@ void IDOSMainWindow::initDockWidgets()
     m_debugDock->setWidget(m_debugInfoWidget, ads::CDockWidget::ForceNoScrollArea);
     m_debugDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidgetTabToArea(m_debugDock, outputArea);
+
+    m_pythonConsoleWidget = new IDOSPythonConsoleWidget(this);
+    m_pythonConsoleDock = new ads::CDockWidget(m_dockManager, tr("Python Console"));
+    m_pythonConsoleDock->setObjectName(QStringLiteral("pythonConsoleDock"));
+    m_pythonConsoleDock->setIcon(QIcon(QStringLiteral(":/images/python-console.svg")));
+    m_pythonConsoleDock->setWidget(m_pythonConsoleWidget, ads::CDockWidget::ForceNoScrollArea);
+    m_pythonConsoleDock->setFeatures(ads::CDockWidget::DockWidgetMovable
+                                     | ads::CDockWidget::DockWidgetFloatable);
+    m_dockManager->addDockWidgetTabToArea(m_pythonConsoleDock, outputArea);
 
     m_assistantWidget = new IDOSAssistantWidget(this);
     IDOSCommandRegistry* commandRegistry = m_assistantWidget->service()->commandRegistry();
@@ -378,9 +395,12 @@ void IDOSMainWindow::initDockWidgets()
     // ---- 工况树 ----
     m_caseTreeView = new IDOSTreeView(this);
     m_caseTreeView->setModel(m_caseTreeModel);
+    connect(m_caseTreeView, &QTreeView::clicked, this, &IDOSMainWindow::onCaseTreeItemClicked);
     connect(m_caseTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &IDOSMainWindow::onCaseTreeCurrentChanged);
     m_caseTreeView->setRegistry(m_treeRegistry);
+    m_dataTreeView->setTargetView(activeView());
+    m_caseTreeView->setTargetView(activeView());
     ads::CDockWidget* caseDock = new ads::CDockWidget(m_dockManager, tr("Case"));
     caseDock->setObjectName(QStringLiteral("caseTreeDock"));
     caseDock->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
@@ -389,6 +409,9 @@ void IDOSMainWindow::initDockWidgets()
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
 
     updateTreeSelection(activeViewId());
+    m_dataTreeView->refreshCheckStates();
+    m_caseTreeView->refreshCheckStates();
+    outputArea->setCurrentDockWidget(m_outputDock);
 }
 
 void IDOSMainWindow::initPluginManager()
@@ -492,31 +515,42 @@ void IDOSMainWindow::initRibbonAction()
     viewPresetActionGroup->setExclusive(true);
     QAction* frontViewAction = viewPresetsMenu->addAction(tr("Front"));
     frontViewAction->setCheckable(true);
+    frontViewAction->setObjectName(QStringLiteral("viewPresetFrontAction"));
     frontViewAction->setData(static_cast<int>(IDOSOrientation::Front));
     viewPresetActionGroup->addAction(frontViewAction);
-    QAction* backViewAction = viewPresetsMenu->addAction(tr("Back"));
-    backViewAction->setCheckable(true);
-    backViewAction->setData(static_cast<int>(IDOSOrientation::Back));
-    viewPresetActionGroup->addAction(backViewAction);
     QAction* leftViewAction = viewPresetsMenu->addAction(tr("Left"));
     leftViewAction->setCheckable(true);
+    leftViewAction->setObjectName(QStringLiteral("viewPresetLeftAction"));
     leftViewAction->setData(static_cast<int>(IDOSOrientation::Left));
     viewPresetActionGroup->addAction(leftViewAction);
-    QAction* rightViewAction = viewPresetsMenu->addAction(tr("Right"));
-    rightViewAction->setCheckable(true);
-    rightViewAction->setData(static_cast<int>(IDOSOrientation::Right));
-    viewPresetActionGroup->addAction(rightViewAction);
     QAction* topViewAction = viewPresetsMenu->addAction(tr("Top"));
     topViewAction->setCheckable(true);
+    topViewAction->setObjectName(QStringLiteral("viewPresetTopAction"));
     topViewAction->setData(static_cast<int>(IDOSOrientation::Top));
     viewPresetActionGroup->addAction(topViewAction);
+    QAction* backViewAction = viewPresetsMenu->addAction(tr("Back"));
+    backViewAction->setCheckable(true);
+    backViewAction->setObjectName(QStringLiteral("viewPresetBackAction"));
+    backViewAction->setData(static_cast<int>(IDOSOrientation::Back));
+    backViewAction->setProperty("threeDimensionalOnly", true);
+    viewPresetActionGroup->addAction(backViewAction);
+    QAction* rightViewAction = viewPresetsMenu->addAction(tr("Right"));
+    rightViewAction->setCheckable(true);
+    rightViewAction->setObjectName(QStringLiteral("viewPresetRightAction"));
+    rightViewAction->setData(static_cast<int>(IDOSOrientation::Right));
+    rightViewAction->setProperty("threeDimensionalOnly", true);
+    viewPresetActionGroup->addAction(rightViewAction);
     QAction* bottomViewAction = viewPresetsMenu->addAction(tr("Bottom"));
     bottomViewAction->setCheckable(true);
+    bottomViewAction->setObjectName(QStringLiteral("viewPresetBottomAction"));
     bottomViewAction->setData(static_cast<int>(IDOSOrientation::Bottom));
+    bottomViewAction->setProperty("threeDimensionalOnly", true);
     viewPresetActionGroup->addAction(bottomViewAction);
     QAction* isometricViewAction = viewPresetsMenu->addAction(tr("Isometric"));
     isometricViewAction->setCheckable(true);
+    isometricViewAction->setObjectName(QStringLiteral("viewPresetIsometricAction"));
     isometricViewAction->setData(static_cast<int>(IDOSOrientation::Isometric));
+    isometricViewAction->setProperty("threeDimensionalOnly", true);
     viewPresetActionGroup->addAction(isometricViewAction);
     m_actionViewPresets->setMenu(viewPresetsMenu);
     viewPanel->addSmallAction(m_actionViewPresets, QToolButton::InstantPopup);
@@ -599,18 +633,6 @@ void IDOSMainWindow::initRibbonAction()
     m_actionWindowLayout->setMenu(windowLayoutMenu);
     windowPanel->addSmallAction(m_actionWindowLayout, QToolButton::InstantPopup);
 
-    SARibbonPanel* extensionPanel = projectPage->addPanel(tr("Extensions"));
-    m_actionAssistant = new QAction(
-        QIcon(QStringLiteral(":/images/assistant-chat.svg")), tr("AI Assistant"), this);
-    m_actionAssistant->setObjectName(QStringLiteral("aiAssistantAction"));
-    extensionPanel->addSmallAction(m_actionAssistant);
-    extensionPanel->addSmallAction(m_actionPluginManager);
-    QAction* pythonConsoleAction = new QAction(
-        QIcon(QStringLiteral(":/images/python-console.svg")), tr("Python Console"), this);
-    pythonConsoleAction->setObjectName(QStringLiteral("pythonConsoleAction"));
-    pythonConsoleAction->setEnabled(false);
-    extensionPanel->addSmallAction(pythonConsoleAction);
-
     SARibbonPanel* outputPanel = projectPage->addPanel(tr("Output"));
     m_actionCaptureScreenshot = new QAction(
         QIcon(QStringLiteral(":/images/render-view.svg")), tr("Capture Screenshot"), this);
@@ -620,6 +642,17 @@ void IDOSMainWindow::initRibbonAction()
         QIcon(QStringLiteral(":/images/app-export.svg")), tr("Export Image"), this);
     m_actionExportImage->setObjectName(QStringLiteral("exportImageAction"));
     outputPanel->addSmallAction(m_actionExportImage);
+
+    SARibbonPanel* extensionPanel = projectPage->addPanel(tr("Extensions"));
+    m_actionAssistant = new QAction(
+        QIcon(QStringLiteral(":/images/assistant-chat.svg")), tr("AI Assistant"), this);
+    m_actionAssistant->setObjectName(QStringLiteral("aiAssistantAction"));
+    extensionPanel->addSmallAction(m_actionAssistant);
+    extensionPanel->addSmallAction(m_actionPluginManager);
+    m_actionPythonConsole = new QAction(
+        QIcon(QStringLiteral(":/images/python-console.svg")), tr("Python Console"), this);
+    m_actionPythonConsole->setObjectName(QStringLiteral("pythonConsoleAction"));
+    extensionPanel->addSmallAction(m_actionPythonConsole);
 
     connect(m_actionNewProject, &QAction::triggered,
             this, &IDOSMainWindow::onNewProject);
@@ -644,6 +677,8 @@ void IDOSMainWindow::initRibbonAction()
             this, &IDOSMainWindow::onExportImageTriggered);
     connect(m_actionAssistant, &QAction::triggered,
             this, &IDOSMainWindow::onAssistantTriggered);
+    connect(m_actionPythonConsole, &QAction::triggered,
+            this, &IDOSMainWindow::onPythonConsoleTriggered);
     connect(m_actionNew3DWindow, &QAction::triggered,
             this, &IDOSMainWindow::onNew3DWindowTriggered);
     connect(m_actionNew2DWindow, &QAction::triggered,
@@ -757,6 +792,8 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     m_renderServer->setProject(project);
     m_assistantWidget->setProject(project);
     m_treeServer->setProject(project);
+    m_dataTreeView->refreshCheckStates();
+    m_caseTreeView->refreshCheckStates();
     updateTreeSelection(activeViewId());
     if (project)
     {
@@ -855,10 +892,15 @@ void IDOSMainWindow::onViewPresetTriggered(QAction* action)
     {
         return;
     }
+    if (activeView()->isTwoDimensional() && action->property("threeDimensionalOnly").toBool())
+    {
+        return;
+    }
 
     const int presetValue = action->data().toInt();
     const IDOSOrientation orientation = static_cast<IDOSOrientation>(presetValue);
     activeView()->setOrientation(orientation);
+    updateViewPresetActions();
 }
 
 void IDOSMainWindow::onCurrentViewChanged(const QString& viewId)
@@ -870,7 +912,33 @@ void IDOSMainWindow::onCurrentViewChanged(const QString& viewId)
     m_actionBackgroundColor->setEnabled(hasActiveView);
     m_actionCaptureScreenshot->setEnabled(hasActiveView);
     m_actionExportImage->setEnabled(hasActiveView);
+    updateViewPresetActions();
     updateTreeSelection(viewId);
+}
+
+void IDOSMainWindow::updateViewPresetActions()
+{
+    if (m_actionViewPresets == nullptr || m_actionViewPresets->menu() == nullptr)
+    {
+        return;
+    }
+    IDOSRenderView* view = activeView();
+    QAction* action = nullptr;
+    for (QAction* preset : m_actionViewPresets->menu()->actions())
+    {
+        if (preset->isSeparator() || !preset->data().isValid())
+        {
+            continue;
+        }
+        const bool isSupportedByActiveView =
+            view != nullptr && (!view->isTwoDimensional()
+                                || !preset->property("threeDimensionalOnly").toBool());
+        preset->setEnabled(isSupportedByActiveView);
+        if (isSupportedByActiveView)
+        {
+            preset->setChecked(preset->data().toInt() == static_cast<int>(view->orientation()));
+        }
+    }
 }
 
 void IDOSMainWindow::onActiveViewContextObjectChanged(const QString& viewId,
@@ -935,9 +1003,10 @@ void IDOSMainWindow::onResetViewTriggered()
 
     if (activeView() != nullptr)
     {
-        activeView()->setOrientation(activeView()->parallelProjection()
-                                                     ? IDOSOrientation::Top
+        activeView()->setOrientation(activeView()->isTwoDimensional()
+                                                     ? activeView()->orientation()
                                                      : IDOSOrientation::Isometric);
+        updateViewPresetActions();
     }
 }
 
@@ -1025,6 +1094,18 @@ void IDOSMainWindow::onAssistantTriggered()
     m_dockManager->setDockWidgetFocused(m_assistantDock);
 }
 
+void IDOSMainWindow::onPythonConsoleTriggered()
+{
+    if (m_pythonConsoleDock == nullptr || m_dockManager == nullptr)
+    {
+        return;
+    }
+
+    m_pythonConsoleDock->toggleView(true);
+    m_dockManager->setDockWidgetFocused(m_pythonConsoleDock);
+    m_pythonConsoleWidget->setFocus();
+}
+
 void IDOSMainWindow::onNew3DWindowTriggered()
 {
     createRenderView(false);
@@ -1074,7 +1155,7 @@ void IDOSMainWindow::onRenderViewDockClosed()
     }
 }
 
-void IDOSMainWindow::createRenderView(bool parallelProjection)
+void IDOSMainWindow::createRenderView(bool twoDimensional)
 {
     if (m_dockManager == nullptr)
     {
@@ -1083,17 +1164,17 @@ void IDOSMainWindow::createRenderView(bool parallelProjection)
 
     const int viewIndex = m_nextViewIndex++;
     const QString viewId = QStringLiteral("view_%1").arg(viewIndex, 4, 10, QLatin1Char('0'));
-    QWidget* renderViewWidget = createView(viewId, parallelProjection);
+    QWidget* renderViewWidget = createView(viewId, twoDimensional);
     if (renderViewWidget == nullptr)
     {
         return;
     }
-    const QString viewTitle = parallelProjection
+    const QString viewTitle = twoDimensional
                                   ? tr("2D View") + QStringLiteral(" %1").arg(viewIndex)
                                   : tr("3D View") + QStringLiteral(" %1").arg(viewIndex);
     ads::CDockWidget* dock = new ads::CDockWidget(m_dockManager, viewTitle);
     dock->setObjectName(QStringLiteral("renderViewDock_%1").arg(viewIndex));
-    dock->setIcon(QIcon(parallelProjection
+    dock->setIcon(QIcon(twoDimensional
                             ? QStringLiteral(":/images/gui-case-views.svg")
                             : QStringLiteral(":/images/render-view.svg")));
     dock->setWidget(renderViewWidget);
@@ -1271,11 +1352,22 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
 {
     Q_UNUSED(previous)
 
+    if (m_syncingTreeSelection)
+    {
+        return;
+    }
+
     QString objectId;
+    IDOSDataObject* currentObject = nullptr;
     if (m_project != nullptr && current.isValid())
     {
         IDOSTreeItem* item = m_dataTreeModel->nodeFromIndex(current);
         objectId = item != nullptr ? item->dataId() : QString();
+        currentObject = m_dataTreeModel->objectFromIndex(current);
+    }
+    if (m_project != nullptr)
+    {
+        m_project->setCurrentObject(currentObject);
     }
 
     if (current.isValid() && objectId.isEmpty())
@@ -1294,9 +1386,37 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     }
 }
 
+void IDOSMainWindow::onDataTreeItemClicked(const QModelIndex& index)
+{
+    if (m_project == nullptr || m_syncingTreeSelection)
+    {
+        return;
+    }
+    m_project->setCurrentObject(m_dataTreeModel->objectFromIndex(index));
+}
+
+void IDOSMainWindow::onCaseTreeItemClicked(const QModelIndex& index)
+{
+    if (m_project == nullptr || m_syncingTreeSelection)
+    {
+        return;
+    }
+    m_project->setCurrentObject(m_caseTreeModel->objectFromIndex(index));
+}
+
 void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const QModelIndex& previous)
 {
     Q_UNUSED(previous)
+
+    if (m_syncingTreeSelection)
+    {
+        return;
+    }
+
+    if (m_project != nullptr)
+    {
+        m_project->setCurrentObject(m_caseTreeModel->objectFromIndex(current));
+    }
 
     const QString viewId = activeViewId();
     if (viewId.isEmpty())
@@ -1313,6 +1433,10 @@ void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const 
 void IDOSMainWindow::onRenderObjectActivated(const QString& viewId, const QString& objectId)
 {
     setActiveView(viewId);
+    if (m_project != nullptr)
+    {
+        m_project->setCurrentObject(m_project->object(objectId));
+    }
     const QModelIndex caseIndex = caseTreeIndexForContext(objectId, QString());
     const QString caseId = caseIdFromCaseTreeIndex(caseIndex);
     setViewTreeContext(viewId, objectId, caseId);
@@ -1334,8 +1458,10 @@ void IDOSMainWindow::updateTreeSelection(const QString& viewId)
                                       ? QModelIndex()
                                       : m_dataTreeModel->indexFromDataId(objectId);
     const QModelIndex caseIndex = caseTreeIndexForContext(objectId, caseId);
+    m_syncingTreeSelection = true;
     selectTreeIndex(m_dataTreeView, dataIndex);
     selectTreeIndex(m_caseTreeView, caseIndex);
+    m_syncingTreeSelection = false;
 }
 
 void IDOSMainWindow::setViewTreeContext(const QString& viewId,
@@ -1547,7 +1673,7 @@ QString IDOSMainWindow::activeViewId() const
     return m_activeViewId;
 }
 
-IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool parallel)
+IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool twoDimensional)
 {
     if (id.isEmpty() || m_views.contains(id))
     {
@@ -1561,8 +1687,8 @@ IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool parallel)
     connect(view, &IDOSRenderView::activated, this, &IDOSMainWindow::onRenderViewActivated);
     connect(view, &QObject::destroyed, this, &IDOSMainWindow::onRenderViewDestroyed);
     m_renderServer->addView(view);
-    view->setParallelProjection(parallel);
-    view->setOrientation(parallel ? IDOSOrientation::Top : IDOSOrientation::Isometric);
+    view->setTwoDimensional(twoDimensional);
+    view->setOrientation(twoDimensional ? IDOSOrientation::Top : IDOSOrientation::Isometric);
     if (m_activeViewId.isEmpty())
     {
         setActiveView(id);
@@ -1610,6 +1736,14 @@ void IDOSMainWindow::setActiveView(const QString& id)
         }
     }
     activeView()->setSelection(m_renderServer->objectIds(activeView(), viewContextId()));
+    if (m_dataTreeView != nullptr)
+    {
+        m_dataTreeView->setTargetView(activeView());
+    }
+    if (m_caseTreeView != nullptr)
+    {
+        m_caseTreeView->setTargetView(activeView());
+    }
     if (m_actionViewPresets != nullptr)
     {
         onCurrentViewChanged(id);

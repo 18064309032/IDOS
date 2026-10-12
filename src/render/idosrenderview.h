@@ -27,6 +27,8 @@ class QVTKOpenGLNativeWidget;
 class vtkActor;
 class vtkAxesActor;
 class vtkGenericOpenGLRenderWindow;
+class vtkInteractorStyleImage;
+class vtkInteractorStyleTrackballCamera;
 class vtkOrientationMarkerWidget;
 class vtkRenderer;
 class vtkProp;
@@ -53,8 +55,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void fit(const QList<QString>& ids);
     void render();
     void resetCamera();
-    void setParallelProjection(bool enabled);
-    bool parallelProjection() const;
+    void setTwoDimensional(bool enabled);
+    bool isTwoDimensional() const;
+    IDOSOrientation orientation() const;
     QColor background() const;
     void setBackground(const QColor& color);
     void setActive(bool active);
@@ -101,6 +104,8 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QPropertyAnimation* m_flashAnimation;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> m_renderWindow;
     vtkSmartPointer<vtkRenderer> m_renderer;
+    vtkSmartPointer<vtkInteractorStyleImage> m_twoDInteractorStyle;
+    vtkSmartPointer<vtkInteractorStyleTrackballCamera> m_threeDInteractorStyle;
     vtkSmartPointer<vtkAxesActor> m_axesActor;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
@@ -110,6 +115,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QHash<vtkActor*, QString> m_actorObjectIds;
     QPoint m_pressedPosition;
     QList<QString> m_selection;
+    IDOSOrientation m_orientation;
     bool m_active;
     bool m_legendVisible;
     QList<vtkProp*> m_legends;

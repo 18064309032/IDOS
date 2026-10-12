@@ -117,8 +117,7 @@ void IDOSGridRenderGuiProvider::onDisplayMode()
 
 void IDOSGridRenderGuiProvider::onObjectsChanged(IDOSRenderView* view, const QStringList& ids, bool dataChanged)
 {
-    IDOSProject* project = m_server != nullptr ? m_server->project() : nullptr;
-    if (project == nullptr || view == nullptr)
+    if (m_server == nullptr || m_server->project() == nullptr || view == nullptr)
     {
         return;
     }
@@ -129,24 +128,10 @@ void IDOSGridRenderGuiProvider::onObjectsChanged(IDOSRenderView* view, const QSt
         {
             continue;
         }
-        IDOSGridProperty* visible = nullptr;
-        for (IDOSDataObject* data : project->objects())
+        IDOSGridProperty* selectedProperty = provider->property();
+        if (dataChanged && selectedProperty != nullptr && ids.contains(selectedProperty->objectId()))
         {
-            IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(data);
-            if (property != nullptr && property->isVisible() && property->gridId() == provider->dataSource()->objectId())
-            {
-                visible = property;
-                break;
-            }
-        }
-        if (provider->property() != visible)
-        {
-            provider->setProperty(visible);
-            view->scene()->notifyChanged(object->id());
-        }
-        else if (dataChanged && visible != nullptr && ids.contains(visible->objectId()))
-        {
-            object->update();
+            provider->setProperty(selectedProperty);
             view->scene()->notifyChanged(object->id());
         }
     }

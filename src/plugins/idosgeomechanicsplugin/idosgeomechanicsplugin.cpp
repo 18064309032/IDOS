@@ -160,7 +160,8 @@ extern "C" IDOS_PLUGIN_EXPORT IDOSPlugin* classFactory(IDOSInterface* interface)
     return new IDOSGeomechanicsPlugin(interface);
 }
 
-bool IDOSGeomechanicsPlugin::canUnload() const
+bool IDOSGeomechanicsPlugin::canUnload(QString& reason) const
 {
+    reason.clear();
     return true;
 }

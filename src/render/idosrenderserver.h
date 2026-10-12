@@ -44,8 +44,6 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     void onObjectsRemoved(const QStringList& ids);
     void onObjectsChanged(const QStringList& ids);
     void onObjectAboutToBeRemoved(const QString& id);
-    void onObjectVisibilityChanged(const QString& id, bool visible);
-    void onObjectsVisibilityChanged(const QStringList& ids);
 
   private:
     void reload();

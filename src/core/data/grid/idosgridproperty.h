@@ -1,6 +1,8 @@
 #ifndef IDOS_GRID_PROPERTY_H
 #define IDOS_GRID_PROPERTY_H
 
+#include <QList>
+#include <QMap>
 #include <QVector>
 
 #include "idos_core.h"
@@ -69,6 +71,12 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     /** 属性值数组（Eclipse natural order，长度 nx*ny*nz）。 */
     const QVector<double>& values() const;
 
+    /** Report steps stored for a dynamic result property. */
+    QList<int> reportSteps() const;
+    int currentReportStep() const;
+    bool setReportStepValues(int reportStep, const QVector<double>& values);
+    bool setCurrentReportStep(int reportStep);
+
     /**
      * @brief 一次性设置属性数组（导入时调用）。
      * @return true 成功；false 尺寸与维度不符，未写入。
@@ -99,6 +107,8 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     int m_ny;
     int m_nz;
     QVector<double> m_values; // nx*ny*nz，natural order
+    QMap<int, QVector<double>> m_reportStepValues;
+    int m_currentReportStep;
 };
 
 #endif // IDOS_GRID_PROPERTY_H

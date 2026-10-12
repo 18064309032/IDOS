@@ -17,6 +17,8 @@ class IDOSPointSetTreeGuiProvider : public IDOSTreeGuiProvider
     QString name() const override;
     bool supports(const IDOSTreeItem* item) const override;
     void populateMenu(QMenu* menu, IDOSTreeView* view) override;
+    bool isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const override;
+    bool setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view) override;
 
   private slots:
     void onCreatePointSet();

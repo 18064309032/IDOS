@@ -138,11 +138,14 @@ void IDOSGridRenderProvider::update()
         scalarBar->SetLookupTable(mapper->GetLookupTable());
         scalarBar->SetTitle(m_property->name().toUtf8().constData());
         scalarBar->SetNumberOfLabels(5);
-        scalarBar->SetPosition(0.85, 0.15);
-        scalarBar->SetWidth(0.12);
-        scalarBar->SetHeight(0.7);
+        scalarBar->SetPosition(0.92, 0.32);
+        scalarBar->SetWidth(0.05);
+        scalarBar->SetHeight(0.36);
+        scalarBar->SetUnconstrainedFontSize(true);
         scalarBar->GetTitleTextProperty()->SetColor(1.0, 1.0, 1.0);
+        scalarBar->GetTitleTextProperty()->SetFontSize(18);
         scalarBar->GetLabelTextProperty()->SetColor(1.0, 1.0, 1.0);
+        scalarBar->GetLabelTextProperty()->SetFontSize(14);
         m_legends.append(scalarBar);
     }
 #endif

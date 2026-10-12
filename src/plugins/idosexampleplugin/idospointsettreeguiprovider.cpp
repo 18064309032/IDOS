@@ -6,7 +6,12 @@
 
 #include "command/idoscommandmanager.h"
 #include "idosdataobject.h"
+#include "idospointset.h"
 #include "idosproject.h"
+#include "idosrenderobject.h"
+#include "idosrenderprovider.h"
+#include "idosrenderscene.h"
+#include "idosrenderview.h"
 #include "idostree.h"
 #include "idostreeitem.h"
 #include "idostreeview.h"
@@ -35,6 +40,64 @@ bool IDOSPointSetTreeGuiProvider::supports(const IDOSTreeItem* item) const
     IDOSProject* project = item->tree() != nullptr ? item->tree()->project() : nullptr;
     IDOSDataObject* data = project != nullptr ? project->object(item->dataId()) : nullptr;
     return data != nullptr && data->typeId() == name();
+}
+
+bool IDOSPointSetTreeGuiProvider::isChecked(const IDOSTreeItem* item,
+                                            const IDOSTreeView* view) const
+{
+    IDOSRenderView* renderView = view != nullptr
+                                     ? qobject_cast<IDOSRenderView*>(view->targetView())
+                                     : nullptr;
+    IDOSPointSet* pointSet = item != nullptr && item->tree() != nullptr &&
+                                     item->tree()->project() != nullptr
+                                 ? qobject_cast<IDOSPointSet*>(
+                                       item->tree()->project()->object(item->dataId()))
+                                 : nullptr;
+    if (renderView == nullptr || pointSet == nullptr)
+    {
+        return false;
+    }
+    for (IDOSRenderObject* object : renderView->scene()->objects())
+    {
+        if (object->provider()->dataSource() == pointSet)
+        {
+            return object->visible();
+        }
+    }
+    return false;
+}
+
+bool IDOSPointSetTreeGuiProvider::setChecked(IDOSTreeItem* item,
+                                             bool checked,
+                                             IDOSTreeView* view)
+{
+    IDOSRenderView* renderView = view != nullptr
+                                     ? qobject_cast<IDOSRenderView*>(view->targetView())
+                                     : nullptr;
+    IDOSPointSet* pointSet = item != nullptr && item->tree() != nullptr &&
+                                     item->tree()->project() != nullptr
+                                 ? qobject_cast<IDOSPointSet*>(
+                                       item->tree()->project()->object(item->dataId()))
+                                 : nullptr;
+    if (renderView == nullptr || pointSet == nullptr)
+    {
+        return false;
+    }
+    for (IDOSRenderObject* object : renderView->scene()->objects())
+    {
+        if (object->provider()->dataSource() == pointSet)
+        {
+            object->setVisible(checked);
+            renderView->scene()->notifyChanged(object->id());
+            if (checked)
+            {
+                renderView->resetCamera();
+            }
+            emit checkStateChanged();
+            return true;
+        }
+    }
+    return false;
 }
 
 void IDOSPointSetTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)

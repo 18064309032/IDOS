@@ -29,7 +29,7 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
     ~IDOSExamplePlugin() override;
     void initGui() override;
     void unload() override;
-    bool canUnload() const override;
+    bool canUnload(QString& reason) const override;
     static IDOSPlugin* create(IDOSInterface* interface);
     static const QString* pluginName();
     static const QString* pluginDescription();

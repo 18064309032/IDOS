@@ -24,6 +24,10 @@
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
+#include "idosrenderobject.h"
+#include "idosrenderprovider.h"
+#include "idosrenderscene.h"
+#include "idosrenderview.h"
 #include "idossimulationcaseobject.h"
 #include "idostree.h"
 #include "idostreeitem.h"
@@ -69,6 +73,60 @@ bool IDOSWellTreeGuiProvider::supports(const IDOSTreeItem* item) const
     }
     return item->tree() != nullptr && item->tree()->project() != nullptr &&
            qobject_cast<IDOSWell*>(item->tree()->project()->object(item->dataId())) != nullptr;
+}
+
+bool IDOSWellTreeGuiProvider::isChecked(const IDOSTreeItem* item,
+                                       const IDOSTreeView* treeView) const
+{
+    IDOSRenderView* view = treeView != nullptr ? qobject_cast<IDOSRenderView*>(treeView->targetView()) : nullptr;
+    if (item == nullptr || item->tree() == nullptr || item->tree()->project() == nullptr || view == nullptr)
+    {
+        return false;
+    }
+    IDOSWell* well = qobject_cast<IDOSWell*>(item->tree()->project()->object(item->dataId()));
+    if (well == nullptr)
+    {
+        return false;
+    }
+    for (IDOSRenderObject* object : view->scene()->objects())
+    {
+        if (object->provider()->dataSource() == well)
+        {
+            return object->visible();
+        }
+    }
+    return false;
+}
+
+bool IDOSWellTreeGuiProvider::setChecked(IDOSTreeItem* item,
+                                         bool checked,
+                                         IDOSTreeView* treeView)
+{
+    IDOSRenderView* view = treeView != nullptr ? qobject_cast<IDOSRenderView*>(treeView->targetView()) : nullptr;
+    if (item == nullptr || item->tree() == nullptr || item->tree()->project() == nullptr || view == nullptr)
+    {
+        return false;
+    }
+    IDOSWell* well = qobject_cast<IDOSWell*>(item->tree()->project()->object(item->dataId()));
+    if (well == nullptr)
+    {
+        return false;
+    }
+    for (IDOSRenderObject* object : view->scene()->objects())
+    {
+        if (object->provider()->dataSource() == well)
+        {
+            object->setVisible(checked);
+            view->scene()->notifyChanged(object->id());
+            if (checked)
+            {
+                view->resetCamera();
+            }
+            emit checkStateChanged();
+            return true;
+        }
+    }
+    return false;
 }
 
 void IDOSWellTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)

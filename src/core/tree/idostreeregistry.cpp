@@ -1,6 +1,9 @@
 #include "idostreeitem.h"
 #include "idostreemetadata.h"
 
+#include "idosdatametadata.h"
+#include "idosdataregistry.h"
+
 #include "idostreeregistry.h"
 
 IDOSTreeRegistry::IDOSTreeRegistry(QObject* parent)
@@ -71,6 +74,24 @@ QList<const IDOSTreeMetadata*> IDOSTreeRegistry::metadata() const
     for (const IDOSTreeMetadata* value : m_metadata)
     {
         result.append(value);
+    }
+    return result;
+}
+
+QList<const IDOSDataMetadata*> IDOSTreeRegistry::dataMetadata(const IDOSDataRegistry* dataRegistry) const
+{
+    QList<const IDOSDataMetadata*> result;
+    if (dataRegistry == nullptr)
+    {
+        return result;
+    }
+    for (const IDOSTreeMetadata* treeMetadata : m_metadata)
+    {
+        const IDOSDataMetadata* dataValue = dataRegistry->metadata(treeMetadata->typeId());
+        if (dataValue != nullptr)
+        {
+            result.append(dataValue);
+        }
     }
     return result;
 }

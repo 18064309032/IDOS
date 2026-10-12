@@ -283,6 +283,8 @@ void IDOSPluginManagerWidget::updatePluginDetails(const QModelIndex& proxyIndex)
     const QString status =
         m_pluginModel->data(m_pluginModel->index(sourceIndex.row(), 1), Qt::DisplayRole)
             .toString();
+    const bool pluginLoaded =
+        m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginLoadedRole).toBool();
     const QString description =
         m_pluginModel->data(sourceIndex, IDOSPluginListModel::PluginDescriptionRole).toString();
     const QString errorMessage =
@@ -312,7 +314,9 @@ void IDOSPluginManagerWidget::updatePluginDetails(const QModelIndex& proxyIndex)
                                                       : description);
     m_errorLabel->setText(errorMessage.isEmpty()
                               ? QString()
-                              : tr("Plugin failed to load. See the application log for details."));
+                              : pluginLoaded
+                                  ? tr("Plugin is still loaded: %1").arg(errorMessage)
+                                  : tr("Plugin failed to load: %1").arg(errorMessage));
     m_errorLabel->setToolTip(errorMessage);
     m_errorLabel->setVisible(!errorMessage.isEmpty());
 }

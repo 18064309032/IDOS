@@ -22,6 +22,7 @@ add_dependencies(idos
     idosfracturemodelingplugin
     idosmultiscalefractureplugin
     idosgeomechanicsplugin
+    idosexampleplugin
 )
 
 if(WIN32)

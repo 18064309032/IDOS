@@ -20,8 +20,9 @@ bool IDOSTreeGuiProvider::isCheckable(const IDOSTreeItem* item) const
     return item != nullptr && item->isCheckable();
 }
 
-bool IDOSTreeGuiProvider::isChecked(const IDOSTreeItem* item) const
+bool IDOSTreeGuiProvider::isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const
 {
+    Q_UNUSED(view);
     if (item != nullptr && item->tree() != nullptr && item->tree()->project() != nullptr)
     {
         IDOSDataObject* data = item->tree()->project()->object(item->dataId());
@@ -33,8 +34,9 @@ bool IDOSTreeGuiProvider::isChecked(const IDOSTreeItem* item) const
     return item != nullptr && item->isChecked();
 }
 
-bool IDOSTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked)
+bool IDOSTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view)
 {
+    Q_UNUSED(view);
     if (item == nullptr || item->tree() == nullptr || item->tree()->project() == nullptr)
     {
         return false;
@@ -46,5 +48,6 @@ bool IDOSTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked)
     }
     data->setVisible(checked);
     item->setChecked(checked);
+    emit checkStateChanged();
     return true;
 }

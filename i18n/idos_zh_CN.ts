@@ -117,20 +117,8 @@
   <context>
     <name>IDOSAssistantWidget</name>
     <message>
-      <source>Start</source>
-      <translation>启动</translation>
-    </message>
-    <message>
-      <source>Stop</source>
-      <translation>停止</translation>
-    </message>
-    <message>
       <source>Send</source>
       <translation>发送</translation>
-    </message>
-    <message>
-      <source>Stopped</source>
-      <translation>已停止</translation>
     </message>
     <message>
       <source>Starting</source>
@@ -141,12 +129,32 @@
       <translation>就绪</translation>
     </message>
     <message>
+      <source>Stopped</source>
+      <translation>未启动</translation>
+    </message>
+    <message>
+      <source>AI assistant started successfully.</source>
+      <translation>AI 助手已启动。</translation>
+    </message>
+    <message>
+      <source>AI assistant failed to start: %1</source>
+      <translation>AI 助手启动失败：%1</translation>
+    </message>
+    <message>
+      <source>AI assistant encountered an error: %1</source>
+      <translation>AI 助手运行出错：%1</translation>
+    </message>
+    <message>
       <source>Error</source>
       <translation>错误</translation>
     </message>
     <message>
-      <source>Enter a message</source>
-      <translation>请输入消息</translation>
+      <source>AI assistant is starting. Your message will be sent when it is ready.</source>
+      <translation>AI 助手正在启动，就绪后将发送你的消息。</translation>
+    </message>
+    <message>
+      <source>Enter a message (Shift+Enter for a new line, Enter to send)</source>
+      <translation>输入消息（Shift+Enter 换行，Enter 发送）</translation>
     </message>
     <message>
       <source>You</source>
@@ -423,6 +431,22 @@
   </context>
   <context>
     <name>IDOSGridTreeGuiProvider</name>
+    <message>
+      <source>Import Dynamic Properties...</source>
+      <translation>导入动态属性…</translation>
+    </message>
+    <message>
+      <source>Import Dynamic Properties</source>
+      <translation>导入动态属性</translation>
+    </message>
+    <message>
+      <source>Unified Eclipse restart files (*.UNRST *.unrst)</source>
+      <translation>Eclipse 统一重启文件 (*.UNRST *.unrst)</translation>
+    </message>
+    <message>
+      <source>Imported %1 dynamic properties across %2 report steps (%3–%4).</source>
+      <translation>已导入 %1 个动态属性，覆盖 %2 个报告步（%3–%4）。</translation>
+    </message>
     <message>
       <source>Import Property...</source>
       <translation>导入属性…</translation>
@@ -883,6 +907,29 @@ It will be removed from all cases that reference it.</source>
     </message>
   </context>
   <context>
+    <name>IDOSPythonConsoleWidget</name>
+    <message>
+      <source>Python output will appear here.</source>
+      <translation>Python 输出将在此处显示。</translation>
+    </message>
+    <message>
+      <source>Enter Python code here.</source>
+      <translation>在此输入 Python 代码。</translation>
+    </message>
+    <message>
+      <source>Run</source>
+      <translation>运行</translation>
+    </message>
+    <message>
+      <source>Clear Output</source>
+      <translation>清空输出</translation>
+    </message>
+    <message>
+      <source>Python runtime is not connected.</source>
+      <translation>Python 运行环境尚未接入。</translation>
+    </message>
+  </context>
+  <context>
     <name>IDOSMultiscaleFracturePlugin</name>
     <message>
       <source>Multiscale Fractures</source>
@@ -1110,8 +1157,12 @@ It will be removed from all cases that reference it.</source>
       <translation>暂无描述。</translation>
     </message>
     <message>
-      <source>Plugin failed to load. See the application log for details.</source>
-      <translation>插件加载失败，详细信息请查看应用程序日志。</translation>
+      <source>Plugin is still loaded: %1</source>
+      <translation>插件仍处于加载状态：%1</translation>
+    </message>
+    <message>
+      <source>Plugin failed to load: %1</source>
+      <translation>插件加载失败：%1</translation>
     </message>
     <message>
       <source>Manage and inspect plugins installed in this application.</source>
@@ -1273,6 +1324,10 @@ It will be removed from all cases that reference it.</source>
       <translation>插件实例已销毁：标识=%1，动态库=0x%2</translation>
     </message>
     <message>
+      <source>Plugin %1 could not be unloaded: %2</source>
+      <translation>插件 %1 无法卸载：%2</translation>
+    </message>
+    <message>
       <source>Plugin library unloaded: key=%1, library=0x%2</source>
       <translation>插件动态库已卸载：标识=%1，动态库=0x%2</translation>
     </message>
@@ -1305,8 +1360,8 @@ It will be removed from all cases that reference it.</source>
       <translation>插件对象已销毁：实例=0x%1</translation>
     </message>
     <message>
-      <source>The plugin still owns data or commands. Clear them before unloading.</source>
-      <translation>插件仍有数据或命令存活，请清除后再卸载。</translation>
+      <source>The plugin cannot be unloaded in its current state.</source>
+      <translation>插件当前状态不允许卸载。</translation>
     </message>
   </context>
   <context>
@@ -2208,5 +2263,54 @@ It will be removed from all cases that reference it.</source>
       <source>Point %1: (%2, %3, %4)</source>
       <translation>点 %1：(%2, %3, %4)</translation>
     </message>
-  </context>
+  <message>
+        <source>Import simulation results</source>
+        <translation>导入模拟结果</translation>
+    </message>
+    <message>
+        <source>The restart file is unavailable or unreadable.</source>
+        <translation>重启文件不存在或不可读。</translation>
+    </message>
+    <message>
+        <source>Select a unified Eclipse restart file (.UNRST).</source>
+        <translation>请选择 Eclipse 统一重启文件（.UNRST）。</translation>
+    </message>
+    <message>
+        <source>A result property is unavailable or already attached.</source>
+        <translation>结果属性不可用或已添加到工程。</translation>
+    </message>
+    <message>
+        <source>A result property is no longer available in the project.</source>
+        <translation>工程中的结果属性已不可用。</translation>
+    </message>
+    <message>
+        <source>A result property could not be detached from the project.</source>
+        <translation>无法从工程中移除结果属性。</translation>
+    </message>
+    <message>
+        <source>The target grid has no valid dimensions.</source>
+        <translation>目标网格尺寸无效。</translation>
+    </message>
+    <message>
+        <source>The restart file contains no report steps.</source>
+        <translation>重启文件不包含报告步。</translation>
+    </message>
+    <message>
+        <source>Result property %1 already exists. Remove it before importing again.</source>
+        <translation>结果属性 %1 已存在，请先删除后再导入。</translation>
+    </message>
+    <message>
+        <source>Unable to store report step %1 for property %2.</source>
+        <translation>无法保存属性 %2 的报告步 %1。</translation>
+    </message>
+    <message>
+        <source>No supported cell properties were found in the restart file.</source>
+        <translation>重启文件中没有找到受支持的单元属性。</translation>
+    </message>
+    <message>
+        <source>Unable to read the restart file: %1</source>
+        <translation>无法读取重启文件：%1</translation>
+    </message>
+    </context>
+
 </TS>

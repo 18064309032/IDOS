@@ -11,6 +11,8 @@ add_library(idos_gui SHARED
     idosdebuginfowidget.cpp
     idosruntimeinfowidget.h
     idosruntimeinfowidget.cpp
+    idospythonconsolewidget.h
+    idospythonconsolewidget.cpp
     idosnewprojectdialog.h
     idosnewprojectdialog.cpp
 )

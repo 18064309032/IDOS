@@ -19,7 +19,7 @@ class IDOSFractureModelingPlugin : public QObject, public IDOSPlugin
 
     void initGui() override;
     void unload() override;
-    bool canUnload() const override;
+    bool canUnload(QString& reason) const override;
 
   private:
     void uninstallTranslator();

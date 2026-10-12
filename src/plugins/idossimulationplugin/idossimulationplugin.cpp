@@ -1,16 +1,38 @@
 #include <QAction>
 #include <QApplication>
-#include <QCoreApplication>
 #include <QIcon>
+#include <QJsonObject>
 #include <QLocale>
+#include <QMessageBox>
 #include <QObject>
 #include <QString>
 #include <QTranslator>
+#include <QVariantList>
+#include <QVariantMap>
+#include <QWidget>
 
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
 #include "idosinterface.h"
+#include "idosproject.h"
+#include "idossimulationcaseobject.h"
+
+#include "idossimulationcaseinventoryreportwidget.h"
+#include "idossimulationcasetablewidget.h"
+#include "idossimulationcurvecomparisonwidget.h"
+#include "idossimulationdatagenerationwidget.h"
+#include "idossimulationdeckbrowserwidget.h"
+#include "idossimulationinitializewidget.h"
+#include "idossimulationparsesummarywidget.h"
+#include "idossimulationpreflightwidget.h"
+#include "idossimulationpropertycurvewidget.h"
+#include "idossimulationresultfileswidget.h"
+#include "idossimulationresultplaybackwidget.h"
+#include "idossimulationrunarchivewidget.h"
+#include "idossimulationrunstatuswidget.h"
+#include "idossimulationwellcontrolswidget.h"
+#include "idossimulationworkflowwidget.h"
 
 #include "idossimulationplugin.h"
 
@@ -26,8 +48,38 @@ IDOSSimulationPlugin::IDOSSimulationPlugin(IDOSInterface* interface)
     QObject(nullptr)
     , IDOSPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginIcon, sPluginType)
     , m_interface(interface)
+    , m_project(nullptr)
     , m_category(nullptr)
     , m_translator(nullptr)
+    , m_parseSummaryAction(nullptr)
+    , m_generateDataAction(nullptr)
+    , m_deckBrowserAction(nullptr)
+    , m_caseTableAction(nullptr)
+    , m_propertyCurvesAction(nullptr)
+    , m_curveComparisonAction(nullptr)
+    , m_wellControlsAction(nullptr)
+    , m_runPreflightAction(nullptr)
+    , m_initializeAction(nullptr)
+    , m_runStatusAction(nullptr)
+    , m_resultFilesAction(nullptr)
+    , m_runArchiveAction(nullptr)
+    , m_caseInventoryReportAction(nullptr)
+    , m_workflowAction(nullptr)
+    , m_caseTableWidget(nullptr)
+    , m_parseSummaryWidget(nullptr)
+    , m_generateDataWidget(nullptr)
+    , m_deckBrowserWidget(nullptr)
+    , m_propertyCurvesWidget(nullptr)
+    , m_curveComparisonWidget(nullptr)
+    , m_wellControlsWidget(nullptr)
+    , m_runPreflightWidget(nullptr)
+    , m_initializeWidget(nullptr)
+    , m_runStatusWidget(nullptr)
+    , m_resultFilesWidget(nullptr)
+    , m_resultPlaybackWidget(nullptr)
+    , m_runArchiveWidget(nullptr)
+    , m_caseInventoryReportWidget(nullptr)
+    , m_workflowWidget(nullptr)
     , m_initialized(false)
 {
 }
@@ -56,6 +108,12 @@ void IDOSSimulationPlugin::initGui()
         return;
     }
 
+    connect(m_interface,
+            &IDOSInterface::projectChanged,
+            this,
+            &IDOSSimulationPlugin::onProjectChanged,
+            Qt::UniqueConnection);
+
     m_translator = new QTranslator(this);
     const QString translationPath = qApp->applicationDirPath()
         + QStringLiteral("/i18n/idossimulationplugin_") + QLocale().name()
@@ -72,75 +130,99 @@ void IDOSSimulationPlugin::initGui()
         1);
     if (m_category != nullptr)
     {
-        SARibbonPanel* casePanel = m_category->addPanel(tr("Case"));
-        QAction* newCaseAction = new QAction(tr("New Case"), m_category);
-        newCaseAction->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
-        newCaseAction->setEnabled(false);
-        newCaseAction->setToolTip(tr("Planned action; not implemented yet."));
-        casePanel->addLargeAction(newCaseAction);
-
-        QAction* importDataAction = new QAction(tr("Import DATA"), m_category);
-        importDataAction->setIcon(QIcon(QStringLiteral(":/images/app-import.svg")));
-        importDataAction->setEnabled(false);
-        importDataAction->setToolTip(tr("Planned action; not implemented yet."));
-        casePanel->addLargeAction(importDataAction);
-
         SARibbonPanel* inputPanel = m_category->addPanel(tr("Input"));
-        QAction* deckBrowserAction = new QAction(tr("Deck Browser"), m_category);
-        deckBrowserAction->setIcon(QIcon(QStringLiteral(":/images/simulation-deck.svg")));
-        deckBrowserAction->setEnabled(false);
-        deckBrowserAction->setToolTip(tr("Planned action; not implemented yet."));
-        inputPanel->addLargeAction(deckBrowserAction);
+        m_deckBrowserAction = new QAction(tr("Deck Browser"), m_category);
+        m_deckBrowserAction->setObjectName(QStringLiteral("simulationDeckBrowserAction"));
+        m_deckBrowserAction->setIcon(QIcon(QStringLiteral(":/images/simulation-deck.svg")));
+        m_deckBrowserAction->setToolTip(tr("Browse parsed keywords in the selected DATA file."));
+        inputPanel->addLargeAction(m_deckBrowserAction);
+        connect(m_deckBrowserAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onDeckBrowserTriggered);
 
         QAction* parseSummaryAction = new QAction(tr("Parse Summary"), m_category);
+        m_parseSummaryAction = parseSummaryAction;
+        m_parseSummaryAction->setObjectName(QStringLiteral("simulationParseSummaryAction"));
         parseSummaryAction->setIcon(QIcon(QStringLiteral(":/images/analysis-chart.svg")));
-        parseSummaryAction->setEnabled(false);
-        parseSummaryAction->setToolTip(tr("Planned action; not implemented yet."));
+        parseSummaryAction->setToolTip(tr("Show the DATA parse summary saved when the case was imported."));
         inputPanel->addLargeAction(parseSummaryAction);
+        connect(m_parseSummaryAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onParseSummaryTriggered);
 
-        QAction* generateDataAction = new QAction(tr("Generate DATA"), m_category);
-        generateDataAction->setIcon(QIcon(QStringLiteral(":/images/app-export.svg")));
-        generateDataAction->setEnabled(false);
-        generateDataAction->setToolTip(tr("Planned action; not implemented yet."));
-        inputPanel->addLargeAction(generateDataAction);
+        m_generateDataAction = new QAction(tr("Generate DATA"), m_category);
+        m_generateDataAction->setObjectName(QStringLiteral("simulationGenerateDataAction"));
+        m_generateDataAction->setIcon(QIcon(QStringLiteral(":/images/app-export.svg")));
+        m_generateDataAction->setToolTip(tr("Edit the source DATA text and export it with indexed input files."));
+        inputPanel->addLargeAction(m_generateDataAction);
+        connect(m_generateDataAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onGenerateDataTriggered);
 
         SARibbonPanel* viewPanel = m_category->addPanel(tr("View"));
-        QAction* tableAction = new QAction(tr("Table"), m_category);
-        tableAction->setIcon(QIcon(QStringLiteral(":/images/gui-case-views.svg")));
-        tableAction->setEnabled(false);
-        tableAction->setToolTip(tr("Planned action; not implemented yet."));
-        viewPanel->addLargeAction(tableAction);
+        m_caseTableAction = new QAction(tr("Table"), m_category);
+        m_caseTableAction->setObjectName(QStringLiteral("simulationCaseTableAction"));
+        m_caseTableAction->setIcon(QIcon(QStringLiteral(":/images/gui-case-views.svg")));
+        m_caseTableAction->setToolTip(tr("Show a structured overview of the selected simulation case."));
+        viewPanel->addLargeAction(m_caseTableAction);
+        connect(m_caseTableAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onCaseTableTriggered);
 
-        QAction* propertyCurvesAction = new QAction(tr("Property Curves"), m_category);
-        propertyCurvesAction->setIcon(QIcon(QStringLiteral(":/images/analysis-curve.svg")));
-        propertyCurvesAction->setEnabled(false);
-        propertyCurvesAction->setToolTip(tr("Planned action; not implemented yet."));
-        viewPanel->addLargeAction(propertyCurvesAction);
+        m_propertyCurvesAction = new QAction(tr("Property Curves"), m_category);
+        m_propertyCurvesAction->setObjectName(QStringLiteral("simulationPropertyCurvesAction"));
+        m_propertyCurvesAction->setIcon(QIcon(QStringLiteral(":/images/analysis-curve.svg")));
+        m_propertyCurvesAction->setToolTip(tr("Plot relative permeability curves for the selected simulation case."));
+        viewPanel->addLargeAction(m_propertyCurvesAction);
+        connect(m_propertyCurvesAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onPropertyCurvesTriggered);
 
-        QAction* wellControlsAction = new QAction(tr("Well Controls"), m_category);
-        wellControlsAction->setIcon(QIcon(QStringLiteral(":/images/simulation-well-controls.svg")));
-        wellControlsAction->setEnabled(false);
-        wellControlsAction->setToolTip(tr("Planned action; not implemented yet."));
-        viewPanel->addLargeAction(wellControlsAction);
+        m_wellControlsAction = new QAction(tr("Well Controls"), m_category);
+        m_wellControlsAction->setObjectName(QStringLiteral("simulationWellControlsAction"));
+        m_wellControlsAction->setIcon(QIcon(QStringLiteral(":/images/simulation-well-controls.svg")));
+        m_wellControlsAction->setToolTip(tr("Show schedule well controls for the selected simulation case."));
+        viewPanel->addLargeAction(m_wellControlsAction);
+        connect(m_wellControlsAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onWellControlsTriggered);
 
         SARibbonPanel* runPanel = m_category->addPanel(tr("Run"));
-        QAction* runPreflightAction = new QAction(tr("Run Preflight"), m_category);
-        runPreflightAction->setIcon(QIcon(QStringLiteral(":/images/simulation-preflight.svg")));
-        runPreflightAction->setEnabled(false);
-        runPreflightAction->setToolTip(tr("Planned action; not implemented yet."));
-        runPanel->addLargeAction(runPreflightAction);
+        m_runPreflightAction = new QAction(tr("Run Preflight"), m_category);
+        m_runPreflightAction->setObjectName(QStringLiteral("simulationRunPreflightAction"));
+        m_runPreflightAction->setIcon(QIcon(QStringLiteral(":/images/simulation-preflight.svg")));
+        m_runPreflightAction->setToolTip(tr("Check the selected case before starting a simulation run."));
+        runPanel->addLargeAction(m_runPreflightAction);
+        connect(m_runPreflightAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onRunPreflightTriggered);
 
-        QAction* initializeAction = new QAction(tr("Initialize"), m_category);
-        initializeAction->setIcon(QIcon(QStringLiteral(":/images/simulation-initialize.svg")));
-        initializeAction->setEnabled(false);
-        initializeAction->setToolTip(tr("Planned action; not implemented yet."));
-        runPanel->addLargeAction(initializeAction);
+        m_initializeAction = new QAction(tr("Initialize"), m_category);
+        m_initializeAction->setObjectName(QStringLiteral("simulationInitializeAction"));
+        m_initializeAction->setIcon(QIcon(QStringLiteral(":/images/simulation-initialize.svg")));
+        m_initializeAction->setToolTip(tr("Prepare and validate an isolated run directory after Run Preflight."));
+        runPanel->addLargeAction(m_initializeAction);
+        connect(m_initializeAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onInitializeTriggered);
 
-        QAction* runStatusAction = new QAction(tr("Run Status"), m_category);
-        runStatusAction->setIcon(QIcon(QStringLiteral(":/images/analysis-run.svg")));
-        runStatusAction->setEnabled(false);
-        runStatusAction->setToolTip(tr("Planned action; not implemented yet."));
-        runPanel->addLargeAction(runStatusAction);
+        m_runStatusAction = new QAction(tr("Run Status"), m_category);
+        m_runStatusAction->setObjectName(QStringLiteral("simulationRunStatusAction"));
+        m_runStatusAction->setIcon(QIcon(QStringLiteral(":/images/analysis-run.svg")));
+        m_runStatusAction->setToolTip(tr("Show initialization status and verify the prepared run inputs."));
+        runPanel->addLargeAction(m_runStatusAction);
+        connect(m_runStatusAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onRunStatusTriggered);
 
         QAction* stopTaskAction = new QAction(tr("Stop Task"), m_category);
         stopTaskAction->setIcon(QIcon(QStringLiteral(":/images/simulation-stop.svg")));
@@ -149,24 +231,29 @@ void IDOSSimulationPlugin::initGui()
         runPanel->addLargeAction(stopTaskAction);
 
         SARibbonPanel* resultsPanel = m_category->addPanel(tr("Results"));
-        QAction* resultFilesAction = new QAction(tr("Result Files"), m_category);
-        resultFilesAction->setIcon(QIcon(QStringLiteral(":/images/gui-case-results.svg")));
-        resultFilesAction->setEnabled(false);
-        resultFilesAction->setToolTip(tr("Planned action; not implemented yet."));
-        resultsPanel->addLargeAction(resultFilesAction);
+        m_resultFilesAction = new QAction(tr("Result Files"), m_category);
+        m_resultFilesAction->setObjectName(QStringLiteral("simulationResultFilesAction"));
+        m_resultFilesAction->setIcon(QIcon(QStringLiteral(":/images/gui-case-results.svg")));
+        m_resultFilesAction->setToolTip(tr("Browse files produced in the initialized run directory."));
+        resultsPanel->addLargeAction(m_resultFilesAction);
+        connect(m_resultFilesAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onResultFilesTriggered);
 
-        QAction* importResultsAction = new QAction(tr("Import Results"), m_category);
-        importResultsAction->setIcon(QIcon(QStringLiteral(":/images/simulation-results-import.svg")));
-        importResultsAction->setEnabled(false);
-        importResultsAction->setToolTip(tr("Planned action; not implemented yet."));
-        resultsPanel->addLargeAction(importResultsAction);
+        m_resultPlaybackWidget = new IDOSSimulationResultPlaybackWidget(m_category);
+        resultsPanel->addLargeWidget(m_resultPlaybackWidget);
 
         SARibbonPanel* analysisPanel = m_category->addPanel(tr("Analysis"));
-        QAction* curveComparisonAction = new QAction(tr("Curve Comparison"), m_category);
-        curveComparisonAction->setIcon(QIcon(QStringLiteral(":/images/simulation-curve-comparison.svg")));
-        curveComparisonAction->setEnabled(false);
-        curveComparisonAction->setToolTip(tr("Planned action; not implemented yet."));
-        analysisPanel->addLargeAction(curveComparisonAction);
+        m_curveComparisonAction = new QAction(tr("Curve Comparison"), m_category);
+        m_curveComparisonAction->setObjectName(QStringLiteral("simulationCurveComparisonAction"));
+        m_curveComparisonAction->setIcon(QIcon(QStringLiteral(":/images/simulation-curve-comparison.svg")));
+        m_curveComparisonAction->setToolTip(tr("Compare the same curve across tables in the selected case."));
+        analysisPanel->addLargeAction(m_curveComparisonAction);
+        connect(m_curveComparisonAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onCurveComparisonTriggered);
 
         QAction* fitEvaluationAction = new QAction(tr("Fit Evaluation"), m_category);
         fitEvaluationAction->setIcon(QIcon(QStringLiteral(":/images/simulation-fit-evaluation.svg")));
@@ -175,36 +262,161 @@ void IDOSSimulationPlugin::initGui()
         analysisPanel->addLargeAction(fitEvaluationAction);
 
         SARibbonPanel* workflowPanel = m_category->addPanel(tr("Workflow"));
-        QAction* workflowAction = new QAction(tr("Workflow"), m_category);
-        workflowAction->setIcon(QIcon(QStringLiteral(":/images/simulation-workflow.svg")));
-        workflowAction->setEnabled(false);
-        workflowAction->setToolTip(tr("Planned action; not implemented yet."));
-        workflowPanel->addLargeAction(workflowAction);
+        m_workflowAction = new QAction(tr("Workflow"), m_category);
+        m_workflowAction->setObjectName(QStringLiteral("simulationWorkflowAction"));
+        m_workflowAction->setIcon(QIcon(QStringLiteral(":/images/simulation-workflow.svg")));
+        m_workflowAction->setToolTip(tr("Review the preparation and result stages for the selected case."));
+        workflowPanel->addLargeAction(m_workflowAction);
+        connect(m_workflowAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onWorkflowTriggered);
 
-        QAction* runArchiveAction = new QAction(tr("Run Archive"), m_category);
-        runArchiveAction->setIcon(QIcon(QStringLiteral(":/images/simulation-archive.svg")));
-        runArchiveAction->setEnabled(false);
-        runArchiveAction->setToolTip(tr("Planned action; not implemented yet."));
-        workflowPanel->addLargeAction(runArchiveAction);
+        m_runArchiveAction = new QAction(tr("Run Archive"), m_category);
+        m_runArchiveAction->setObjectName(QStringLiteral("simulationRunArchiveAction"));
+        m_runArchiveAction->setIcon(QIcon(QStringLiteral(":/images/simulation-archive.svg")));
+        m_runArchiveAction->setToolTip(tr("Create a separate archive snapshot of the initialized run directory."));
+        workflowPanel->addLargeAction(m_runArchiveAction);
+        connect(m_runArchiveAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onRunArchiveTriggered);
 
         SARibbonPanel* reportPanel = m_category->addPanel(tr("Report"));
-        QAction* caseInventoryReportAction = new QAction(tr("Case Inventory Report"), m_category);
-        caseInventoryReportAction->setIcon(QIcon(QStringLiteral(":/images/simulation-report.svg")));
-        caseInventoryReportAction->setEnabled(false);
-        caseInventoryReportAction->setToolTip(tr("Planned action; not implemented yet."));
-        reportPanel->addLargeAction(caseInventoryReportAction);
+        m_caseInventoryReportAction = new QAction(tr("Case Inventory Report"), m_category);
+        m_caseInventoryReportAction->setObjectName(QStringLiteral("simulationCaseInventoryReportAction"));
+        m_caseInventoryReportAction->setIcon(QIcon(QStringLiteral(":/images/simulation-report.svg")));
+        m_caseInventoryReportAction->setToolTip(tr("Generate and export an inventory report for the selected case."));
+        reportPanel->addLargeAction(m_caseInventoryReportAction);
+        connect(m_caseInventoryReportAction,
+                &QAction::triggered,
+                this,
+                &IDOSSimulationPlugin::onCaseInventoryReportTriggered);
     }
     m_initialized = m_category != nullptr;
+    onProjectChanged(m_interface->project());
 }
 
 void IDOSSimulationPlugin::unload()
 {
+    if (m_interface != nullptr)
+    {
+        disconnect(m_interface, &IDOSInterface::projectChanged, this, &IDOSSimulationPlugin::onProjectChanged);
+    }
+    if (!m_parseSummaryWidget.isNull())
+    {
+        delete m_parseSummaryWidget.data();
+        m_parseSummaryWidget = nullptr;
+    }
+    if (!m_generateDataWidget.isNull())
+    {
+        delete m_generateDataWidget.data();
+        m_generateDataWidget = nullptr;
+    }
+    if (!m_caseTableWidget.isNull())
+    {
+        delete m_caseTableWidget.data();
+        m_caseTableWidget = nullptr;
+    }
+    if (!m_deckBrowserWidget.isNull())
+    {
+        delete m_deckBrowserWidget.data();
+        m_deckBrowserWidget = nullptr;
+    }
+    if (!m_propertyCurvesWidget.isNull())
+    {
+        delete m_propertyCurvesWidget.data();
+        m_propertyCurvesWidget = nullptr;
+    }
+    if (!m_curveComparisonWidget.isNull())
+    {
+        delete m_curveComparisonWidget.data();
+        m_curveComparisonWidget = nullptr;
+    }
+    if (!m_wellControlsWidget.isNull())
+    {
+        delete m_wellControlsWidget.data();
+        m_wellControlsWidget = nullptr;
+    }
+    if (!m_runPreflightWidget.isNull())
+    {
+        delete m_runPreflightWidget.data();
+        m_runPreflightWidget = nullptr;
+    }
+    if (!m_initializeWidget.isNull())
+    {
+        delete m_initializeWidget.data();
+        m_initializeWidget = nullptr;
+    }
+    if (!m_runStatusWidget.isNull())
+    {
+        delete m_runStatusWidget.data();
+        m_runStatusWidget = nullptr;
+    }
+    if (!m_resultFilesWidget.isNull())
+    {
+        delete m_resultFilesWidget.data();
+        m_resultFilesWidget = nullptr;
+    }
+    if (!m_resultPlaybackWidget.isNull())
+    {
+        m_resultPlaybackWidget->setCurrentObject(nullptr);
+    }
+    if (!m_runArchiveWidget.isNull())
+    {
+        delete m_runArchiveWidget.data();
+        m_runArchiveWidget = nullptr;
+    }
+    if (!m_caseInventoryReportWidget.isNull())
+    {
+        delete m_caseInventoryReportWidget.data();
+        m_caseInventoryReportWidget = nullptr;
+    }
+    if (!m_workflowWidget.isNull())
+    {
+        delete m_workflowWidget.data();
+        m_workflowWidget = nullptr;
+    }
     if (m_interface != nullptr && m_category != nullptr)
     {
         m_interface->removeRibbonCategory(m_category);
     }
 
     m_category = nullptr;
+    m_parseSummaryAction = nullptr;
+    m_generateDataAction = nullptr;
+    m_deckBrowserAction = nullptr;
+    m_caseTableAction = nullptr;
+    m_propertyCurvesAction = nullptr;
+    m_curveComparisonAction = nullptr;
+    m_wellControlsAction = nullptr;
+    m_runPreflightAction = nullptr;
+    m_initializeAction = nullptr;
+    m_runStatusAction = nullptr;
+    m_resultFilesAction = nullptr;
+    m_runArchiveAction = nullptr;
+    m_caseInventoryReportAction = nullptr;
+    m_workflowAction = nullptr;
+    m_caseTableWidget = nullptr;
+    m_parseSummaryWidget = nullptr;
+    m_generateDataWidget = nullptr;
+    m_deckBrowserWidget = nullptr;
+    m_propertyCurvesWidget = nullptr;
+    m_curveComparisonWidget = nullptr;
+    m_wellControlsWidget = nullptr;
+    m_runPreflightWidget = nullptr;
+    m_initializeWidget = nullptr;
+    m_runStatusWidget = nullptr;
+    m_resultFilesWidget = nullptr;
+    m_resultPlaybackWidget = nullptr;
+    m_runArchiveWidget = nullptr;
+    m_caseInventoryReportWidget = nullptr;
+    m_workflowWidget = nullptr;
+    if (m_project != nullptr)
+    {
+        disconnect(m_project, nullptr, this, nullptr);
+        m_project = nullptr;
+    }
     m_initialized = false;
     uninstallTranslator();
 }
@@ -254,7 +466,465 @@ extern "C" IDOS_PLUGIN_EXPORT IDOSPlugin* classFactory(IDOSInterface* interface)
     return new IDOSSimulationPlugin(interface);
 }
 
-bool IDOSSimulationPlugin::canUnload() const
+bool IDOSSimulationPlugin::canUnload(QString& reason) const
 {
+    reason.clear();
     return true;
+}
+
+void IDOSSimulationPlugin::onProjectChanged(IDOSProject* project)
+{
+    if (m_project != nullptr)
+    {
+        disconnect(m_project, nullptr, this, nullptr);
+    }
+    m_project = project;
+    if (m_project != nullptr)
+    {
+        connect(m_project,
+                &IDOSProject::currentObjectChanged,
+                this,
+                &IDOSSimulationPlugin::onCurrentObjectChanged);
+        connect(m_project,
+                &IDOSProject::objectDataChanged,
+                this,
+                &IDOSSimulationPlugin::onProjectDataChanged);
+    }
+    if (!m_resultPlaybackWidget.isNull())
+    {
+        m_resultPlaybackWidget->setCurrentObject(m_project != nullptr ? m_project->currentObject() : nullptr);
+    }
+    updateActionAvailability();
+}
+
+void IDOSSimulationPlugin::onCurrentObjectChanged(IDOSDataObject* object)
+{
+    if (!m_resultPlaybackWidget.isNull())
+    {
+        m_resultPlaybackWidget->setCurrentObject(object);
+    }
+    updateActionAvailability();
+}
+
+void IDOSSimulationPlugin::onProjectDataChanged(const QString& objectId)
+{
+    Q_UNUSED(objectId);
+    updateActionAvailability();
+}
+
+void IDOSSimulationPlugin::updateActionAvailability()
+{
+    const bool hasSimulationCase = m_project != nullptr
+        && qobject_cast<IDOSSimulationCaseObject*>(m_project->currentObject()) != nullptr;
+    if (m_parseSummaryAction != nullptr)
+    {
+        m_parseSummaryAction->setEnabled(hasSimulationCase);
+    }
+    if (m_generateDataAction != nullptr)
+    {
+        m_generateDataAction->setEnabled(hasSimulationCase);
+    }
+    if (m_deckBrowserAction != nullptr)
+    {
+        m_deckBrowserAction->setEnabled(hasSimulationCase);
+    }
+    if (m_caseTableAction != nullptr)
+    {
+        m_caseTableAction->setEnabled(hasSimulationCase);
+    }
+    IDOSSimulationCaseObject* simulationCase = m_project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(m_project->currentObject())
+        : nullptr;
+    if (m_propertyCurvesAction != nullptr)
+    {
+        m_propertyCurvesAction->setEnabled(simulationCase != nullptr && !simulationCase->curveTables().isEmpty());
+    }
+    if (m_curveComparisonAction != nullptr)
+    {
+        m_curveComparisonAction->setEnabled(simulationCase != nullptr && !simulationCase->curveTables().isEmpty());
+    }
+    if (m_wellControlsAction != nullptr)
+    {
+        m_wellControlsAction->setEnabled(simulationCase != nullptr && !simulationCase->wellControlRows().isEmpty());
+    }
+    if (m_runPreflightAction != nullptr)
+    {
+        m_runPreflightAction->setEnabled(hasSimulationCase);
+    }
+    if (m_initializeAction != nullptr)
+    {
+        m_initializeAction->setEnabled(hasSimulationCase);
+    }
+    if (m_runStatusAction != nullptr)
+    {
+        m_runStatusAction->setEnabled(hasSimulationCase);
+    }
+    if (m_resultFilesAction != nullptr)
+    {
+        m_resultFilesAction->setEnabled(hasSimulationCase);
+    }
+    if (m_runArchiveAction != nullptr)
+    {
+        m_runArchiveAction->setEnabled(simulationCase != nullptr && !simulationCase->runInfo().isEmpty());
+    }
+    if (m_caseInventoryReportAction != nullptr)
+    {
+        m_caseInventoryReportAction->setEnabled(hasSimulationCase);
+    }
+    if (m_workflowAction != nullptr)
+    {
+        m_workflowAction->setEnabled(hasSimulationCase);
+    }
+}
+
+void IDOSSimulationPlugin::onCaseTableTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (simulationCase->parsedSourceData().value(QStringLiteral("summary")).toMap().isEmpty())
+    {
+        QMessageBox::information(
+            parent,
+            tr("Table"),
+            tr("This case has no table summary. Import the case from a DATA file first."));
+        return;
+    }
+
+    if (!m_caseTableWidget.isNull())
+    {
+        delete m_caseTableWidget.data();
+        m_caseTableWidget = nullptr;
+    }
+
+    m_caseTableWidget = new IDOSSimulationCaseTableWidget(simulationCase, parent);
+    m_caseTableWidget->show();
+}
+
+void IDOSSimulationPlugin::onParseSummaryTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    const QVariantMap summary = simulationCase->parsedSourceData().value(QStringLiteral("summary")).toMap();
+    if (summary.isEmpty())
+    {
+        QMessageBox::information(
+            parent,
+            tr("Parse Summary"),
+            tr("This case has no DATA parse summary. Import the case from a DATA file first."));
+        return;
+    }
+
+    if (!m_parseSummaryWidget.isNull())
+    {
+        delete m_parseSummaryWidget.data();
+        m_parseSummaryWidget = nullptr;
+    }
+
+    m_parseSummaryWidget = new IDOSSimulationParseSummaryWidget(simulationCase, parent);
+    m_parseSummaryWidget->show();
+}
+
+void IDOSSimulationPlugin::onGenerateDataTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_generateDataWidget.isNull())
+    {
+        delete m_generateDataWidget.data();
+        m_generateDataWidget = nullptr;
+    }
+
+    m_generateDataWidget = new IDOSSimulationDataGenerationWidget(simulationCase, parent);
+    m_generateDataWidget->show();
+}
+
+void IDOSSimulationPlugin::onDeckBrowserTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (simulationCase->sourceFile().isEmpty())
+    {
+        QMessageBox::information(parent, tr("Deck Browser"), tr("This case has no source DATA file."));
+        return;
+    }
+
+    if (simulationCase->parsedSourceData().value(QStringLiteral("keywordIndex")).toList().isEmpty())
+    {
+        QMessageBox::information(parent, tr("Deck Browser"), tr("No keywords were found in the DATA file."));
+        return;
+    }
+
+    if (!m_deckBrowserWidget.isNull())
+    {
+        delete m_deckBrowserWidget.data();
+        m_deckBrowserWidget = nullptr;
+    }
+
+    m_deckBrowserWidget = new IDOSSimulationDeckBrowserWidget(simulationCase, parent);
+    m_deckBrowserWidget->show();
+}
+
+void IDOSSimulationPlugin::onPropertyCurvesTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr || simulationCase->curveTables().isEmpty())
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_propertyCurvesWidget.isNull())
+    {
+        delete m_propertyCurvesWidget.data();
+        m_propertyCurvesWidget = nullptr;
+    }
+
+    m_propertyCurvesWidget = new IDOSSimulationPropertyCurveWidget(simulationCase, parent);
+    m_propertyCurvesWidget->show();
+}
+
+void IDOSSimulationPlugin::onCurveComparisonTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr || simulationCase->curveTables().isEmpty())
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_curveComparisonWidget.isNull())
+    {
+        delete m_curveComparisonWidget.data();
+        m_curveComparisonWidget = nullptr;
+    }
+
+    m_curveComparisonWidget = new IDOSSimulationCurveComparisonWidget(simulationCase, parent);
+    m_curveComparisonWidget->show();
+}
+
+void IDOSSimulationPlugin::onWellControlsTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr || simulationCase->wellControlRows().isEmpty())
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_wellControlsWidget.isNull())
+    {
+        delete m_wellControlsWidget.data();
+        m_wellControlsWidget = nullptr;
+    }
+
+    m_wellControlsWidget = new IDOSSimulationWellControlsWidget(simulationCase, parent);
+    m_wellControlsWidget->show();
+}
+
+void IDOSSimulationPlugin::onRunPreflightTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_runPreflightWidget.isNull())
+    {
+        delete m_runPreflightWidget.data();
+        m_runPreflightWidget = nullptr;
+    }
+
+    m_runPreflightWidget = new IDOSSimulationPreflightWidget(simulationCase, parent);
+    m_runPreflightWidget->show();
+}
+
+void IDOSSimulationPlugin::onInitializeTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    IDOSSimulationPreflightWidget preflight(simulationCase, parent);
+    if (preflight.hasBlockingIssues())
+    {
+        if (!m_runPreflightWidget.isNull())
+        {
+            delete m_runPreflightWidget.data();
+            m_runPreflightWidget = nullptr;
+        }
+        onRunPreflightTriggered();
+        QMessageBox::warning(parent,
+                             tr("Initialize"),
+                             tr("Initialization was stopped because Run Preflight found blocking issues."));
+        return;
+    }
+
+    if (!m_initializeWidget.isNull())
+    {
+        delete m_initializeWidget.data();
+        m_initializeWidget = nullptr;
+    }
+
+    m_initializeWidget = new IDOSSimulationInitializeWidget(simulationCase, parent);
+    m_initializeWidget->show();
+}
+
+void IDOSSimulationPlugin::onRunStatusTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_runStatusWidget.isNull())
+    {
+        delete m_runStatusWidget.data();
+        m_runStatusWidget = nullptr;
+    }
+
+    m_runStatusWidget = new IDOSSimulationRunStatusWidget(simulationCase, parent);
+    m_runStatusWidget->show();
+}
+
+void IDOSSimulationPlugin::onResultFilesTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_resultFilesWidget.isNull())
+    {
+        delete m_resultFilesWidget.data();
+        m_resultFilesWidget = nullptr;
+    }
+
+    m_resultFilesWidget = new IDOSSimulationResultFilesWidget(simulationCase, parent);
+    m_resultFilesWidget->show();
+}
+
+void IDOSSimulationPlugin::onRunArchiveTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr || simulationCase->runInfo().isEmpty())
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_runArchiveWidget.isNull())
+    {
+        delete m_runArchiveWidget.data();
+        m_runArchiveWidget = nullptr;
+    }
+
+    m_runArchiveWidget = new IDOSSimulationRunArchiveWidget(simulationCase, parent);
+    m_runArchiveWidget->show();
+}
+
+void IDOSSimulationPlugin::onCaseInventoryReportTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_caseInventoryReportWidget.isNull())
+    {
+        delete m_caseInventoryReportWidget.data();
+        m_caseInventoryReportWidget = nullptr;
+    }
+
+    m_caseInventoryReportWidget = new IDOSSimulationCaseInventoryReportWidget(simulationCase, parent);
+    m_caseInventoryReportWidget->show();
+}
+
+void IDOSSimulationPlugin::onWorkflowTriggered()
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
+        : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
+    QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
+    if (!m_workflowWidget.isNull())
+    {
+        delete m_workflowWidget.data();
+        m_workflowWidget = nullptr;
+    }
+
+    m_workflowWidget = new IDOSSimulationWorkflowWidget(simulationCase, parent);
+    m_workflowWidget->show();
 }

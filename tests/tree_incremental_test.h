@@ -17,6 +17,7 @@ class TreeIncrementalTest : public QObject
     void onProjectUpdateTransactionBatchesSignals();
     void onCaseTreeReferenceRefreshAndCheckPreserved();
     void onRegistryLifecycle();
+    void onTreeDataMetadataQuery();
     void onTreeOwnership();
     void onMenuTargets();
 

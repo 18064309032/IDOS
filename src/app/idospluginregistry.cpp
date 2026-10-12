@@ -323,10 +323,7 @@ void IDOSPluginRegistry::setPluginEnabled(const QString& libraryPath, bool enabl
                    .arg(baseName)
                    .arg(isLoaded(baseName)));
     unloadPluginByKey(baseName, true);
-    if (!isLoaded(baseName))
-    {
-        settings.setValue(QStringLiteral("/plugins/") + baseName, false);
-    }
+    settings.setValue(QStringLiteral("/plugins/") + baseName, isLoaded(baseName));
     IDOS_DEBUG(tr("setPluginEnabled finished: key=%1, loaded=%2")
                    .arg(baseName)
                    .arg(isLoaded(baseName)));
@@ -340,9 +337,17 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
     }
 
     IDOSPlugin* instance = m_plugins.constFind(key).value().plugin();
-    if (instance != nullptr && !instance->canUnload())
+    QString unloadBlockReason;
+    if (instance != nullptr && !instance->canUnload(unloadBlockReason))
     {
-        m_pluginErrors.insert(key, tr("The plugin still owns data or commands. Clear them before unloading."));
+        if (unloadBlockReason.isEmpty())
+        {
+            unloadBlockReason = tr("The plugin cannot be unloaded in its current state.");
+        }
+        m_pluginErrors.insert(key, unloadBlockReason);
+        IDOS_MESSAGE(tr("Plugin %1 could not be unloaded: %2")
+                         .arg(key, unloadBlockReason),
+                     IDOSLogLevel::Warn);
         return;
     }
 

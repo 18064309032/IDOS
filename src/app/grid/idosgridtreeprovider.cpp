@@ -1,10 +1,13 @@
+#include <QIcon>
 #include <QObject>
+#include <QString>
+#include <QStringList>
 
 #include "idosdataobject.h"
-#include "idostreeitem.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
+#include "idostreeitem.h"
 
 #include "idosgridtreeprovider.h"
 
@@ -60,7 +63,11 @@ void IDOSGridTreeProvider::populate(IDOSTreeItem* item)
         }
         IDOSTreeItem* category = property->kind() == IDOSGridProperty::Kind::Dynamic ? dynamicGroup
                                 : regionKeywords.contains(property->keyword().toUpper()) ? regions : staticGroup;
-        IDOSTreeItem* leaf = addItem(category, QStringLiteral("property:") + property->objectId(), property->name());
+        const QString propertyName = property->kind() == IDOSGridProperty::Kind::Dynamic
+                && !property->keyword().isEmpty()
+            ? property->keyword()
+            : property->name();
+        IDOSTreeItem* leaf = addItem(category, QStringLiteral("property:") + property->objectId(), propertyName);
         leaf->setDataId(property->objectId());
         leaf->setReference(true);
         leaf->setPartKey(QString());

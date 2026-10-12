@@ -21,8 +21,11 @@ class GUI_EXPORT IDOSTreeGuiProvider : public QObject
     virtual bool supports(const IDOSTreeItem* item) const = 0;
     virtual void populateMenu(QMenu* menu, IDOSTreeView* view) = 0;
     virtual bool isCheckable(const IDOSTreeItem* item) const;
-    virtual bool isChecked(const IDOSTreeItem* item) const;
-    virtual bool setChecked(IDOSTreeItem* item, bool checked);
+    virtual bool isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const;
+    virtual bool setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view);
+
+  signals:
+    void checkStateChanged();
 };
 
 #endif

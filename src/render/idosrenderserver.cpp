@@ -66,8 +66,6 @@ void IDOSRenderServer::setProject(IDOSProject* project)
         connect(project, &IDOSProject::objectDataChanged, this, &IDOSRenderServer::onObjectChanged);
         connect(project, &IDOSProject::objectsDataChanged, this, &IDOSRenderServer::onObjectsChanged);
         connect(project, &IDOSProject::objectAboutToBeRemoved, this, &IDOSRenderServer::onObjectAboutToBeRemoved);
-        connect(project, &IDOSProject::objectVisibilityChanged, this, &IDOSRenderServer::onObjectVisibilityChanged);
-        connect(project, &IDOSProject::objectsVisibilityChanged, this, &IDOSRenderServer::onObjectsVisibilityChanged);
     }
     reload();
 }
@@ -178,7 +176,7 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
         }
         IDOSRenderObject* object = new IDOSRenderObject(provider);
         object->setName(data->name());
-        object->setVisible(data->isVisible());
+        object->setVisible(false);
         object->update();
         if (!view->scene()->add(object))
         {
@@ -187,7 +185,6 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
         }
         return object->visible();
     }
-    bool shown = false;
     for (const QString& id : ids)
     {
         IDOSRenderObject* object = view->scene()->object(id);
@@ -196,14 +193,9 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
         {
             object->update();
         }
-        else
-        {
-            shown = shown || (!object->visible() && data->isVisible());
-            object->setVisible(data->isVisible());
-        }
         view->scene()->notifyChanged(id);
     }
-    return shown;
+    return false;
 }
 
 void IDOSRenderServer::update(const QStringList& ids, bool dataChanged)
@@ -283,17 +275,6 @@ void IDOSRenderServer::onObjectChanged(const QString& id)
 void IDOSRenderServer::onObjectsChanged(const QStringList& ids)
 {
     update(ids, true);
-}
-
-void IDOSRenderServer::onObjectVisibilityChanged(const QString& id, bool visible)
-{
-    Q_UNUSED(visible);
-    update(QStringList{id}, false);
-}
-
-void IDOSRenderServer::onObjectsVisibilityChanged(const QStringList& ids)
-{
-    update(ids, false);
 }
 
 void IDOSRenderServer::onMetadataAdded(const QString& typeId)

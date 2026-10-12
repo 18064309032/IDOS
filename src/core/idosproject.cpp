@@ -27,6 +27,25 @@ IDOSCommandManager* IDOSProject::commandManager() const
     return m_commandManager;
 }
 
+IDOSDataObject* IDOSProject::currentObject() const
+{
+    return m_currentObject.data();
+}
+
+void IDOSProject::setCurrentObject(IDOSDataObject* object)
+{
+    if (object != nullptr && m_objects.value(object->objectId(), nullptr) != object)
+    {
+        object = nullptr;
+    }
+    if (m_currentObject == object)
+    {
+        return;
+    }
+    m_currentObject = object;
+    emit currentObjectChanged(object);
+}
+
 bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
 {
     if (metadata.name().trimmed().isEmpty())
@@ -64,6 +83,10 @@ void IDOSProject::add(IDOSDataObject* object)
     IDOSDataObject* existing = m_objects.value(id, nullptr);
     if (existing != nullptr && existing != object)
     {
+        if (m_currentObject == existing)
+        {
+            setCurrentObject(nullptr);
+        }
         emit objectAboutToBeRemoved(id);
         disconnectObject(existing);
         m_objects.remove(id);
@@ -83,6 +106,11 @@ IDOSDataObject* IDOSProject::take(const QString& objectId)
     if (object == nullptr)
     {
         return nullptr;
+    }
+
+    if (m_currentObject == object)
+    {
+        setCurrentObject(nullptr);
     }
 
     emit objectAboutToBeRemoved(objectId);

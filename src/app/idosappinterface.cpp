@@ -6,6 +6,7 @@
 
 #include "idosmainwindow.h"
 #include "idosproject.h"
+#include "idostreeregistry.h"
 #include "log/idoslogger.h"
 
 #include "idosappinterface.h"
@@ -257,6 +258,11 @@ IDOSProject* IDOSAppInterface::project() const
 IDOSDataRegistry* IDOSAppInterface::dataRegistry() const
 {
     return m_mainWindow->dataRegistry();
+}
+
+QList<const IDOSDataMetadata*> IDOSAppInterface::treeDataMetadata() const
+{
+    return m_mainWindow->treeRegistry()->dataMetadata(m_mainWindow->dataRegistry());
 }
 
 IDOSTreeRegistry* IDOSAppInterface::treeRegistry() const

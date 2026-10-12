@@ -41,6 +41,7 @@ class IDOSGridCell
     QVector3D center() const;
 
   private:
+    double tetrahedronVolume(const QVector3D& a, const QVector3D& b, const QVector3D& c, const QVector3D& d) const;
     QVector3D m_corners[8];
     bool m_active;
 };

@@ -14,6 +14,8 @@ add_library(idos_app SHARED
     case/idoscreatecasecommand.cpp
     grid/idosdeletepropertycommand.h
     grid/idosdeletepropertycommand.cpp
+    grid/idosimportrestartresultscommand.h
+    grid/idosimportrestartresultscommand.cpp
     case/idossimulationcasetreeguiprovider.cpp
     case/idossimulationcasetreeguiprovider.h
     case/idossimulationcasetreemetadata.cpp
@@ -93,6 +95,7 @@ target_compile_definitions(idos_app PRIVATE IDOS_APP_LIB)
 target_link_libraries(idos_app PRIVATE
     ADS::ADS
     idos_assistant
+    OPM::opmcommon
 )
 
 if(IDOS_ENABLE_RENDER)
