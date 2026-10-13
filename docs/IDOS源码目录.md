@@ -74,6 +74,10 @@ src/
     core/data/grid/
         idosgrid.h
         idosgrid.cpp
+        idosgridfilter.h
+        idosgridfilter.cpp
+        idosgridfiltermetadata.h
+        idosgridfiltermetadata.cpp
         idosgridmetadata.h
         idosgridmetadata.cpp
         idosgridcell.h
@@ -269,6 +273,16 @@ src/
         idosgridtreemetadata.cpp
         idosgridtreeguiprovider.h
         idosgridtreeguiprovider.cpp
+        idosgridfilterwidget.h
+        idosgridfilterwidget.cpp
+        idosgridfiltercommand.h
+        idosgridfiltercommand.cpp
+        idosgridfilterrendermetadata.h
+        idosgridfilterrendermetadata.cpp
+        idosgridfilterrenderprovider.h
+        idosgridfilterrenderprovider.cpp
+        idosgridsettingwidget.h
+        idosgridsettingwidget.cpp
         idosgridrenderprovider.h
         idosgridrenderprovider.cpp
         idosgridrendermetadata.h
@@ -329,10 +343,10 @@ src/
         idossimulationplugin/
             idossimulationplugin.h
             idossimulationplugin.cpp
-            idoscoloringwidget.h
-            idoscoloringwidget.cpp
-            idoscoloringtreeguiprovider.h
-            idoscoloringtreeguiprovider.cpp
+            idoswelldisplaywidget.h
+            idoswelldisplaywidget.cpp
+            idoswelldisplaytreeguiprovider.h
+            idoswelldisplaytreeguiprovider.cpp
             idosrendertoolmetadata.h
             idosrendertoolmetadata.cpp
             idosrendertoolprovider.h
@@ -363,7 +377,9 @@ src/
 
 ## 实施约束
 
-- `IDOSColoringWidget` 和 `IDOSColoringTreeGuiProvider` 已在 `src/plugins/idossimulationplugin` 根目录创建；前者为网格及属性共用的着色设置面板，后者通过现有树 Registry 注册着色菜单，不接管原网格 GuiProvider 的勾选职责。
+- `IDOSGridFilterWidget` 位于现有 `src/app/grid`，沿用旧版筛选交互，以独立窗口提供网格／属性筛选；筛选结果数据位于 `core/data/grid`，不新增目录划分。
+
+- `IDOSGridSettingWidget` 位于现有 `src/app/grid`，网格及属性共用外观和着色面板；菜单及勾选由现有 `IDOSGridTreeGuiProvider` 统一提供。旧插件着色面板、专用菜单 Provider 及其注册链已删除，不保留两套入口。
 
 - `core/data` 保存数据，不依赖界面或渲染；类型专属数据位于 `well`、`grid`、`case`。
 - 内置树构建、菜单、渲染与业务命令按类型放在 `app/well`、`app/grid`、`app/case`；跨类型命令放在 `app/command`。

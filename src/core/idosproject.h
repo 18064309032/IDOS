@@ -41,6 +41,8 @@ class CORE_EXPORT IDOSProject : public QObject
     IDOSCommandManager* commandManager() const;
     IDOSDataObject* currentObject() const;
     void setCurrentObject(IDOSDataObject* object);
+    QString currentCaseId() const;
+    bool setCurrentCaseId(const QString& caseId);
 
     /** 将数据对象加入工程，接管所有权。已存在同 objectId 则替换。 */
     void add(IDOSDataObject* object);
@@ -75,6 +77,7 @@ class CORE_EXPORT IDOSProject : public QObject
   signals:
     void metadataChanged();
     void currentObjectChanged(IDOSDataObject* object);
+    void currentCaseChanged(const QString& caseId);
 
     /** 新对象加入。 */
     void objectAdded(const QString& objectId);
@@ -115,6 +118,7 @@ class CORE_EXPORT IDOSProject : public QObject
     IDOSProjectMetadata m_metadata;
     IDOSCommandManager* m_commandManager;
     QPointer<IDOSDataObject> m_currentObject;
+    QString m_currentCaseId;
     int m_updateDepth;
     QSet<QString> m_pendingAdded;
     QSet<QString> m_pendingRemoved;

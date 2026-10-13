@@ -46,6 +46,25 @@ void IDOSProject::setCurrentObject(IDOSDataObject* object)
     emit currentObjectChanged(object);
 }
 
+QString IDOSProject::currentCaseId() const
+{
+    return m_currentCaseId;
+}
+
+bool IDOSProject::setCurrentCaseId(const QString& caseId)
+{
+    if (!caseId.isEmpty() && !m_objects.contains(caseId))
+    {
+        return false;
+    }
+    if (m_currentCaseId != caseId)
+    {
+        m_currentCaseId = caseId;
+        emit currentCaseChanged(caseId);
+    }
+    return true;
+}
+
 bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
 {
     if (metadata.name().trimmed().isEmpty())
@@ -83,6 +102,10 @@ void IDOSProject::add(IDOSDataObject* object)
     IDOSDataObject* existing = m_objects.value(id, nullptr);
     if (existing != nullptr && existing != object)
     {
+        if (m_currentCaseId == id)
+        {
+            setCurrentCaseId(QString());
+        }
         if (m_currentObject == existing)
         {
             setCurrentObject(nullptr);
@@ -111,6 +134,11 @@ IDOSDataObject* IDOSProject::take(const QString& objectId)
     if (m_currentObject == object)
     {
         setCurrentObject(nullptr);
+    }
+
+    if (m_currentCaseId == objectId)
+    {
+        setCurrentCaseId(QString());
     }
 
     emit objectAboutToBeRemoved(objectId);

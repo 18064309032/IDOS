@@ -1389,53 +1389,88 @@
         <translation>无法读取 %1:%2 处的关键字</translation>
     </message>
 </context>
+
+
 <context>
-    <name>IDOSColoringWidget</name>
-    <message><source>Coloring Settings</source><translation>着色设置</translation></message>
-    <message><source>Grid: %1
-Target view: %2</source><translation>网格：%1
-目标视图：%2</translation></message>
-    <message><source>Color by</source><translation>着色依据</translation></message>
-    <message><source>Color ramp</source><translation>色带</translation></message>
-    <message><source>Blue to red</source><translation>蓝到红</translation></message>
-    <message><source>Blue to yellow</source><translation>蓝到黄</translation></message>
-    <message><source>Grayscale</source><translation>灰度</translation></message>
-    <message><source>Reverse color ramp</source><translation>反转色带</translation></message>
-    <message><source>Automatic range</source><translation>自动范围</translation></message>
-    <message><source>Minimum</source><translation>最小值</translation></message>
-    <message><source>Maximum</source><translation>最大值</translation></message>
-    <message><source>Solid color</source><translation>单色</translation></message>
-    <message><source>Invalid value color</source><translation>无效值颜色</translation></message>
-    <message><source>Show legend</source><translation>显示图例</translation></message>
+    <name>IDOSWellDisplayWidget</name>
+    <message><source>(0) Undefined</source><translation>(0) 未定义</translation></message>
+    <message><source>(1) Proposed</source><translation>(1) 计划井</translation></message>
+    <message><source>(10) Abandoned oil minor gas</source><translation>(10) 废弃油井伴少量气</translation></message>
+    <message><source>(11) Abandoned oil condensate</source><translation>(11) 废弃油井伴凝析油</translation></message>
+    <message><source>(12) Abandoned gas residual oil</source><translation>(12) 废弃气井伴残余油</translation></message>
+    <message><source>(13) Abandoned gas condensate</source><translation>(13) 废弃气井伴凝析油</translation></message>
+    <message><source>(14) Abandoned minor oil and gas</source><translation>(14) 废弃少量油气井</translation></message>
+    <message><source>(15) Injection water</source><translation>(15) 注水井</translation></message>
+    <message><source>(16) Injection gas</source><translation>(16) 注气井</translation></message>
+    <message><source>(17) Shallow borehole</source><translation>(17) 浅钻孔</translation></message>
+    <message><source>(18) Drilling well</source><translation>(18) 钻进井</translation></message>
+    <message><source>(19) Abandoned for technical reasons</source><translation>(19) 技术原因废弃井</translation></message>
+    <message><source>(2) Dry</source><translation>(2) 干井</translation></message>
+    <message><source>(20) Temporarily abandoned</source><translation>(20) 暂时废弃井</translation></message>
+    <message><source>(21) Plugged and abandoned</source><translation>(21) 封堵废弃井</translation></message>
+    <message><source>(22) Not observed</source><translation>(22) 未观测井</translation></message>
+    <message><source>(23) Residual oil</source><translation>(23) 残余油井</translation></message>
+    <message><source>(24) Proposed platform</source><translation>(24) 计划平台</translation></message>
+    <message><source>(25) Subsea installation</source><translation>(25) 水下设施</translation></message>
+    <message><source>(26) Dry, plugged and abandoned</source><translation>(26) 干井、封堵废弃</translation></message>
+    <message><source>(27) Oil, plugged and abandoned</source><translation>(27) 油井、封堵废弃</translation></message>
+    <message><source>(3) Oil</source><translation>(3) 油井</translation></message>
+    <message><source>(4) Minor oil</source><translation>(4) 少量油井</translation></message>
+    <message><source>(5) Gas</source><translation>(5) 气井</translation></message>
+    <message><source>(6) Minor gas</source><translation>(6) 少量气井</translation></message>
+    <message><source>(7) Condensate</source><translation>(7) 凝析油井</translation></message>
+    <message><source>(8) Platform</source><translation>(8) 平台</translation></message>
+    <message><source>(9) Abandoned oil and gas</source><translation>(9) 废弃油气井</translation></message>
+    <message><source>Automatic (file symbol or well state)</source><translation>自动（文件符号或井状态）</translation></message>
+    <message><source>Closed</source><translation>关闭井</translation></message>
+    <message><source>Closed completions</source><translation>关闭射孔</translation></message>
+    <message><source>Color by well status</source><translation>按井状态着色</translation></message>
+    <message><source>Injector</source><translation>注入井</translation></message>
+    <message><source>Injector completions</source><translation>注入井射孔</translation></message>
+    <message><source>Producer</source><translation>生产井</translation></message>
+    <message><source>Producer completions</source><translation>生产井射孔</translation></message>
+    <message><source>Render lines as tubes</source><translation>管状线效果</translation></message>
+    <message><source>Status colors</source><translation>状态配色</translation></message>
+    <message><source>Stopped</source><translation>停井</translation></message>
+    <message><source>Stopped completions</source><translation>停井射孔</translation></message>
+    <message><source>Symbol line width (pixels)</source><translation>符号线宽（像素）</translation></message>
+    <message><source>Use well colors for completions</source><translation>射孔沿用井的状态颜色</translation></message>
+    <message><source>Well symbol</source><translation>井符号</translation></message>
+    <message><source>Show well</source><translation>显示井</translation></message>
+    <message><source>Clip by measured depth</source><translation>按测深裁剪</translation></message>
     <message><source>Close</source><translation>关闭</translation></message>
-    <message><source>Minimum must be less than maximum.</source><translation>最小值必须小于最大值。</translation></message>
-    <message><source>Default rainbow</source><translation>默认彩虹</translation></message>
-    <message><source>Soft rainbow</source><translation>柔和彩虹</translation></message>
-    <message><source>Ocean breeze</source><translation>海洋微风</translation></message>
-    <message><source>Warm amber</source><translation>暖琥珀</translation></message>
-    <message><source>Fresh mint</source><translation>清新薄荷</translation></message>
-    <message><source>Twilight purple</source><translation>暮光紫</translation></message>
-    <message><source>Earth tones</source><translation>大地色</translation></message>
-    <message><source>Glacier blue</source><translation>冰川蓝</translation></message>
-    <message><source>Warm and cool</source><translation>冷暖对比</translation></message>
-    <message><source>Lava metal</source><translation>熔岩金属</translation></message>
-    <message><source>Dark forest</source><translation>深林</translation></message>
-    <message><source>Vintage sunset</source><translation>复古日落</translation></message>
-    <message><source>Aurora</source><translation>极光</translation></message>
-    <message><source>Mineral sand</source><translation>矿砂</translation></message>
-    <message><source>Porcelain</source><translation>瓷色</translation></message>
-    <message><source>Autumn berry</source><translation>秋日浆果</translation></message>
-    <message><source>Jade</source><translation>翡翠</translation></message>
-    <message><source>Graphite</source><translation>石墨</translation></message>
-    <message><source>Cyberpunk</source><translation>赛博朋克</translation></message>
-    <message><source>Grid:</source><translation>网格：</translation></message>
+    <message><source>Completion color</source><translation>射孔颜色</translation></message>
+    <message><source>Completions</source><translation>射孔</translation></message>
+    <message><source>Cone</source><translation>圆锥</translation></message>
+    <message><source>Display Settings</source><translation>显示设置</translation></message>
+    <message><source>Font size (pixels)</source><translation>字号（像素）</translation></message>
+    <message><source>Label color</source><translation>标签颜色</translation></message>
+    <message><source>Line width (pixels)</source><translation>线宽（像素）</translation></message>
+    <message><source>Maximum MD (m)</source><translation>最大测深（米）</translation></message>
+    <message><source>Measured intervals follow the available trajectory. Simulation grid layers are not drawn as measured depths.</source><translation>实测射孔区间沿已有井轨迹显示，模拟网格层号不作为实测深度绘制。</translation></message>
+    <message><source>Minimum MD (m)</source><translation>最小测深（米）</translation></message>
+    <message><source>Minimum MD must be less than maximum MD.</source><translation>最小测深必须小于最大测深。</translation></message>
+    <message><source>Opacity (%)</source><translation>不透明度（%）</translation></message>
+    <message><source>Point</source><translation>点</translation></message>
+    <message><source>Select color</source><translation>选择颜色</translation></message>
+    <message><source>Show measured completions</source><translation>显示实测射孔</translation></message>
+    <message><source>Show trajectory</source><translation>显示井轨迹</translation></message>
+    <message><source>Show well name</source><translation>显示井名</translation></message>
+    <message><source>Show wellhead</source><translation>显示井口</translation></message>
+    <message><source>Size (point: pixels; shape: model units)</source><translation>大小（点：像素；形状：模型单位）</translation></message>
+    <message><source>Smooth trajectory</source><translation>平滑轨迹</translation></message>
+    <message><source>Sphere</source><translation>球体</translation></message>
     <message><source>Target view:</source><translation>目标视图：</translation></message>
+    <message><source>Trajectory</source><translation>井轨迹</translation></message>
+    <message><source>Trajectory color</source><translation>轨迹颜色</translation></message>
+    <message><source>Well label</source><translation>井名标签</translation></message>
+    <message><source>Well:</source><translation>井：</translation></message>
+    <message><source>Wellhead</source><translation>井口</translation></message>
+    <message><source>Wellhead color</source><translation>井口颜色</translation></message>
+    <message><source>Wellhead shape</source><translation>井口形状</translation></message>
 </context>
 <context>
-    <name>IDOSColoringTreeGuiProvider</name>
-    <message><source>Display in Target View</source><translation>在目标视图中显示</translation></message>
-    <message><source>Color by</source><translation>着色依据</translation></message>
-    <message><source>Solid color</source><translation>单色</translation></message>
-    <message><source>Coloring Settings...</source><translation>着色设置…</translation></message>
+    <name>IDOSWellDisplayTreeGuiProvider</name>
+    <message><source>Display Settings...</source><translation>显示设置…</translation></message>
 </context>
 </TS>

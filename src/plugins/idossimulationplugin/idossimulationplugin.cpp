@@ -20,7 +20,6 @@
 #include <SARibbonPanelItem.h>
 #include <SARibbonPanelLayout.h>
 
-#include "idoscoloringtreeguiprovider.h"
 #include "idosinterface.h"
 #include "idosproject.h"
 #include "idosrendertoolmetadata.h"
@@ -42,6 +41,7 @@
 #include "idossimulationworkflowwidget.h"
 #include "idostoolregistry.h"
 #include "idostreeregistry.h"
+#include "idoswelldisplaytreeguiprovider.h"
 
 #include "idossimulationplugin.h"
 
@@ -78,7 +78,7 @@ IDOSSimulationPlugin::IDOSSimulationPlugin(IDOSInterface* interface)
     , m_caseInventoryReportAction(nullptr)
     , m_workflowAction(nullptr)
     , m_renderToolMetadata(nullptr)
-    , m_coloringTreeGuiProvider()
+    , m_wellDisplayTreeGuiProvider()
     , m_caseTableWidget(nullptr)
     , m_parseSummaryWidget(nullptr)
     , m_generateDataWidget(nullptr)
@@ -138,10 +138,10 @@ void IDOSSimulationPlugin::initGui()
         m_translator = nullptr;
     }
 
-    m_coloringTreeGuiProvider = std::make_shared<IDOSColoringTreeGuiProvider>(m_interface);
-    if (!m_interface->treeRegistry()->addGuiProvider(m_coloringTreeGuiProvider))
+    m_wellDisplayTreeGuiProvider = std::make_shared<IDOSWellDisplayTreeGuiProvider>(m_interface);
+    if (!m_interface->treeRegistry()->addGuiProvider(m_wellDisplayTreeGuiProvider))
     {
-        m_coloringTreeGuiProvider.reset();
+        m_wellDisplayTreeGuiProvider.reset();
     }
     IDOSToolRegistry* toolRegistry = m_interface->toolRegistry();
     if (toolRegistry != nullptr)
@@ -337,13 +337,13 @@ void IDOSSimulationPlugin::initGui()
 
 void IDOSSimulationPlugin::unload()
 {
-    if (m_coloringTreeGuiProvider)
+    if (m_wellDisplayTreeGuiProvider)
     {
         if (m_interface != nullptr && m_interface->treeRegistry() != nullptr)
         {
-            m_interface->treeRegistry()->removeGuiProvider(m_coloringTreeGuiProvider.get());
+            m_interface->treeRegistry()->removeGuiProvider(m_wellDisplayTreeGuiProvider.get());
         }
-        m_coloringTreeGuiProvider.reset();
+        m_wellDisplayTreeGuiProvider.reset();
     }
     if (m_interface != nullptr)
     {
@@ -585,6 +585,10 @@ void IDOSSimulationPlugin::onProjectChanged(IDOSProject* project)
                 this,
                 &IDOSSimulationPlugin::onCurrentObjectChanged);
         connect(m_project,
+                &IDOSProject::currentCaseChanged,
+                this,
+                &IDOSSimulationPlugin::onCurrentCaseChanged);
+        connect(m_project,
                 &IDOSProject::objectDataChanged,
                 this,
                 &IDOSSimulationPlugin::onProjectDataChanged);
@@ -605,6 +609,12 @@ void IDOSSimulationPlugin::onCurrentObjectChanged(IDOSDataObject* object)
     updateActionAvailability();
 }
 
+void IDOSSimulationPlugin::onCurrentCaseChanged(const QString& caseId)
+{
+    Q_UNUSED(caseId)
+    onCurrentObjectChanged(m_project != nullptr ? m_project->currentObject() : nullptr);
+}
+
 void IDOSSimulationPlugin::onProjectDataChanged(const QString& objectId)
 {
     Q_UNUSED(objectId);
@@ -613,8 +623,7 @@ void IDOSSimulationPlugin::onProjectDataChanged(const QString& objectId)
 
 void IDOSSimulationPlugin::updateActionAvailability()
 {
-    const bool hasSimulationCase = m_project != nullptr
-        && qobject_cast<IDOSSimulationCaseObject*>(m_project->currentObject()) != nullptr;
+    const bool hasSimulationCase = currentSimulationCase(m_project) != nullptr;
     if (m_parseSummaryAction != nullptr)
     {
         m_parseSummaryAction->setEnabled(hasSimulationCase);
@@ -631,9 +640,7 @@ void IDOSSimulationPlugin::updateActionAvailability()
     {
         m_caseTableAction->setEnabled(hasSimulationCase);
     }
-    IDOSSimulationCaseObject* simulationCase = m_project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(m_project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(m_project);
     if (m_propertyCurvesAction != nullptr)
     {
         m_propertyCurvesAction->setEnabled(simulationCase != nullptr && !simulationCase->curveTables().isEmpty());
@@ -680,12 +687,23 @@ void IDOSSimulationPlugin::updateActionAvailability()
     }
 }
 
+IDOSSimulationCaseObject* IDOSSimulationPlugin::currentSimulationCase(IDOSProject* project) const
+{
+    if (project == nullptr)
+    {
+        return nullptr;
+    }
+    IDOSSimulationCaseObject* simulationCase =
+        qobject_cast<IDOSSimulationCaseObject*>(project->object(project->currentCaseId()));
+    return simulationCase != nullptr
+               ? simulationCase
+               : qobject_cast<IDOSSimulationCaseObject*>(project->currentObject());
+}
+
 void IDOSSimulationPlugin::onCaseTableTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -714,9 +732,7 @@ void IDOSSimulationPlugin::onCaseTableTriggered()
 void IDOSSimulationPlugin::onParseSummaryTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -745,9 +761,7 @@ void IDOSSimulationPlugin::onParseSummaryTriggered()
 void IDOSSimulationPlugin::onGenerateDataTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -767,9 +781,7 @@ void IDOSSimulationPlugin::onGenerateDataTriggered()
 void IDOSSimulationPlugin::onDeckBrowserTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -800,9 +812,7 @@ void IDOSSimulationPlugin::onDeckBrowserTriggered()
 void IDOSSimulationPlugin::onPropertyCurvesTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr || simulationCase->curveTables().isEmpty())
     {
         return;
@@ -822,9 +832,7 @@ void IDOSSimulationPlugin::onPropertyCurvesTriggered()
 void IDOSSimulationPlugin::onCurveComparisonTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr || simulationCase->curveTables().isEmpty())
     {
         return;
@@ -844,9 +852,7 @@ void IDOSSimulationPlugin::onCurveComparisonTriggered()
 void IDOSSimulationPlugin::onWellControlsTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr || simulationCase->wellControlRows().isEmpty())
     {
         return;
@@ -866,9 +872,7 @@ void IDOSSimulationPlugin::onWellControlsTriggered()
 void IDOSSimulationPlugin::onRunPreflightTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -893,9 +897,7 @@ void IDOSSimulationPlugin::onInitializeTriggered()
         return;
     }
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -936,9 +938,7 @@ void IDOSSimulationPlugin::onRunStatusTriggered()
         return;
     }
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -973,9 +973,7 @@ void IDOSSimulationPlugin::onStopTaskTriggered()
 void IDOSSimulationPlugin::onResultFilesTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -995,9 +993,7 @@ void IDOSSimulationPlugin::onResultFilesTriggered()
 void IDOSSimulationPlugin::onRunArchiveTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr || simulationCase->runInfo().isEmpty())
     {
         return;
@@ -1017,9 +1013,7 @@ void IDOSSimulationPlugin::onRunArchiveTriggered()
 void IDOSSimulationPlugin::onCaseInventoryReportTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;
@@ -1039,9 +1033,7 @@ void IDOSSimulationPlugin::onCaseInventoryReportTriggered()
 void IDOSSimulationPlugin::onWorkflowTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
-    IDOSSimulationCaseObject* simulationCase = project != nullptr
-        ? qobject_cast<IDOSSimulationCaseObject*>(project->currentObject())
-        : nullptr;
+    IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
     if (simulationCase == nullptr)
     {
         return;

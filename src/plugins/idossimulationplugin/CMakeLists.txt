@@ -2,10 +2,10 @@ add_library(idossimulationplugin SHARED
     idossimulationplugin.qrc
     idossimulationplugin.cpp
     idossimulationplugin.h
-    idoscoloringwidget.cpp
-    idoscoloringwidget.h
-    idoscoloringtreeguiprovider.cpp
-    idoscoloringtreeguiprovider.h
+    idoswelldisplaywidget.cpp
+    idoswelldisplaywidget.h
+    idoswelldisplaytreeguiprovider.cpp
+    idoswelldisplaytreeguiprovider.h
     idosrendertoolmetadata.cpp
     idosrendertoolmetadata.h
     idosrendertoolprovider.cpp

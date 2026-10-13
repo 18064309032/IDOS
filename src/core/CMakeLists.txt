@@ -38,6 +38,10 @@ add_library(idos_core SHARED
     data/case/idoscaseobject.cpp
     data/idosdataobject.h
     data/idosdataobject.cpp
+    data/grid/idosgridfilter.h
+    data/grid/idosgridfilter.cpp
+    data/grid/idosgridfiltermetadata.h
+    data/grid/idosgridfiltermetadata.cpp
     data/grid/idosgrid.h
     data/grid/idosgrid.cpp
     data/grid/idosgridcell.h

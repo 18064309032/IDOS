@@ -13,6 +13,7 @@ class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class IDOSProject;
 class IDOSRenderRegistry;
+class IDOSRenderServer;
 class IDOSTreeRegistry;
 class IDOSToolRegistry;
 
@@ -29,6 +30,7 @@ class GUI_EXPORT IDOSInterface : public QObject
     virtual IDOSDataRegistry* dataRegistry() const = 0;
     virtual IDOSTreeRegistry* treeRegistry() const = 0;
     virtual IDOSRenderRegistry* renderRegistry() const = 0;
+    virtual IDOSRenderServer* renderServer() const = 0;
     virtual IDOSToolRegistry* toolRegistry() const = 0;
     virtual IDOSCommandRegistry* commandRegistry() const = 0;
     virtual SARibbonCategory* addRibbonCategory(const QString& objectName,

@@ -12,6 +12,7 @@
 #include "idoscaseitemref.h"
 
 class IDOSGrid;
+class IDOSGridFilter;
 class IDOSGridProperty;
 
 class APP_EXPORT IDOSDeleteGridCommand : public IDOSCommand
@@ -37,6 +38,7 @@ private:
     QString m_gridId;
     QPointer<IDOSGrid> m_grid;
     QList<QPointer<IDOSGridProperty>> m_properties;
+    QList<QPointer<IDOSGridFilter>> m_filters;
     QHash<QString, QList<IDOSCaseItemRef>> m_caseReferences;
 };
 

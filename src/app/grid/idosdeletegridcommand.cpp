@@ -6,6 +6,7 @@
 
 #include "idoscaseobject.h"
 #include "idosgrid.h"
+#include "idosgridfilter.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
 
@@ -77,6 +78,16 @@ bool IDOSDeleteGridCommand::apply(QString& error)
     }
 
     captureCaseReferences();
+    m_filters.clear();
+    for (IDOSDataObject* object : targetProject->objects())
+    {
+        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(object);
+        if (filter != nullptr && filter->gridId() == m_gridId)
+        {
+            m_filters.append(filter);
+            targetProject->take(filter->objectId());
+        }
+    }
     const QStringList propertyIds = collectPropertyIds();
     m_properties.clear();
 
@@ -109,6 +120,13 @@ bool IDOSDeleteGridCommand::apply(QString& error)
             if (!property.isNull() && property->parent() == nullptr)
             {
                 targetProject->add(property.data());
+            }
+        }
+        for (const QPointer<IDOSGridFilter>& filter : m_filters)
+        {
+            if (filter != nullptr && filter->parent() == nullptr)
+            {
+                targetProject->add(filter.data());
             }
         }
         restoreCaseReferences();
@@ -147,6 +165,13 @@ bool IDOSDeleteGridCommand::revert(QString& error)
         if (!property.isNull() && property->parent() == nullptr)
         {
             targetProject->add(property.data());
+        }
+    }
+    for (const QPointer<IDOSGridFilter>& filter : m_filters)
+    {
+        if (filter != nullptr && filter->parent() == nullptr)
+        {
+            targetProject->add(filter.data());
         }
     }
     restoreCaseReferences();
@@ -251,6 +276,13 @@ QStringList IDOSDeleteGridCommand::collectPropertyIds() const
 
 void IDOSDeleteGridCommand::clearDetachedObjects()
 {
+    for (const QPointer<IDOSGridFilter>& filter : m_filters)
+    {
+        if (filter != nullptr && filter->parent() == nullptr)
+        {
+            delete filter.data();
+        }
+    }
     for (const QPointer<IDOSGridProperty>& property : m_properties)
     {
         if (!property.isNull() && property->parent() == nullptr)

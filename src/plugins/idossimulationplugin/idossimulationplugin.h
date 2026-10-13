@@ -10,7 +10,7 @@
 #include "idosplugin.h"
 
 class QAction;
-class IDOSColoringTreeGuiProvider;
+class IDOSWellDisplayTreeGuiProvider;
 class IDOSDataObject;
 class IDOSInterface;
 class IDOSProject;
@@ -51,8 +51,10 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
     void removeHomeActions();
     void onProjectChanged(IDOSProject* project);
     void onCurrentObjectChanged(IDOSDataObject* object);
+    void onCurrentCaseChanged(const QString& caseId);
     void onProjectDataChanged(const QString& objectId);
     void updateActionAvailability();
+    IDOSSimulationCaseObject* currentSimulationCase(IDOSProject* project) const;
     void onCaseTableTriggered();
     void onParseSummaryTriggered();
     void onGenerateDataTriggered();
@@ -92,7 +94,7 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
     QAction* m_caseInventoryReportAction;
     QAction* m_workflowAction;
     IDOSToolMetadata* m_renderToolMetadata;
-    std::shared_ptr<IDOSColoringTreeGuiProvider> m_coloringTreeGuiProvider;
+    std::shared_ptr<IDOSWellDisplayTreeGuiProvider> m_wellDisplayTreeGuiProvider;
     QPointer<IDOSSimulationCaseTableWidget> m_caseTableWidget;
     QPointer<IDOSSimulationParseSummaryWidget> m_parseSummaryWidget;
     QPointer<IDOSSimulationDataGenerationWidget> m_generateDataWidget;

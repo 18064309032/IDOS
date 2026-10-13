@@ -28,3 +28,13 @@ bool IDOSRenderProvider::removeDataReference(const QString& dataId)
     Q_UNUSED(dataId)
     return false;
 }
+
+QStringList IDOSRenderProvider::dependencyIds() const
+{
+    return {};
+}
+
+void IDOSRenderProvider::setDataReference(IDOSDataObject* data)
+{
+    Q_UNUSED(data)
+}

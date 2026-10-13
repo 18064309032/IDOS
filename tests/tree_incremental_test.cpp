@@ -546,12 +546,14 @@ void TreeIncrementalTest::onMenuTargets()
     QScopedPointer<QMenu> menu(view->createMenu(firstIndex));
     QCOMPARE(view->menuItem()->dataId(), first->objectId());
     QCOMPARE(view->selectedItems().size(), 2);
-    QCOMPARE(menu->actions().last()->property("dataId").toString(), first->objectId());
+    QAction* remove = menu->findChild<QAction*>(QStringLiteral("deleteWellAction"));
+    QVERIFY(remove != nullptr);
+    QCOMPARE(remove->property("dataId").toString(), first->objectId());
     view->setCurrentIndex(secondIndex);
-    QCOMPARE(menu->actions().last()->property("dataId").toString(), first->objectId());
+    QCOMPARE(remove->property("dataId").toString(), first->objectId());
     IDOSProject replacement;
     window.setProject(&replacement);
-    menu->actions().last()->trigger();
+    remove->trigger();
     QCOMPARE(project.objects().size(), 2);
     QCOMPARE(replacement.objects().size(), 0);
 }

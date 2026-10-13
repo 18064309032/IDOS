@@ -108,7 +108,7 @@ Model 不解释具体业务角色，不处理网格属性互斥等规则。GuiPr
 | IDOSRenderRegistry | 工厂注册；add()、remove()、metadata() |
 | IDOSRenderScene | 拥有展示对象；add()、remove()、clear()、object()、objects() |
 | IDOSRenderView | 展示、相机、选择和拾取；scene()、selection()、setSelection(ids) |
-| IDOSRenderServer | 工程同步；setProject()、addView()、removeView() |
+| IDOSRenderServer | 工程同步与当前视图；setProject()、addView()、removeView()、currentView()、setCurrentView() |
 
 Metadata 创建具体 RenderProvider，Server 装入通用 RenderObject 后交给 Scene。不增加仅装配 Provider 的具体 RenderObject 子类。每个 View 的 Scene、Object、Provider 和显示状态独立。
 
@@ -126,9 +126,10 @@ Provider 不访问工程或 Scene，数据关联非拥有。工程同步由 Serv
 
 不增加 MenuContributor、ActionRegistry、InteractionProvider 或菜单组织器类。TreeView 在类内创建菜单、调用适用 GuiProvider、弹出和销毁菜单。按用户当前需求，RenderView 不启用右键菜单；渲染菜单、RenderGuiProvider 及其注册契约已删除，属性刷新与引用清理由 RenderServer 和具体 Provider 处理。
 
-- 右键目标与选择分别查询；数据树菜单仅针对实际节点，空白处不进入菜单流程，也不回退到已选节点。通用 TreeView 默认关闭空白菜单，由应用仅为工况树开启必要的新建和导入入口。多个 GUI 实现共同贡献节点菜单，排序明确；通用视图动作由 View 或注册的通用 GUI 实现提供。
+- 对实际节点创建右键菜单时，先将该节点设为当前节点，再由工程同步当前对象；工况树还同步明确的当前工况 ID。空白处不进入数据树菜单流程，也不回退到已选节点。通用 TreeView 默认关闭空白菜单，由应用仅为工况树开启必要的新建和导入入口。多个 GUI 实现共同贡献节点菜单，排序明确；通用视图动作由 View 或注册的通用 GUI 实现提供。
 - 稳定服务依赖在构造或绑定时设置；populateMenu 只接收菜单和目标 View，通过明确关联获取目标及工程，不使用隐式全局“当前对象”。
 - 局部显示操作以实际目标 View 和对象稳定 ID 为目标，不依赖事后变化的活动视图。
+- 工程保存当前对象和明确的当前工况 ID；渲染服务保存当前视图。结果播放依据当前工况定位共享网格及属性。显示设置面板以空构造和分步 setter 绑定工程、对象、视图及属性/筛选目标，菜单动作仍保存打开时的目标快照。
 - QAction 与子菜单归本次 QMenu。动作保存稳定 ID，执行时重新校验；不长期保存节点指针，不共用 pending 目标成员。
 - 菜单调用业务命令，局部显示操作调用目标 Provider；不接管 Server 同步和容器所有权。
 - 动作连接具名成员或 on 开头的槽，不使用 lambda。
@@ -492,15 +493,29 @@ if (!view->setToolBar(toolBar))
 - 模拟分组承载 Deck、解析摘要、预检、初始化、运行状态/启动、停止和工作流；结果分组承载表格、属性曲线、井控查看、结果文件、报告步播放、曲线对比和拟合评价入口；输出分组承载 DATA 导出、运行归档和工况报告，并保留平台截图/图片导出。未实现的拟合评价继续禁用。
 - 移除主页视图入口后，复位、图例、方向标、视角、适配及背景均由目标视图的悬浮工具条提供。共享主页模拟动作继续根据当前工况及任务状态更新，不将平台业务逻辑搬入 Ribbon 创建函数。
 
-### 着色交互扩展
+### 网格显示设置
 
-
-- `IDOSColoringWidget` 与 `IDOSColoringTreeGuiProvider` 属于数值模拟插件，文件位于 `src/plugins/idossimulationplugin` 根目录。网格和网格属性共用同一个面板；网格入口可选择单色或属性着色，属性入口预选该属性。面板按模式提供颜色、色带、反转、自动/手动范围、无效值颜色及图例设置，并即时更新明确的目标视图。
-- 插件通过 `IDOSInterface::treeRegistry()` 注册着色 GuiProvider，使用现有 `supports()` 和 `populateMenu()` 组合网格及属性右键菜单。该 Provider 只负责着色入口，不提供勾选职责；原 `IDOSGridTreeGuiProvider` 保留既有菜单及勾选，通用 TreeView 不识别网格业务。
-- 操作绑定右键节点的数据身份及当时的 `IDOSTreeView::targetView()`，不在面板操作时重新获取全局活动视图。每个视图的 `IDOSGridRenderProvider` 保存着色状态，面板读取、修改该状态，不持有第二份权威显示设置。局部着色直接调用目标 Provider 并通知目标 Scene/View 刷新，不经业务修改命令。
-- 当前数值模拟插件已链接 `idos_app`，可使用导出的 `IDOSGridRenderProvider`；按需要扩充该具体类的着色接口，不向通用 Provider 添加网格属性协议，不引入包装层，也不使 app 依赖插件。
-- 面板按非拥有关系绑定目标；工程切换、网格或属性删除、目标视图关闭时解除失效绑定，调用前重新核对对象身份。插件清理时先关闭并销毁面板、注销其 GuiProvider，确保菜单及共享 Provider 引用释放。
-
+- `IDOSGridSettingWidget` 位于现有 `src/app/grid`，直接替换旧着色面板；`IDOSGridTreeGuiProvider` 合并旧着色菜单职责并保留原有菜单和勾选，删除插件中的专用着色 GuiProvider 及注册链。通用 TreeView 不判断网格业务。
+- 网格及网格属性共用面板。网格入口打开外观页并读取当前显示状态，属性入口打开着色页并预选属性。外观页提供表面、线框、表面加边线、点显示、显隐、不透明度、边线颜色和像素线宽；着色页保留属性、22 种色带、反转、范围、无效值颜色及图例。表面边线开关对应已有 Surface/SurfaceWithEdges 模式，不维护第二份边线显隐状态。
+- 每视图 `IDOSGridRenderProvider` 保存显示模式、透明度、边线颜色和线宽，以及原有着色设置。高亮临时覆盖边线颜色和宽度，取消后恢复用户设置；属性、报告步、数据更新和网格透视恢复不重置外观。局部显示直接调用目标 Provider 并通知 Scene，不进入业务历史。
+- 菜单保存发起时的工程、树、网格/属性 ID 与目标视图弱引用，执行时重新核对身份。改变活动视图不重定向旧菜单或面板。工程切换、网格/渲染对象移除或视图关闭使面板失效；属性移除回退单色。菜单 Provider 注销时同步销毁其面板和显示动作。
+- App 内部直接调用具体 GridRenderProvider，不增加通用网格协议或包装层。删除旧插件着色代码的 app 依赖例外，保留已确认的井显示例外。剖切、裁剪和专业网格编辑不在本阶段实现。
 ## 15. 井输入数据解析
 
 井分层、实测射孔和 Checkshot 文件解析由 `src/providers/well` 中的具体 Provider/Metadata 提供。新增 `IDOSWellTopsProvider/Metadata`、`IDOSWellCompletionProvider/Metadata`、`IDOSWellCheckshotProvider/Metadata`；应用启动注册后沿用已有井导入命令。`IDOSWellCheckshot` 位于 `core/data/well`，作为 Well 的值类型成员保存原始时深采样、单位及声明的深度/时间类型，不把时深记录转换为三维点。实测射孔深度统一为米，未映射网格层号为 0，日期保持源文本；导入合并和快照撤销包含射孔及校深数据。查看入口由现有井 GuiProvider 提供。
+
+## 16. 井显示设置
+
+井口默认使用旧版 0～27 专用符号，保留点、球体和圆锥选项。Provider 在类内实现符号几何及预览，不增加符号工厂或包装层；自动模式优先读取已有 WellHead.symbol，无井头时使用井类型和开关状态回退，手动覆盖只改变目标视图。按旧编号划分生产、注入、关闭、停井配色；实测关闭射孔采用关闭配色，停井符号下沿用停井配色。显示设置提供四类井色、四类射孔色及沿用井色开关，也可关闭状态着色以使用各部分单色。井口符号、轨迹和射孔线默认启用 VTK 管状线及旧版光照参数，线宽仍使用像素，不引入物理管径几何。当前数据模型没有独立停井字段，停井由文件/显示符号表达；本阶段不迁入二维井组样式，不改变 MD 裁剪规则。
+
+具体井节点及 idos.well.trajectory 节点提供“显示设置…”入口，其他井数据分类不增加该入口。数值模拟插件中的 IDOSWellDisplayTreeGuiProvider 组合菜单，IDOSWellDisplayWidget 提供共用面板，两组成对文件放在插件根目录。沿用已确认的网格面板调用方式，仅这两个实现文件允许调用 app/well/idoswellrenderprovider.h。每视图 IDOSWellRenderProvider 保存权威显示状态，提供 displaySettings/setDisplaySettings；面板绑定打开时的工程、井身份和目标视图，局部修改不进入命令历史。支持井口形状、颜色和大小，轨迹颜色、宽度、平滑及 MD 裁剪，实测射孔颜色与宽度，以及井名标签。源数据保持不变；COMPDAT 网格层号不转换为实测射孔深度。数据删除、工程切换、视图关闭和插件清理时关闭面板并解除关联。
+
+## 17. 网格筛选
+
+IDOSGridFilter 继承 IDOSDataObject，保存源网格 ID 与 I/J/K 范围／勾选项、属性比较、条件组合及分别的网格／属性显示操作；属性比较支持七种方式、区间边界包含、无效值及相等容差。方向范围与勾选项取并集，三方向按并集／交集组合，网格和属性结果分别应用显示／隐藏／反选后取交集；IDOSGridFilterMetadata 注册数据工厂。两组成对文件位于 core/data/grid。原始网格几何不复制，单元选择为计算结果；缺失属性使筛选失效，不删除条件，也不因反选而显示所有单元。
+
+IDOSGridFilterWidget 为独立筛选窗口，成对文件位于现有 app/grid；沿用旧版网格筛选／属性筛选两页、方向列表和间隔选择、属性列表与条件编辑、范围拖动和直方图。IDOSGridSettingWidget 只保留外观／着色；网格右键“网格筛选…”打开筛选窗口进入临时预览；保存及另存为通过 IDOSGridFilterCommand/Metadata 的 create/update/delete 命令，命令成对文件位于 app/grid，重命名使用现有命令。保存的结果由现有 IDOSGridTreeProvider 装配在源网格“筛选”分类下，现有 GridTreeGuiProvider 提供编辑、重命名、删除和独立勾选，不新增树模型或菜单层。
+
+IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何和外观，不包装另一 Provider，关联 Filter 数据并拥有各视图独立状态；IDOSGridFilterRenderMetadata 创建该 Provider，两组成对文件位于 app/grid。RenderProvider 增加 dependencyIds/setDataReference 非拥有接口，由 RenderServer 统一解析和绑定依赖后调用 update，不识别具体子类。Grid Provider 的临时筛选也使用这条依赖绑定路径。动态条件按属性当前报告步重新计算，绘制单元附加原始单元 ID 和 I/J/K 数组。删除网格命令同时脱离筛选数据，撤销恢复；源数据重新绑定由 Server 处理。项目持久化仍未实现，保存仅进入当前工程。
+
+主网格的临时预览保存成结果时，GridRenderProvider 记录对应结果 ID（仅目标视图的非拥有引用）；取消该结果勾选清除对应预览，恢复主网格完整活跃单元，保留显隐、着色和外观。后续应用其他临时条件解除旧关联，不误清其他预览。删除结果或撤销创建时由 RenderServer 的既有依赖移除流程通知 Provider 清理；通用层不增加业务判断。

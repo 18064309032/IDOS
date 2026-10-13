@@ -3,6 +3,7 @@
 
 #include <QColor>
 #include <QList>
+#include <QMap>
 #include <QPointer>
 #include <QString>
 #include <QStringList>
@@ -24,6 +25,14 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     ~IDOSGridRenderProvider() override;
     IDOSDataObject* dataSource() const override;
     void update() override;
+    QStringList dependencyIds() const override;
+    void setDataReference(IDOSDataObject* data) override;
+    QVariantMap filterCriteria() const;
+    bool setFilterCriteria(const QVariantMap& criteria);
+    QString previewFilterId() const;
+    void setPreviewFilterId(const QString& id);
+    QString filterError() const;
+    int filteredCellCount() const;
     bool dependsOn(const QStringList& dataIds) const override;
     bool removeDataReference(const QString& dataId) override;
     QList<vtkActor*> actors() const override;
@@ -42,6 +51,14 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     static QList<QColor> colorRampColors(const QString& key, bool reversed);
     IDOSDisplayMode displayMode() const override;
     bool setDisplayMode(IDOSDisplayMode mode) override;
+    QColor edgeColor() const;
+    bool setEdgeColor(const QColor& color);
+    double edgeWidth() const;
+    bool setEdgeWidth(double width);
+
+  protected:
+    void setGridSource(IDOSGrid* grid);
+    void setPropertySource(IDOSGridProperty* property);
 
   private:
     static QList<QColor> colorRampStops(const QString& key);
@@ -49,12 +66,19 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     QPointer<IDOSGrid> m_dataObject;
     QPointer<IDOSGridProperty> m_property;
     IDOSDisplayMode m_displayMode;
+    QColor m_edgeColor;
+    double m_edgeWidth;
     QList<vtkSmartPointer<vtkActor>> m_actors;
     QList<vtkSmartPointer<vtkProp>> m_legends;
     bool m_highlighted;
     bool m_visible;
     double m_opacity;
     QVariantMap m_coloringSettings;
+    QVariantMap m_filterCriteria;
+    QString m_previewFilterId;
+    QMap<QString, QPointer<IDOSGridProperty>> m_filterProperties;
+    QString m_filterError;
+    int m_filteredCellCount;
 };
 
 #endif

@@ -8,6 +8,7 @@ class APP_EXPORT IDOSGridTreeProvider : public IDOSTreeProvider
 {
   public:
     explicit IDOSGridTreeProvider(IDOSDataObject* data);
+    bool dependsOn(const QStringList& dataIds) const override;
     void populate(IDOSTreeItem* item) override;
 
   private:

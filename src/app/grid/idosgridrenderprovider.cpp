@@ -14,6 +14,7 @@
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
 #include <vtkHexahedron.h>
+#include <vtkIntArray.h>
 #include <vtkLookupTable.h>
 #include <vtkPoints.h>
 #include <vtkProp.h>
@@ -25,6 +26,7 @@
 #endif
 
 #include "idosgrid.h"
+#include "idosgridfilter.h"
 #include "idosgridproperty.h"
 
 #include "idosgridrenderprovider.h"
@@ -34,12 +36,19 @@ IDOSGridRenderProvider::IDOSGridRenderProvider(IDOSGrid* dataObject)
     m_dataObject(dataObject)
     , m_property(nullptr)
     , m_displayMode(IDOSDisplayMode::Surface)
+    , m_edgeColor(Qt::black)
+    , m_edgeWidth(1.0)
     , m_actors()
     , m_legends()
     , m_highlighted(false)
     , m_visible(dataObject != nullptr && dataObject->isVisible())
     , m_opacity(1.0)
     , m_coloringSettings()
+    , m_filterCriteria()
+    , m_previewFilterId()
+    , m_filterProperties()
+    , m_filterError()
+    , m_filteredCellCount(0)
 {
     m_coloringSettings.insert(QStringLiteral("ramp"), QStringLiteral("Default"));
     m_coloringSettings.insert(QStringLiteral("reversed"), false);
@@ -62,33 +71,91 @@ IDOSDataObject* IDOSGridRenderProvider::dataSource() const
 
 bool IDOSGridRenderProvider::dependsOn(const QStringList& dataIds) const
 {
-    return m_property != nullptr && dataIds.contains(m_property->objectId());
+    for (const QString& id : dependencyIds())
+    {
+        if (dataIds.contains(id))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool IDOSGridRenderProvider::removeDataReference(const QString& dataId)
 {
-    if (m_property == nullptr || m_property->objectId() != dataId)
+    bool removed = m_filterProperties.remove(dataId) > 0;
+    if (!m_previewFilterId.isEmpty() && m_previewFilterId == dataId)
     {
-        return false;
+        setFilterCriteria(QVariantMap());
+        removed = true;
     }
-    m_property = nullptr;
-    return true;
+    if (m_property != nullptr && m_property->objectId() == dataId)
+    {
+        m_property = nullptr;
+        removed = true;
+    }
+    return removed;
 }
 
 void IDOSGridRenderProvider::update()
 {
     m_actors.clear();
     m_legends.clear();
+    m_filterError.clear();
+    m_filteredCellCount = 0;
     if (m_dataObject.isNull())
     {
         return;
+    }
+    const QVariantMap axes = m_filterCriteria.value(QStringLiteral("axes")).toMap();
+    const QStringList names = {QStringLiteral("i"), QStringLiteral("j"), QStringLiteral("k")};
+    const QList<int> dimensions = {m_dataObject->nx(), m_dataObject->ny(), m_dataObject->nz()};
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        const QVariantMap range = axes.value(names.at(axis)).toMap();
+        bool invalid = range.value(QStringLiteral("enabled")).toBool() && range.value(QStringLiteral("maximum")).toInt() > dimensions.at(axis);
+        for (const QVariant& value : range.value(QStringLiteral("values")).toList())
+        {
+            invalid = invalid || value.toInt() > dimensions.at(axis);
+        }
+        if (invalid)
+        {
+            m_filterError = QObject::tr("A filter index range exceeds the source grid dimensions.");
+            return;
+        }
+    }
+    QMap<QString, IDOSGridProperty*> filterProperties;
+    for (const QString& id : IDOSGridFilter::propertyIds(m_filterCriteria))
+    {
+        IDOSGridProperty* property = m_filterProperties.value(id).data();
+        const qint64 cellCount = static_cast<qint64>(m_dataObject->nx()) * m_dataObject->ny() * m_dataObject->nz();
+        if (property == nullptr || property->gridId() != m_dataObject->objectId() || property->values().size() != cellCount || property->numX() != m_dataObject->nx() ||
+            property->numY() != m_dataObject->ny() || property->numZ() != m_dataObject->nz())
+        {
+            m_filterError = QObject::tr("A filter property is missing or incompatible with the source grid.");
+            return;
+        }
+        filterProperties.insert(id, property);
     }
 #ifdef IDOS_ENABLE_RENDER
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     grid->SetPoints(points);
+    vtkSmartPointer<vtkIntArray> originalIds = vtkSmartPointer<vtkIntArray>::New();
+    originalIds->SetName("GlobalIndex");
+    vtkSmartPointer<vtkIntArray> indicesI = vtkSmartPointer<vtkIntArray>::New();
+    indicesI->SetName("I");
+    vtkSmartPointer<vtkIntArray> indicesJ = vtkSmartPointer<vtkIntArray>::New();
+    indicesJ->SetName("J");
+    vtkSmartPointer<vtkIntArray> indicesK = vtkSmartPointer<vtkIntArray>::New();
+    indicesK->SetName("K");
+    grid->GetCellData()->AddArray(originalIds);
+    grid->GetCellData()->AddArray(indicesI);
+    grid->GetCellData()->AddArray(indicesJ);
+    grid->GetCellData()->AddArray(indicesK);
     QVector<double> values;
     const IDOSGrid* sourceGrid = m_dataObject.data();
+    const QVector<quint8> selection = IDOSGridFilter::selection(m_filterCriteria, sourceGrid->nx(), sourceGrid->ny(), sourceGrid->nz(), filterProperties);
     const bool hasScalars = !m_property.isNull() && !m_property->values().isEmpty();
     for (int k = 0; k < sourceGrid->nz(); ++k)
     {
@@ -96,7 +163,8 @@ void IDOSGridRenderProvider::update()
         {
             for (int i = 0; i < sourceGrid->nx(); ++i)
             {
-                if (!sourceGrid->isActive(i, j, k))
+                const int globalIndex = IDOSGridProperty::cellIndex(i, j, k, sourceGrid->nx(), sourceGrid->ny());
+                if (!sourceGrid->isActive(i, j, k) || selection.at(globalIndex) == 0)
                 {
                     continue;
                 }
@@ -107,9 +175,13 @@ void IDOSGridRenderProvider::update()
                     pointIds[corner] = points->InsertNextPoint(point.x(), point.y(), point.z());
                 }
                 grid->InsertNextCell(VTK_HEXAHEDRON, 8, pointIds);
+                originalIds->InsertNextValue(globalIndex);
+                indicesI->InsertNextValue(i + 1);
+                indicesJ->InsertNextValue(j + 1);
+                indicesK->InsertNextValue(k + 1);
+                ++m_filteredCellCount;
                 if (hasScalars)
                 {
-                    const int globalIndex = IDOSGridProperty::cellIndex(i, j, k, sourceGrid->nx(), sourceGrid->ny());
                     values.append(globalIndex < m_property->values().size() ? m_property->values().at(globalIndex)
                                                                             : std::numeric_limits<double>::quiet_NaN());
                 }
@@ -299,7 +371,44 @@ IDOSDisplayMode IDOSGridRenderProvider::displayMode() const
 
 bool IDOSGridRenderProvider::setDisplayMode(IDOSDisplayMode mode)
 {
+    if (mode != IDOSDisplayMode::Surface && mode != IDOSDisplayMode::Wireframe &&
+        mode != IDOSDisplayMode::SurfaceWithEdges && mode != IDOSDisplayMode::Points)
+    {
+        return false;
+    }
     m_displayMode = mode;
+    applyActorProperties();
+    return true;
+}
+
+QColor IDOSGridRenderProvider::edgeColor() const
+{
+    return m_edgeColor;
+}
+
+bool IDOSGridRenderProvider::setEdgeColor(const QColor& color)
+{
+    if (!color.isValid())
+    {
+        return false;
+    }
+    m_edgeColor = color;
+    applyActorProperties();
+    return true;
+}
+
+double IDOSGridRenderProvider::edgeWidth() const
+{
+    return m_edgeWidth;
+}
+
+bool IDOSGridRenderProvider::setEdgeWidth(double width)
+{
+    if (!std::isfinite(width) || width < 0.5 || width > 20.0)
+    {
+        return false;
+    }
+    m_edgeWidth = width;
     applyActorProperties();
     return true;
 }
@@ -339,9 +448,10 @@ void IDOSGridRenderProvider::applyActorProperties()
             const QColor color(m_coloringSettings.value(QStringLiteral("solidColor")).toString());
             actor->GetProperty()->SetColor(color.redF(), color.greenF(), color.blueF());
         }
-        actor->GetProperty()->SetEdgeColor(m_highlighted ? 1.0 : 0.0, m_highlighted ? 0.95 : 0.0,
-                                           m_highlighted ? 0.15 : 0.0);
-        actor->GetProperty()->SetLineWidth(m_highlighted ? 3.0 : 1.0);
+        actor->GetProperty()->SetEdgeColor(m_highlighted ? 1.0 : m_edgeColor.redF(),
+                                           m_highlighted ? 0.95 : m_edgeColor.greenF(),
+                                           m_highlighted ? 0.15 : m_edgeColor.blueF());
+        actor->GetProperty()->SetLineWidth(m_highlighted ? qMax(3.0, m_edgeWidth + 2.0) : m_edgeWidth);
         if (m_highlighted && m_displayMode != IDOSDisplayMode::Points)
         {
             actor->GetProperty()->EdgeVisibilityOn();
@@ -614,4 +724,74 @@ QList<QColor> IDOSGridRenderProvider::colorRampStops(const QString& key)
             QColor::fromRgbF(0.70, 0.90, 0.90)};
     }
     return {};
+}
+
+QStringList IDOSGridRenderProvider::dependencyIds() const
+{
+    QStringList ids = IDOSGridFilter::propertyIds(m_filterCriteria);
+    if (!m_previewFilterId.isEmpty())
+    {
+        ids.append(m_previewFilterId);
+    }
+    if (m_property != nullptr && !ids.contains(m_property->objectId()))
+    {
+        ids.append(m_property->objectId());
+    }
+    return ids;
+}
+
+void IDOSGridRenderProvider::setDataReference(IDOSDataObject* data)
+{
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(data);
+    if (property != nullptr)
+    {
+        m_filterProperties.insert(property->objectId(), property);
+    }
+}
+
+QVariantMap IDOSGridRenderProvider::filterCriteria() const
+{
+    return m_filterCriteria;
+}
+
+bool IDOSGridRenderProvider::setFilterCriteria(const QVariantMap& criteria)
+{
+    QString error;
+    if (!IDOSGridFilter::validateCriteria(criteria, error))
+    {
+        return false;
+    }
+    m_filterCriteria = criteria;
+    m_previewFilterId.clear();
+    return true;
+}
+
+QString IDOSGridRenderProvider::filterError() const
+{
+    return m_filterError;
+}
+
+int IDOSGridRenderProvider::filteredCellCount() const
+{
+    return m_filteredCellCount;
+}
+
+void IDOSGridRenderProvider::setGridSource(IDOSGrid* grid)
+{
+    m_dataObject = grid;
+}
+
+void IDOSGridRenderProvider::setPropertySource(IDOSGridProperty* property)
+{
+    m_property = property;
+}
+
+QString IDOSGridRenderProvider::previewFilterId() const
+{
+    return m_previewFilterId;
+}
+
+void IDOSGridRenderProvider::setPreviewFilterId(const QString& id)
+{
+    m_previewFilterId = id;
 }

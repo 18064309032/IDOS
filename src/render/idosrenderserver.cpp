@@ -81,6 +81,10 @@ void IDOSRenderServer::addView(IDOSRenderView* view)
     m_views.append(view);
     connect(view, &QObject::destroyed, this, &IDOSRenderServer::onViewDestroyed);
     populate(view);
+    if (m_currentView.isNull())
+    {
+        setCurrentView(view);
+    }
 }
 
 void IDOSRenderServer::removeView(IDOSRenderView* view)
@@ -90,12 +94,44 @@ void IDOSRenderServer::removeView(IDOSRenderView* view)
         return;
     }
     disconnect(view, nullptr, this, nullptr);
+    if (m_currentView == view)
+    {
+        setCurrentView(m_views.isEmpty() ? nullptr : m_views.first());
+    }
     view->scene()->clear();
 }
 
 QList<IDOSRenderView*> IDOSRenderServer::views() const
 {
     return m_views;
+}
+
+IDOSRenderView* IDOSRenderServer::currentView() const
+{
+    return m_currentView.data();
+}
+
+bool IDOSRenderServer::setCurrentView(IDOSRenderView* view)
+{
+    if (view != nullptr && !m_views.contains(view))
+    {
+        return false;
+    }
+    if (m_currentView == view)
+    {
+        return true;
+    }
+    if (m_currentView != nullptr)
+    {
+        m_currentView->setActive(false);
+    }
+    m_currentView = view;
+    if (view != nullptr)
+    {
+        view->setActive(true);
+    }
+    emit currentViewChanged(view);
+    return true;
 }
 
 QList<QString> IDOSRenderServer::objectIds(IDOSRenderView* view, const QString& dataId) const
@@ -164,6 +200,7 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
         IDOSRenderObject* object = new IDOSRenderObject(provider);
         object->setName(data->name());
         object->setVisible(false);
+        bindDataReferences(object->provider());
         object->update();
         if (!view->scene()->add(object))
         {
@@ -178,6 +215,7 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
         object->setName(data->name());
         if (dataChanged)
         {
+            bindDataReferences(object->provider());
             object->update();
         }
         view->scene()->notifyChanged(id);
@@ -210,7 +248,8 @@ void IDOSRenderServer::update(const QStringList& ids, bool dataChanged)
                 IDOSDataObject* source = object->provider()->dataSource();
                 if (source != nullptr && !ids.contains(source->objectId()) && object->provider()->dependsOn(ids))
                 {
-                    object->update();
+                    bindDataReferences(object->provider());
+            object->update();
                     view->scene()->notifyChanged(object->id());
                 }
             }
@@ -232,11 +271,24 @@ void IDOSRenderServer::onProjectDestroyed()
 
 void IDOSRenderServer::onViewDestroyed(QObject* object)
 {
+    const bool wasCurrent = m_currentView.isNull() || m_currentView.data() == object;
     for (int index = m_views.size() - 1; index >= 0; --index)
     {
         if (m_views.at(index) == object)
         {
             m_views.removeAt(index);
+        }
+    }
+    if (wasCurrent)
+    {
+        m_currentView = nullptr;
+        if (m_views.isEmpty())
+        {
+            emit currentViewChanged(nullptr);
+        }
+        else
+        {
+            setCurrentView(m_views.first());
         }
     }
 }
@@ -328,4 +380,20 @@ void IDOSRenderServer::onObjectRemoved(const QString& id)
 void IDOSRenderServer::onObjectsRemoved(const QStringList& ids)
 {
     update(ids, false);
+}
+
+void IDOSRenderServer::bindDataReferences(IDOSRenderProvider* provider)
+{
+    if (m_project == nullptr || provider == nullptr)
+    {
+        return;
+    }
+    for (const QString& id : provider->dependencyIds())
+    {
+        IDOSDataObject* data = m_project->object(id);
+        if (data != nullptr)
+        {
+            provider->setDataReference(data);
+        }
+    }
 }

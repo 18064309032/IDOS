@@ -89,7 +89,9 @@ if(WIN32)
     # Deploy Qt DLLs (windeployqt analyzes Qt dependencies)
     # --compiler-runtime: Release 版部署 VC 运行时（Debug 版 windeployqt 不部署，见下）
     add_custom_command(TARGET idos POST_BUILD
-        COMMAND "${IDOS_QT_DIR}/bin/windeployqt.exe" --compiler-runtime $<TARGET_FILE:idos>
+        COMMAND "${IDOS_QT_DIR}/bin/windeployqt.exe"
+            "$<IF:$<CONFIG:Debug>,--debug,--release>"
+            --compiler-runtime $<TARGET_FILE:idos>
         COMMENT "Deploying Qt DLLs via windeployqt..."
     )
 
@@ -112,25 +114,37 @@ if(WIN32)
     file(GLOB _idos_debugcrt
         "${_idos_vcroot}/Redist/MSVC/*/debug_nonredist/x64/Microsoft.VC*.DebugCRT")
     list(SORT _idos_debugcrt ORDER DESCENDING)
-    list(GET _idos_debugcrt 0 _idos_debugcrt_dir)
+    if(_idos_debugcrt)
+        list(GET _idos_debugcrt 0 _idos_debugcrt_dir)
+    endif()
     if(EXISTS "${_idos_debugcrt_dir}")
+        file(GENERATE
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/deploy-debug-crt-$<CONFIG>.cmake"
+            CONTENT "if(\"$<CONFIG>\" STREQUAL \"Debug\")\n    execute_process(COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${_idos_debugcrt_dir}\" \"$<TARGET_FILE_DIR:idos>\" COMMAND_ERROR_IS_FATAL ANY)\nendif()\n"
+        )
         add_custom_command(TARGET idos POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${_idos_debugcrt_dir}" "$<TARGET_FILE_DIR:idos>"
-            COMMENT "Copying VC Debug runtime DLLs..."
+            COMMAND ${CMAKE_COMMAND} -P
+                "${CMAKE_CURRENT_BINARY_DIR}/deploy-debug-crt-$<CONFIG>.cmake"
+            COMMENT "Deploying configuration-specific VC runtime DLLs..."
+            VERBATIM
         )
     else()
         message(WARNING "VC Debug runtime redist not found under ${_idos_vcroot}/Redist")
     endif()
 
-    # Deploy runtime DLLs without copying unrelated tools and debug databases.
+    # VTK ships paired Release/Debug DLLs in the same directory.
     if(IDOS_ENABLE_RENDER)
         file(GLOB _idos_vtk_runtime_dlls CONFIGURE_DEPENDS
-            "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/bin/*.dll")
+            "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/bin/*-9.6.dll")
         foreach(_idos_vtk_runtime_dll IN LISTS _idos_vtk_runtime_dlls)
+            string(REGEX REPLACE "\\.dll$" "d.dll"
+                _idos_vtk_debug_runtime_dll "${_idos_vtk_runtime_dll}")
+            if(NOT EXISTS "${_idos_vtk_debug_runtime_dll}")
+                message(FATAL_ERROR "Missing VTK Debug runtime: ${_idos_vtk_debug_runtime_dll}")
+            endif()
             add_custom_command(TARGET idos POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${_idos_vtk_runtime_dll}"
+                    "$<IF:$<CONFIG:Debug>,${_idos_vtk_debug_runtime_dll},${_idos_vtk_runtime_dll}>"
                     "$<TARGET_FILE_DIR:idos>"
                 VERBATIM
             )

@@ -5,6 +5,7 @@
 
 #include "idosdataobject.h"
 #include "idosgrid.h"
+#include "idosgridfilter.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
 #include "idostreeitem.h"
@@ -47,6 +48,8 @@ void IDOSGridTreeProvider::populate(IDOSTreeItem* item)
     regions->setGroup(true);
     IDOSTreeItem* dynamicGroup = addItem(item, QStringLiteral("grid.dynamicProperties"), QObject::tr("Dynamic Properties"));
     dynamicGroup->setGroup(true);
+    IDOSTreeItem* filters = addItem(item, QStringLiteral("grid.filters"), QObject::tr("Filters"));
+    filters->setGroup(true);
     const IDOSProject* project = qobject_cast<const IDOSProject*>(grid->parent());
     if (project == nullptr)
     {
@@ -56,6 +59,16 @@ void IDOSGridTreeProvider::populate(IDOSTreeItem* item)
                                        QStringLiteral("PVTNUM"), QStringLiteral("EQLNUM"), QStringLiteral("FIPNUM")};
     for (IDOSDataObject* candidate : project->objects())
     {
+        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(candidate);
+        if (filter != nullptr && filter->gridId() == grid->objectId())
+        {
+            IDOSTreeItem* leaf = addItem(filters, QStringLiteral("filter:") + filter->objectId(), filter->name());
+            leaf->setDataId(filter->objectId());
+            leaf->setReference(true);
+            leaf->setPartKey(QString());
+            leaf->setCheckable(true);
+            leaf->setChecked(false);
+        }
         IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(candidate);
         if (property == nullptr || property->gridId() != grid->objectId())
         {
@@ -74,4 +87,9 @@ void IDOSGridTreeProvider::populate(IDOSTreeItem* item)
         leaf->setCheckable(true);
         leaf->setChecked(property->isVisible());
     }
+}
+
+bool IDOSGridTreeProvider::dependsOn(const QStringList& dataIds) const
+{
+    return !dataIds.isEmpty();
 }

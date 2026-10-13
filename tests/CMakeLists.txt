@@ -4,6 +4,8 @@ find_package(Qt5 COMPONENTS Test REQUIRED)
 set(_idos_render_headers
     idosinterface.h idosappinterface.h idosassistantwidget.h
     idosgridrendermetadata.h idosgridrenderprovider.h
+    idosgridfilter.h idosgridfiltermetadata.h idosgridfiltercommand.h idosgridfilterwidget.h
+    idosgridfilterrendermetadata.h idosgridfilterrenderprovider.h
     idosimportrestartresultscommand.h
     idoswellrendermetadata.h idoswellrenderprovider.h
 
@@ -29,8 +31,9 @@ list(APPEND _idos_render_headers
     "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcompletionmetadata.h"
     "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcheckshotprovider.h"
     "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcheckshotmetadata.h"
-    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoscoloringwidget.h"
-    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoscoloringtreeguiprovider.h"
+    "${CMAKE_SOURCE_DIR}/src/app/grid/idosgridsettingwidget.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoswelldisplaywidget.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoswelldisplaytreeguiprovider.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationplugin.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationresultplaybackwidget.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationinitializewidget.h"

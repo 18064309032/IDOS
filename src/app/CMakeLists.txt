@@ -24,6 +24,16 @@ add_library(idos_app SHARED
     case/idossimulationcasetreeprovider.h
     grid/idosgridtreeguiprovider.cpp
     grid/idosgridtreeguiprovider.h
+    grid/idosgridsettingwidget.cpp
+    grid/idosgridfilterwidget.h
+    grid/idosgridfilterwidget.cpp
+    grid/idosgridfiltercommand.h
+    grid/idosgridfiltercommand.cpp
+    grid/idosgridfilterrendermetadata.h
+    grid/idosgridfilterrendermetadata.cpp
+    grid/idosgridfilterrenderprovider.h
+    grid/idosgridfilterrenderprovider.cpp
+    grid/idosgridsettingwidget.h
     grid/idosgridtreemetadata.cpp
     grid/idosgridtreemetadata.h
     grid/idosgridtreeprovider.cpp
@@ -98,6 +108,8 @@ if(IDOS_ENABLE_RENDER)
     target_link_libraries(idos_app PRIVATE
         VTK::CommonCore
         VTK::CommonDataModel
+        VTK::FiltersGeneral
+        VTK::FiltersSources
         VTK::RenderingCore
         VTK::RenderingAnnotation
     )

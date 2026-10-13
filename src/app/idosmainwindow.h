@@ -75,6 +75,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSRenderRegistry* renderRegistry() const;
     IDOSToolRegistry* toolRegistry() const;
     IDOSCommandRegistry* commandRegistry() const;
+    IDOSRenderServer* renderServer() const;
 
   signals:
     void projectChanged(IDOSProject* project);
@@ -88,6 +89,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onRenderViewDecorations();
     void onRenderViewActivated(const QString& id);
     void onRenderViewDestroyed(QObject* object);
+    void onRenderCurrentViewChanged(IDOSRenderView* view);
     void onRenderDataRemoving(const QString& id);
     void onRenderObjectsChanged(IDOSRenderView* view, const QStringList& ids, bool dataChanged);
     void onUndoTriggered();
@@ -174,7 +176,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSRenderServer* m_renderServer;
     QMap<QString, QPointer<IDOSRenderView>> m_views;
     QMap<QString, QString> m_viewContextIds;
-    QString m_activeViewId;
     IDOSRuntimeInfoWidget* m_runtimeInfoWidget;
     IDOSPluginRegistry* m_pluginRegistry;
     IDOSPluginManagerWidget* m_pluginManagerWidget;

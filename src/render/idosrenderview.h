@@ -152,6 +152,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     IDOSRenderScene* m_scene;
     QHash<vtkActor*, QString> m_actorObjectIds;
     QList<QString> m_selection;
+    QHash<QString, bool> m_displayVisibilitySnapshot;
     IDOSOrientation m_orientation;
     bool m_active;
     bool m_twoDimensional;

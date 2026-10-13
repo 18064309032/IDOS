@@ -11,6 +11,7 @@
 
 class IDOSDataObject;
 class IDOSProject;
+class IDOSRenderProvider;
 class IDOSRenderRegistry;
 class IDOSRenderView;
 
@@ -26,11 +27,14 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     void addView(IDOSRenderView* view);
     void removeView(IDOSRenderView* view);
     QList<IDOSRenderView*> views() const;
+    IDOSRenderView* currentView() const;
+    bool setCurrentView(IDOSRenderView* view);
     QList<QString> objectIds(IDOSRenderView* view, const QString& dataId) const;
     IDOSDataObject* dataSource(IDOSRenderView* view, const QString& objectId) const;
   signals:
     void objectsChanged(IDOSRenderView* view, const QStringList& dataIds, bool dataChanged);
     void dataAboutToBeRemoved(const QString& dataId);
+    void currentViewChanged(IDOSRenderView* view);
   private slots:
     void onMetadataAdded(const QString& typeId);
     void onMetadataAboutToBeRemoved(const QString& typeId);
@@ -45,6 +49,7 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     void onObjectAboutToBeRemoved(const QString& id);
 
   private:
+    void bindDataReferences(IDOSRenderProvider* provider);
     void reload();
     void populate(IDOSRenderView* view);
     void update(const QStringList& ids, bool dataChanged);
@@ -52,6 +57,7 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     QPointer<IDOSProject> m_project;
     QPointer<IDOSRenderRegistry> m_registry;
     QList<IDOSRenderView*> m_views;
+    QPointer<IDOSRenderView> m_currentView;
 };
 
 #endif // IDOS_RENDER_SERVER_H

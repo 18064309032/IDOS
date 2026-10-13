@@ -284,6 +284,15 @@ void IDOSTreeView::setBlankMenuEnabled(bool enabled)
 
 QMenu* IDOSTreeView::createMenu(const QModelIndex& target)
 {
+    if (target.isValid() && currentIndex() != target)
+    {
+        const QItemSelection previousSelection = selectionModel()->selection();
+        selectionModel()->setCurrentIndex(target, QItemSelectionModel::NoUpdate);
+        if (previousSelection.indexes().size() > 1)
+        {
+            selectionModel()->select(previousSelection, QItemSelectionModel::ClearAndSelect);
+        }
+    }
     m_menuIndex = target;
     QMenu* menu = new QMenu(this);
     if (menuItem() == nullptr && !m_blankMenuEnabled)

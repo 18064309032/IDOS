@@ -301,19 +301,16 @@ IDOSSimulationCaseObject* IDOSSimulationResultPlaybackWidget::resolveSimulationC
     {
         return nullptr;
     }
-    for (IDOSDataObject* candidate : project->objects())
+    simulationCase = qobject_cast<IDOSSimulationCaseObject*>(project->object(project->currentCaseId()));
+    if (simulationCase == nullptr)
     {
-        simulationCase = qobject_cast<IDOSSimulationCaseObject*>(candidate);
-        if (simulationCase == nullptr)
+        return nullptr;
+    }
+    for (const IDOSCaseItemRef& reference : simulationCase->itemRefs())
+    {
+        if (reference.role() == QStringLiteral("case.grid") && reference.objectId() == gridId)
         {
-            continue;
-        }
-        for (const IDOSCaseItemRef& reference : simulationCase->itemRefs())
-        {
-            if (reference.role() == QStringLiteral("case.grid") && reference.objectId() == gridId)
-            {
-                return simulationCase;
-            }
+            return simulationCase;
         }
     }
     return nullptr;

@@ -69,6 +69,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_scene(new IDOSRenderScene(this))
     , m_actorObjectIds()
     , m_selection()
+    , m_displayVisibilitySnapshot()
     , m_orientation(IDOSOrientation::Isometric)
     , m_active(false)
     , m_twoDimensional(false)
@@ -312,13 +313,28 @@ void IDOSRenderView::setDisplayVisible(bool visible)
 {
     m_scene->beginUpdate();
     const QList<IDOSRenderObject*> objects = m_scene->objects();
+    if (!visible)
+    {
+        m_displayVisibilitySnapshot.clear();
+        for (IDOSRenderObject* object : objects)
+        {
+            m_displayVisibilitySnapshot.insert(object->id(), object->visible());
+        }
+    }
     for (IDOSRenderObject* object : objects)
     {
-        if (object->visible() != visible)
+        const bool targetVisible = visible
+                                       ? m_displayVisibilitySnapshot.value(object->id(), m_displayVisibilitySnapshot.isEmpty())
+                                       : false;
+        if (object->visible() != targetVisible)
         {
-            object->setVisible(visible);
+            object->setVisible(targetVisible);
             m_scene->notifyChanged(object->id());
         }
+    }
+    if (visible)
+    {
+        m_displayVisibilitySnapshot.clear();
     }
     m_scene->endUpdate();
 }

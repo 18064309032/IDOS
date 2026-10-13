@@ -20,6 +20,8 @@ class RENDER_EXPORT IDOSRenderProvider
     virtual ~IDOSRenderProvider();
     virtual IDOSDataObject* dataSource() const = 0;
     virtual void update() = 0;
+    virtual QStringList dependencyIds() const;
+    virtual void setDataReference(IDOSDataObject* data);
     virtual bool dependsOn(const QStringList& dataIds) const;
     virtual bool removeDataReference(const QString& dataId);
     virtual QList<vtkActor*> actors() const = 0;

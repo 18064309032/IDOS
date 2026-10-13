@@ -4,6 +4,7 @@
 #include "eclipse/idossimulationcaseeclipsemetadata.h"
 #include "idosdataproviderregistry.h"
 #include "idosdataregistry.h"
+#include "idosgridfiltermetadata.h"
 #include "idosgridmetadata.h"
 #include "idossimulationcasemetadata.h"
 #include "idoswellmetadata.h"
@@ -26,6 +27,7 @@ IDOSApplication::IDOSApplication(int& argc, char** argv)
     initProviders();
     m_dataRegistry->add(new IDOSWellMetadata());
     m_dataRegistry->add(new IDOSGridMetadata());
+    m_dataRegistry->add(new IDOSGridFilterMetadata());
     m_dataRegistry->add(new IDOSSimulationCaseMetadata());
 }
 

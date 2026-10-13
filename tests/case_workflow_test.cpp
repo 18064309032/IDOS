@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QColor>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
@@ -20,22 +21,29 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QImage>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
+#include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPixmap>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QScopedPointer>
 #include <QSettings>
 #include <QSignalSpy>
 #include <QSize>
 #include <QSlider>
+#include <QSpinBox>
 #include <QTemporaryDir>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTimer>
+#include <QToolButton>
+#include <QTranslator>
 #include <QtTest>
 #include <QVariantMap>
 #include <QVector3D>
@@ -47,6 +55,8 @@
 #include <vtkDataSet.h>
 #include <vtkLookupTable.h>
 #include <vtkMapper.h>
+#include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 
 #include <SARibbonBar.h>
@@ -66,10 +76,15 @@
 #include "idosdataprovider.h"
 #include "idosdataproviderregistry.h"
 #include "idosdataregistry.h"
+#include "idosdeletegridcommand.h"
 #include "idosgrid.h"
+#include "idosgridfilter.h"
+#include "idosgridfiltercommand.h"
+#include "idosgridfilterwidget.h"
 #include "idosgridproperty.h"
 #include "idosgridrendermetadata.h"
 #include "idosgridrenderprovider.h"
+#include "idosgridsettingwidget.h"
 #include "idosimportrestartresultscommand.h"
 #include "idosmainwindow.h"
 #include "idospluginregistry.h"
@@ -288,6 +303,12 @@ void CaseWorkflowTest::onSimulationOutput()
     IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
     simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
     project.add(simulationCase);
+    IDOSGrid* otherGrid = new IDOSGrid();
+    otherGrid->setDimensions(1, 1, 1);
+    project.add(otherGrid);
+    IDOSSimulationCaseObject* otherCase = new IDOSSimulationCaseObject();
+    otherCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), otherGrid->objectId()));
+    project.add(otherCase);
     IDOSGridProperty* property = new IDOSGridProperty();
     property->setGridId(grid->objectId());
     property->setKeyword(QStringLiteral("SGAS"));
@@ -302,6 +323,11 @@ void CaseWorkflowTest::onSimulationOutput()
     QVERIFY(text != nullptr);
     IDOSSimulationResultPlaybackWidget playback;
     QSignalSpy spy(&IDOSLogger::instance(), &IDOSLogger::messagePosted);
+    QVERIFY(project.setCurrentCaseId(otherCase->objectId()));
+    playback.setCurrentObject(grid);
+    QCOMPARE(spy.size(), 0);
+    QVERIFY(project.setCurrentCaseId(simulationCase->objectId()));
+    playback.setCurrentObject(grid);
     playback.setCurrentObject(simulationCase);
     QCOMPARE(spy.size(), 1);
     QTRY_VERIFY(text->toPlainText().contains(QStringLiteral("Displaying SGAS at report step 1.")));
@@ -573,9 +599,22 @@ void CaseWorkflowTest::onRequiredSimulationPlugin()
         QVERIFY(simulation != nullptr);
         QVERIFY(results != nullptr);
         QVERIFY(output != nullptr);
-        QVERIFY(simulation->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationRunPreflightAction"))));
-        QVERIFY(results->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationCurveComparisonAction"))));
-        QVERIFY(output->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationCaseInventoryReportAction"))));
+        const QList<SARibbonPanel*> panels{simulation, results, output};
+        const QStringList actionNames{QStringLiteral("simulationRunPreflightAction"),
+            QStringLiteral("simulationCurveComparisonAction"), QStringLiteral("simulationCaseInventoryReportAction")};
+        for (int index = 0; index < panels.size(); ++index)
+        {
+            bool found = false;
+            for (QAction* action : panels.at(index)->actions())
+            {
+                if (action->objectName() == actionNames.at(index))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            QVERIFY(found);
+        }
         QString path;
         const QVariantList catalog = registry->pluginCatalog(registry->libraryDir().path());
         for (const QVariant& entry : catalog)
@@ -647,8 +686,304 @@ void CaseWorkflowTest::onWellInputMenus()
     window.setProject(nullptr);
 }
 
-void CaseWorkflowTest::onGridColoring()
+void CaseWorkflowTest::onWellSymbolsAndStatusColors()
 {
+    IDOSWell well;
+    well.setName(QStringLiteral("Symbol Well"));
+    IDOSWellPath path;
+    path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 0.0, 0.0, 0.0, 0.0),
+        IDOSWellPathPoint(200.0, 20.0, 0.0, -200.0, 200.0)});
+    well.setPath(path);
+    well.setCompletions({IDOSWellCompletion(0, true, 100.0, 50.0), IDOSWellCompletion(0, false, 180.0, 150.0)});
+    IDOSWellRenderProvider provider(&well);
+    provider.setVisible(true);
+    provider.update();
+    QCOMPARE(provider.effectiveSymbol(), 3);
+    QVariantMap settings = provider.displaySettings();
+    settings.insert(QStringLiteral("completionVisible"), true);
+    QVERIFY(provider.setDisplaySettings(settings));
+    const int lineCounts[28] = {3, 25, 4, 34, 28, 4, 4, 26, 6, 40, 40, 62, 34, 32,
+        34, 25, 5, 19, 26, 28, 26, 5, 25, 36, 8, 22, 9, 39};
+    const QColor producer(QStringLiteral("#eb1f0d"));
+    const QColor injector(QStringLiteral("#2e0ff2"));
+    const QColor closed(QStringLiteral("#61ff2e"));
+    for (int symbol = 0; symbol < 28; ++symbol)
+    {
+        settings.insert(QStringLiteral("symbol"), symbol);
+        QVERIFY(provider.setDisplaySettings(settings));
+        QCOMPARE(provider.effectiveSymbol(), symbol);
+        QCOMPARE(provider.actors().size(), 4);
+        vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(provider.actors().first()->GetMapper());
+        QVERIFY(mapper != nullptr);
+        mapper->Update();
+        QCOMPARE(mapper->GetInput()->GetNumberOfLines(), static_cast<vtkIdType>(lineCounts[symbol]));
+        QVERIFY(!IDOSWellRenderProvider::symbolIcon(symbol).isNull());
+        const QColor expected = symbol == 15 || symbol == 16 ? injector
+            : symbol == 2 || (symbol >= 9 && symbol <= 14) || (symbol >= 19 && symbol <= 22) || symbol >= 26
+                ? closed : producer;
+        const double* color = provider.actors().at(1)->GetProperty()->GetColor();
+        QVERIFY(std::fabs(color[0] - expected.redF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[1] - expected.greenF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[2] - expected.blueF()) < 1.0e-8);
+        QVERIFY(provider.actors().at(1)->GetProperty()->GetRenderLinesAsTubes());
+    }
+    const QStringList statuses{QStringLiteral("producer"), QStringLiteral("injector"),
+        QStringLiteral("closed"), QStringLiteral("stopped")};
+    const int statusSymbols[4] = {3, 15, 22, 21};
+    const QStringList colors{QStringLiteral("#112233"), QStringLiteral("#223344"),
+        QStringLiteral("#334455"), QStringLiteral("#445566")};
+    const QStringList completionColors{QStringLiteral("#abcdef"), QStringLiteral("#123456"),
+        QStringLiteral("#654321"), QStringLiteral("#fedcba")};
+    for (int index = 0; index < 4; ++index)
+    {
+        settings.insert(statuses.at(index) + QStringLiteral("Color"), colors.at(index));
+        settings.insert(statuses.at(index) + QStringLiteral("CompletionColor"), completionColors.at(index));
+    }
+    settings.insert(QStringLiteral("sameCompletionColors"), false);
+    for (int index = 0; index < 4; ++index)
+    {
+        settings.insert(QStringLiteral("symbol"), statusSymbols[index]);
+        QVERIFY(provider.setDisplaySettings(settings));
+        const QColor expected(colors.at(index));
+        const double* color = provider.actors().at(1)->GetProperty()->GetColor();
+        QVERIFY(std::fabs(color[0] - expected.redF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[1] - expected.greenF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[2] - expected.blueF()) < 1.0e-8);
+        const QColor expectedCompletion(completionColors.at(index));
+        color = provider.actors().at(2)->GetProperty()->GetColor();
+        QVERIFY(std::fabs(color[0] - expectedCompletion.redF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[1] - expectedCompletion.greenF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[2] - expectedCompletion.blueF()) < 1.0e-8);
+        const QColor expectedClosed(completionColors.at(index == 3 ? 3 : 2));
+        color = provider.actors().at(3)->GetProperty()->GetColor();
+        QVERIFY(std::fabs(color[0] - expectedClosed.redF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[1] - expectedClosed.greenF()) < 1.0e-8);
+        QVERIFY(std::fabs(color[2] - expectedClosed.blueF()) < 1.0e-8);
+    }
+    const QVariantMap saved = provider.displaySettings();
+    settings.insert(QStringLiteral("symbol"), 28);
+    QVERIFY(!provider.setDisplaySettings(settings));
+    QCOMPARE(provider.displaySettings(), saved);
+    settings = saved;
+    settings.insert(QStringLiteral("symbol"), -1);
+    settings.insert(QStringLiteral("tubes"), false);
+    QVERIFY(provider.setDisplaySettings(settings));
+    QVERIFY(!provider.actors().at(1)->GetProperty()->GetRenderLinesAsTubes());
+    well.setType(IDOSWell::Type::Injector);
+    provider.update();
+    QCOMPARE(provider.effectiveSymbol(), 15);
+    well.setOpen(false);
+    provider.update();
+    QCOMPARE(provider.effectiveSymbol(), 22);
+    IDOSWellHead head;
+    head.setSurfaceX(0.0);
+    head.setSurfaceY(0.0);
+    head.setSymbol(5);
+    well.setWellHead(head);
+    provider.update();
+    QCOMPARE(provider.effectiveSymbol(), 5);
+    QCOMPARE(well.wellHead().symbol(), 5);
+    settings.insert(QStringLiteral("symbol"), 16);
+    QVERIFY(provider.setDisplaySettings(settings));
+    QCOMPARE(provider.effectiveSymbol(), 16);
+    QCOMPARE(well.wellHead().symbol(), 5);
+    IDOSWellRenderProvider other(&well);
+    QCOMPARE(other.displaySettings().value(QStringLiteral("symbol")).toInt(), -1);
+    QCOMPARE(other.effectiveSymbol(), 5);
+}
+void CaseWorkflowTest::onWellDisplaySettings()
+{
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral("Display Well"));
+    IDOSWellPath path;
+    path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 0.0, 0.0, 0.0, 0.0),
+        IDOSWellPathPoint(100.0, 0.0, 0.0, -100.0, 100.0),
+        IDOSWellPathPoint(200.0, 20.0, 0.0, -200.0, 200.0)});
+    well->setPath(path);
+    well->setCompletions({IDOSWellCompletion(0, true, 150.0, 110.0),
+                         IDOSWellCompletion(1, true, 0.0, 0.0)});
+    project.add(well);
+    IDOSTreeView* tree = window.dataTreeView();
+    IDOSRenderView* firstView = qobject_cast<IDOSRenderView*>(tree->targetView());
+    QVERIFY(firstView != nullptr);
+    IDOSRenderObject* firstObject = findRenderObject(firstView, well->objectId());
+    QVERIFY(firstObject != nullptr);
+    IDOSWellRenderProvider* firstProvider = dynamic_cast<IDOSWellRenderProvider*>(firstObject->provider());
+    QVERIFY(firstProvider != nullptr);
+    firstObject->setVisible(true);
+    firstView->scene()->notifyChanged(firstObject->id());
+    IDOSRenderView secondView;
+    IDOSWellRenderProvider* secondProvider = new IDOSWellRenderProvider(well);
+    IDOSRenderObject* secondObject = new IDOSRenderObject(secondProvider);
+    secondProvider->update();
+    QVERIFY(secondView.scene()->add(secondObject));
+    const QVariantMap secondSettings = secondProvider->displaySettings();
+    IDOSTreeModel* model = window.dataTreeModel();
+    const QModelIndex root = model->indexFromDataId(well->objectId());
+    QVERIFY(root.isValid());
+    QScopedPointer<QMenu> menu(tree->createMenu(root));
+    QAction* action = menu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
+    QVERIFY(action != nullptr);
+    QVERIFY(action->isEnabled());
+    tree->setTargetView(&secondView);
+    action->trigger();
+    QPointer<QWidget> widget(window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow")));
+    QVERIFY(!widget.isNull());
+    QComboBox* symbols = widget->findChild<QComboBox*>(QStringLiteral("wellDisplaySymbol"));
+    QVERIFY(symbols != nullptr);
+    QCOMPARE(symbols->count(), 29);
+    for (int index = 0; index < symbols->count(); ++index)
+    {
+        QVERIFY(!symbols->itemIcon(index).isNull());
+    }
+    QDoubleSpinBox* width = widget->findChild<QDoubleSpinBox*>(QStringLiteral("wellDisplay_trajectoryWidth"));
+    QVERIFY(width != nullptr);
+    width->setValue(8.0);
+    QCOMPARE(firstProvider->displaySettings().value(QStringLiteral("trajectoryWidth")).toDouble(), 8.0);
+    QCOMPARE(secondProvider->displaySettings(), secondSettings);
+    QCOMPARE(firstProvider->actors().at(1)->GetProperty()->GetLineWidth(), 8.0f);
+    QPushButton* trajectoryColor = widget->findChild<QPushButton*>(QStringLiteral("wellDisplay_trajectoryColor"));
+    QVERIFY(trajectoryColor != nullptr);
+    QCheckBox* statusColors = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_statusColors"));
+    QVERIFY(statusColors != nullptr);
+    statusColors->setChecked(false);
+    trajectoryColor->click();
+    QColorDialog* colorDialog = widget->findChild<QColorDialog*>();
+    QVERIFY(colorDialog != nullptr);
+    colorDialog->setCurrentColor(QColor(QStringLiteral("#123456")));
+    colorDialog->accept();
+    QCOMPARE(firstProvider->displaySettings().value(QStringLiteral("trajectoryColor")).toString(), QStringLiteral("#123456"));
+    QCOMPARE(secondProvider->displaySettings(), secondSettings);
+    QCheckBox* clip = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_clip"));
+    QDoubleSpinBox* minimum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("wellDisplay_minimum"));
+    QDoubleSpinBox* maximum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("wellDisplay_maximum"));
+    QVERIFY(clip != nullptr && minimum != nullptr && maximum != nullptr);
+    clip->setChecked(true);
+    minimum->setValue(50.0);
+    maximum->setValue(150.0);
+    vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(1)->GetMapper());
+    QVERIFY(mapper != nullptr);
+    mapper->Update();
+    double bounds[6];
+    mapper->GetInput()->GetBounds(bounds);
+    QCOMPARE(bounds[4], -150.0);
+    QCOMPARE(bounds[5], -50.0);
+    const QVariantMap validSettings = firstProvider->displaySettings();
+    minimum->setValue(160.0);
+    QCOMPARE(firstProvider->displaySettings(), validSettings);
+    minimum->setValue(50.0);
+    QCheckBox* completions = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_completionVisible"));
+    QVERIFY(completions != nullptr);
+    completions->setChecked(true);
+    QCOMPARE(firstProvider->actors().size(), 3);
+    QVERIFY(firstProvider->actors().at(2)->GetVisibility() != 0);
+    QCheckBox* label = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_labelVisible"));
+    QVERIFY(label != nullptr);
+    label->setChecked(true);
+    QCOMPARE(firstProvider->legends().size(), 1);
+    QComboBox* shape = widget->findChild<QComboBox*>(QStringLiteral("wellDisplayHeadShape"));
+    QVERIFY(shape != nullptr);
+    shape->setCurrentIndex(shape->findData(QStringLiteral("sphere")));
+    vtkPolyDataMapper* headMapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(0)->GetMapper());
+    QVERIFY(headMapper != nullptr);
+    headMapper->Update();
+    QVERIFY(headMapper->GetInput()->GetNumberOfPolys() > 0);
+    QCheckBox* smooth = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_smooth"));
+    QVERIFY(smooth != nullptr);
+    clip->setChecked(false);
+    smooth->setChecked(true);
+    mapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(1)->GetMapper());
+    mapper->Update();
+    QVERIFY(mapper->GetInput()->GetNumberOfPoints() > path.pointCount());
+    const QVariantMap saved = firstProvider->displaySettings();
+    firstProvider->setHighlighted(true);
+    firstProvider->setHighlighted(false);
+    firstProvider->update();
+    QCOMPARE(firstProvider->displaySettings(), saved);
+    QCOMPARE(well->path().pointCount(), 3);
+    QCheckBox* visibility = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_visible"));
+    QDoubleSpinBox* opacity = widget->findChild<QDoubleSpinBox*>(QStringLiteral("wellDisplay_opacity"));
+    QVERIFY(visibility != nullptr && opacity != nullptr);
+    opacity->setValue(40.0);
+    QCOMPARE(firstProvider->opacity(), 0.4);
+    visibility->setChecked(false);
+    QVERIFY(!firstProvider->visible());
+    visibility->setChecked(true);
+    QVERIFY(firstProvider->visible());
+    const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshotDirectory.isEmpty())
+    {
+        QApplication::processEvents();
+        QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("well-display-settings.png"))));
+        QTabWidget* tabs = widget->findChild<QTabWidget*>();
+        tabs->setCurrentIndex(4);
+        QApplication::processEvents();
+        QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("well-status-colors.png"))));
+        tabs->setCurrentIndex(0);
+        shape->setCurrentIndex(shape->findData(QStringLiteral("symbol")));
+        symbols->showPopup();
+        QApplication::processEvents();
+        QWidget* popup = symbols->view()->window();
+        QVERIFY(popup != nullptr);
+        QVERIFY(popup->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("well-symbols.png"))));
+        symbols->hidePopup();
+    }
+    tree->setTargetView(firstView);
+    const QModelIndex trajectory = model->index(0, 0, root);
+    QScopedPointer<QMenu> pathMenu(tree->createMenu(trajectory));
+    QAction* pathAction = pathMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
+    QVERIFY(pathAction != nullptr);
+    pathAction->trigger();
+    widget = window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow"));
+    QVERIFY(!widget.isNull());
+    QCOMPARE(widget->findChild<QTabWidget*>()->currentIndex(), 1);
+    const QModelIndex completion = model->index(1, 0, root);
+    QScopedPointer<QMenu> completionMenu(tree->createMenu(completion));
+    QVERIFY(completionMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction")) == nullptr);
+    tree->setTargetView(nullptr);
+    QScopedPointer<QMenu> disabledMenu(tree->createMenu(root));
+    QAction* disabled = disabledMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
+    QVERIFY(disabled != nullptr && !disabled->isEnabled());
+    project.remove(well->objectId());
+    QTRY_VERIFY(widget.isNull());
+    action->trigger();
+    QVERIFY(window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow")) == nullptr);
+    IDOSWell* nextWell = new IDOSWell();
+    nextWell->setName(QStringLiteral("Next Well"));
+    nextWell->setPath(path);
+    project.add(nextWell);
+    tree->setTargetView(firstView);
+    QScopedPointer<QMenu> nextMenu(tree->createMenu(model->indexFromDataId(nextWell->objectId())));
+    QAction* nextAction = nextMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
+    QVERIFY(nextAction != nullptr);
+    nextAction->trigger();
+    widget = window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow"));
+    QVERIFY(!widget.isNull());
+    IDOSRenderObject* nextObject = findRenderObject(firstView, nextWell->objectId());
+    QVERIFY(nextObject != nullptr);
+    firstView->scene()->remove(nextObject->id());
+    QTRY_VERIFY(widget.isNull());
+    tree->setTargetView(&secondView);
+    IDOSWellRenderProvider* nextProvider = new IDOSWellRenderProvider(nextWell);
+    nextProvider->update();
+    QVERIFY(secondView.scene()->add(new IDOSRenderObject(nextProvider)));
+    QScopedPointer<QMenu> switchMenu(tree->createMenu(model->indexFromDataId(nextWell->objectId())));
+    QAction* switchAction = switchMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
+    QVERIFY(switchAction != nullptr);
+    switchAction->trigger();
+    widget = window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow"));
+    QVERIFY(!widget.isNull());
+    window.setProject(nullptr);
+    QVERIFY(widget.isNull());
+}
+void CaseWorkflowTest::onGridSettings()
+{
+    QTranslator translator;
+    QVERIFY(translator.load(QCoreApplication::applicationDirPath() + QStringLiteral("/i18n/idos_zh_CN.qm")));
+    QVERIFY(QApplication::installTranslator(&translator));
     IDOSProject project;
     IDOSMainWindow window;
     window.setProject(&project);
@@ -682,18 +1017,24 @@ void CaseWorkflowTest::onGridColoring()
     const QModelIndex index = window.caseTreeModel()->indexFromDataId(property->objectId());
     QVERIFY(index.isValid());
     QScopedPointer<QMenu> menu(tree->createMenu(index));
-    QAction* settings = menu->findChild<QAction*>(QStringLiteral("simulationColoringSettingsAction"));
+    QAction* settings = menu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));
     QVERIFY(settings != nullptr);
     QVERIFY(settings->isEnabled());
     settings->trigger();
-    QPointer<QWidget> widget(window.findChild<QWidget*>(QStringLiteral("coloringSettingsWindow")));
+    QPointer<QWidget> widget(window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow")));
     QVERIFY(!widget.isNull());
+    QVERIFY(widget->inherits("IDOSGridSettingWidget"));
+    QCOMPARE(menu->findChildren<QAction*>(QStringLiteral("gridSettingsAction")).size(), 1);
+    QTabWidget* tabs = widget->findChild<QTabWidget*>(QStringLiteral("gridSettingTabs"));
+    QVERIFY(tabs != nullptr);
+    QCOMPARE(tabs->count(), 2);
+    QCOMPARE(tabs->currentIndex(), 1);
     QCOMPARE(firstProvider->property(), property);
     tree->setTargetView(&secondView);
-    QComboBox* ramp = widget->findChild<QComboBox*>(QStringLiteral("coloringRampCombo"));
+    QComboBox* ramp = widget->findChild<QComboBox*>(QStringLiteral("gridSettingRampCombo"));
     QVERIFY(ramp != nullptr);
-    QLabel* gridName = widget->findChild<QLabel*>(QStringLiteral("coloringGridNameLabel"));
-    QLabel* viewName = widget->findChild<QLabel*>(QStringLiteral("coloringViewNameLabel"));
+    QLabel* gridName = widget->findChild<QLabel*>(QStringLiteral("gridSettingGridNameLabel"));
+    QLabel* viewName = widget->findChild<QLabel*>(QStringLiteral("gridSettingViewNameLabel"));
     QVERIFY(gridName != nullptr && viewName != nullptr);
     QApplication::processEvents();
     QCOMPARE(gridName->geometry().left(), viewName->geometry().left());
@@ -726,7 +1067,7 @@ void CaseWorkflowTest::onGridColoring()
     const QList<QColor> ocean = IDOSGridRenderProvider::colorRampColors(QStringLiteral("OceanBreeze"), false);
     QVERIFY(std::abs(ocean.first().redF() - 0.15) < 0.0001);
     QVERIFY(std::abs(ocean.last().blueF() - 0.90) < 0.0001);
-    QCheckBox* reverse = widget->findChild<QCheckBox*>(QStringLiteral("coloringReverseCheck"));
+    QCheckBox* reverse = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingReverseCheck"));
     QVERIFY(reverse != nullptr);
     ramp->setCurrentIndex(ramp->findData(QStringLiteral("OceanBreeze")));
     reverse->setChecked(true);
@@ -741,14 +1082,14 @@ void CaseWorkflowTest::onGridColoring()
     ramp->showPopup();
     QApplication::processEvents();
     QVERIFY(ramp->view()->window()->grab().save(QDir(qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath()))
-                                              .filePath(QStringLiteral("coloring-ramps.png"))));
+                                              .filePath(QStringLiteral("grid-setting-ramps.png"))));
     ramp->hidePopup();
     ramp->setCurrentIndex(ramp->findData(QStringLiteral("gray")));
     QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("ramp")).toString(), QStringLiteral("gray"));
     QCOMPARE(secondProvider->coloringSettings(), originalSecondSettings);
-    QCheckBox* automatic = widget->findChild<QCheckBox*>(QStringLiteral("coloringAutomaticCheck"));
-    QDoubleSpinBox* minimum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("coloringMinimumSpin"));
-    QDoubleSpinBox* maximum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("coloringMaximumSpin"));
+    QCheckBox* automatic = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingAutomaticCheck"));
+    QDoubleSpinBox* minimum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingMinimumSpin"));
+    QDoubleSpinBox* maximum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingMaximumSpin"));
     QVERIFY(automatic != nullptr && minimum != nullptr && maximum != nullptr);
     automatic->setChecked(false);
     minimum->setValue(0.0);
@@ -759,23 +1100,102 @@ void CaseWorkflowTest::onGridColoring()
     QCOMPARE(firstProvider->actors().first()->GetMapper()->GetScalarRange()[1], 1.0);
     QApplication::processEvents();
     const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath());
-    QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("coloring-settings.png"))));
+    QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("grid-setting-coloring.png"))));
     minimum->setValue(2.0);
     QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("minimum")).toDouble(), 0.0);
     minimum->setValue(0.0);
-    QCheckBox* legend = widget->findChild<QCheckBox*>(QStringLiteral("coloringLegendCheck"));
+    QCheckBox* legend = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingLegendCheck"));
     QVERIFY(legend != nullptr);
     legend->setChecked(false);
     QVERIFY(firstProvider->legends().isEmpty());
     QVERIFY(property->setValues(QVector<double>{std::numeric_limits<double>::quiet_NaN()}));
     QVERIFY(std::isnan(firstProvider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0)));
+    tabs->setCurrentIndex(0);
+    QComboBox* mode = widget->findChild<QComboBox*>(QStringLiteral("gridSettingModeCombo"));
+    QDoubleSpinBox* opacity = widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingOpacitySpin"));
+    QDoubleSpinBox* edgeWidth = widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingEdgeWidthSpin"));
+    QCheckBox* edges = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingEdgesCheck"));
+    QCheckBox* visible = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingVisibleCheck"));
+    QPushButton* edgeColor = widget->findChild<QPushButton*>(QStringLiteral("gridSettingEdgeColorButton"));
+    QVERIFY(mode != nullptr && opacity != nullptr && edgeWidth != nullptr && edges != nullptr && visible != nullptr && edgeColor != nullptr);
+    for (const IDOSDisplayMode displayMode : QList<IDOSDisplayMode>{IDOSDisplayMode::Wireframe,
+        IDOSDisplayMode::Points, IDOSDisplayMode::SurfaceWithEdges, IDOSDisplayMode::Surface})
+    {
+        mode->setCurrentIndex(mode->findData(static_cast<int>(displayMode)));
+        QCOMPARE(firstProvider->displayMode(), displayMode);
+        const int representation = displayMode == IDOSDisplayMode::Wireframe ? VTK_WIREFRAME
+            : displayMode == IDOSDisplayMode::Points ? VTK_POINTS : VTK_SURFACE;
+        QCOMPARE(firstProvider->actors().first()->GetProperty()->GetRepresentation(), representation);
+        QCOMPARE(secondProvider->displayMode(), IDOSDisplayMode::Surface);
+    }
+    edges->setChecked(true);
+    QCOMPARE(firstProvider->displayMode(), IDOSDisplayMode::SurfaceWithEdges);
+    QCOMPARE(mode->currentData().toInt(), static_cast<int>(IDOSDisplayMode::SurfaceWithEdges));
+    edges->setChecked(false);
+    QCOMPARE(firstProvider->displayMode(), IDOSDisplayMode::Surface);
+    edges->setChecked(true);
+    opacity->setValue(65.0);
+    edgeWidth->setValue(4.5);
+    QCOMPARE(firstProvider->opacity(), 0.65);
+    QCOMPARE(firstProvider->edgeWidth(), 4.5);
+    QCOMPARE(firstProvider->actors().first()->GetProperty()->GetLineWidth(), 4.5f);
+    QCOMPARE(secondProvider->opacity(), 1.0);
+    QCOMPARE(secondProvider->edgeWidth(), 1.0);
+    edgeColor->click();
+    QColorDialog* colorDialog = widget->findChild<QColorDialog*>();
+    QVERIFY(colorDialog != nullptr);
+    colorDialog->setCurrentColor(QColor(QStringLiteral("#123456")));
+    colorDialog->accept();
+    QCOMPARE(firstProvider->edgeColor(), QColor(QStringLiteral("#123456")));
+    QCOMPARE(secondProvider->edgeColor(), QColor(Qt::black));
+    firstProvider->setHighlighted(true);
+    firstProvider->setHighlighted(false);
+    const QColor restored(firstProvider->edgeColor());
+    const double* restoredColor = firstProvider->actors().first()->GetProperty()->GetEdgeColor();
+    QVERIFY(std::fabs(restoredColor[0] - restored.redF()) < 1.0e-8);
+    QVERIFY(std::fabs(restoredColor[1] - restored.greenF()) < 1.0e-8);
+    QVERIFY(std::fabs(restoredColor[2] - restored.blueF()) < 1.0e-8);
+    QCOMPARE(firstProvider->actors().first()->GetProperty()->GetLineWidth(), 4.5f);
+    visible->setChecked(false);
+    QVERIFY(!firstProvider->visible());
+    QCOMPARE(firstProvider->property(), property);
+    visible->setChecked(true);
+    QVERIFY(firstProvider->visible());
+    firstProvider->update();
+    QCOMPARE(firstProvider->edgeColor(), restored);
+    QCOMPARE(firstProvider->edgeWidth(), 4.5);
+    QVERIFY(!firstProvider->setEdgeWidth(std::numeric_limits<double>::quiet_NaN()));
+    QVERIFY(!firstProvider->setEdgeColor(QColor()));
+    QVERIFY(!firstProvider->setDisplayMode(static_cast<IDOSDisplayMode>(99)));
+    QCOMPARE(firstProvider->displayMode(), IDOSDisplayMode::SurfaceWithEdges);
+    QCOMPARE(firstProvider->edgeWidth(), 4.5);
+    QApplication::processEvents();
+    QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("grid-setting-appearance.png"))));
+    tree->setTargetView(firstView);
+    const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
+    QVERIFY(gridIndex.isValid());
+    QScopedPointer<QMenu> gridMenu(tree->createMenu(gridIndex));
+    QCOMPARE(project.currentObject(), static_cast<IDOSDataObject*>(grid));
+    QCOMPARE(project.currentCaseId(), simulationCase->objectId());
+    QAction* gridSettings = gridMenu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));
+    QVERIFY(gridSettings != nullptr);
+    QCOMPARE(gridMenu->findChildren<QAction*>(QStringLiteral("gridSettingsAction")).size(), 1);
+    tree->setTargetView(&secondView);
+    gridSettings->trigger();
+    widget = window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow"));
+    QVERIFY(!widget.isNull());
+    QCOMPARE(widget->findChild<QTabWidget*>(QStringLiteral("gridSettingTabs"))->currentIndex(), 0);
+    QCOMPARE(widget->findChild<QComboBox*>(QStringLiteral("gridSettingPropertyCombo"))->currentData().toString(), property->objectId());
+    QCOMPARE(widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingOpacitySpin"))->value(), 65.0);
     QVERIFY(project.remove(property->objectId()));
     QVERIFY(firstProvider->property() == nullptr);
-    QComboBox* properties = widget->findChild<QComboBox*>(QStringLiteral("coloringPropertyCombo"));
+    QComboBox* properties = widget->findChild<QComboBox*>(QStringLiteral("gridSettingPropertyCombo"));
     QVERIFY(properties != nullptr);
     QCOMPARE(properties->currentData().toString(), QString());
     QVERIFY(project.remove(grid->objectId()));
     QTRY_VERIFY(widget.isNull());
+    settings->trigger();
+    QVERIFY(window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow")) == nullptr);
     tree->setTargetView(firstView);
     window.setProject(nullptr);
 }
@@ -937,6 +1357,10 @@ void CaseWorkflowTest::onRenderArchitecture()
     server.addView(&second);
     server.addView(&first);
     QCOMPARE(server.views().size(), 2);
+    QCOMPARE(server.currentView(), &first);
+    QVERIFY(server.setCurrentView(&second));
+    QCOMPARE(server.currentView(), &second);
+    QVERIFY(server.setCurrentView(&first));
 
     IDOSGrid* grid = new IDOSGrid();
     grid->setDimensions(1, 1, 1);
@@ -1306,7 +1730,7 @@ void CaseWorkflowTest::onCreateAndImport()
             const QModelIndex grids = model->index(1, 0, index);
             QCOMPARE(model->rowCount(grids), 1);
             const QModelIndex mainGrid = model->index(0, 0, grids);
-            QCOMPARE(model->rowCount(mainGrid), 3);
+            QCOMPARE(model->rowCount(mainGrid), 4);
             for (int category = 0; category < 3; ++category)
             {
                 const QModelIndex properties = model->index(category, 0, mainGrid);
@@ -1384,4 +1808,397 @@ QTEST_MAIN(CaseWorkflowTest)
 CaseWorkflowTest::CaseWorkflowTest()
 {
     IDOSApplication::initProviders();
+}
+
+void CaseWorkflowTest::onGridFilters()
+{
+    QTranslator translator;
+    QVERIFY(translator.load(QCoreApplication::applicationDirPath() + QStringLiteral("/i18n/idos_zh_CN.qm")));
+    QVERIFY(QApplication::installTranslator(&translator));
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    IDOSGrid* grid = new IDOSGrid();
+    grid->setName(QStringLiteral("Filter Grid"));
+    grid->setDimensions(3, 2, 1);
+    grid->setCornerPointData(3, 2, 1, grid->coord(), grid->zcorn(), QVector<int>{1, 1, 1, 1, 0, 1});
+    project.add(grid);
+    IDOSGridProperty* property = new IDOSGridProperty();
+    property->setName(QStringLiteral("Pressure"));
+    property->setGridId(grid->objectId());
+    property->setDimensions(3, 2, 1);
+    property->setKind(IDOSGridProperty::Kind::Dynamic);
+    QVERIFY(property->setReportStepValues(0, QVector<double>{10, 20, 30, 40, 50, 60}));
+    QVERIFY(property->setReportStepValues(1, QVector<double>{60, 50, 40, 30, 20, 10}));
+    QVERIFY(property->setCurrentReportStep(0));
+    project.add(property);
+    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+    simulationCase->setName(QStringLiteral("Filter Case"));
+    simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    project.add(simulationCase);
+    IDOSTreeView* tree = window.caseTreeView();
+    IDOSRenderView* view = qobject_cast<IDOSRenderView*>(tree->targetView());
+    QVERIFY(view != nullptr);
+    IDOSRenderObject* sourceObject = findRenderObject(view, grid->objectId());
+    QVERIFY(sourceObject != nullptr);
+    IDOSGridRenderProvider* sourceProvider = dynamic_cast<IDOSGridRenderProvider*>(sourceObject->provider());
+    QVERIFY(sourceProvider != nullptr);
+    QCOMPARE(sourceProvider->filteredCellCount(), 5);
+    IDOSRenderView otherView;
+    IDOSGridRenderProvider* otherProvider = new IDOSGridRenderProvider(grid);
+    otherProvider->update();
+    QVERIFY(otherView.scene()->add(new IDOSRenderObject(otherProvider)));
+    const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
+    QVERIFY(gridIndex.isValid());
+    QScopedPointer<QMenu> menu(tree->createMenu(gridIndex));
+    QAction* action = menu->findChild<QAction*>(QStringLiteral("gridFilterAction"));
+    QVERIFY(action != nullptr && action->isEnabled());
+    tree->setTargetView(&otherView);
+    action->trigger();
+    QPointer<IDOSGridFilterWidget> widget(window.findChild<IDOSGridFilterWidget*>(QStringLiteral("gridFilterWindow")));
+    QVERIFY(widget != nullptr);
+    QCOMPARE(widget->findChild<QTabWidget*>(QStringLiteral("gridFilterTabs"))->currentIndex(), 0);
+    QVERIFY(window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow")) == nullptr);
+    QCheckBox* iEnabled = widget->findChild<QCheckBox*>(QStringLiteral("gridFilterIEnabled"));
+    QSpinBox* iMaximum = widget->findChild<QSpinBox*>(QStringLiteral("gridFilterIMaximum"));
+    QPushButton* apply = widget->findChild<QPushButton*>(QStringLiteral("gridFilterApply"));
+    QVERIFY(iEnabled != nullptr && iMaximum != nullptr && apply != nullptr);
+    iEnabled->setChecked(true);
+    iMaximum->setValue(2);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 3);
+    QCOMPARE(otherProvider->filteredCellCount(), 5);
+    QCOMPARE(project.objects().size(), 3);
+    vtkDataSet* selected = sourceProvider->actors().first()->GetMapper()->GetInput();
+    QCOMPARE(selected->GetCellData()->GetArray("GlobalIndex")->GetTuple1(2), 3.0);
+    QCOMPARE(selected->GetCellData()->GetArray("I")->GetTuple1(2), 1.0);
+    QCOMPARE(selected->GetCellData()->GetArray("J")->GetTuple1(2), 2.0);
+    const QVariantMap temporary = sourceProvider->filterCriteria();
+    QCheckBox* jEnabled = widget->findChild<QCheckBox*>(QStringLiteral("gridFilterJEnabled"));
+    QSpinBox* jMaximum = widget->findChild<QSpinBox*>(QStringLiteral("gridFilterJMaximum"));
+    jEnabled->setChecked(true);
+    jMaximum->setValue(1);
+    widget->findChild<QRadioButton*>(QStringLiteral("gridFilterIntersection"))->setChecked(true);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 2);
+    widget->findChild<QRadioButton*>(QStringLiteral("gridFilterUnion"))->setChecked(true);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 4);
+    widget->findChild<QRadioButton*>(QStringLiteral("gridFilterInvert"))->setChecked(true);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 1);
+    widget->findChild<QPushButton*>(QStringLiteral("gridFilterReset"))->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 5);
+    QListWidget* iList = widget->findChild<QListWidget*>(QStringLiteral("gridFilterIList"));
+    QVERIFY(iList != nullptr && iList->count() == 3);
+    widget->findChild<QSpinBox*>(QStringLiteral("gridFilterIStep"))->setValue(2);
+    widget->findChild<QToolButton*>(QStringLiteral("gridFilterISelect"))->click();
+    QCOMPARE(iList->item(0)->checkState(), Qt::Checked);
+    QCOMPARE(iList->item(1)->checkState(), Qt::Unchecked);
+    QCOMPARE(iList->item(2)->checkState(), Qt::Checked);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 4);
+    widget->findChild<QToolButton*>(QStringLiteral("gridFilterIClear"))->click();
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 5);
+    iEnabled->setChecked(true);
+    iMaximum->setValue(2);
+    QTest::qWait(200);
+    QVERIFY(widget->grab().save(QDir(qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath())).filePath(QStringLiteral("grid-filter-indices.png"))));
+    widget->findChild<QTabWidget*>(QStringLiteral("gridFilterTabs"))->setCurrentIndex(1);
+    QListWidget* attributes = widget->findChild<QListWidget*>(QStringLiteral("gridFilterPropertyList"));
+    QVERIFY(attributes != nullptr && attributes->count() == 1);
+    attributes->item(0)->setCheckState(Qt::Checked);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridFilterPropertyMinimum"))->setValue(15.0);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridFilterPropertyMaximum"))->setValue(45.0);
+    QComboBox* displayProperty = widget->findChild<QComboBox*>(QStringLiteral("gridFilterDisplayProperty"));
+    displayProperty->setCurrentIndex(displayProperty->findData(property->objectId()));
+    QTest::qWait(200);
+    QLabel* rangeBar = widget->findChild<QLabel*>(QStringLiteral("gridFilterRangeBar"));
+    QVERIFY(rangeBar != nullptr && rangeBar->width() > 100);
+    const int originalX = 12 + static_cast<int>(0.1 * (rangeBar->width() - 24));
+    const int selectedX = 12 + static_cast<int>(0.2 * (rangeBar->width() - 24));
+    QTest::mousePress(rangeBar, Qt::LeftButton, Qt::NoModifier, QPoint(originalX, 21));
+    QTest::mouseMove(rangeBar, QPoint(selectedX, 21));
+    QTest::mouseRelease(rangeBar, Qt::LeftButton, Qt::NoModifier, QPoint(selectedX, 21));
+    QVERIFY(widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridFilterPropertyMinimum"))->value() > 18.0);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridFilterPropertyMinimum"))->setValue(15.0);
+    apply->click();
+    QCOMPARE(sourceProvider->filteredCellCount(), 2);
+    const QVariantMap appliedCriteria = sourceProvider->filterCriteria();
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridFilterPropertyMinimum"))->setValue(16.0);
+    QCOMPARE(sourceProvider->filterCriteria(), appliedCriteria);
+    widget->findChild<QPushButton*>(QStringLiteral("gridFilterSaveAs"))->click();
+    QInputDialog* nameDialog = widget->findChild<QInputDialog*>(QStringLiteral("gridFilterNameDialog"));
+    QVERIFY(nameDialog != nullptr);
+    nameDialog->setTextValue(QStringLiteral("Pressure subset"));
+    nameDialog->accept();
+    const QString filterId = project.commandManager()->result().value(QStringLiteral("filterId")).toString();
+    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(project.object(filterId));
+    QVERIFY(filter != nullptr);
+    QCOMPARE(filter->gridId(), grid->objectId());
+    QCOMPARE(filter->containerId(), grid->objectId());
+    QCOMPARE(project.objects().size(), 4);
+    const QVariantMap savedCriteria = filter->criteria();
+    QVERIFY(savedCriteria != appliedCriteria);
+    QCOMPARE(sourceProvider->filterCriteria(), savedCriteria);
+    QVERIFY(project.commandManager()->contains(QStringLiteral("grid.filter.create")));
+    QMap<QString, IDOSGridProperty*> references;
+    references.insert(property->objectId(), property);
+    QVariantMap testCondition;
+    testCondition.insert(QStringLiteral("propertyId"), property->objectId());
+    testCondition.insert(QStringLiteral("minimum"), 30.0);
+    testCondition.insert(QStringLiteral("maximum"), 50.0);
+    const QStringList operations = {QStringLiteral("between"), QStringLiteral("greaterEqual"), QStringLiteral("lessEqual"), QStringLiteral("equal")};
+    const QList<int> expected = {3, 4, 5, 1};
+    for (int operation = 0; operation < operations.size(); ++operation)
+    {
+        testCondition.insert(QStringLiteral("operation"), operations.at(operation));
+        QVariantMap comparisonCriteria;
+        comparisonCriteria.insert(QStringLiteral("conditions"), QVariantList{testCondition});
+        const QVector<quint8> mask = IDOSGridFilter::selection(comparisonCriteria, 3, 2, 1, references);
+        int matched = 0;
+        for (int cell = 0; cell < mask.size(); ++cell)
+        {
+            matched += mask.at(cell);
+            QCOMPARE(mask.at(cell) != 0, IDOSGridFilter::matches(comparisonCriteria, cell % 3, cell / 3, 0, cell, references));
+        }
+        QCOMPARE(matched, expected.at(operation));
+    }
+    QVariantMap secondCondition = testCondition;
+    secondCondition.insert(QStringLiteral("minimum"), 60.0);
+    secondCondition.insert(QStringLiteral("maximum"), 60.0);
+    QVariantMap combinationCriteria;
+    combinationCriteria.insert(QStringLiteral("conditions"), QVariantList{testCondition, secondCondition});
+    QCOMPARE(IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0}));
+    combinationCriteria.insert(QStringLiteral("anyProperty"), true);
+    QCOMPARE(IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 1}));
+    QString validationError;
+    QVariantMap malformed;
+    malformed.insert(QStringLiteral("conditions"), QStringLiteral("invalid"));
+    QVERIFY(!IDOSGridFilter::validateCriteria(malformed, validationError));
+    IDOSRenderObject* resultObject = findRenderObject(view, filterId);
+    QVERIFY(resultObject != nullptr && resultObject->visible());
+    IDOSGridRenderProvider* resultProvider = dynamic_cast<IDOSGridRenderProvider*>(resultObject->provider());
+    QVERIFY(resultProvider != nullptr);
+    QCOMPARE(resultProvider->filteredCellCount(), 2);
+    QCOMPARE(resultProvider->property(), property);
+    QVERIFY(window.caseTreeModel()->indexFromDataId(filterId).isValid());
+    QVERIFY(sourceObject->visible());
+    QCOMPARE(sourceProvider->previewFilterId(), filterId);
+    tree->setTargetView(view);
+    const QModelIndex filterIndex = window.caseTreeModel()->indexFromDataId(filterId);
+    QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Unchecked, Qt::CheckStateRole));
+    QVERIFY(!resultObject->visible());
+    QVERIFY(sourceObject->visible());
+    QCOMPARE(sourceProvider->filteredCellCount(), 5);
+    QVERIFY(sourceProvider->filterCriteria().isEmpty());
+    QVERIFY(sourceProvider->previewFilterId().isEmpty());
+    QCOMPARE(sourceProvider->property(), property);
+    QCOMPARE(filter->criteria(), savedCriteria);
+    QCOMPARE(otherProvider->filteredCellCount(), 5);
+    QAction* clearDisplay = window.findChild<QAction*>(QStringLiteral("viewToolClearDisplayAction"));
+    QVERIFY(clearDisplay != nullptr);
+    clearDisplay->trigger();
+    QVERIFY(!sourceObject->visible());
+    QVERIFY(!resultObject->visible());
+    clearDisplay->trigger();
+    QVERIFY(sourceObject->visible());
+    QVERIFY(!resultObject->visible());
+    QVERIFY(sourceProvider->filterCriteria().isEmpty());
+    QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Checked, Qt::CheckStateRole));
+    QVERIFY(resultObject->visible());
+    QCOMPARE(resultProvider->filteredCellCount(), 2);
+    QCOMPARE(sourceProvider->filterCriteria(), savedCriteria);
+    QCOMPARE(sourceProvider->previewFilterId(), filterId);
+    QCOMPARE(sourceProvider->filteredCellCount(), 2);
+    QVERIFY(sourceProvider->setFilterCriteria(temporary));
+    sourceProvider->update();
+    view->scene()->notifyChanged(sourceObject->id());
+    QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Unchecked, Qt::CheckStateRole));
+    QCOMPARE(sourceProvider->filteredCellCount(), 3);
+    QCOMPARE(sourceProvider->filterCriteria(), temporary);
+    QVERIFY(sourceProvider->setFilterCriteria(QVariantMap()));
+    sourceProvider->update();
+    view->scene()->notifyChanged(sourceObject->id());
+    QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Checked, Qt::CheckStateRole));
+    QScopedPointer<QMenu> resultMenu(tree->createMenu(window.caseTreeModel()->indexFromDataId(filterId)));
+    QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterEditAction")) != nullptr);
+    QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterDeleteAction")) != nullptr);
+    QAction* renameAction = resultMenu->findChild<QAction*>(QStringLiteral("gridFilterRenameAction"));
+    QVERIFY(renameAction != nullptr);
+    renameAction->trigger();
+    QInputDialog* renameDialog = tree->findChild<QInputDialog*>();
+    QVERIFY(renameDialog != nullptr);
+    renameDialog->setTextValue(QStringLiteral("Renamed subset"));
+    renameDialog->accept();
+    QCOMPARE(filter->name(), QStringLiteral("Renamed subset"));
+    project.commandManager()->undo();
+    QCOMPARE(filter->name(), QStringLiteral("Pressure subset"));
+    resultProvider->setOpacity(0.3);
+    QCOMPARE(sourceProvider->opacity(), 1.0);
+    QTest::qWait(200);
+    QVERIFY(widget->grab().save(QDir(qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath())).filePath(QStringLiteral("grid-filter-settings.png"))));
+    resultProvider->setProperty(nullptr);
+    QVERIFY(property->setCurrentReportStep(1));
+    QCOMPARE(resultProvider->property(), static_cast<IDOSGridProperty*>(nullptr));
+    QCOMPARE(resultProvider->filteredCellCount(), 1);
+    QCOMPARE(sourceProvider->filteredCellCount(), 1);
+    QCOMPARE(filter->criteria(), savedCriteria);
+    QJsonObject updateArguments;
+    updateArguments.insert(QStringLiteral("filterId"), filterId);
+    updateArguments.insert(QStringLiteral("criteria"), QJsonObject::fromVariantMap(temporary));
+    QVERIFY(project.commandManager()->execute(QStringLiteral("grid.filter.update"), updateArguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(resultProvider->filteredCellCount(), 3);
+    project.commandManager()->undo();
+    QCOMPARE(filter->criteria(), savedCriteria);
+    QCOMPARE(resultProvider->filteredCellCount(), 1);
+    project.commandManager()->redo();
+    QCOMPARE(resultProvider->filteredCellCount(), 3);
+    project.commandManager()->undo();
+    QJsonObject invalidArguments = updateArguments;
+    QVariantMap missingCriteria = savedCriteria;
+    QVariantList missingConditions = missingCriteria.value(QStringLiteral("conditions")).toList();
+    QVariantMap missingCondition = missingConditions.first().toMap();
+    missingCondition.insert(QStringLiteral("propertyId"), QStringLiteral("missing-property"));
+    missingConditions[0] = missingCondition;
+    missingCriteria.insert(QStringLiteral("conditions"), missingConditions);
+    invalidArguments.insert(QStringLiteral("criteria"), QJsonObject::fromVariantMap(missingCriteria));
+    QVERIFY(!project.commandManager()->execute(new IDOSGridFilterCommand(&project, QStringLiteral("update"), invalidArguments)));
+    QCOMPARE(filter->criteria(), savedCriteria);
+    QVariantMap invertedSaved = savedCriteria;
+    invertedSaved.insert(QStringLiteral("invert"), true);
+    filter->setCriteria(invertedSaved);
+    IDOSDataObject* detachedProperty = project.take(property->objectId());
+    QVERIFY(resultProvider->actors().isEmpty());
+    QVERIFY(!resultProvider->filterError().isEmpty());
+    QCOMPARE(filter->criteria(), invertedSaved);
+    filter->setCriteria(savedCriteria);
+    project.add(detachedProperty);
+    QCOMPARE(resultProvider->filteredCellCount(), 1);
+    QJsonObject deleteArguments;
+    deleteArguments.insert(QStringLiteral("filterId"), filterId);
+    QVERIFY(sourceProvider->setFilterCriteria(savedCriteria));
+    sourceProvider->setPreviewFilterId(filterId);
+    sourceProvider->setDataReference(property);
+    sourceProvider->update();
+    QCOMPARE(sourceProvider->filteredCellCount(), 1);
+    QVERIFY(project.commandManager()->execute(QStringLiteral("grid.filter.delete"), deleteArguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(project.object(filterId) == nullptr);
+    QVERIFY(findRenderObject(view, filterId) == nullptr);
+    QCOMPARE(sourceProvider->filteredCellCount(), 5);
+    QVERIFY(sourceProvider->previewFilterId().isEmpty());
+    project.commandManager()->undo();
+    QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
+    QVERIFY(window.caseTreeModel()->indexFromDataId(filterId).isValid());
+    project.commandManager()->redo();
+    QVERIFY(project.object(filterId) == nullptr);
+    project.commandManager()->undo();
+    const QString gridId = grid->objectId();
+    QVERIFY(project.commandManager()->execute(new IDOSDeleteGridCommand(&project, gridId)));
+    QVERIFY(project.object(gridId) == nullptr && project.object(filterId) == nullptr);
+    project.commandManager()->undo();
+    QCOMPARE(project.object(gridId), static_cast<IDOSDataObject*>(grid));
+    QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
+    QVERIFY(findRenderObject(view, filterId) != nullptr);
+    project.commandManager()->redo();
+    QVERIFY(project.object(filterId) == nullptr);
+    project.commandManager()->undo();
+    project.commandManager()->undo();
+    QVERIFY(project.object(filterId) == nullptr);
+    project.commandManager()->redo();
+    QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
+    QVERIFY(findRenderObject(view, filterId) != nullptr);
+    QApplication::removeTranslator(&translator);
+}
+
+void CaseWorkflowTest::onGridFilterCriteria()
+{
+    IDOSGridProperty property;
+    property.setDimensions(3, 2, 1);
+    const double invalid = std::numeric_limits<double>::quiet_NaN();
+    QVERIFY(property.setValues(QVector<double>{0.0, 1.0, 2.0, invalid, 4.0, 5.0}));
+    QMap<QString, IDOSGridProperty*> references;
+    references.insert(property.objectId(), &property);
+    QVariantMap condition;
+    condition.insert(QStringLiteral("propertyId"), property.objectId());
+    condition.insert(QStringLiteral("minimum"), 2.0);
+    condition.insert(QStringLiteral("maximum"), 4.0);
+    const QStringList operations = {QStringLiteral("between"), QStringLiteral("greater"), QStringLiteral("greaterEqual"),
+        QStringLiteral("less"), QStringLiteral("lessEqual"), QStringLiteral("equal"), QStringLiteral("notEqual")};
+    const QList<int> counts = {2, 2, 3, 3, 4, 1, 4};
+    for (int operation = 0; operation < operations.size(); ++operation)
+    {
+        condition.insert(QStringLiteral("operation"), operations.at(operation));
+        QVariantMap criteria;
+        criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+        const QVector<quint8> mask = IDOSGridFilter::selection(criteria, 3, 2, 1, references);
+        int count = 0;
+        for (int index = 0; index < mask.size(); ++index)
+        {
+            count += mask.at(index);
+        }
+        QCOMPARE(count, counts.at(operation));
+    }
+    condition.insert(QStringLiteral("operation"), QStringLiteral("between"));
+    condition.insert(QStringLiteral("minimum"), 1.0);
+    condition.insert(QStringLiteral("includeMinimum"), false);
+    condition.insert(QStringLiteral("includeMaximum"), false);
+    QVariantMap criteria;
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 0}));
+    condition.insert(QStringLiteral("includeInvalidValues"), true);
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 1, 0, 0}));
+    criteria.insert(QStringLiteral("propertyOperation"), QStringLiteral("hide"));
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 1, 1}));
+    condition.insert(QStringLiteral("propertyId"), QStringLiteral("missing"));
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0}));
+    condition.insert(QStringLiteral("enabled"), false);
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 1}));
+    QVERIFY(IDOSGridFilter::propertyIds(criteria).isEmpty());
+    QVERIFY(property.setValues(QVector<double>{1.0, 1.0000005, 1.000002, invalid, 4.0, 5.0}));
+    condition.insert(QStringLiteral("propertyId"), property.objectId());
+    condition.insert(QStringLiteral("enabled"), true);
+    condition.insert(QStringLiteral("operation"), QStringLiteral("equal"));
+    condition.insert(QStringLiteral("epsilon"), 1.0e-6);
+    condition.insert(QStringLiteral("includeInvalidValues"), false);
+    criteria.remove(QStringLiteral("propertyOperation"));
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0}));
+    condition.insert(QStringLiteral("operation"), QStringLiteral("notEqual"));
+    criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 1, 1}));
+    criteria.clear();
+    QVariantMap iAxis;
+    iAxis.insert(QStringLiteral("enabled"), true);
+    iAxis.insert(QStringLiteral("minimum"), 2);
+    iAxis.insert(QStringLiteral("maximum"), 2);
+    iAxis.insert(QStringLiteral("values"), QVariantList{1});
+    QVariantMap jAxis;
+    jAxis.insert(QStringLiteral("enabled"), true);
+    jAxis.insert(QStringLiteral("minimum"), 1);
+    jAxis.insert(QStringLiteral("maximum"), 1);
+    QVariantMap axes;
+    axes.insert(QStringLiteral("i"), iAxis);
+    criteria.insert(QStringLiteral("axes"), axes);
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 1, 1, 0}));
+    axes.insert(QStringLiteral("j"), jAxis);
+    criteria.insert(QStringLiteral("axes"), axes);
+    criteria.insert(QStringLiteral("axisUnion"), true);
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 0}));
+    criteria.insert(QStringLiteral("axisUnion"), false);
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0}));
+    criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("hide"));
+    const QVector<quint8> hidden = IDOSGridFilter::selection(criteria, 3, 2, 1, references);
+    QCOMPARE(hidden, QVector<quint8>({0, 0, 1, 1, 1, 1}));
+    criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("invert"));
+    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), hidden);
+    QString error;
+    iAxis.insert(QStringLiteral("values"), QVariantList{0});
+    axes.insert(QStringLiteral("i"), iAxis);
+    criteria.insert(QStringLiteral("axes"), axes);
+    QVERIFY(!IDOSGridFilter::validateCriteria(criteria, error));
 }

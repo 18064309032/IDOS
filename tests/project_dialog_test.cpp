@@ -58,7 +58,8 @@ class ProjectDialogTest : public QObject
         view->setCurrentIndex(model->index(0, 0, wells));
         QScopedPointer<QMenu> objectMenu(view->createMenu(view->currentIndex()));
         QVERIFY(objectMenu != nullptr);
-        QCOMPARE(objectMenu->actions().last()->objectName(), QStringLiteral("deleteWellAction"));
+        QVERIFY(objectMenu->findChild<QAction*>(QStringLiteral("deleteWellAction")) != nullptr);
+        QVERIFY(objectMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction")) != nullptr);
         m_wellNames = QStringList{QStringLiteral("a10")};
         m_cancelAfterInput = true;
         QTimer::singleShot(0, this, &ProjectDialogTest::onSubmitWellName);

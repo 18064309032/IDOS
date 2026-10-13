@@ -18,8 +18,12 @@ class CaseWorkflowTest : public QObject
     void onProviderDimensions();
     void onViewDecorations();
     void onRequiredSimulationPlugin();
-    void onGridColoring();
+    void onGridSettings();
+    void onGridFilters();
+    void onGridFilterCriteria();
     void onWellInputMenus();
+    void onWellDisplaySettings();
+    void onWellSymbolsAndStatusColors();
     void onRenderLifecycle();
     void onRenderArchitecture();
     void onExamplePlugin();
