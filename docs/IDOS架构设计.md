@@ -209,7 +209,7 @@ IDOSFaultRenderMetadata / IDOSFaultRenderProvider
 
 ## 13. 视图工具框架接口设计（2026-10-13，通用框架已实现）
 
-本节记录已确定并实现的通用工具框架；五个类 IDOSToolMetadata、IDOSToolRegistry、IDOSToolProvider、IDOSToolBar、IDOSTool 位于 src/render 根部。具体工具放在 app 所属功能目录或插件，本轮不注册内置业务工具。不增加 ToolManager、ToolServer、Context、包装层或命名空间，不恢复已删除的 RenderGuiProvider 和渲染右键菜单。验收状态以工作进度文档为准。
+本节记录已确定并实现的通用工具框架；五个类 IDOSToolMetadata、IDOSToolRegistry、IDOSToolProvider、IDOSToolBar、IDOSTool 位于 src/render 根部。具体工具由所属 app 功能或插件注册；当前导航和交互工具归数值模拟插件，插件卸载时注销。工具条仍由应用随视图装配，无业务注册时自动隐藏。不增加 ToolManager、ToolServer、Context、包装层或命名空间，不恢复已删除的 RenderGuiProvider 和渲染右键菜单。验收状态以工作进度文档为准。
 
 ### 13.1 职责与所有权
 
@@ -398,7 +398,7 @@ setRegistry 在未绑定 View 时只关联注册表，不创建实例；换绑�
 
 预设组顺序为 navigation、display、interaction、output；未知组按 groupId 排在后面。同组按 Metadata order、id 排列；功能内部按 actions 顺序排列。ToolBar 自己拥有分隔 Action，不识别具体工具子类。插件不直接 addAction 绕过注册跟踪。
 
-工具条叠放在画布顶部居中，不占布局高度，不是独立 Dock。View 按画布宽度和工具条 sizeHint 定位；没有适用且可见入口时隐藏。用户主动隐藏不停止工具；自动显示不能覆盖用户隐藏偏好。窄窗口需要验证嵌入式 QToolBar 溢出行为，不能假定与 QMainWindow 完全相同；必要溢出菜单在本类实现，复用原 Action。工具条外不设阻挡整块画布输入的覆盖层。
+工具条叠放在画布顶部居中，不占布局高度，不是独立 Dock。View 按画布宽度和工具条 sizeHint 定位；没有适用且可见入口时隐藏。用户主动隐藏不停止工具；自动显示不能覆盖用户隐藏偏好。左侧 10px 为拖动把手，绘制右移 2px 的双列四行点阵并使用移动光标提示，按住左键可移动工具条；用户移动后保留位置，超出画布时约束到画布边界。当前工具数量较少，使用舒展图标直接展示，不增加自定义“更多工具”按钮和菜单。工具条外不设阻挡整块画布输入的覆盖层。
 
 ### 13.7 IDOSRenderView 扩展
 
@@ -460,13 +460,13 @@ if (!view->setToolBar(toolBar))
 
 ### 13.9 实施与验收
 
-通用框架已实现，应用持有 Registry，创建 View 时装配空 ToolBar，插件入口已开放。测试具体类仅用于验证，不注册到产品，不增加产品业务按钮。验收计划包括空画布、无适用入口隐藏、分组菜单、窄窗口溢出、跨窗口绑定拒绝、隐藏与移除的区别、动态注册注销、Registry / View 销毁顺序、双窗口状态隔离、Ribbon 同步。具体已执行覆盖见工作进度，不把所有验收计划视为已经测试。
+通用框架已实现，应用持有 Registry，创建 View 时装配 ToolBar，插件入口已开放。数值模拟必需模块注册视图工具 Provider，提供视图复位、图例、适配全部对象、缩放至选中对象、三维标准视角、顺/逆时针旋转、正交投影、光标坐标追踪、视图联动、点缩放、点探针、距离测量、网格透视、背景颜色、隐藏/显示全部、截图及坐标轴操作；Provider 操作绑定所在 View，并从该 View 更新状态。交互工具由 Provider 持有并通过通用 View 生命周期接口启停。主页移除重复的视图分组。程序退出时同步注销 Metadata，清理所有视图中的工具实例；无工具注册时工具条自动隐藏。
 
 交互验收包括多个返回 false 的工具与相机操作并行、消费后停止分发、互斥切换、拖动捕获和跨边界释放、失焦取消、回调内启停及注销保护、打开菜单时卸载。真实工具若需要几何拾取等能力，按需求扩充现有 View 的明确接口，不暴露全部 VTK 成员。
 
 ## 14. 实施状态（截至 2026-10-13）
 
-通用工具框架、成员函数 VTK 监听、回调注销保护及空工具条隐藏已实现；内置工具未注册。工程持久化、Python 运行时和拟合评价仍待实施。测试结果按工作进度中的具体日期和范围解释，不将历史全量通过记录套用于后续全部改动。
+通用工具框架、成员函数 VTK 监听、回调注销保护及空工具条隐藏已实现；视图工具由数值模拟插件注册。工程持久化、Python 运行时和拟合评价仍待实施。测试结果按工作进度中的具体日期和范围解释，不将历史全量通过记录套用于后续全部改动。
 
 - 数据对象及井、网格、工况数据已迁入 core/data；新增独立 DataMetadata、DataRegistry 与内置类型 Metadata，由应用注册。删除旧 TypeRegistry、ObjectTypeMetadata 及其模板工厂。
 - Project 的旧 addObject/takeObject/removeObject/objectById 接口已替换为 add/take/remove/object，全部源码和测试调用同步修改，不保留别名。
@@ -482,3 +482,25 @@ if (!view->setToolBar(toolBar))
 - 井导入通过命令合并已有数据，保存修改前后快照，撤销恢复原通道，重做不重新读取文件。导入失败读取 CommandManager 保存的错误，避免访问已销毁的命令。
 - 框架主体改造已落地，固定构建目录的 Debug 构建及 9 项回归测试全部通过。回归包含动态树注册、节点所有权、菜单目标、工程切换、渲染生命周期、井合并撤销重做及助手旧工程响应拒绝；独立头文件编译和目录边界检查通过，中文翻译无未完成项。这些检查覆盖现有内置实现，第三方新数据类型及插件卸载仍应按第 11 节逐项验收。
 - idosexampleplugin 已完成点集扩展验收，只依赖公共 core/gui/render 接口，不链接 app。专项测试覆盖 DLL 加载、工厂和命令注册、失败命令不入历史、八个子节点、工况引用、树更新、实际三维截图、各视图状态隔离、删除和撤销重做、旧树菜单目标、跨工程及延迟删除的卸载保护、未关闭树菜单时注销、工厂创建的游离实例与重新加载。渲染菜单及相应测试已按当前需求移除；本次验证结果和未完成事项以工作进度文档为准。此示例验证点集链路，其他新工况和业务扩展仍按第 11 节验收。
+
+## 14. 必需数值模拟模块与主页入口
+
+- 数值模拟是默认业务模块，专业插件计算模型、参数、属性场或分析指标，核心模拟流程负责工况输入组织、检查、运行和结果管理。业务实现保留在 idossimulationplugin，不写入通用 Model、View、Scene 或 Registry。
+- 插件功能类型仍为 UI；IDOSPluginMetadata 增加 required 布尔字段。插件可以通过 required() 导出声明必需身份，缺少该导出按 false 处理。数值模拟声明 true，启动优先加载并忽略历史禁用设置，用户禁用、单独卸载及普通批量卸载均被注册器拒绝，管理器不提供可编辑勾选。关闭宿主时才走明确的 shutdown 清理路径。必需模块加载失败由应用明确提示。
+- 主页固定顺序为“工程、窗口、模拟、结果、输出、扩展”。工况的新建及导入保留在工况树。移除独立数值模拟 RibbonPage 和主页视图分组。
+- IDOSInterface.homeRibbonPanel(groupId) 开放平台现有 simulation、results、output 分组。平台拥有主页和 Panel；插件拥有其 QAction、播放控件对应的 QWidgetAction 和业务窗口，不得删除共享 Panel。退出时先移除插件动作并释放 Ribbon 按钮、播放控件和视图 Provider，销毁插件业务实例；动态库保持映射至进程结束，避免 Qt 后续清理访问库内资源。普通插件卸载仍显式卸载 DLL。
+- 模拟分组承载 Deck、解析摘要、预检、初始化、运行状态/启动、停止和工作流；结果分组承载表格、属性曲线、井控查看、结果文件、报告步播放、曲线对比和拟合评价入口；输出分组承载 DATA 导出、运行归档和工况报告，并保留平台截图/图片导出。未实现的拟合评价继续禁用。
+- 移除主页视图入口后，复位、图例、方向标、视角、适配及背景均由目标视图的悬浮工具条提供。共享主页模拟动作继续根据当前工况及任务状态更新，不将平台业务逻辑搬入 Ribbon 创建函数。
+
+### 着色交互扩展
+
+
+- `IDOSColoringWidget` 与 `IDOSColoringTreeGuiProvider` 属于数值模拟插件，文件位于 `src/plugins/idossimulationplugin` 根目录。网格和网格属性共用同一个面板；网格入口可选择单色或属性着色，属性入口预选该属性。面板按模式提供颜色、色带、反转、自动/手动范围、无效值颜色及图例设置，并即时更新明确的目标视图。
+- 插件通过 `IDOSInterface::treeRegistry()` 注册着色 GuiProvider，使用现有 `supports()` 和 `populateMenu()` 组合网格及属性右键菜单。该 Provider 只负责着色入口，不提供勾选职责；原 `IDOSGridTreeGuiProvider` 保留既有菜单及勾选，通用 TreeView 不识别网格业务。
+- 操作绑定右键节点的数据身份及当时的 `IDOSTreeView::targetView()`，不在面板操作时重新获取全局活动视图。每个视图的 `IDOSGridRenderProvider` 保存着色状态，面板读取、修改该状态，不持有第二份权威显示设置。局部着色直接调用目标 Provider 并通知目标 Scene/View 刷新，不经业务修改命令。
+- 当前数值模拟插件已链接 `idos_app`，可使用导出的 `IDOSGridRenderProvider`；按需要扩充该具体类的着色接口，不向通用 Provider 添加网格属性协议，不引入包装层，也不使 app 依赖插件。
+- 面板按非拥有关系绑定目标；工程切换、网格或属性删除、目标视图关闭时解除失效绑定，调用前重新核对对象身份。插件清理时先关闭并销毁面板、注销其 GuiProvider，确保菜单及共享 Provider 引用释放。
+
+## 15. 井输入数据解析
+
+井分层、实测射孔和 Checkshot 文件解析由 `src/providers/well` 中的具体 Provider/Metadata 提供。新增 `IDOSWellTopsProvider/Metadata`、`IDOSWellCompletionProvider/Metadata`、`IDOSWellCheckshotProvider/Metadata`；应用启动注册后沿用已有井导入命令。`IDOSWellCheckshot` 位于 `core/data/well`，作为 Well 的值类型成员保存原始时深采样、单位及声明的深度/时间类型，不把时深记录转换为三维点。实测射孔深度统一为米，未映射网格层号为 0，日期保持源文本；导入合并和快照撤销包含射孔及校深数据。查看入口由现有井 GuiProvider 提供。

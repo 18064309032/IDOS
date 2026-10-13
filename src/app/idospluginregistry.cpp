@@ -29,7 +29,7 @@ IDOSPluginRegistry::IDOSPluginRegistry()
 
 IDOSPluginRegistry::~IDOSPluginRegistry()
 {
-    unloadAll();
+    unloadAll(true);
 }
 
 IDOSPluginRegistry* IDOSPluginRegistry::instance()
@@ -45,7 +45,7 @@ void IDOSPluginRegistry::setIDosInterface(IDOSInterface* idosInterface)
 {
     if (!m_plugins.isEmpty() && m_idosInterface.data() != idosInterface)
     {
-        unloadAll();
+        unloadAll(true);
     }
 
     m_idosInterface = idosInterface;
@@ -61,11 +61,21 @@ void IDOSPluginRegistry::restoreSessionPlugins(const QString& directoryPath)
 
     QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
     const QStringList libraryPaths = cppPluginLibraryPaths(QDir(directoryPath));
+    QStringList requiredPaths;
+    for (const QString& libraryPath : libraryPaths)
+    {
+        if (isRequiredPlugin(libraryPath))
+        {
+            requiredPaths.append(libraryPath);
+            loadCppPlugin(libraryPath);
+        }
+    }
     for (int index = 0; index < libraryPaths.size(); ++index)
     {
         const QString baseName = QFileInfo(libraryPaths.at(index)).baseName();
         const QString settingKey = QStringLiteral("/plugins/") + baseName;
-        if (!settings.contains(settingKey) || settings.value(settingKey).toBool())
+        if (!requiredPaths.contains(libraryPaths.at(index)) &&
+            (!settings.contains(settingKey) || settings.value(settingKey).toBool()))
         {
             loadCppPlugin(libraryPaths.at(index));
         }
@@ -107,6 +117,7 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
     type_t* typeFunction = reinterpret_cast<type_t*>(library->resolve("type"));
     version_t* versionFunction = reinterpret_cast<version_t*>(library->resolve("version"));
     icon_t* iconFunction = reinterpret_cast<icon_t*>(library->resolve("icon"));
+    required_t* requiredFunction = reinterpret_cast<required_t*>(library->resolve("required"));
     create_t* factoryFunction = reinterpret_cast<create_t*>(library->resolve("classFactory"));
     if (nameFunction == nullptr || descriptionFunction == nullptr
         || categoryFunction == nullptr || typeFunction == nullptr
@@ -127,6 +138,7 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
     const QString* exportedVersion = nullptr;
     const QString* exportedIcon = nullptr;
     int pluginType = 0;
+    bool pluginRequired = false;
     try
     {
         exportedName = nameFunction();
@@ -135,6 +147,7 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
         pluginType = typeFunction();
         exportedVersion = versionFunction();
         exportedIcon = iconFunction();
+        pluginRequired = requiredFunction != nullptr && requiredFunction();
     }
     catch (const std::exception& exception)
     {
@@ -280,7 +293,8 @@ void IDOSPluginRegistry::loadCppPlugin(const QString& libraryPath)
                                         pluginIcon,
                                         static_cast<IDOSPlugin::PluginType>(pluginType),
                                         pluginInstance,
-                                        library));
+                                        library,
+                                        pluginRequired));
 
     IDOS_DEBUG(tr("Plugin initGui completed: key=%1, instance=0x%2, library=0x%3")
                    .arg(baseName,
@@ -302,6 +316,11 @@ void IDOSPluginRegistry::unloadCppPlugin(const QString& libraryPath)
 
 void IDOSPluginRegistry::setPluginEnabled(const QString& libraryPath, bool enabled)
 {
+    if (!enabled && isRequiredPlugin(libraryPath))
+    {
+        IDOS_MESSAGE(tr("Required plugins cannot be disabled."), IDOSLogLevel::Warn);
+        return;
+    }
     const QString baseName = QFileInfo(libraryPath).baseName();
     const QString absolutePath = QFileInfo(libraryPath).absoluteFilePath();
     IDOS_DEBUG(tr("setPluginEnabled entered: key=%1, enabled=%2, loaded=%3, path=%4")
@@ -330,7 +349,7 @@ void IDOSPluginRegistry::setPluginEnabled(const QString& libraryPath, bool enabl
                    .arg(isLoaded(baseName)));
 }
 
-void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettings)
+void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettings, bool shuttingDown)
 {
     if (!isLoaded(key))
     {
@@ -338,6 +357,11 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
     }
 
     IDOSPlugin* instance = m_plugins.constFind(key).value().plugin();
+    if (!shuttingDown && m_plugins.constFind(key).value().required())
+    {
+        IDOS_MESSAGE(tr("Required plugins cannot be unloaded."), IDOSLogLevel::Warn);
+        return;
+    }
     if (m_idosInterface != nullptr && m_idosInterface->toolRegistry() != nullptr &&
         m_idosInterface->toolRegistry()->isBusy())
     {
@@ -347,7 +371,7 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
         return;
     }
     QString unloadBlockReason;
-    if (instance != nullptr && !instance->canUnload(unloadBlockReason))
+    if (!shuttingDown && instance != nullptr && !instance->canUnload(unloadBlockReason))
     {
         if (unloadBlockReason.isEmpty())
         {
@@ -383,7 +407,9 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
     IDOS_DEBUG(tr("Plugin instance destroyed: key=%1, library=0x%2")
                    .arg(key, QString::number(reinterpret_cast<quintptr>(library), 16)));
 
-    if (library != nullptr)
+    // Qt widgets and caches can retain plugin-backed strings and icons until application teardown.
+    // Keep the registry-owned library mapped during shutdown, after destroying the plugin instance.
+    if (library != nullptr && !shuttingDown)
     {
         const bool unloaded = library->unload();
         if (unloaded)
@@ -400,12 +426,12 @@ void IDOSPluginRegistry::unloadPluginByKey(const QString& key, bool updateSettin
     }
 }
 
-void IDOSPluginRegistry::unloadAll()
+void IDOSPluginRegistry::unloadAll(bool shuttingDown)
 {
     const QStringList pluginKeys = m_plugins.keys();
     for (int index = 0; index < pluginKeys.size(); ++index)
     {
-        unloadPluginByKey(pluginKeys.at(index), false);
+        unloadPluginByKey(pluginKeys.at(index), false, shuttingDown);
     }
 }
 
@@ -459,10 +485,12 @@ QVariantList IDOSPluginRegistry::pluginCatalog(const QString& directoryPath)
                 pluginInfo.insert(QStringLiteral("iconPixmap"), iconPixmap);
             }
             pluginInfo.insert(QStringLiteral("type"), static_cast<int>(metadata.type()));
+            pluginInfo.insert(QStringLiteral("required"), metadata.required());
         }
         else
         {
             const QVariantMap exportedMetadata = pluginExportMetadata(libraryPath);
+            pluginInfo.insert(QStringLiteral("required"), exportedMetadata.value(QStringLiteral("required"), false));
             pluginInfo.insert(QStringLiteral("name"),
                               exportedMetadata.value(QStringLiteral("name"), key));
             pluginInfo.insert(QStringLiteral("description"),
@@ -477,6 +505,10 @@ QVariantList IDOSPluginRegistry::pluginCatalog(const QString& directoryPath)
                               exportedMetadata.value(QStringLiteral("iconPixmap")));
             pluginInfo.insert(QStringLiteral("type"),
                               exportedMetadata.value(QStringLiteral("type"), 0));
+        }
+        if (pluginInfo.value(QStringLiteral("required")).toBool())
+        {
+            pluginInfo.insert(QStringLiteral("enabled"), true);
         }
         result.append(pluginInfo);
     }
@@ -535,6 +567,7 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
     type_t* typeFunction = reinterpret_cast<type_t*>(library.resolve("type"));
     version_t* versionFunction = reinterpret_cast<version_t*>(library.resolve("version"));
     icon_t* iconFunction = reinterpret_cast<icon_t*>(library.resolve("icon"));
+    required_t* requiredFunction = reinterpret_cast<required_t*>(library.resolve("required"));
     if (nameFunction == nullptr || descriptionFunction == nullptr
         || categoryFunction == nullptr || typeFunction == nullptr
         || versionFunction == nullptr || iconFunction == nullptr)
@@ -551,6 +584,7 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
         const int typeValue = typeFunction();
         const QString* versionValue = versionFunction();
         const QString* iconValue = iconFunction();
+        const bool requiredValue = requiredFunction != nullptr && requiredFunction();
         if (nameValue != nullptr && descriptionValue != nullptr
             && categoryValue != nullptr && versionValue != nullptr
             && iconValue != nullptr)
@@ -559,6 +593,7 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
             metadata.insert(QStringLiteral("description"), *descriptionValue);
             metadata.insert(QStringLiteral("category"), *categoryValue);
             metadata.insert(QStringLiteral("type"), typeValue);
+            metadata.insert(QStringLiteral("required"), requiredValue);
             metadata.insert(QStringLiteral("version"), *versionValue);
             metadata.insert(QStringLiteral("icon"), *iconValue);
             const QPixmap iconPixmap = QIcon(*iconValue).pixmap(QSize(64, 64));
@@ -573,8 +608,28 @@ QVariantMap IDOSPluginRegistry::pluginExportMetadata(const QString& libraryPath)
         metadata.clear();
     }
 
+    const QStringList stringKeys = QStringList() << QStringLiteral("name") << QStringLiteral("description")
+                                                << QStringLiteral("category") << QStringLiteral("version")
+                                                << QStringLiteral("icon");
+    for (const QString& key : stringKeys)
+    {
+        QString value = metadata.value(key).toString();
+        value.detach();
+        metadata.insert(key, value);
+    }
     library.unload();
     return metadata;
+}
+
+bool IDOSPluginRegistry::isRequiredPlugin(const QString& libraryPath) const
+{
+    const QString key = QFileInfo(libraryPath).baseName();
+    QMap<QString, IDOSPluginMetadata>::const_iterator iterator = m_plugins.constFind(key);
+    if (iterator != m_plugins.constEnd())
+    {
+        return iterator.value().required();
+    }
+    return pluginExportMetadata(libraryPath).value(QStringLiteral("required")).toBool();
 }
 
 void IDOSPluginRegistry::destroyPluginInstance(IDOSPlugin* pluginInstance)

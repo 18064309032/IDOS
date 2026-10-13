@@ -98,7 +98,7 @@ bool IDOSGridTreeGuiProvider::isChecked(const IDOSTreeItem* item, const IDOSTree
         return false;
     }
     return property != nullptr
-               ? provider->property() == property
+               ? object->visible() && provider->property() == property
                : object->visible();
 }
 

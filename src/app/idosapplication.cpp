@@ -9,8 +9,11 @@
 #include "idoswellmetadata.h"
 #include "las/idoswelllasmetadata.h"
 #include "log/idoslogger.h"
+#include "well/idoswellcheckshotmetadata.h"
+#include "well/idoswellcompletionmetadata.h"
 #include "well/idoswellheadermetadata.h"
 #include "well/idoswellpathmetadata.h"
+#include "well/idoswelltopsmetadata.h"
 
 #include "idosapplication.h"
 
@@ -70,6 +73,18 @@ void IDOSApplication::handleQtMessage(QtMsgType type,
 void IDOSApplication::initProviders()
 {
     IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    if (registry.metadata(QStringLiteral("idos.well.tops")) == nullptr)
+    {
+        registry.add(new IDOSWellTopsMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.well.completion")) == nullptr)
+    {
+        registry.add(new IDOSWellCompletionMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.well.checkshot")) == nullptr)
+    {
+        registry.add(new IDOSWellCheckshotMetadata());
+    }
     if (registry.metadata(QStringLiteral("idos.well.header")) == nullptr)
     {
         registry.add(new IDOSWellHeaderMetadata());

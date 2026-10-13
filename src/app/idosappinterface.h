@@ -29,8 +29,9 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     SARibbonCategory* insertCategoryPage(const QString& objectName,
                                          const QString& title,
                                          int index) override;
-    // Removes and destroys only categories created through this interface.
+
     void removeRibbonCategory(SARibbonCategory* category) override;
+    SARibbonPanel* homeRibbonPanel(const QString& groupId) const override;
 
   private:
     void reorderRibbonCategories();

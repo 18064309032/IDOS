@@ -1,6 +1,8 @@
 # idos_core: business data and type registry
 # Dependency chain: no custom module dependencies; Qt Widgets is required by the tree model.
 add_library(idos_core SHARED
+    data/well/idoswellcheckshot.h
+    data/well/idoswellcheckshot.cpp
     tree/idostree.cpp
     tree/idostree.h
     tree/idostreeitem.cpp

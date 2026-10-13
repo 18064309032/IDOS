@@ -17,7 +17,8 @@ class IDOSPluginMetadata
                        const QString& icon,
                        IDOSPlugin::PluginType type,
                        IDOSPlugin* plugin,
-                       QLibrary* library);
+                       QLibrary* library,
+                       bool required = false);
     QString name() const;
     QString description() const;
     QString category() const;
@@ -26,6 +27,7 @@ class IDOSPluginMetadata
     IDOSPlugin::PluginType type() const;
     IDOSPlugin* plugin() const;
     QLibrary* library() const;
+    bool required() const;
 
   private:
     QString m_name;
@@ -36,6 +38,7 @@ class IDOSPluginMetadata
     IDOSPlugin::PluginType m_type;
     IDOSPlugin* m_plugin;
     QLibrary* m_library;
+    bool m_required;
 };
 
 #endif // IDOS_PLUGIN_METADATA_H

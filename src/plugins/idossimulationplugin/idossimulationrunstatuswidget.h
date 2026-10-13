@@ -22,6 +22,9 @@ class IDOSSimulationRunStatusWidget : public QWidget
 {
     Q_OBJECT
 
+  signals:
+    void runningChanged();
+
   public:
     explicit IDOSSimulationRunStatusWidget(IDOSSimulationCaseObject* simulationCase, QWidget* parent = nullptr);
     ~IDOSSimulationRunStatusWidget() override;

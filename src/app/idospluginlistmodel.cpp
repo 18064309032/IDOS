@@ -61,6 +61,10 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     }
 
     const QVariantMap plugin = m_plugins.at(modelIndex.row()).toMap();
+    if (role == Qt::ToolTipRole && plugin.value(QStringLiteral("required")).toBool())
+    {
+        return tr("Required plugins cannot be disabled.");
+    }
     if (role == Qt::DisplayRole)
     {
         if (modelIndex.column() == 0)
@@ -139,6 +143,10 @@ bool IDOSPluginListModel::setData(const QModelIndex& modelIndex,
     }
 
     QVariantMap plugin = m_plugins.at(modelIndex.row()).toMap();
+    if (plugin.value(QStringLiteral("required")).toBool())
+    {
+        return false;
+    }
     const QString pluginPath = plugin.value(QStringLiteral("path")).toString();
     const QString pluginKey = plugin.value(QStringLiteral("key")).toString();
     const bool enabled = value.toInt() == Qt::Checked;
@@ -169,7 +177,8 @@ bool IDOSPluginListModel::setData(const QModelIndex& modelIndex,
 Qt::ItemFlags IDOSPluginListModel::flags(const QModelIndex& modelIndex) const
 {
     Qt::ItemFlags itemFlags = QAbstractItemModel::flags(modelIndex);
-    if (modelIndex.isValid() && modelIndex.column() == 0)
+    if (modelIndex.isValid() && modelIndex.column() == 0 &&
+        !m_plugins.at(modelIndex.row()).toMap().value(QStringLiteral("required")).toBool())
     {
         itemFlags |= Qt::ItemIsUserCheckable;
     }
@@ -225,7 +234,7 @@ QString IDOSPluginListModel::statusText(const QVariantMap& plugin) const
 {
     if (plugin.value(QStringLiteral("loaded")).toBool())
     {
-        return tr("Loaded");
+        return plugin.value(QStringLiteral("required")).toBool() ? tr("Required") : tr("Loaded");
     }
     if (!plugin.value(QStringLiteral("error")).toString().isEmpty())
     {

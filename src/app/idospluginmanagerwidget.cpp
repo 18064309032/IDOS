@@ -107,7 +107,7 @@ IDOSPluginManagerWidget::IDOSPluginManagerWidget(IDOSPluginRegistry* registry,
     toolbarLayout->addWidget(refreshButton);
 
     QLabel* listHint = new QLabel(
-        tr("Use the checkbox to enable or disable a plugin."), m_pluginPane);
+        tr("Use the checkbox to enable or disable optional plugins. Required modules are always enabled."), m_pluginPane);
     listHint->setWordWrap(true);
 
     QVBoxLayout* listLayout = new QVBoxLayout(m_pluginPane);

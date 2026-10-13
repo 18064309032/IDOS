@@ -1389,4 +1389,53 @@
         <translation>无法读取 %1:%2 处的关键字</translation>
     </message>
 </context>
+<context>
+    <name>IDOSColoringWidget</name>
+    <message><source>Coloring Settings</source><translation>着色设置</translation></message>
+    <message><source>Grid: %1
+Target view: %2</source><translation>网格：%1
+目标视图：%2</translation></message>
+    <message><source>Color by</source><translation>着色依据</translation></message>
+    <message><source>Color ramp</source><translation>色带</translation></message>
+    <message><source>Blue to red</source><translation>蓝到红</translation></message>
+    <message><source>Blue to yellow</source><translation>蓝到黄</translation></message>
+    <message><source>Grayscale</source><translation>灰度</translation></message>
+    <message><source>Reverse color ramp</source><translation>反转色带</translation></message>
+    <message><source>Automatic range</source><translation>自动范围</translation></message>
+    <message><source>Minimum</source><translation>最小值</translation></message>
+    <message><source>Maximum</source><translation>最大值</translation></message>
+    <message><source>Solid color</source><translation>单色</translation></message>
+    <message><source>Invalid value color</source><translation>无效值颜色</translation></message>
+    <message><source>Show legend</source><translation>显示图例</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Minimum must be less than maximum.</source><translation>最小值必须小于最大值。</translation></message>
+    <message><source>Default rainbow</source><translation>默认彩虹</translation></message>
+    <message><source>Soft rainbow</source><translation>柔和彩虹</translation></message>
+    <message><source>Ocean breeze</source><translation>海洋微风</translation></message>
+    <message><source>Warm amber</source><translation>暖琥珀</translation></message>
+    <message><source>Fresh mint</source><translation>清新薄荷</translation></message>
+    <message><source>Twilight purple</source><translation>暮光紫</translation></message>
+    <message><source>Earth tones</source><translation>大地色</translation></message>
+    <message><source>Glacier blue</source><translation>冰川蓝</translation></message>
+    <message><source>Warm and cool</source><translation>冷暖对比</translation></message>
+    <message><source>Lava metal</source><translation>熔岩金属</translation></message>
+    <message><source>Dark forest</source><translation>深林</translation></message>
+    <message><source>Vintage sunset</source><translation>复古日落</translation></message>
+    <message><source>Aurora</source><translation>极光</translation></message>
+    <message><source>Mineral sand</source><translation>矿砂</translation></message>
+    <message><source>Porcelain</source><translation>瓷色</translation></message>
+    <message><source>Autumn berry</source><translation>秋日浆果</translation></message>
+    <message><source>Jade</source><translation>翡翠</translation></message>
+    <message><source>Graphite</source><translation>石墨</translation></message>
+    <message><source>Cyberpunk</source><translation>赛博朋克</translation></message>
+    <message><source>Grid:</source><translation>网格：</translation></message>
+    <message><source>Target view:</source><translation>目标视图：</translation></message>
+</context>
+<context>
+    <name>IDOSColoringTreeGuiProvider</name>
+    <message><source>Display in Target View</source><translation>在目标视图中显示</translation></message>
+    <message><source>Color by</source><translation>着色依据</translation></message>
+    <message><source>Solid color</source><translation>单色</translation></message>
+    <message><source>Coloring Settings...</source><translation>着色设置…</translation></message>
+</context>
 </TS>

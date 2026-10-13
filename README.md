@@ -19,7 +19,7 @@ IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，
 | 范围 | 状态 |
 |---|---|
 | 工程打开、保存、另存为及设置 | 入口保留，当前禁用；新建工程和数据导入可用 |
-| 内置悬浮工具按钮 | 通用框架已接入，尚未注册具体工具；空工具条自动隐藏 |
+| 内置悬浮工具按钮 | 已提供主视图、适配全部对象、缩放至选中对象、三维标准视角、旋转、正交投影、坐标追踪、视图联动、选择、点缩放、点探针、距离测量、网格透视、缩放、背景、清空显示、截图和坐标轴操作 |
 | Python | 控制台界面存在，运行时未接入，不能执行 Python 代码 |
 | 通用分析模块与拟合评价 | 待实现，不代表专业插件已经具备完整计算能力 |
 | Flow 运行环境 | 需要预先安装 WSL2、Linux 发行版和 Flow，未提供离线环境包 |
@@ -43,20 +43,20 @@ IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，
 
 ### 配置与构建
 
-在仓库根目录运行。当前工作约定使用唯一构建目录 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local`，禁止源码内构建。
+在仓库根目录运行。当前工作约定使用唯一构建目录 `D:/CMakeCoder/IDOS-Build/win-x64-debug-local`，禁止源码内构建。
 
 ```powershell
-cmake -S . -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local `
+cmake -S . -B D:/CMakeCoder/IDOS-Build/win-x64-debug-local `
     -G "Visual Studio 17 2022" -A x64 `
     -DIDOS_QT_DIR="D:/Qt/Qt5.15.2/5.15.2/msvc2019_64" `
     -DIDOS_ENABLE_RENDER=ON -DIDOS_BUILD_TESTS=ON
 
-cmake --build E:/CJW-Archive/IDOS-Build/win-x64-debug-local --config Debug --parallel 6
+cmake --build D:/CMakeCoder/IDOS-Build/win-x64-debug-local --config Debug --parallel 6
 ```
 
-Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local`；显式指定目录以确保配置、编译和测试使用同一位置。
+Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B D:/CMakeCoder/IDOS-Build/win-x64-debug-local`；显式指定目录以确保配置、编译和测试使用同一位置。
 
-Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
+Debug 程序位于 `D:/CMakeCoder/IDOS-Build/win-x64-debug-local/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
 
 `IDOS_BUILD_TESTS` 默认 `OFF`，开发验证应打开。`IDOS_ENABLE_RENDER` 默认 `ON`；当前源码仍使用 VTK 控件，不能将 `OFF` 视为已支持的无渲染构建模式。
 
@@ -92,7 +92,7 @@ Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idos
 ## 测试
 
 ```powershell
-ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug --output-on-failure
+ctest --test-dir D:/CMakeCoder/IDOS-Build/win-x64-debug-local -C Debug --output-on-failure
 ```
 
 测试包括 `command_registry`、`assistant_widget`、`project_dialog`、`well_import`、`well_path`、`case_workflow`、`tree_incremental`，以及两项 include 边界检查。`idos_render_header_checks` 构建目标验证公共头文件自包含。
@@ -100,8 +100,8 @@ ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug --output
 实际 Flow 验证需准备可运行的 SPE1 输入包，并设置路径：
 
 ```powershell
-$env:IDOS_FLOW_SMOKE_DATA = 'E:/CJW-Archive/IDOS-Build/win-x64-debug-local/flow-smoke/SPE1CASE1.DATA'
-ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug -R '^case_workflow$' --output-on-failure
+$env:IDOS_FLOW_SMOKE_DATA = 'D:/CMakeCoder/IDOS-Build/win-x64-debug-local/flow-smoke/SPE1CASE1.DATA'
+ctest --test-dir D:/CMakeCoder/IDOS-Build/win-x64-debug-local -C Debug -R '^case_workflow$' --output-on-failure
 ```
 
 未设置该变量时，本机 Flow 用例跳过，不能将普通回归通过解释为求解器计算已验收。验证与翻译流程见 [开发指南](docs/开发指南.md)。

@@ -8,6 +8,7 @@
 #include "idos_gui.h"
 
 class SARibbonCategory;
+class SARibbonPanel;
 class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class IDOSProject;
@@ -36,6 +37,7 @@ class GUI_EXPORT IDOSInterface : public QObject
                                                  const QString& title,
                                                  int index) = 0;
     virtual void removeRibbonCategory(SARibbonCategory* category) = 0;
+    virtual SARibbonPanel* homeRibbonPanel(const QString& groupId) const = 0;
 
   signals:
     void projectChanged(IDOSProject* project);

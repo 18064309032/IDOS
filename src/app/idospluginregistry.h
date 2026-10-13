@@ -30,7 +30,7 @@ class APP_EXPORT IDOSPluginRegistry : public QObject
     void loadCppPlugin(const QString& libraryPath);
     void unloadCppPlugin(const QString& libraryPath);
     void setPluginEnabled(const QString& libraryPath, bool enabled);
-    void unloadAll();
+    void unloadAll(bool shuttingDown = false);
     QDir libraryDir() const;
     bool isLoaded(const QString& key) const;
     QString pluginError(const QString& key) const;
@@ -42,7 +42,8 @@ class APP_EXPORT IDOSPluginRegistry : public QObject
     static QStringList cppPluginLibraryPaths(const QDir& pluginRoot);
     static QVariantMap pluginExportMetadata(const QString& libraryPath);
     static void destroyPluginInstance(IDOSPlugin* plugin);
-    void unloadPluginByKey(const QString& key, bool updateSettings);
+    void unloadPluginByKey(const QString& key, bool updateSettings, bool shuttingDown = false);
+    bool isRequiredPlugin(const QString& libraryPath) const;
 
     QPointer<IDOSInterface> m_idosInterface;
     QMap<QString, IDOSPluginMetadata> m_plugins;

@@ -22,6 +22,15 @@ file(GLOB _idos_example_headers CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/plugins/idosexampleplugin/*.h")
 list(APPEND _idos_render_headers ${_idos_example_headers})
 list(APPEND _idos_render_headers
+    "${CMAKE_SOURCE_DIR}/src/core/data/well/idoswellcheckshot.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswelltopsprovider.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswelltopsmetadata.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcompletionprovider.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcompletionmetadata.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcheckshotprovider.h"
+    "${CMAKE_SOURCE_DIR}/src/providers/well/idoswellcheckshotmetadata.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoscoloringwidget.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idoscoloringtreeguiprovider.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationplugin.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationresultplaybackwidget.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationinitializewidget.h"
@@ -98,6 +107,7 @@ target_include_directories(idos_case_tests PRIVATE "${CMAKE_SOURCE_DIR}/src/app/
 target_link_libraries(idos_case_tests PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::RenderingCore)
 add_dependencies(idos_case_tests idos_project_tests)
 add_dependencies(idos_case_tests idosexampleplugin)
+add_dependencies(idos_case_tests idossimulationplugin)
 add_test(NAME case_workflow COMMAND idos_case_tests)
 set_tests_properties(case_workflow PROPERTIES
     TIMEOUT 240

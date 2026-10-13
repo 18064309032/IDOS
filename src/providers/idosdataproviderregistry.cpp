@@ -108,13 +108,17 @@ QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::providers(const QStri
     return trueMatch;
 }
 
-QString IDOSDataProviderRegistry::fileFilters() const
+QString IDOSDataProviderRegistry::fileFilters(const QString& providerIdPrefix) const
 {
     QStringList allExtensions;
     QStringList perProvider;
 
     for (IDOSDataProviderMetadata* m : metadata())
     {
+        if (!providerIdPrefix.isEmpty() && !m->id().startsWith(providerIdPrefix))
+        {
+            continue;
+        }
         QStringList exts = m->fileExtensions();
         allExtensions.append(exts);
         perProvider.append(QStringLiteral("%1 (%2)").arg(m->displayName(), exts.join(" ")));
@@ -125,6 +129,7 @@ QString IDOSDataProviderRegistry::fileFilters() const
         return QString();
     }
 
+    allExtensions.removeDuplicates();
     QString allFilter = QObject::tr("All Supported Files (%1)").arg(allExtensions.join(" "));
     QStringList result;
     result.append(allFilter);

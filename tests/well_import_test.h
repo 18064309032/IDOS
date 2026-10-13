@@ -1,7 +1,9 @@
 #ifndef WELL_IMPORT_TEST_H
 #define WELL_IMPORT_TEST_H
 
+#include <QByteArray>
 #include <QObject>
+#include <QString>
 
 class WellImportTest : public QObject
 {
@@ -19,6 +21,12 @@ class WellImportTest : public QObject
     void onReorderedColumns();
     void onLasImport();
     void onInvalidLasFiles();
+    void onExtendedInputProviders();
+    void onExtendedInputUndoRedo();
+    void onLegacyExtendedSamples();
+
+  private:
+    bool writeInput(const QString& path, const QByteArray& content);
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonMainWindow.h>
+#include <SARibbonPanel.h>
 
 #include "idosmainwindow.h"
 #include "idosproject.h"
@@ -21,6 +22,20 @@ IDOSAppInterface::IDOSAppInterface(IDOSMainWindow* mainWindow)
 QMainWindow* IDOSAppInterface::mainWindow() const
 {
     return m_mainWindow;
+}
+
+SARibbonPanel* IDOSAppInterface::homeRibbonPanel(const QString& groupId) const
+{
+    if (m_mainWindow == nullptr || m_mainWindow->ribbonBar() == nullptr)
+    {
+        return nullptr;
+    }
+    SARibbonCategory* home = m_mainWindow->ribbonBar()->categoryByObjectName(QStringLiteral("idosHomeCategory"));
+    if (home == nullptr)
+    {
+        return nullptr;
+    }
+    return home->panelByObjectName(QStringLiteral("idosHomePanel_") + groupId);
 }
 
 SARibbonCategory* IDOSAppInterface::addRibbonCategory(const QString& objectName,

@@ -1,14 +1,22 @@
 #include <algorithm>
 
 #include <QAction>
+#include <QColor>
 #include <QEvent>
+#include <QGraphicsDropShadowEffect>
 #include <QIcon>
+#include <QLabel>
 #include <QMenu>
-#include <QResizeEvent>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPalette>
+#include <QPixmap>
+#include <QPointF>
 #include <QSize>
 #include <QStringList>
 #include <QThread>
 #include <QToolButton>
+#include <QWidgetAction>
 
 #include <QVTKOpenGLNativeWidget.h>
 
@@ -23,24 +31,64 @@
 IDOSToolBar::IDOSToolBar(QWidget* parent)
     :
     QToolBar(parent)
-    , m_overflowButton(new QToolButton(this))
-    , m_overflowMenu(new QMenu(this))
+    , m_dragHandleAction(new QWidgetAction(this))
+    , m_dragHandle(new QLabel())
+    , m_dragStartGlobalPosition()
+    , m_dragStartPosition()
     , m_updating(false)
     , m_internalVisibility(true)
     , m_userHidden(false)
+    , m_dragging(false)
+    , m_userPositioned(false)
 {
     setMovable(false);
     setFloatable(false);
     setIconSize(QSize(20, 20));
     setToolButtonStyle(Qt::ToolButtonIconOnly);
     setObjectName(QStringLiteral("renderToolBar"));
-    setStyleSheet(QStringLiteral("QToolBar#renderToolBar { background: palette(button); "
-                                 "border: 1px solid palette(mid); border-radius: 6px; padding: 3px; }"));
-    m_overflowButton->setText(QStringLiteral("»"));
-    m_overflowButton->setToolTip(tr("More tools"));
-    m_overflowButton->setMenu(m_overflowMenu);
-    m_overflowButton->setPopupMode(QToolButton::InstantPopup);
-    m_overflowButton->hide();
+    setStyleSheet(QStringLiteral("QToolBar#renderToolBar { background: #F7F9FC; "
+                                 "border: 1px solid #D7DFE8; border-radius: 9px; padding: 7px; "
+                                 "padding-left: 0px; }"
+                                 "QToolBar#renderToolBar QToolButton { background: transparent; "
+                                 "border: 1px solid transparent; border-radius: 5px; "
+                                 "margin: 3px; padding: 3px; }"
+                                 "QToolBar#renderToolBar QToolButton:hover { background: #EAF3FD; "
+                                 "border-color: #C9DCF4; }"
+                                 "QToolBar#renderToolBar QToolButton:pressed, "
+                                 "QToolBar#renderToolBar QToolButton:checked { background: #DCEBFA; "
+                                 "border-color: #B9D2EF; }"
+                                 "QLabel#renderToolBarDragHandle { color: #94A3B8; border-radius: 4px; }"
+                                 "QLabel#renderToolBarDragHandle:hover { background: #EAF3FD; }"));
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect(this);
+    shadowEffect->setBlurRadius(14.0);
+    shadowEffect->setOffset(0.0, 3.0);
+    shadowEffect->setColor(QColor(25, 45, 68, 42));
+    setGraphicsEffect(shadowEffect);
+    m_dragHandle->setAlignment(Qt::AlignCenter);
+    m_dragHandle->setFixedSize(10, 24);
+    m_dragHandle->setCursor(Qt::SizeAllCursor);
+    m_dragHandle->setAttribute(Qt::WA_Hover, true);
+    m_dragHandle->setToolTip(tr("Drag to move toolbar"));
+    m_dragHandle->setObjectName(QStringLiteral("renderToolBarDragHandle"));
+    const qreal devicePixelRatio = m_dragHandle->devicePixelRatioF();
+    QPixmap gripPixmap(QSize(qRound(10.0 * devicePixelRatio),
+                             qRound(24.0 * devicePixelRatio)));
+    gripPixmap.setDevicePixelRatio(devicePixelRatio);
+    gripPixmap.fill(Qt::transparent);
+    QPainter gripPainter(&gripPixmap);
+    gripPainter.setRenderHint(QPainter::Antialiasing);
+    gripPainter.setPen(Qt::NoPen);
+    gripPainter.setBrush(palette().color(QPalette::Mid));
+    for (int row = 0; row < 4; ++row)
+    {
+        const qreal y = 3.0 + static_cast<qreal>(row) * 6.0;
+        gripPainter.drawEllipse(QPointF(5.0, y), 1.0, 1.0);
+        gripPainter.drawEllipse(QPointF(9.0, y), 1.0, 1.0);
+    }
+    gripPainter.end();
+    m_dragHandle->setPixmap(gripPixmap);
+    m_dragHandleAction->setDefaultWidget(m_dragHandle);
+    m_dragHandle->installEventFilter(this);
     installEventFilter(this);
     hide();
     m_internalVisibility = false;
@@ -57,6 +105,10 @@ void IDOSToolBar::setVisible(bool visible)
 
 IDOSToolBar::~IDOSToolBar()
 {
+    if (m_view != nullptr)
+    {
+        disconnect(m_view, nullptr, this, nullptr);
+    }
     if (m_registry != nullptr)
     {
         disconnect(m_registry, nullptr, this, nullptr);
@@ -136,6 +188,11 @@ bool IDOSToolBar::canChange() const
 bool IDOSToolBar::isBusy() const
 {
     return !canChange();
+}
+
+bool IDOSToolBar::isUserPositioned() const
+{
+    return m_userPositioned;
 }
 
 bool IDOSToolBar::setView(IDOSRenderView* view)
@@ -235,8 +292,6 @@ void IDOSToolBar::removeTool(const QString& id)
     {
         menu->close();
     }
-    m_overflowMenu->close();
-    m_overflowMenu->clear();
     for (IDOSTool* tool : provider->tools())
     {
         if (m_view != nullptr)
@@ -256,9 +311,22 @@ void IDOSToolBar::removeTool(const QString& id)
             }
         }
         disconnect(action, nullptr, this, nullptr);
-        removeAction(action);
+        removeActionWidget(action);
     }
     delete provider;
+}
+
+void IDOSToolBar::removeActionWidget(QAction* action)
+{
+    if (qobject_cast<QWidgetAction*>(action) != nullptr)
+    {
+        removeAction(action);
+        return;
+    }
+    QPointer<QToolButton> button = qobject_cast<QToolButton*>(widgetForAction(action));
+    removeAction(action);
+    // QToolBar defers button deletion; release plugin icons before unloading its DLL.
+    delete button.data();
 }
 
 void IDOSToolBar::clearTools()
@@ -324,13 +392,14 @@ void IDOSToolBar::arrangeActions()
     const QList<QAction*> oldActions = actions();
     for (QAction* action : oldActions)
     {
-        removeAction(action);
+        removeActionWidget(action);
     }
     for (QAction* separator : m_separators)
     {
         delete separator;
     }
     m_separators.clear();
+    addAction(m_dragHandleAction);
     if (m_registry != nullptr)
     {
         QList<IDOSToolMetadata*> definitions = m_registry->metadata();
@@ -390,45 +459,69 @@ void IDOSToolBar::updateVisibility()
     bool available = false;
     for (QAction* action : actions())
     {
-        available = available || (!action->isSeparator() && action->isVisible());
+        available = available || (action != m_dragHandleAction &&
+                                 !action->isSeparator() && action->isVisible());
     }
     m_internalVisibility = true;
     setVisible(m_view != nullptr && available && !m_userHidden);
     m_internalVisibility = false;
     emit layoutChanged();
-    updateOverflow();
-}
-
-void IDOSToolBar::updateOverflow()
-{
-    m_overflowMenu->clear();
-    for (QAction* action : actions())
-    {
-        if (!action->isSeparator() && action->isVisible() &&
-            (actionGeometry(action).right() > width() - 28 || actionGeometry(action).isEmpty()))
-        {
-            m_overflowMenu->addAction(action);
-        }
-    }
-    const bool hasOverflow = !m_overflowMenu->actions().isEmpty();
-    m_overflowButton->setGeometry(qMax(0, width() - 26), 2, 24, qMax(24, height() - 4));
-    m_overflowButton->setVisible(hasOverflow);
-    m_overflowButton->raise();
 }
 
 bool IDOSToolBar::eventFilter(QObject* watched, QEvent* event)
 {
+    if (watched == m_dragHandle)
+    {
+        if (event->type() == QEvent::UngrabMouse || event->type() == QEvent::Hide)
+        {
+            m_dragging = false;
+        }
+        if (event->type() == QEvent::MouseButtonPress ||
+            event->type() == QEvent::MouseMove ||
+            event->type() == QEvent::MouseButtonRelease)
+        {
+            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (event->type() == QEvent::MouseButtonPress &&
+                mouseEvent->button() == Qt::LeftButton)
+            {
+                m_dragging = true;
+                m_dragStartGlobalPosition = mouseEvent->globalPos();
+                m_dragStartPosition = pos();
+                if (m_view != nullptr)
+                {
+                    emit m_view->focused();
+                }
+                return true;
+            }
+            if (event->type() == QEvent::MouseMove && m_dragging)
+            {
+                m_userPositioned = true;
+                const QPoint globalDelta = mouseEvent->globalPos() - m_dragStartGlobalPosition;
+                const QPoint requestedPosition = m_dragStartPosition + globalDelta;
+                QWidget* toolbarParent = this->parentWidget();
+                if (toolbarParent != nullptr)
+                {
+                    const int maximumX = qMax(0, toolbarParent->width() - width());
+                    const int maximumY = qMax(0, toolbarParent->height() - height());
+                    move(qBound(0, requestedPosition.x(), maximumX),
+                         qBound(0, requestedPosition.y(), maximumY));
+                }
+                emit layoutChanged();
+                return true;
+            }
+            if (event->type() == QEvent::MouseButtonRelease &&
+                mouseEvent->button() == Qt::LeftButton && m_dragging)
+            {
+                m_dragging = false;
+                return true;
+            }
+        }
+    }
     if (m_view != nullptr && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::FocusIn))
     {
         emit m_view->focused();
     }
     return QToolBar::eventFilter(watched, event);
-}
-
-void IDOSToolBar::resizeEvent(QResizeEvent* event)
-{
-    QToolBar::resizeEvent(event);
-    updateOverflow();
 }
 
 void IDOSToolBar::onMetadataAdded(const QString& id)

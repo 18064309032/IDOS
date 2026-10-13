@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_COMPLETION_H
 #define IDOS_WELL_COMPLETION_H
 
+#include <QString>
+
 #include "idos_core.h"
 
 /**
@@ -30,12 +32,15 @@ class CORE_EXPORT IDOSWellCompletion
     /** 射孔顶深（米）。 */
     double top() const;
     void setTop(double top);
+    QString eventDate() const;
+    void setEventDate(const QString& date);
 
   private:
     int m_k;
     bool m_open;
     double m_bottom;
     double m_top;
+    QString m_eventDate;
 };
 
 #endif // IDOS_WELL_COMPLETION_H

@@ -4,6 +4,7 @@
 #include <QList>
 
 #include "idosdataobject.h"
+#include "idoswellcheckshot.h"
 #include "idoswellcompletion.h"
 #include "idoswellcontrol.h"
 #include "idoswellhead.h"
@@ -83,6 +84,10 @@ class CORE_EXPORT IDOSWell : public IDOSDataObject
     /** 层位 pick 集合（Well Tops）。 */
     const IDOSWellMarkerSet& markers() const;
     void setMarkers(const IDOSWellMarkerSet& markers);
+    const IDOSWellCheckshot& checkshot() const;
+    void setCheckshot(const IDOSWellCheckshot& checkshot);
+    bool hasCheckshot() const;
+    bool hasCompletions() const;
 
     // ===== 合并支持（mergeFrom 判断"该字段是否被填充过"用）=====
 
@@ -137,10 +142,13 @@ class CORE_EXPORT IDOSWell : public IDOSDataObject
     IDOSWellPath m_path;
     IDOSWellLogSet m_logs;
     IDOSWellMarkerSet m_markers;
+    IDOSWellCheckshot m_checkshot;
     bool m_hasWellHead;
     bool m_hasPath;
     bool m_hasLogs;
     bool m_hasMarkers;
+    bool m_hasCheckshot;
+    bool m_hasCompletions;
     bool m_open;
 };
 

@@ -109,5 +109,6 @@ typedef const QString* category_t();
 typedef int            type_t();
 typedef const QString* version_t();
 typedef const QString* icon_t();
+typedef bool           required_t();
 
 #endif // IDOS_PLUGIN_H

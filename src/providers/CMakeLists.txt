@@ -1,6 +1,12 @@
 # idos_providers: 数据解析 provider 框架 + 具体实现（LAS / ECLIPSE / ROFF ...）
 # 依赖链：idos_providers → idos_core → (OPM 静态库)
 add_library(idos_providers SHARED
+    well/idoswelltopsprovider.cpp
+    well/idoswelltopsmetadata.cpp
+    well/idoswellcompletionprovider.cpp
+    well/idoswellcompletionmetadata.cpp
+    well/idoswellcheckshotprovider.cpp
+    well/idoswellcheckshotmetadata.cpp
     idosdataprovider.cpp
     idosdataprovidermetadata.cpp
     idosdataproviderregistry.cpp

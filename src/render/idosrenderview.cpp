@@ -1,8 +1,11 @@
+#include <limits>
+
 #include <QEasingCurve>
 #include <QEvent>
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QHash>
+#include <QLabel>
 #include <QList>
 #include <QMouseEvent>
 #include <QPoint>
@@ -15,6 +18,8 @@
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
+#include <vtkCellPicker.h>
+#include <vtkCommand.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkInteractorStyleTrackballCamera.h>
@@ -45,24 +50,31 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     :
     QWidget(parent)
     , m_toolsChanging(false)
-    , m_pendingClick(false)
     , m_vtkWidget(nullptr)
     , m_activeBorder(nullptr)
     , m_flashOverlay(nullptr)
+    , m_cursorCoordinates(nullptr)
     , m_flashOpacityEffect(nullptr)
     , m_flashAnimation(nullptr)
     , m_renderWindow(vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New())
     , m_renderer(vtkSmartPointer<vtkRenderer>::New())
+    , m_homeCamera(vtkSmartPointer<vtkCamera>::New())
+    , m_savedCamera()
+    , m_linkedCamera()
+    , m_cameraObserverTag(0)
     , m_twoDInteractorStyle(vtkSmartPointer<vtkInteractorStyleImage>::New())
     , m_threeDInteractorStyle(vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New())
     , m_axesActor(vtkSmartPointer<vtkAxesActor>::New())
     , m_orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
     , m_scene(new IDOSRenderScene(this))
     , m_actorObjectIds()
-    , m_pressedPosition()
     , m_selection()
     , m_orientation(IDOSOrientation::Isometric)
     , m_active(false)
+    , m_twoDimensional(false)
+    , m_homeTwoDimensional(false)
+    , m_homeViewInitialized(false)
+    , m_cursorTrackingEnabled(false)
     , m_legendVisible(true)
     , m_legends()
 {
@@ -74,6 +86,11 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     m_flashOverlay->setStyleSheet(QStringLiteral("background-color: rgba(255, 255, 255, 220);"));
     m_flashOverlay->setGeometry(m_vtkWidget->rect());
     m_flashOverlay->hide();
+    m_cursorCoordinates = new QLabel(m_vtkWidget);
+    m_cursorCoordinates->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_cursorCoordinates->setStyleSheet(QStringLiteral("QLabel { background: rgba(247, 249, 252, 220); color: #334155; padding: 3px 6px; border-radius: 3px; }"));
+    m_cursorCoordinates->move(8, m_vtkWidget->height() - 30);
+    m_cursorCoordinates->hide();
     m_flashOpacityEffect = new QGraphicsOpacityEffect(m_flashOverlay);
     m_flashOpacityEffect->setOpacity(1.0);
     m_flashOverlay->setGraphicsEffect(m_flashOpacityEffect);
@@ -98,6 +115,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
     m_renderWindow->AddRenderer(m_renderer);
     m_renderer->SetBackground(0.08, 0.09, 0.11);
+    m_homeCamera->DeepCopy(m_renderer->GetActiveCamera());
 
     m_orientationMarker->SetOrientationMarker(m_axesActor);
     m_orientationMarker->SetInteractor(m_vtkWidget->interactor());
@@ -111,6 +129,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
 
 IDOSRenderView::~IDOSRenderView()
 {
+    unlinkCamera();
     clearEnabledTools();
     delete m_toolBar.data();
     m_toolBar = nullptr;
@@ -170,9 +189,224 @@ void IDOSRenderView::resetCamera()
     emit viewStateChanged();
 }
 
+bool IDOSRenderView::fitSelection()
+{
+    if (m_selection.isEmpty())
+    {
+        return false;
+    }
+
+    double bounds[6] = {std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
+    bool hasBounds = false;
+    for (const QString& id : m_selection)
+    {
+        IDOSRenderObject* object = m_scene->object(id);
+        if (object == nullptr || !object->visible() || object->provider() == nullptr)
+        {
+            continue;
+        }
+        const QList<vtkActor*> actors = object->provider()->actors();
+        for (vtkActor* actor : actors)
+        {
+            if (actor == nullptr || actor->GetVisibility() == 0)
+            {
+                continue;
+            }
+            double actorBounds[6];
+            actor->GetBounds(actorBounds);
+            if (actorBounds[0] > actorBounds[1] || actorBounds[2] > actorBounds[3] || actorBounds[4] > actorBounds[5])
+            {
+                continue;
+            }
+            bounds[0] = qMin(bounds[0], actorBounds[0]);
+            bounds[1] = qMax(bounds[1], actorBounds[1]);
+            bounds[2] = qMin(bounds[2], actorBounds[2]);
+            bounds[3] = qMax(bounds[3], actorBounds[3]);
+            bounds[4] = qMin(bounds[4], actorBounds[4]);
+            bounds[5] = qMax(bounds[5], actorBounds[5]);
+            hasBounds = true;
+        }
+    }
+    if (!hasBounds)
+    {
+        return false;
+    }
+
+    m_renderer->ResetCamera(bounds);
+    m_renderWindow->Render();
+    emit viewStateChanged();
+    return true;
+}
+
+void IDOSRenderView::rotateView(bool clockwise)
+{
+    vtkCamera* camera = m_renderer->GetActiveCamera();
+    camera->Roll(clockwise ? -90.0 : 90.0);
+    camera->OrthogonalizeViewUp();
+    m_renderWindow->Render();
+    emit viewStateChanged();
+}
+
+void IDOSRenderView::saveHomeView()
+{
+    m_homeCamera->DeepCopy(m_renderer->GetActiveCamera());
+    m_homeTwoDimensional = m_twoDimensional;
+    m_homeViewInitialized = true;
+}
+
+void IDOSRenderView::resetToHomeView()
+{
+    const bool modeChanged = m_twoDimensional != m_homeTwoDimensional;
+    m_twoDimensional = m_homeTwoDimensional;
+    if (m_twoDimensional)
+    {
+        m_vtkWidget->interactor()->SetInteractorStyle(m_twoDInteractorStyle);
+    }
+    else
+    {
+        m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
+    }
+    m_renderer->GetActiveCamera()->DeepCopy(m_homeCamera);
+    m_renderer->ResetCameraClippingRange();
+    m_renderWindow->Render();
+    if (modeChanged)
+    {
+        emit viewModeChanged();
+    }
+    emit viewStateChanged();
+}
+
+bool IDOSRenderView::setParallelProjection(bool enabled)
+{
+    vtkCamera* camera = m_renderer->GetActiveCamera();
+    if ((camera->GetParallelProjection() != 0) == enabled)
+    {
+        return false;
+    }
+    camera->SetParallelProjection(enabled ? 1 : 0);
+    m_renderWindow->Render();
+    emit viewStateChanged();
+    return true;
+}
+
+bool IDOSRenderView::parallelProjection() const
+{
+    return m_renderer->GetActiveCamera()->GetParallelProjection() != 0;
+}
+
+void IDOSRenderView::scaleView(double factor)
+{
+    if (factor <= 0.0)
+    {
+        return;
+    }
+    m_renderer->GetActiveCamera()->Zoom(factor);
+    m_renderer->ResetCameraClippingRange();
+    m_renderWindow->Render();
+    emit viewStateChanged();
+}
+
+void IDOSRenderView::setDisplayVisible(bool visible)
+{
+    m_scene->beginUpdate();
+    const QList<IDOSRenderObject*> objects = m_scene->objects();
+    for (IDOSRenderObject* object : objects)
+    {
+        if (object->visible() != visible)
+        {
+            object->setVisible(visible);
+            m_scene->notifyChanged(object->id());
+        }
+    }
+    m_scene->endUpdate();
+}
+
+bool IDOSRenderView::linkCameraTo(IDOSRenderView* sourceView)
+{
+    if (sourceView == nullptr || sourceView == this || sourceView->isTwoDimensional() || isTwoDimensional())
+    {
+        return false;
+    }
+    vtkCamera* sourceCamera = sourceView->m_renderer->GetActiveCamera();
+    if (isCameraLinked() && m_linkedCamera.GetPointer() == sourceCamera)
+    {
+        return true;
+    }
+    unlinkCamera();
+    m_savedCamera = vtkSmartPointer<vtkCamera>::New();
+    m_savedCamera->DeepCopy(m_renderer->GetActiveCamera());
+    m_renderer->SetActiveCamera(sourceCamera);
+    m_linkedCamera = sourceCamera;
+    m_cameraObserverTag = sourceCamera->AddObserver(
+        vtkCommand::ModifiedEvent, this, &IDOSRenderView::onLinkedCameraModified);
+    if (m_cameraObserverTag == 0)
+    {
+        m_renderer->SetActiveCamera(m_savedCamera);
+        m_savedCamera = nullptr;
+        m_linkedCamera = nullptr;
+        return false;
+    }
+    m_renderWindow->Render();
+    emit viewStateChanged();
+    return true;
+}
+
+void IDOSRenderView::unlinkCamera()
+{
+    vtkCamera* linkedCamera = m_linkedCamera.GetPointer();
+    if (linkedCamera != nullptr && m_cameraObserverTag != 0)
+    {
+        linkedCamera->RemoveObserver(m_cameraObserverTag);
+    }
+    m_cameraObserverTag = 0;
+    m_linkedCamera = nullptr;
+    if (m_savedCamera != nullptr)
+    {
+        m_renderer->SetActiveCamera(m_savedCamera);
+        m_savedCamera = nullptr;
+    }
+    if (m_renderWindow != nullptr)
+    {
+        m_renderWindow->Render();
+    }
+    emit viewStateChanged();
+}
+
+bool IDOSRenderView::isCameraLinked() const
+{
+    return m_cameraObserverTag != 0 && m_linkedCamera.GetPointer() != nullptr;
+}
+
+void IDOSRenderView::onLinkedCameraModified(vtkObject* source, unsigned long eventId, void* callData)
+{
+    Q_UNUSED(source)
+    Q_UNUSED(eventId)
+    Q_UNUSED(callData)
+    m_renderWindow->Render();
+    emit viewStateChanged();
+}
+
+bool IDOSRenderView::cursorTrackingEnabled() const
+{
+    return m_cursorTrackingEnabled;
+}
+
+void IDOSRenderView::setCursorTrackingEnabled(bool enabled)
+{
+    m_cursorTrackingEnabled = enabled;
+    m_vtkWidget->setMouseTracking(enabled);
+    if (!enabled)
+    {
+        m_cursorCoordinates->hide();
+    }
+    emit viewStateChanged();
+}
+
 void IDOSRenderView::setTwoDimensional(bool enabled)
 {
-    if (isTwoDimensional() == enabled)
+    if (m_twoDimensional == enabled)
     {
         return;
     }
@@ -186,6 +420,7 @@ void IDOSRenderView::setTwoDimensional(bool enabled)
     {
         m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
     }
+    m_twoDimensional = enabled;
     m_renderWindow->Render();
     emit viewModeChanged();
     emit viewStateChanged();
@@ -193,7 +428,7 @@ void IDOSRenderView::setTwoDimensional(bool enabled)
 
 bool IDOSRenderView::isTwoDimensional() const
 {
-    return m_renderer->GetActiveCamera()->GetParallelProjection() != 0;
+    return m_twoDimensional;
 }
 
 IDOSOrientation IDOSRenderView::orientation() const
@@ -327,6 +562,12 @@ bool IDOSRenderView::setOrientation(IDOSOrientation orientation)
                             focalPoint[2] + direction[2] * distance);
     }
     m_orientation = orientation;
+    if (!m_homeViewInitialized)
+    {
+        m_homeCamera->DeepCopy(camera);
+        m_homeTwoDimensional = m_twoDimensional;
+        m_homeViewInitialized = true;
+    }
     m_renderWindow->Render();
     emit viewStateChanged();
     return true;
@@ -344,6 +585,7 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
         if (event->type() == QEvent::Resize)
         {
             m_flashOverlay->setGeometry(m_vtkWidget->rect());
+            m_cursorCoordinates->hide();
             positionToolBar();
         }
         if (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide)
@@ -357,31 +599,36 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
             emit focused();
         }
 
-        if (event->type() == QEvent::MouseButtonPress)
+        if (event->type() == QEvent::Leave)
+        {
+            m_cursorCoordinates->hide();
+        }
+        if (event->type() == QEvent::MouseMove && m_cursorTrackingEnabled)
         {
             QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-            if (mouseEvent->button() == Qt::LeftButton)
+            double worldPoint[3];
+            if (pickWorldPosition(mouseEvent->pos(), worldPoint))
             {
-                m_pressedPosition = mouseEvent->pos();
+                const double x = worldPoint[0];
+                const double y = worldPoint[1];
+                const double z = worldPoint[2];
+                m_cursorCoordinates->setText(QStringLiteral("X %1   Y %2   Z %3")
+                                                 .arg(x, 0, 'g', 5)
+                                                 .arg(y, 0, 'g', 5)
+                                                 .arg(z, 0, 'g', 5));
+                m_cursorCoordinates->adjustSize();
+                m_cursorCoordinates->move(
+                    qBound(0, mouseEvent->pos().x() + 14, qMax(0, m_vtkWidget->width() - m_cursorCoordinates->width())),
+                    qBound(0, mouseEvent->pos().y() + 18, qMax(0, m_vtkWidget->height() - m_cursorCoordinates->height())));
+                m_cursorCoordinates->show();
+                m_cursorCoordinates->raise();
+            }
+            else
+            {
+                m_cursorCoordinates->hide();
             }
         }
-        else if (event->type() == QEvent::MouseButtonRelease)
-        {
-            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-            if (mouseEvent->button() == Qt::LeftButton && (mouseEvent->pos() - m_pressedPosition).manhattanLength() < 4)
-            {
-                if (m_enabledTools.isEmpty())
-                {
-                    activateObjectAt(mouseEvent->pos());
-                }
-                else
-                {
-                    m_pendingClick = true;
-                    m_clickPosition = mouseEvent->pos();
-                    QMetaObject::invokeMethod(this, "onCanvasClick", Qt::QueuedConnection);
-                }
-            }
-        }
+
     }
     return QWidget::eventFilter(watched, event);
 }
@@ -389,22 +636,21 @@ bool IDOSRenderView::eventFilter(QObject* watched, QEvent* event)
 IDOSRenderObject* IDOSRenderView::pick(const QPoint& position) const
 {
     vtkSmartPointer<vtkPropPicker> picker = vtkSmartPointer<vtkPropPicker>::New();
-    if (picker->Pick(position.x(), m_vtkWidget->height() - position.y() - 1, 0.0, m_renderer) == 0)
+    if (m_vtkWidget->width() <= 0 || m_vtkWidget->height() <= 0)
+    {
+        return nullptr;
+    }
+    const int* size = m_renderWindow->GetSize();
+    const double x = static_cast<double>(position.x()) * size[0] / m_vtkWidget->width();
+    const double y = size[1] - 1.0 - static_cast<double>(position.y()) * size[1] / m_vtkWidget->height();
+    if (picker->Pick(x, y, 0.0, m_renderer) == 0)
     {
         return nullptr;
     }
     return m_scene->object(m_actorObjectIds.value(picker->GetActor()));
 }
 
-void IDOSRenderView::activateObjectAt(const QPoint& position)
-{
-    IDOSRenderObject* object = pick(position);
-    if (object != nullptr)
-    {
-        setSelection(QList<QString>{object->id()});
-        emit activated(object->id());
-    }
-}
+
 void IDOSRenderView::rebuildActors()
 {
     m_renderer->RemoveAllViewProps();
@@ -517,6 +763,66 @@ void IDOSRenderView::render()
     m_renderWindow->Render();
 }
 
+bool IDOSRenderView::pickWorldPosition(const QPoint& position, double worldPosition[3]) const
+{
+    if (worldPosition == nullptr || m_renderer == nullptr || m_vtkWidget == nullptr)
+    {
+        return false;
+    }
+    vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
+    picker->SetTolerance(0.005);
+    picker->PickFromListOn();
+    for (vtkActor* actor : m_actorObjectIds.keys())
+    {
+        if (actor->GetVisibility() != 0)
+        {
+            picker->AddPickList(actor);
+        }
+    }
+    const int* renderSize = m_renderWindow->GetSize();
+    if (m_vtkWidget->width() <= 0 || m_vtkWidget->height() <= 0 ||
+        renderSize[0] <= 0 || renderSize[1] <= 0)
+    {
+        return false;
+    }
+    const double displayX = static_cast<double>(position.x()) * renderSize[0] / m_vtkWidget->width();
+    const double displayY = renderSize[1] - 1.0 -
+                           static_cast<double>(position.y()) * renderSize[1] / m_vtkWidget->height();
+    if (!picker->Pick(displayX, displayY, 0.0, m_renderer))
+    {
+        return false;
+    }
+    picker->GetPickPosition(worldPosition);
+    return true;
+}
+
+QString IDOSRenderView::objectIdAt(const QPoint& position) const
+{
+    IDOSRenderObject* object = pick(position);
+    return object != nullptr ? object->id() : QString();
+}
+
+void IDOSRenderView::zoomToWorldPosition(const double worldPosition[3])
+{
+    if (worldPosition == nullptr)
+    {
+        return;
+    }
+    vtkCamera* camera = m_renderer->GetActiveCamera();
+    double focalPoint[3];
+    double cameraPosition[3];
+    camera->GetFocalPoint(focalPoint);
+    camera->GetPosition(cameraPosition);
+    camera->SetFocalPoint(worldPosition);
+    camera->SetPosition(worldPosition[0] + cameraPosition[0] - focalPoint[0],
+                         worldPosition[1] + cameraPosition[1] - focalPoint[1],
+                         worldPosition[2] + cameraPosition[2] - focalPoint[2]);
+    camera->Zoom(1.5);
+    m_renderer->ResetCameraClippingRange();
+    m_renderWindow->Render();
+    emit viewStateChanged();
+}
+
 QVTKOpenGLNativeWidget* IDOSRenderView::vtkWidget() const
 {
     return m_vtkWidget;
@@ -579,7 +885,14 @@ void IDOSRenderView::positionToolBar()
     const QSize preferred = m_toolBar->sizeHint();
     const int available = qMax(0, m_vtkWidget->width() - 16);
     const int width = qMin(available, preferred.width());
-    m_toolBar->setGeometry((m_vtkWidget->width() - width) / 2, 8, width, preferred.height());
+    int x = (m_vtkWidget->width() - width) / 2;
+    int y = 8;
+    if (m_toolBar->isUserPositioned())
+    {
+        x = qBound(0, m_toolBar->x(), qMax(0, m_vtkWidget->width() - width));
+        y = qBound(0, m_toolBar->y(), qMax(0, m_vtkWidget->height() - preferred.height()));
+    }
+    m_toolBar->setGeometry(x, y, width, preferred.height());
     m_toolBar->raise();
 }
 
@@ -708,7 +1021,6 @@ IDOSTool* IDOSRenderView::capturedTool() const
 
 void IDOSRenderView::cancelToolInteraction()
 {
-    m_pendingClick = false;
     releaseTool(m_capturedTool.data());
     const QList<QPointer<IDOSTool>> tools = m_enabledTools;
     for (const QPointer<IDOSTool>& tool : tools)
@@ -720,14 +1032,6 @@ void IDOSRenderView::cancelToolInteraction()
     }
 }
 
-void IDOSRenderView::onCanvasClick()
-{
-    if (m_pendingClick)
-    {
-        m_pendingClick = false;
-        activateObjectAt(m_clickPosition);
-    }
-}
 
 void IDOSRenderView::clearEnabledTools()
 {
@@ -793,10 +1097,7 @@ void IDOSRenderView::onPendingTools()
 
 void IDOSRenderView::onToolCallbackFinished(bool consumed)
 {
-    if (consumed)
-    {
-        m_pendingClick = false;
-    }
+    Q_UNUSED(consumed)
     if (!m_pendingTools.isEmpty())
     {
         QMetaObject::invokeMethod(this, "onPendingTools", Qt::QueuedConnection);

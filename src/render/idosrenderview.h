@@ -11,6 +11,7 @@
 #include <QWidget>
 
 #include <vtkSmartPointer.h>
+#include <vtkWeakPointer.h>
 
 #include "idos_render.h"
 #include "idosrendertypes.h"
@@ -22,10 +23,13 @@ class IDOSRenderObject;
 class IDOSRenderScene;
 class QFrame;
 class QGraphicsOpacityEffect;
+class QLabel;
 class QPropertyAnimation;
 class QVTKOpenGLNativeWidget;
 class vtkActor;
 class vtkAxesActor;
+class vtkCamera;
+class vtkObject;
 class vtkGenericOpenGLRenderWindow;
 class vtkInteractorStyleImage;
 class vtkInteractorStyleTrackballCamera;
@@ -47,7 +51,23 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QList<QString> selection() const;
     void setSelection(const QList<QString>& ids);
     void render();
+    bool pickWorldPosition(const QPoint& position, double worldPosition[3]) const;
+    QString objectIdAt(const QPoint& position) const;
+    void zoomToWorldPosition(const double worldPosition[3]);
     void resetCamera();
+    bool fitSelection();
+    void rotateView(bool clockwise);
+    void saveHomeView();
+    void resetToHomeView();
+    bool setParallelProjection(bool enabled);
+    bool parallelProjection() const;
+    void scaleView(double factor);
+    void setDisplayVisible(bool visible);
+    bool linkCameraTo(IDOSRenderView* sourceView);
+    void unlinkCamera();
+    bool isCameraLinked() const;
+    bool cursorTrackingEnabled() const;
+    void setCursorTrackingEnabled(bool enabled);
     void setTwoDimensional(bool enabled);
     bool isTwoDimensional() const;
     IDOSOrientation orientation() const;
@@ -93,9 +113,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void onToolDestroyed(QObject* object);
     void onToolBarDestroyed(QObject* object);
     void onPendingTools();
-    void onCanvasClick();
     void onToolCallbackFinished(bool consumed);
     void onToolBarLayoutChanged();
+    void onLinkedCameraModified(vtkObject* source, unsigned long eventId, void* callData);
 
   private:
     bool toolsBusy() const;
@@ -108,31 +128,36 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QList<QPointer<IDOSTool>> m_pendingTools;
     QList<bool> m_pendingEnabled;
     bool m_toolsChanging;
-    bool m_pendingClick;
-    QPoint m_clickPosition;
     void configureVtkOutputWindow();
     void rebuildActors();
-    void activateObjectAt(const QPoint& position);
     IDOSRenderObject* pick(const QPoint& position) const;
     void updateActiveBorder();
 
     QVTKOpenGLNativeWidget* m_vtkWidget;
     QFrame* m_activeBorder;
     QWidget* m_flashOverlay;
+    QLabel* m_cursorCoordinates;
     QGraphicsOpacityEffect* m_flashOpacityEffect;
     QPropertyAnimation* m_flashAnimation;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> m_renderWindow;
     vtkSmartPointer<vtkRenderer> m_renderer;
+    vtkSmartPointer<vtkCamera> m_homeCamera;
+    vtkSmartPointer<vtkCamera> m_savedCamera;
+    vtkWeakPointer<vtkCamera> m_linkedCamera;
+    unsigned long m_cameraObserverTag;
     vtkSmartPointer<vtkInteractorStyleImage> m_twoDInteractorStyle;
     vtkSmartPointer<vtkInteractorStyleTrackballCamera> m_threeDInteractorStyle;
     vtkSmartPointer<vtkAxesActor> m_axesActor;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
     QHash<vtkActor*, QString> m_actorObjectIds;
-    QPoint m_pressedPosition;
     QList<QString> m_selection;
     IDOSOrientation m_orientation;
     bool m_active;
+    bool m_twoDimensional;
+    bool m_homeTwoDimensional;
+    bool m_homeViewInitialized;
+    bool m_cursorTrackingEnabled;
     bool m_legendVisible;
     QList<vtkProp*> m_legends;
 };

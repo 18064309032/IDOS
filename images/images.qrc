@@ -69,12 +69,15 @@
         <file>render-color-map.svg</file>
         <file>render-coordinate.svg</file>
         <file>render-fit.svg</file>
+        <file>render-fit-selection.svg</file>
         <file>render-hidden.svg</file>
         <file>render-legend.svg</file>
         <file>render-measure.svg</file>
         <file>render-pan.svg</file>
         <file>render-range.svg</file>
         <file>render-rotate.svg</file>
+        <file>render-rotate-clockwise.svg</file>
+        <file>render-rotate-counterclockwise.svg</file>
         <file>render-scene.svg</file>
         <file>render-section.svg</file>
         <file>render-section-position.svg</file>

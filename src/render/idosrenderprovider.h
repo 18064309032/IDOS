@@ -8,6 +8,7 @@
 #include <vtkSmartPointer.h>
 
 #include "idos_render.h"
+#include "idosrendertypes.h"
 
 class IDOSDataObject;
 class vtkActor;
@@ -29,6 +30,8 @@ class RENDER_EXPORT IDOSRenderProvider
     virtual void setHighlighted(bool highlighted) = 0;
     virtual double opacity() const = 0;
     virtual void setOpacity(double opacity) = 0;
+    virtual IDOSDisplayMode displayMode() const;
+    virtual bool setDisplayMode(IDOSDisplayMode mode);
 };
 
 #endif // IDOS_RENDER_PROVIDER_H

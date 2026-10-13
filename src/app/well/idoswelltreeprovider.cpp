@@ -70,4 +70,9 @@ void IDOSWellTreeProvider::populate(IDOSTreeItem* item)
             leaf->setItemKey(marker.name());
         }
     }
+    if (well->hasCheckshot())
+    {
+        addItem(item, QStringLiteral("idos.well.checkshots"),
+                QObject::tr("Checkshots (%1 samples)").arg(well->checkshot().depths().size()));
+    }
 }

@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 #include "idos_providers.h"
 
@@ -46,6 +47,7 @@ class PROVIDERS_EXPORT IDOSDataProvider
   protected:
     /** 设置错误信息（子类解析失败时调用）。 */
     void setLastError(const QString& msg);
+    QStringList splitTextFields(const QString& line, bool& valid) const;
 
   private:
     QString m_lastError;

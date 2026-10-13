@@ -103,10 +103,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onFocusedDockWidgetChanged(ads::CDockWidget* oldDock, ads::CDockWidget* currentDock);
     void onCurrentViewChanged(const QString& viewId);
     void onActiveViewContextObjectChanged(const QString& viewId, const QString& objectId);
-    void onViewPresetTriggered(QAction* action);
-    void onResetViewTriggered();
-    void onFitAllTriggered();
-    void onBackgroundColorTriggered();
     void onCaptureScreenshotTriggered();
     void onExportImageTriggered();
     void onAssistantTriggered();
@@ -115,11 +111,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onNew2DWindowTriggered();
     void onWindowLayoutTriggered(QAction* action);
     void onRenderViewDockClosed();
-    void onOrientationMarkerToggled(bool checked);
-    void onLegendToggled(bool checked);
-    void onViewDecorationsChanged(bool orientationMarkerVisible,
-                                  bool legendAvailable,
-                                  bool legendVisible);
 
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -140,7 +131,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void initDockWidgets();
     void initPluginManager();
     void createRenderView(bool twoDimensional);
-    void updateViewPresetActions();
     void applyWindowLayout(const QString& layout);
     void updateTreeSelection(const QString& viewId);
     void setViewTreeContext(const QString& viewId, const QString& objectId, const QString& caseId);
@@ -160,12 +150,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionUndo;
     QAction* m_actionRedo;
     QAction* m_actionPluginManager;
-    QAction* m_actionViewPresets;
-    QAction* m_actionResetView;
-    QAction* m_actionFitAll;
-    QAction* m_actionBackgroundColor;
-    QAction* m_actionOrientationMarker;
-    QAction* m_actionLegend;
     QAction* m_actionCaptureScreenshot;
     QAction* m_actionExportImage;
     QAction* m_actionAssistant;

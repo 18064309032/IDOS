@@ -1,6 +1,8 @@
 #ifndef IDOS_SIMULATION_PLUGIN_H
 #define IDOS_SIMULATION_PLUGIN_H
 
+#include <memory>
+
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -8,6 +10,7 @@
 #include "idosplugin.h"
 
 class QAction;
+class IDOSColoringTreeGuiProvider;
 class IDOSDataObject;
 class IDOSInterface;
 class IDOSProject;
@@ -27,7 +30,8 @@ class IDOSSimulationRunStatusWidget;
 class IDOSSimulationRunArchiveWidget;
 class IDOSSimulationWorkflowWidget;
 class IDOSSimulationWellControlsWidget;
-class SARibbonCategory;
+class IDOSToolMetadata;
+class SARibbonPanel;
 class QTranslator;
 
 class IDOSSimulationPlugin : public QObject, public IDOSPlugin
@@ -44,6 +48,7 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
 
   private:
     void uninstallTranslator();
+    void removeHomeActions();
     void onProjectChanged(IDOSProject* project);
     void onCurrentObjectChanged(IDOSDataObject* object);
     void onProjectDataChanged(const QString& objectId);
@@ -67,7 +72,9 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
   private:
     IDOSInterface* m_interface;
     QPointer<IDOSProject> m_project;
-    SARibbonCategory* m_category;
+    QPointer<SARibbonPanel> m_simulationPanel;
+    QPointer<SARibbonPanel> m_resultsPanel;
+    QPointer<SARibbonPanel> m_outputPanel;
     QTranslator* m_translator;
     QAction* m_parseSummaryAction;
     QAction* m_generateDataAction;
@@ -79,10 +86,13 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
     QAction* m_runPreflightAction;
     QAction* m_initializeAction;
     QAction* m_runStatusAction;
+    QAction* m_stopTaskAction;
     QAction* m_resultFilesAction;
     QAction* m_runArchiveAction;
     QAction* m_caseInventoryReportAction;
     QAction* m_workflowAction;
+    IDOSToolMetadata* m_renderToolMetadata;
+    std::shared_ptr<IDOSColoringTreeGuiProvider> m_coloringTreeGuiProvider;
     QPointer<IDOSSimulationCaseTableWidget> m_caseTableWidget;
     QPointer<IDOSSimulationParseSummaryWidget> m_parseSummaryWidget;
     QPointer<IDOSSimulationDataGenerationWidget> m_generateDataWidget;

@@ -9,6 +9,7 @@
 #include "idoscommandmanager.h"
 #include "idoscommandregistry.h"
 #include "idosdataprovider.h"
+#include "idosdataprovidermetadata.h"
 #include "idosdataproviderregistry.h"
 #include "idosimportcommands.h"
 #include "idosproject.h"
@@ -16,8 +17,146 @@
 #include "idoswell.h"
 #include "idoswelllogchannel.h"
 #include "idoswelllogset.h"
+#include "idoswellmarker.h"
+#include "idoswellmarkerset.h"
 
 #include "well_import_test.h"
+
+bool WellImportTest::writeInput(const QString& path, const QByteArray& content)
+{
+    QFile file(path);
+    return file.open(QIODevice::WriteOnly) && file.write(content) == content.size();
+}
+
+void WellImportTest::onExtendedInputProviders()
+{
+    QTemporaryDir directory;
+    IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    const QString topsPath = directory.filePath(QStringLiteral("tops.txt"));
+    QVERIFY(writeInput(topsPath, "UNITS FT\nWELL HORIZON MD\n\"Well A\" \"Top Sand\" 1000\nWellB Top 20\n"));
+    QCOMPARE(registry.providers(topsPath).first()->id(), QStringLiteral("idos.well.tops"));
+    std::unique_ptr<IDOSDataProvider> tops = registry.create(QStringLiteral("idos.well.tops"));
+    QList<IDOSDataObject*> objects = tops->read(topsPath);
+    QCOMPARE(objects.size(), 2);
+    IDOSWell* first = qobject_cast<IDOSWell*>(objects.first());
+    QVERIFY(first != nullptr);
+    QCOMPARE(first->markers().markers().first().name(), QStringLiteral("Top Sand"));
+    QCOMPARE(first->markers().markers().first().depth(), 304.8);
+    qDeleteAll(objects);
+    QVERIFY(writeInput(topsPath, "A Top 10\nB Top nan\n"));
+    QVERIFY(tops->read(topsPath).isEmpty());
+    QVERIFY(!tops->lastError().isEmpty());
+    const QString evPath = directory.filePath(QStringLiteral("input.ev"));
+    QVERIFY(writeInput(evPath, "UNITS FIELD\nWELLNAME \"Well A\"\n1/1/1998 perforation 1000 1100 0 0 0 0\n"));
+    std::unique_ptr<IDOSDataProvider> completions = registry.create(QStringLiteral("idos.well.completion"));
+    objects = completions->read(evPath);
+    QCOMPARE(objects.size(), 1);
+    first = qobject_cast<IDOSWell*>(objects.first());
+    QCOMPARE(first->completions().first().k(), 0);
+    QCOMPARE(first->completions().first().top(), 304.8);
+    QCOMPARE(first->completions().first().eventDate(), QStringLiteral("1/1/1998"));
+    qDeleteAll(objects);
+    QVERIFY(writeInput(evPath, "UNITS METRIC\nWELLNAME A\n1/1/1998 perforation 20 10\n"));
+    QVERIFY(completions->read(evPath).isEmpty());
+    const QString checkPath = directory.filePath(QStringLiteral("input.txt"));
+    QVERIFY(writeInput(checkPath, "UNITS M MS\nTVD TWT Well\n0 0 A\n100 80 A\n0 0 B\n-100 -90 B\n"));
+    QCOMPARE(registry.providers(checkPath).first()->id(), QStringLiteral("idos.well.checkshot"));
+    std::unique_ptr<IDOSDataProvider> checkshots = registry.create(QStringLiteral("idos.well.checkshot"));
+    objects = checkshots->read(checkPath);
+    QCOMPARE(objects.size(), 2);
+    first = qobject_cast<IDOSWell*>(objects.first());
+    QCOMPARE(first->checkshot().timeType(), QStringLiteral("TWT"));
+    QCOMPARE(first->checkshot().timeUnit(), QStringLiteral("MS"));
+    QCOMPARE(qobject_cast<IDOSWell*>(objects.last())->checkshot().depths().first(), -100.0);
+    qDeleteAll(objects);
+    QVERIFY(writeInput(checkPath, "TVD TWT Well\n0 0 A\n100 10 A\n100 20 A\n"));
+    QVERIFY(checkshots->read(checkPath).isEmpty());
+    QVERIFY(!checkshots->lastError().isEmpty());
+}
+
+void WellImportTest::onExtendedInputUndoRedo()
+{
+    IDOSProject project;
+    IDOSCommandRegistry registry;
+    registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+    IDOSCommandManager* manager = project.commandManager();
+    manager->setRegistry(&registry);
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral("A"));
+    well->setCompletions({IDOSWellCompletion(5, true, 200.0, 100.0)});
+    project.add(well);
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("input.perf"));
+    QVERIFY(writeInput(path, "WELL TOP BOTTOM\nA 10 20\nB 30 40\n"));
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), path);
+    QVERIFY(manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(well->completions().size(), 2);
+    QCOMPARE(project.objects().size(), 2);
+    manager->undo();
+    QCOMPARE(well->completions().size(), 1);
+    QCOMPARE(well->completions().first().k(), 5);
+    QCOMPARE(project.objects().size(), 1);
+    QVERIFY(QFile::remove(path));
+    manager->redo();
+    QCOMPARE(well->completions().size(), 2);
+    const QString checkPath = directory.filePath(QStringLiteral("input.cs"));
+    QVERIFY(writeInput(checkPath, "TVD TWT Well\n0 0 A\n100 80 A\n"));
+    arguments.insert(QStringLiteral("filePath"), checkPath);
+    QVERIFY(manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(well->hasCheckshot());
+    manager->undo();
+    QVERIFY(!well->hasCheckshot());
+    manager->redo();
+    QCOMPARE(well->checkshot().times().last(), 80.0);
+    const QString topsPath = directory.filePath(QStringLiteral("input.tops"));
+    QVERIFY(writeInput(topsPath, "A Top 10\n"));
+    arguments.insert(QStringLiteral("filePath"), topsPath);
+    QVERIFY(manager->execute(QStringLiteral("wellData.import"), arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(well->markers().markerCount(), 1);
+    manager->undo();
+    QVERIFY(!well->hasMarkers());
+    manager->redo();
+    QCOMPARE(well->markers().markers().first().depth(), 10.0);
+}
+
+void WellImportTest::onLegacyExtendedSamples()
+{
+    IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    const QStringList paths = {QFINDTESTDATA("data/WellTops.prn"), QFINDTESTDATA("data/PetrelTops.tops"),
+                               QFINDTESTDATA("data/Perforations.ev"), QFINDTESTDATA("data/Checkshots.cs")};
+    for (const QString& path : paths)
+    {
+        const QList<IDOSDataProviderMetadata*> candidates = registry.providers(path);
+        QVERIFY(!candidates.isEmpty());
+        std::unique_ptr<IDOSDataProvider> provider = candidates.first()->create();
+        QList<IDOSDataObject*> objects = provider->read(path);
+        QVERIFY2(!objects.isEmpty(), qPrintable(provider->lastError()));
+        if (candidates.first()->id() == QStringLiteral("idos.well.tops"))
+        {
+            QCOMPARE(objects.size(), 14);
+            int markerCount = 0;
+            for (IDOSDataObject* object : objects)
+            {
+                markerCount += qobject_cast<IDOSWell*>(object)->markers().markerCount();
+            }
+            QCOMPARE(markerCount, 98);
+        }
+        else if (candidates.first()->id() == QStringLiteral("idos.well.completion"))
+        {
+            QCOMPARE(objects.size(), 5);
+        }
+        else
+        {
+            QCOMPARE(objects.size(), 15);
+        }
+        for (IDOSDataObject* object : objects)
+        {
+            QVERIFY(qobject_cast<IDOSWell*>(object) != nullptr);
+        }
+        qDeleteAll(objects);
+    }
+}
 
 void WellImportTest::onCommandMergeUndoRedo()
 {

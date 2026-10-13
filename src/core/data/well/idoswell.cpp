@@ -5,7 +5,8 @@
 #include "idoswell.h"
 
 IDOSWell::IDOSWell(QObject* parent)
-    : IDOSDataObject(parent)
+    :
+    IDOSDataObject(parent)
     , m_type(Type::Producer)
     , m_i(0)
     , m_j(0)
@@ -15,6 +16,8 @@ IDOSWell::IDOSWell(QObject* parent)
     , m_hasPath(false)
     , m_hasLogs(false)
     , m_hasMarkers(false)
+    , m_hasCheckshot(false)
+    , m_hasCompletions(false)
     , m_open(true)
 {
 }
@@ -105,12 +108,14 @@ QList<IDOSWellCompletion> IDOSWell::completions() const
 void IDOSWell::setCompletions(const QList<IDOSWellCompletion>& completions)
 {
     m_completions = completions;
+    m_hasCompletions = true;
     emit completionsChanged(m_completions);
     emit dataChanged();
 }
 void IDOSWell::addCompletion(const IDOSWellCompletion& completion)
 {
     m_completions.append(completion);
+    m_hasCompletions = true;
     emit completionsChanged(m_completions);
     emit dataChanged();
 }
@@ -223,6 +228,28 @@ bool IDOSWell::hasMarkers() const
     return m_hasMarkers;
 }
 
+const IDOSWellCheckshot& IDOSWell::checkshot() const
+{
+    return m_checkshot;
+}
+
+void IDOSWell::setCheckshot(const IDOSWellCheckshot& checkshot)
+{
+    m_checkshot = checkshot;
+    m_hasCheckshot = true;
+    emit dataChanged();
+}
+
+bool IDOSWell::hasCheckshot() const
+{
+    return m_hasCheckshot;
+}
+
+bool IDOSWell::hasCompletions() const
+{
+    return m_hasCompletions;
+}
+
 void IDOSWell::mergeFrom(const IDOSDataObject* other)
 {
     if (other == nullptr || other->typeId() != typeId())
@@ -230,6 +257,33 @@ void IDOSWell::mergeFrom(const IDOSDataObject* other)
         return; // 类型不符 no-op
     }
     const IDOSWell* w = static_cast<const IDOSWell*>(other);
+    if (w->hasCheckshot())
+    {
+        setCheckshot(w->checkshot());
+    }
+    if (w->hasCompletions())
+    {
+        QList<IDOSWellCompletion> merged = m_completions;
+        for (const IDOSWellCompletion& incoming : w->completions())
+        {
+            bool replaced = false;
+            for (int index = 0; index < merged.size(); ++index)
+            {
+                if (merged.at(index).k() == incoming.k() && merged.at(index).top() == incoming.top() &&
+                    merged.at(index).bottom() == incoming.bottom() && merged.at(index).eventDate() == incoming.eventDate())
+                {
+                    merged[index] = incoming;
+                    replaced = true;
+                    break;
+                }
+            }
+            if (!replaced)
+            {
+                merged.append(incoming);
+            }
+        }
+        setCompletions(merged);
+    }
 
     // header / path：整字段覆盖
     if (w->hasWellHead())
@@ -281,13 +335,18 @@ void IDOSWell::copyInputData(const IDOSWell* source)
     m_path = source->m_path;
     m_logs = source->m_logs;
     m_markers = source->m_markers;
+    m_checkshot = source->m_checkshot;
+    m_completions = source->m_completions;
     m_hasWellHead = source->m_hasWellHead;
     m_hasPath = source->m_hasPath;
     m_hasLogs = source->m_hasLogs;
     m_hasMarkers = source->m_hasMarkers;
+    m_hasCheckshot = source->m_hasCheckshot;
+    m_hasCompletions = source->m_hasCompletions;
     emit wellHeadChanged(m_wellHead);
     emit pathChanged(m_path);
     emit logsChanged(m_logs);
     emit markersChanged(m_markers);
+    emit completionsChanged(m_completions);
     emit dataChanged();
 }

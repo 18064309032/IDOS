@@ -103,12 +103,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionUndo(nullptr)
     , m_actionRedo(nullptr)
     , m_actionPluginManager(nullptr)
-    , m_actionViewPresets(nullptr)
-    , m_actionResetView(nullptr)
-    , m_actionFitAll(nullptr)
-    , m_actionBackgroundColor(nullptr)
-    , m_actionOrientationMarker(nullptr)
-    , m_actionLegend(nullptr)
     , m_actionCaptureScreenshot(nullptr)
     , m_actionExportImage(nullptr)
     , m_actionAssistant(nullptr)
@@ -328,6 +322,8 @@ void IDOSMainWindow::initRenderView()
     m_renderDock->setObjectName(QStringLiteral("main3DDock"));
     m_renderDock->setIcon(QIcon(QStringLiteral(":/images/render-view.svg")));
     m_renderDock->setWidget(renderViewWidget);
+    renderViewWidget->setWindowTitle(m_renderDock->windowTitle());
+    connect(m_renderDock, &QWidget::windowTitleChanged, renderViewWidget, &QWidget::setWindowTitle);
     m_renderDock->setFeatures(ads::CDockWidget::NoDockWidgetFeatures);
     m_dockManager->setCentralWidget(m_renderDock);
     m_viewDocks.insert(QStringLiteral("main3d"), m_renderDock);
@@ -430,6 +426,12 @@ void IDOSMainWindow::initPluginManager()
     m_pluginRegistry = IDOSPluginRegistry::instance();
     m_pluginRegistry->setIDosInterface(m_appInterface);
     m_pluginRegistry->restoreSessionPlugins(m_pluginRegistry->libraryDir().path());
+    if (!m_pluginRegistry->isLoaded(QStringLiteral("idossimulationplugin")))
+    {
+        QMessageBox::critical(this, tr("Required Module Unavailable"),
+                              tr("The Numerical Simulation module could not be loaded. Simulation functions are unavailable.\n%1")
+                                  .arg(m_pluginRegistry->pluginError(QStringLiteral("idossimulationplugin"))));
+    }
 
     m_pluginManagerWidget = new IDOSPluginManagerWidget(m_pluginRegistry, this);
     m_pluginManagerWidget->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint
@@ -446,6 +448,7 @@ void IDOSMainWindow::initRibbonAction()
     m_actionNewProject->setShortcut(QKeySequence::New);
     addAction(m_actionNewProject);
     SARibbonCategory* projectPage = ribbonBar()->addCategoryPage(tr("Home"));
+    projectPage->setObjectName(QStringLiteral("idosHomeCategory"));
     SARibbonPanel* projectPanel = projectPage->addPanel(tr("Project"));
     projectPanel->addLargeAction(m_actionNewProject);
     m_actionOpenProject = new QAction(
@@ -517,83 +520,6 @@ void IDOSMainWindow::initRibbonAction()
     quickAccessBar->addAction(m_actionUndo);
     quickAccessBar->addAction(m_actionRedo);
 
-    SARibbonPanel* viewPanel = projectPage->addPanel(tr("View"));
-    m_actionViewPresets = new QAction(
-        QIcon(QStringLiteral(":/images/render-standard-views.svg")), tr("View Presets"), this);
-    m_actionViewPresets->setObjectName(QStringLiteral("viewPresetsAction"));
-    QMenu* viewPresetsMenu = new QMenu(this);
-    QActionGroup* viewPresetActionGroup = new QActionGroup(this);
-    viewPresetActionGroup->setExclusive(true);
-    QAction* frontViewAction = viewPresetsMenu->addAction(tr("Front"));
-    frontViewAction->setCheckable(true);
-    frontViewAction->setObjectName(QStringLiteral("viewPresetFrontAction"));
-    frontViewAction->setData(static_cast<int>(IDOSOrientation::Front));
-    viewPresetActionGroup->addAction(frontViewAction);
-    QAction* leftViewAction = viewPresetsMenu->addAction(tr("Left"));
-    leftViewAction->setCheckable(true);
-    leftViewAction->setObjectName(QStringLiteral("viewPresetLeftAction"));
-    leftViewAction->setData(static_cast<int>(IDOSOrientation::Left));
-    viewPresetActionGroup->addAction(leftViewAction);
-    QAction* topViewAction = viewPresetsMenu->addAction(tr("Top"));
-    topViewAction->setCheckable(true);
-    topViewAction->setObjectName(QStringLiteral("viewPresetTopAction"));
-    topViewAction->setData(static_cast<int>(IDOSOrientation::Top));
-    viewPresetActionGroup->addAction(topViewAction);
-    QAction* backViewAction = viewPresetsMenu->addAction(tr("Back"));
-    backViewAction->setCheckable(true);
-    backViewAction->setObjectName(QStringLiteral("viewPresetBackAction"));
-    backViewAction->setData(static_cast<int>(IDOSOrientation::Back));
-    backViewAction->setProperty("threeDimensionalOnly", true);
-    viewPresetActionGroup->addAction(backViewAction);
-    QAction* rightViewAction = viewPresetsMenu->addAction(tr("Right"));
-    rightViewAction->setCheckable(true);
-    rightViewAction->setObjectName(QStringLiteral("viewPresetRightAction"));
-    rightViewAction->setData(static_cast<int>(IDOSOrientation::Right));
-    rightViewAction->setProperty("threeDimensionalOnly", true);
-    viewPresetActionGroup->addAction(rightViewAction);
-    QAction* bottomViewAction = viewPresetsMenu->addAction(tr("Bottom"));
-    bottomViewAction->setCheckable(true);
-    bottomViewAction->setObjectName(QStringLiteral("viewPresetBottomAction"));
-    bottomViewAction->setData(static_cast<int>(IDOSOrientation::Bottom));
-    bottomViewAction->setProperty("threeDimensionalOnly", true);
-    viewPresetActionGroup->addAction(bottomViewAction);
-    QAction* isometricViewAction = viewPresetsMenu->addAction(tr("Isometric"));
-    isometricViewAction->setCheckable(true);
-    isometricViewAction->setObjectName(QStringLiteral("viewPresetIsometricAction"));
-    isometricViewAction->setData(static_cast<int>(IDOSOrientation::Isometric));
-    isometricViewAction->setProperty("threeDimensionalOnly", true);
-    viewPresetActionGroup->addAction(isometricViewAction);
-    m_actionViewPresets->setMenu(viewPresetsMenu);
-    viewPanel->addSmallAction(m_actionViewPresets, QToolButton::InstantPopup);
-
-    m_actionResetView = new QAction(
-        QIcon(QStringLiteral(":/images/render-fit.svg")), tr("Reset View"), this);
-    m_actionResetView->setObjectName(QStringLiteral("resetViewAction"));
-    viewPanel->addSmallAction(m_actionResetView);
-
-    m_actionFitAll = new QAction(
-        QIcon(QStringLiteral(":/images/render-fit.svg")), tr("Fit All"), this);
-    m_actionFitAll->setObjectName(QStringLiteral("fitAllAction"));
-    viewPanel->addSmallAction(m_actionFitAll);
-    m_actionBackgroundColor = new QAction(
-        QIcon(QStringLiteral(":/images/render-scene.svg")), tr("Background Color"), this);
-    m_actionBackgroundColor->setObjectName(QStringLiteral("backgroundColorAction"));
-    viewPanel->addSmallAction(m_actionBackgroundColor);
-
-    m_actionOrientationMarker = new QAction(
-        QIcon(QStringLiteral(":/images/render-coordinate.svg")), tr("Orientation Marker"), this);
-    m_actionOrientationMarker->setObjectName(QStringLiteral("orientationMarkerAction"));
-    m_actionOrientationMarker->setCheckable(true);
-    viewPanel->addSmallAction(m_actionOrientationMarker);
-    m_actionLegend = new QAction(
-        QIcon(QStringLiteral(":/images/render-legend.svg")), tr("Legend"), this);
-    m_actionLegend->setObjectName(QStringLiteral("legendAction"));
-    m_actionLegend->setCheckable(true);
-    viewPanel->addSmallAction(m_actionLegend);
-    connect(m_actionOrientationMarker, &QAction::toggled,
-            this, &IDOSMainWindow::onOrientationMarkerToggled);
-    connect(m_actionLegend, &QAction::toggled, this, &IDOSMainWindow::onLegendToggled);
-
     SARibbonPanel* windowPanel = projectPage->addPanel(tr("Window"));
     m_actionNew3DWindow = new QAction(
         QIcon(QStringLiteral(":/images/render-view.svg")), tr("New 3D Window"), this);
@@ -644,7 +570,12 @@ void IDOSMainWindow::initRibbonAction()
     m_actionWindowLayout->setMenu(windowLayoutMenu);
     windowPanel->addSmallAction(m_actionWindowLayout, QToolButton::InstantPopup);
 
+    SARibbonPanel* simulationPanel = projectPage->addPanel(tr("Simulation"));
+    simulationPanel->setObjectName(QStringLiteral("idosHomePanel_simulation"));
+    SARibbonPanel* resultsPanel = projectPage->addPanel(tr("Results"));
+    resultsPanel->setObjectName(QStringLiteral("idosHomePanel_results"));
     SARibbonPanel* outputPanel = projectPage->addPanel(tr("Output"));
+    outputPanel->setObjectName(QStringLiteral("idosHomePanel_output"));
     m_actionCaptureScreenshot = new QAction(
         QIcon(QStringLiteral(":/images/render-view.svg")), tr("Capture Screenshot"), this);
     m_actionCaptureScreenshot->setObjectName(QStringLiteral("captureScreenshotAction"));
@@ -674,14 +605,6 @@ void IDOSMainWindow::initRibbonAction()
             this, &IDOSMainWindow::onUndoTriggered);
     connect(m_actionRedo, &QAction::triggered,
             this, &IDOSMainWindow::onRedoTriggered);
-    connect(viewPresetActionGroup, &QActionGroup::triggered,
-            this, &IDOSMainWindow::onViewPresetTriggered);
-    connect(m_actionResetView, &QAction::triggered,
-            this, &IDOSMainWindow::onResetViewTriggered);
-    connect(m_actionFitAll, &QAction::triggered,
-            this, &IDOSMainWindow::onFitAllTriggered);
-    connect(m_actionBackgroundColor, &QAction::triggered,
-            this, &IDOSMainWindow::onBackgroundColorTriggered);
     connect(m_actionCaptureScreenshot, &QAction::triggered,
             this, &IDOSMainWindow::onCaptureScreenshotTriggered);
     connect(m_actionExportImage, &QAction::triggered,
@@ -699,9 +622,6 @@ void IDOSMainWindow::initRibbonAction()
     connect(gridLayoutMenu, &QMenu::triggered,
             this, &IDOSMainWindow::onWindowLayoutTriggered);
     onCurrentViewChanged(activeViewId());
-    onViewDecorationsChanged(activeView()->axesVisible(),
-                             activeView()->legendAvailable(),
-                             activeView()->legendVisible());
 }
 
 IDOSMainWindow::~IDOSMainWindow()
@@ -727,7 +647,7 @@ IDOSMainWindow::~IDOSMainWindow()
     }
 
     IDOS_DEBUG(tr("Unloading all plugins during main window teardown."));
-    m_pluginRegistry->unloadAll();
+    m_pluginRegistry->unloadAll(true);
     if (applicationRibbonBar != nullptr)
     {
         const QList<SARibbonCategory*> categories = applicationRibbonBar->categoryPages(true);
@@ -754,7 +674,10 @@ IDOSMainWindow::~IDOSMainWindow()
     {
         disconnect(m_project, nullptr, this, nullptr);
     }
-    disconnect(m_commandManager.data(), nullptr, this, nullptr);
+    if (m_commandManager != nullptr)
+    {
+        disconnect(m_commandManager.data(), nullptr, this, nullptr);
+    }
     delete m_treeServer;
     delete m_treeRegistry;
     disconnect(m_renderServer, nullptr, this, nullptr);
@@ -797,7 +720,10 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     {
         disconnect(m_project, nullptr, this, nullptr);
     }
-    disconnect(m_commandManager.data(), nullptr, this, nullptr);
+    if (m_commandManager != nullptr)
+    {
+        disconnect(m_commandManager.data(), nullptr, this, nullptr);
+    }
     m_project = project;
     m_viewCaseIds.clear();
     m_viewContextIds.clear();
@@ -894,64 +820,15 @@ void IDOSMainWindow::onPluginManagerTriggered()
     m_pluginManagerWidget->activateWindow();
 }
 
-void IDOSMainWindow::onViewPresetTriggered(QAction* action)
-{
-    if (action == nullptr)
-    {
-        return;
-    }
-
-    if (activeView() == nullptr)
-    {
-        return;
-    }
-    if (activeView()->isTwoDimensional() && action->property("threeDimensionalOnly").toBool())
-    {
-        return;
-    }
-
-    const int presetValue = action->data().toInt();
-    const IDOSOrientation orientation = static_cast<IDOSOrientation>(presetValue);
-    activeView()->setOrientation(orientation);
-    updateViewPresetActions();
-}
 
 void IDOSMainWindow::onCurrentViewChanged(const QString& viewId)
 {
     const bool hasActiveView = activeView() != nullptr;
-    m_actionViewPresets->setEnabled(hasActiveView);
-    m_actionResetView->setEnabled(hasActiveView);
-    m_actionFitAll->setEnabled(hasActiveView);
-    m_actionBackgroundColor->setEnabled(hasActiveView);
     m_actionCaptureScreenshot->setEnabled(hasActiveView);
     m_actionExportImage->setEnabled(hasActiveView);
-    updateViewPresetActions();
     updateTreeSelection(viewId);
 }
 
-void IDOSMainWindow::updateViewPresetActions()
-{
-    if (m_actionViewPresets == nullptr || m_actionViewPresets->menu() == nullptr)
-    {
-        return;
-    }
-    IDOSRenderView* view = activeView();
-    for (QAction* preset : m_actionViewPresets->menu()->actions())
-    {
-        if (preset->isSeparator() || !preset->data().isValid())
-        {
-            continue;
-        }
-        const bool isSupportedByActiveView =
-            view != nullptr && (!view->isTwoDimensional()
-                                || !preset->property("threeDimensionalOnly").toBool());
-        preset->setEnabled(isSupportedByActiveView);
-        if (isSupportedByActiveView)
-        {
-            preset->setChecked(preset->data().toInt() == static_cast<int>(view->orientation()));
-        }
-    }
-}
 
 void IDOSMainWindow::onActiveViewContextObjectChanged(const QString& viewId,
                                                        const QString& objectId)
@@ -982,68 +859,11 @@ void IDOSMainWindow::onFocusedDockWidgetChanged(ads::CDockWidget*, ads::CDockWid
     }
 }
 
-void IDOSMainWindow::onViewDecorationsChanged(bool orientationMarkerVisible,
-                                               bool legendAvailable,
-                                               bool legendVisible)
-{
-    const QSignalBlocker orientationBlocker(m_actionOrientationMarker);
-    const QSignalBlocker legendBlocker(m_actionLegend);
-    m_actionOrientationMarker->setEnabled(activeView() != nullptr);
-    m_actionOrientationMarker->setChecked(orientationMarkerVisible);
-    m_actionLegend->setEnabled(legendAvailable);
-    m_actionLegend->setChecked(legendVisible);
-}
 
-void IDOSMainWindow::onOrientationMarkerToggled(bool checked)
-{
-    if (activeView() != nullptr)
-    {
-        activeView()->setAxesVisible(checked);
-    }
-}
 
-void IDOSMainWindow::onLegendToggled(bool checked)
-{
-    if (activeView() != nullptr)
-    {
-        activeView()->setLegendVisible(checked);
-    }
-}
 
-void IDOSMainWindow::onResetViewTriggered()
-{
 
-    if (activeView() != nullptr)
-    {
-        activeView()->setOrientation(activeView()->isTwoDimensional()
-                                                     ? activeView()->orientation()
-                                                     : IDOSOrientation::Isometric);
-        updateViewPresetActions();
-    }
-}
 
-void IDOSMainWindow::onFitAllTriggered()
-{
-    if (activeView() != nullptr)
-    {
-        activeView()->resetCamera();
-    }
-}
-
-void IDOSMainWindow::onBackgroundColorTriggered()
-{
-    if (activeView() == nullptr)
-    {
-        return;
-    }
-
-    const QColor selectedColor = QColorDialog::getColor(
-        activeView()->background(), this, tr("Background Color"));
-    if (selectedColor.isValid())
-    {
-        activeView()->setBackground(selectedColor);
-    }
-}
 
 void IDOSMainWindow::onCaptureScreenshotTriggered()
 {
@@ -1190,6 +1010,8 @@ void IDOSMainWindow::createRenderView(bool twoDimensional)
                             ? QStringLiteral(":/images/gui-case-views.svg")
                             : QStringLiteral(":/images/render-view.svg")));
     dock->setWidget(renderViewWidget);
+    renderViewWidget->setWindowTitle(dock->windowTitle());
+    connect(dock, &QWidget::windowTitleChanged, renderViewWidget, &QWidget::setWindowTitle);
     dock->setFeatures(ads::CDockWidget::DockWidgetClosable |
                       ads::CDockWidget::DockWidgetMovable |
                       ads::CDockWidget::DockWidgetFloatable);
@@ -1730,10 +1552,9 @@ void IDOSMainWindow::removeView(const QString& id)
         {
             setActiveView(m_views.firstKey());
         }
-        else if (m_actionViewPresets != nullptr)
+        else if (m_actionCaptureScreenshot != nullptr)
         {
             onCurrentViewChanged(QString());
-            onViewDecorationsChanged(false, false, false);
         }
     }
 }
@@ -1753,7 +1574,6 @@ void IDOSMainWindow::setActiveView(const QString& id)
             iterator.value()->setActive(iterator.key() == id);
         }
     }
-    activeView()->setSelection(m_renderServer->objectIds(activeView(), viewContextId()));
     if (m_dataTreeView != nullptr)
     {
         m_dataTreeView->setTargetView(activeView());
@@ -1762,10 +1582,9 @@ void IDOSMainWindow::setActiveView(const QString& id)
     {
         m_caseTreeView->setTargetView(activeView());
     }
-    if (m_actionViewPresets != nullptr)
+    if (m_actionCaptureScreenshot != nullptr)
     {
         onCurrentViewChanged(id);
-        onViewDecorationsChanged(activeView()->axesVisible(), activeView()->legendAvailable(), activeView()->legendVisible());
     }
 }
 
@@ -1781,7 +1600,6 @@ void IDOSMainWindow::setViewContextId(const QString& id)
         return;
     }
     m_viewContextIds.insert(m_activeViewId, id);
-    activeView()->setSelection(m_renderServer->objectIds(activeView(), id));
     onActiveViewContextObjectChanged(m_activeViewId, id);
 }
 
@@ -1796,9 +1614,16 @@ void IDOSMainWindow::onRenderViewFocused()
 
 void IDOSMainWindow::onRenderViewDecorations()
 {
-    if (m_actionOrientationMarker != nullptr && activeView() != nullptr && sender() == activeView())
+    if (sender() == activeView())
     {
-        onViewDecorationsChanged(activeView()->axesVisible(), activeView()->legendAvailable(), activeView()->legendVisible());
+        if (m_dataTreeView != nullptr)
+        {
+            m_dataTreeView->refreshCheckStates();
+        }
+        if (m_caseTreeView != nullptr)
+        {
+            m_caseTreeView->refreshCheckStates();
+        }
     }
 }
 

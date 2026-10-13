@@ -71,7 +71,7 @@ class PROVIDERS_EXPORT IDOSDataProviderRegistry
      * 格式："All Supported Files (*.las *.LAS *.GRID *.EGRID);;LAS Well (*.las *.LAS);;ECLIPSE Grid (*.GRID *.EGRID)"
      * 直接喂给 QFileDialog::getOpenFileName 的 filter 参数。
      */
-    QString fileFilters() const;
+    QString fileFilters(const QString& providerIdPrefix = QString()) const;
 
   private:
     IDOSDataProviderRegistry();

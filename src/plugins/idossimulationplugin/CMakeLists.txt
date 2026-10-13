@@ -2,6 +2,16 @@ add_library(idossimulationplugin SHARED
     idossimulationplugin.qrc
     idossimulationplugin.cpp
     idossimulationplugin.h
+    idoscoloringwidget.cpp
+    idoscoloringwidget.h
+    idoscoloringtreeguiprovider.cpp
+    idoscoloringtreeguiprovider.h
+    idosrendertoolmetadata.cpp
+    idosrendertoolmetadata.h
+    idosrendertoolprovider.cpp
+    idosrendertoolprovider.h
+    idosrenderinteractiontool.cpp
+    idosrenderinteractiontool.h
     idossimulationcaseinventoryreportwidget.cpp
     idossimulationcaseinventoryreportwidget.h
     idossimulationcasetablewidget.cpp
@@ -44,6 +54,22 @@ target_link_libraries(idossimulationplugin PRIVATE
     idos_app
     Qt5::Core
 )
+
+if(IDOS_ENABLE_RENDER)
+    target_link_libraries(idossimulationplugin PRIVATE
+        VTK::CommonCore
+        VTK::CommonDataModel
+        VTK::CommonTransforms
+        VTK::FiltersCore
+        VTK::FiltersExtraction
+        VTK::FiltersGeneral
+        VTK::FiltersSources
+        VTK::InteractionWidgets
+        VTK::RenderingCore
+        VTK::RenderingAnnotation
+        VTK::GUISupportQt
+    )
+endif()
 
 if(CMAKE_CONFIGURATION_TYPES)
     set(_idos_simulation_plugin_output_directory "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/plugins")

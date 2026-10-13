@@ -1,25 +1,40 @@
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <type_traits>
 
+#include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
+#include <QColor>
+#include <QComboBox>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QDir>
+#include <QDoubleSpinBox>
+#include <QDialog>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QIcon>
+#include <QImage>
+#include <QLabel>
 #include <QLineEdit>
+#include <QList>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPixmap>
 #include <QPushButton>
 #include <QScopedPointer>
 #include <QSettings>
 #include <QSignalSpy>
+#include <QSize>
 #include <QSlider>
 #include <QTemporaryDir>
+#include <QTableWidget>
 #include <QTimer>
 #include <QtTest>
 #include <QVariantMap>
@@ -30,9 +45,13 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
+#include <vtkLookupTable.h>
 #include <vtkMapper.h>
 #include <vtkProperty.h>
 
+#include <SARibbonBar.h>
+#include <SARibbonCategory.h>
+#include <SARibbonPanel.h>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -477,9 +496,10 @@ void CaseWorkflowTest::onExamplePlugin()
 void CaseWorkflowTest::onViewDecorations()
 {
     IDOSMainWindow window;
-    QAction* orientationAction = window.findChild<QAction*>(QStringLiteral("orientationMarkerAction"));
-    QAction* legendAction = window.findChild<QAction*>(QStringLiteral("legendAction"));
     IDOSRenderView* view = window.findChild<IDOSRenderView*>();
+    QVERIFY(view != nullptr);
+    QAction* orientationAction = view->findChild<QAction*>(QStringLiteral("viewToolAxesAction"));
+    QAction* legendAction = view->findChild<QAction*>(QStringLiteral("viewToolLegendAction"));
     QVERIFY(orientationAction != nullptr);
     QVERIFY(legendAction != nullptr);
     QVERIFY(view != nullptr);
@@ -531,6 +551,233 @@ void CaseWorkflowTest::onViewDecorations()
     view->scene()->clear();
     QVERIFY(!view->legendAvailable());
     QVERIFY(!legendAction->isEnabled());
+}
+
+void CaseWorkflowTest::onRequiredSimulationPlugin()
+{
+    IDOSPluginRegistry* registry = IDOSPluginRegistry::instance();
+    QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
+    const QString settingKey = QStringLiteral("/plugins/idossimulationplugin");
+    const bool hadSetting = settings.contains(settingKey);
+    const QVariant previousSetting = settings.value(settingKey);
+    settings.setValue(settingKey, false);
+    {
+        IDOSMainWindow window;
+        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
+        SARibbonCategory* home = window.ribbonBar()->categoryByObjectName(QStringLiteral("idosHomeCategory"));
+        QVERIFY(home != nullptr);
+        QVERIFY(window.ribbonBar()->categoryByObjectName(QStringLiteral("idosSimulationCategory")) == nullptr);
+        SARibbonPanel* simulation = home->panelByObjectName(QStringLiteral("idosHomePanel_simulation"));
+        SARibbonPanel* results = home->panelByObjectName(QStringLiteral("idosHomePanel_results"));
+        SARibbonPanel* output = home->panelByObjectName(QStringLiteral("idosHomePanel_output"));
+        QVERIFY(simulation != nullptr);
+        QVERIFY(results != nullptr);
+        QVERIFY(output != nullptr);
+        QVERIFY(simulation->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationRunPreflightAction"))));
+        QVERIFY(results->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationCurveComparisonAction"))));
+        QVERIFY(output->actions().contains(window.findChild<QAction*>(QStringLiteral("simulationCaseInventoryReportAction"))));
+        QString path;
+        const QVariantList catalog = registry->pluginCatalog(registry->libraryDir().path());
+        for (const QVariant& entry : catalog)
+        {
+            const QVariantMap plugin = entry.toMap();
+            if (plugin.value(QStringLiteral("key")).toString() == QStringLiteral("idossimulationplugin"))
+            {
+                QVERIFY(plugin.value(QStringLiteral("required")).toBool());
+                QVERIFY(plugin.value(QStringLiteral("enabled")).toBool());
+                path = plugin.value(QStringLiteral("path")).toString();
+            }
+        }
+        QVERIFY(!path.isEmpty());
+        registry->setPluginEnabled(path, false);
+        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
+        registry->unloadCppPlugin(path);
+        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
+    }
+    QVERIFY(!registry->isLoaded(QStringLiteral("idossimulationplugin")));
+    if (hadSetting)
+    {
+        settings.setValue(settingKey, previousSetting);
+    }
+    else
+    {
+        settings.remove(settingKey);
+    }
+}
+
+void CaseWorkflowTest::onWellInputMenus()
+{
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    IDOSWell* well = new IDOSWell();
+    well->setName(QStringLiteral("Input Well"));
+    IDOSWellMarkerSet markers;
+    markers.addMarker(IDOSWellMarker(QStringLiteral("Top Sand"), 100.0));
+    well->setMarkers(markers);
+    well->setCompletions({IDOSWellCompletion(0, true, 150.0, 110.0)});
+    IDOSWellCheckshot checkshot;
+    QVERIFY(checkshot.setSamples(QVector<double>{0.0, 100.0}, QVector<double>{0.0, 80.0}));
+    checkshot.setUnits(QStringLiteral("M"), QStringLiteral("MS"));
+    checkshot.setTimeType(QStringLiteral("TWT"));
+    well->setCheckshot(checkshot);
+    project.add(well);
+    IDOSTreeModel* model = window.dataTreeModel();
+    const QModelIndex root = model->indexFromDataId(well->objectId());
+    QVERIFY(root.isValid());
+    QCOMPARE(model->rowCount(root), 3);
+    for (int row = 0; row < model->rowCount(root); ++row)
+    {
+        QScopedPointer<QMenu> menu(window.dataTreeView()->createMenu(model->index(row, 0, root)));
+        QAction* viewData = menu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
+        QVERIFY(viewData != nullptr);
+        viewData->trigger();
+        QDialog* dialog = window.dataTreeView()->findChild<QDialog*>(QStringLiteral("wellInputDataWindow"));
+        QVERIFY(dialog != nullptr);
+        QTableWidget* table = dialog->findChild<QTableWidget*>();
+        QVERIFY(table != nullptr);
+        QCOMPARE(table->rowCount(), row == 2 ? 2 : 1);
+        QVERIFY(!table->item(0, 0)->text().isEmpty());
+        if (row == 0)
+        {
+            QCOMPARE(table->item(0, 2)->text(), QStringLiteral("Not mapped"));
+        }
+        delete dialog;
+    }
+    window.setProject(nullptr);
+}
+
+void CaseWorkflowTest::onGridColoring()
+{
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    IDOSGrid* grid = new IDOSGrid();
+    grid->setDimensions(1, 1, 1);
+    grid->setName(QStringLiteral("Coloring Grid"));
+    project.add(grid);
+    IDOSGridProperty* property = new IDOSGridProperty();
+    property->setDimensions(1, 1, 1);
+    property->setGridId(grid->objectId());
+    property->setName(QStringLiteral("Porosity"));
+    QVERIFY(property->setValues(QVector<double>{0.25}));
+    project.add(property);
+    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+    simulationCase->setName(QStringLiteral("Coloring Case"));
+    simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    project.add(simulationCase);
+    IDOSTreeView* tree = window.caseTreeView();
+    IDOSRenderView* firstView = qobject_cast<IDOSRenderView*>(tree->targetView());
+    QVERIFY(firstView != nullptr);
+    IDOSRenderObject* firstObject = findRenderObject(firstView, grid->objectId());
+    QVERIFY(firstObject != nullptr);
+    IDOSGridRenderProvider* firstProvider = dynamic_cast<IDOSGridRenderProvider*>(firstObject->provider());
+    QVERIFY(firstProvider != nullptr);
+    IDOSRenderView secondView;
+    IDOSGridRenderProvider* secondProvider = new IDOSGridRenderProvider(grid);
+    IDOSRenderObject* secondObject = new IDOSRenderObject(secondProvider);
+    QVERIFY(secondView.scene()->add(secondObject));
+    secondProvider->setProperty(property);
+    const QVariantMap originalSecondSettings = secondProvider->coloringSettings();
+    const QModelIndex index = window.caseTreeModel()->indexFromDataId(property->objectId());
+    QVERIFY(index.isValid());
+    QScopedPointer<QMenu> menu(tree->createMenu(index));
+    QAction* settings = menu->findChild<QAction*>(QStringLiteral("simulationColoringSettingsAction"));
+    QVERIFY(settings != nullptr);
+    QVERIFY(settings->isEnabled());
+    settings->trigger();
+    QPointer<QWidget> widget(window.findChild<QWidget*>(QStringLiteral("coloringSettingsWindow")));
+    QVERIFY(!widget.isNull());
+    QCOMPARE(firstProvider->property(), property);
+    tree->setTargetView(&secondView);
+    QComboBox* ramp = widget->findChild<QComboBox*>(QStringLiteral("coloringRampCombo"));
+    QVERIFY(ramp != nullptr);
+    QLabel* gridName = widget->findChild<QLabel*>(QStringLiteral("coloringGridNameLabel"));
+    QLabel* viewName = widget->findChild<QLabel*>(QStringLiteral("coloringViewNameLabel"));
+    QVERIFY(gridName != nullptr && viewName != nullptr);
+    QApplication::processEvents();
+    QCOMPARE(gridName->geometry().left(), viewName->geometry().left());
+    QCOMPARE(viewName->text(), firstView->windowTitle());
+    QVERIFY(viewName->text() != firstView->property("viewId").toString());
+    firstView->setWindowTitle(QStringLiteral("Renamed Target View"));
+    QCOMPARE(viewName->text(), QStringLiteral("Renamed Target View"));
+    QCOMPARE(ramp->count(), 22);
+    for (int rampIndex = 0; rampIndex < ramp->count(); ++rampIndex)
+    {
+        ramp->setCurrentIndex(rampIndex);
+        const QString key = ramp->currentData().toString();
+        const QList<QColor> colors = IDOSGridRenderProvider::colorRampColors(key, false);
+        QCOMPARE(colors.size(), 256);
+        vtkLookupTable* lookup = vtkLookupTable::SafeDownCast(firstProvider->actors().first()->GetMapper()->GetLookupTable());
+        QVERIFY(lookup != nullptr);
+        for (const int sample : QList<int>{0, 127, 255})
+        {
+            double rgba[4];
+            lookup->GetTableValue(sample, rgba);
+            QVERIFY(std::abs(rgba[0] - colors.at(sample).redF()) < 0.005);
+            QVERIFY(std::abs(rgba[1] - colors.at(sample).greenF()) < 0.005);
+            QVERIFY(std::abs(rgba[2] - colors.at(sample).blueF()) < 0.005);
+        }
+        const QImage icon = ramp->itemIcon(rampIndex).pixmap(QSize(256, 16)).toImage();
+        QVERIFY(!icon.isNull());
+        QCOMPARE(icon.pixelColor(0, 0).rgb(), colors.first().rgb());
+        QCOMPARE(icon.pixelColor(icon.width() - 1, 0).rgb(), colors.last().rgb());
+    }
+    const QList<QColor> ocean = IDOSGridRenderProvider::colorRampColors(QStringLiteral("OceanBreeze"), false);
+    QVERIFY(std::abs(ocean.first().redF() - 0.15) < 0.0001);
+    QVERIFY(std::abs(ocean.last().blueF() - 0.90) < 0.0001);
+    QCheckBox* reverse = widget->findChild<QCheckBox*>(QStringLiteral("coloringReverseCheck"));
+    QVERIFY(reverse != nullptr);
+    ramp->setCurrentIndex(ramp->findData(QStringLiteral("OceanBreeze")));
+    reverse->setChecked(true);
+    vtkLookupTable* reversedLookup = vtkLookupTable::SafeDownCast(firstProvider->actors().first()->GetMapper()->GetLookupTable());
+    QVERIFY(reversedLookup != nullptr);
+    double reversedColor[4];
+    reversedLookup->GetTableValue(0, reversedColor);
+    QVERIFY(std::abs(reversedColor[0] - ocean.last().redF()) < 0.005);
+    const QImage reversedIcon = ramp->currentData(Qt::DecorationRole).value<QIcon>().pixmap(QSize(256, 16)).toImage();
+    QCOMPARE(reversedIcon.pixelColor(0, 0).rgb(), ocean.last().rgb());
+    reverse->setChecked(false);
+    ramp->showPopup();
+    QApplication::processEvents();
+    QVERIFY(ramp->view()->window()->grab().save(QDir(qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath()))
+                                              .filePath(QStringLiteral("coloring-ramps.png"))));
+    ramp->hidePopup();
+    ramp->setCurrentIndex(ramp->findData(QStringLiteral("gray")));
+    QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("ramp")).toString(), QStringLiteral("gray"));
+    QCOMPARE(secondProvider->coloringSettings(), originalSecondSettings);
+    QCheckBox* automatic = widget->findChild<QCheckBox*>(QStringLiteral("coloringAutomaticCheck"));
+    QDoubleSpinBox* minimum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("coloringMinimumSpin"));
+    QDoubleSpinBox* maximum = widget->findChild<QDoubleSpinBox*>(QStringLiteral("coloringMaximumSpin"));
+    QVERIFY(automatic != nullptr && minimum != nullptr && maximum != nullptr);
+    automatic->setChecked(false);
+    minimum->setValue(0.0);
+    maximum->setValue(1.0);
+    QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("minimum")).toDouble(), 0.0);
+    QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("maximum")).toDouble(), 1.0);
+    QCOMPARE(firstProvider->actors().first()->GetMapper()->GetScalarRange()[0], 0.0);
+    QCOMPARE(firstProvider->actors().first()->GetMapper()->GetScalarRange()[1], 1.0);
+    QApplication::processEvents();
+    const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath());
+    QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("coloring-settings.png"))));
+    minimum->setValue(2.0);
+    QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("minimum")).toDouble(), 0.0);
+    minimum->setValue(0.0);
+    QCheckBox* legend = widget->findChild<QCheckBox*>(QStringLiteral("coloringLegendCheck"));
+    QVERIFY(legend != nullptr);
+    legend->setChecked(false);
+    QVERIFY(firstProvider->legends().isEmpty());
+    QVERIFY(property->setValues(QVector<double>{std::numeric_limits<double>::quiet_NaN()}));
+    QVERIFY(std::isnan(firstProvider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0)));
+    QVERIFY(project.remove(property->objectId()));
+    QVERIFY(firstProvider->property() == nullptr);
+    QComboBox* properties = widget->findChild<QComboBox*>(QStringLiteral("coloringPropertyCombo"));
+    QVERIFY(properties != nullptr);
+    QCOMPARE(properties->currentData().toString(), QString());
+    QVERIFY(project.remove(grid->objectId()));
+    QTRY_VERIFY(widget.isNull());
+    tree->setTargetView(firstView);
+    window.setProject(nullptr);
 }
 
 void CaseWorkflowTest::onRenderLifecycle()

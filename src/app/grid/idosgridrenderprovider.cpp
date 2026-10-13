@@ -1,3 +1,7 @@
+#include <cmath>
+#include <limits>
+
+#include <QColor>
 #include <QList>
 #include <QObject>
 #include <QtGlobal>
@@ -35,7 +39,16 @@ IDOSGridRenderProvider::IDOSGridRenderProvider(IDOSGrid* dataObject)
     , m_highlighted(false)
     , m_visible(dataObject != nullptr && dataObject->isVisible())
     , m_opacity(1.0)
+    , m_coloringSettings()
 {
+    m_coloringSettings.insert(QStringLiteral("ramp"), QStringLiteral("Default"));
+    m_coloringSettings.insert(QStringLiteral("reversed"), false);
+    m_coloringSettings.insert(QStringLiteral("automatic"), true);
+    m_coloringSettings.insert(QStringLiteral("minimum"), 0.0);
+    m_coloringSettings.insert(QStringLiteral("maximum"), 1.0);
+    m_coloringSettings.insert(QStringLiteral("solidColor"), QStringLiteral("#59b8ff"));
+    m_coloringSettings.insert(QStringLiteral("invalidColor"), QStringLiteral("#808080"));
+    m_coloringSettings.insert(QStringLiteral("legend"), true);
 }
 
 IDOSGridRenderProvider::~IDOSGridRenderProvider()
@@ -98,7 +111,7 @@ void IDOSGridRenderProvider::update()
                 {
                     const int globalIndex = IDOSGridProperty::cellIndex(i, j, k, sourceGrid->nx(), sourceGrid->ny());
                     values.append(globalIndex < m_property->values().size() ? m_property->values().at(globalIndex)
-                                                                            : 0.0);
+                                                                            : std::numeric_limits<double>::quiet_NaN());
                 }
             }
         }
@@ -114,18 +127,38 @@ void IDOSGridRenderProvider::update()
     {
         vtkSmartPointer<vtkDoubleArray> scalars = vtkSmartPointer<vtkDoubleArray>::New();
         scalars->SetName(m_property->name().toUtf8().constData());
-        double minimumValue = values.first();
-        double maximumValue = values.first();
+        double minimumValue = std::numeric_limits<double>::infinity();
+        double maximumValue = -std::numeric_limits<double>::infinity();
         for (int index = 0; index < values.size(); ++index)
         {
             const double value = values.at(index);
-            scalars->InsertNextValue(value);
-            minimumValue = qMin(minimumValue, value);
-            maximumValue = qMax(maximumValue, value);
+            scalars->InsertNextValue(std::isfinite(value) ? value : std::numeric_limits<double>::quiet_NaN());
+            if (std::isfinite(value))
+            {
+                minimumValue = qMin(minimumValue, value);
+                maximumValue = qMax(maximumValue, value);
+            }
+        }
+        if (!std::isfinite(minimumValue))
+        {
+            minimumValue = 0.0;
+            maximumValue = 1.0;
+        }
+        if (!m_coloringSettings.value(QStringLiteral("automatic")).toBool())
+        {
+            minimumValue = m_coloringSettings.value(QStringLiteral("minimum")).toDouble();
+            maximumValue = m_coloringSettings.value(QStringLiteral("maximum")).toDouble();
         }
         if (minimumValue == maximumValue)
         {
-            maximumValue = minimumValue + 1.0;
+            const double padding = qMax(1.0, std::abs(minimumValue) * 0.01);
+            minimumValue -= padding;
+            maximumValue += padding;
+        }
+        if (m_coloringSettings.value(QStringLiteral("automatic")).toBool())
+        {
+            m_coloringSettings.insert(QStringLiteral("minimum"), minimumValue);
+            m_coloringSettings.insert(QStringLiteral("maximum"), maximumValue);
         }
         grid->GetCellData()->SetScalars(scalars);
         vtkSmartPointer<vtkLookupTable> lookupTable = vtkSmartPointer<vtkLookupTable>::New();
@@ -134,6 +167,17 @@ void IDOSGridRenderProvider::update()
         lookupTable->SetValueRange(0.95, 0.95);
         lookupTable->SetRange(minimumValue, maximumValue);
         lookupTable->Build();
+        lookupTable->SetNumberOfTableValues(256);
+        const QString ramp = m_coloringSettings.value(QStringLiteral("ramp")).toString();
+        const bool reversed = m_coloringSettings.value(QStringLiteral("reversed")).toBool();
+        const QList<QColor> colors = colorRampColors(ramp, reversed);
+        for (int index = 0; index < 256; ++index)
+        {
+            const QColor color = colors.at(index);
+            lookupTable->SetTableValue(index, color.redF(), color.greenF(), color.blueF(), 1.0);
+        }
+        const QColor invalidColor(m_coloringSettings.value(QStringLiteral("invalidColor")).toString());
+        lookupTable->SetNanColor(invalidColor.redF(), invalidColor.greenF(), invalidColor.blueF(), 1.0);
         mapper->SetLookupTable(lookupTable);
         mapper->SetScalarRange(minimumValue, maximumValue);
         mapper->SetScalarModeToUseCellData();
@@ -147,7 +191,7 @@ void IDOSGridRenderProvider::update()
     actor->GetProperty()->SetInterpolationToFlat();
     actor->GetProperty()->SetLineWidth(1.0);
     m_actors.append(actor);
-    if (hasCellScalars)
+    if (hasCellScalars && m_coloringSettings.value(QStringLiteral("legend")).toBool())
     {
         vtkSmartPointer<vtkScalarBarActor> scalarBar = vtkSmartPointer<vtkScalarBarActor>::New();
         scalarBar->SetLookupTable(mapper->GetLookupTable());
@@ -223,6 +267,31 @@ IDOSGridProperty* IDOSGridRenderProvider::property() const
     return m_property.data();
 }
 
+QVariantMap IDOSGridRenderProvider::coloringSettings() const
+{
+    return m_coloringSettings;
+}
+
+bool IDOSGridRenderProvider::setColoringSettings(const QVariantMap& settings)
+{
+    const QString ramp = settings.value(QStringLiteral("ramp")).toString();
+    bool minimumValid = false;
+    bool maximumValid = false;
+    const double minimum = settings.value(QStringLiteral("minimum")).toDouble(&minimumValid);
+    const double maximum = settings.value(QStringLiteral("maximum")).toDouble(&maximumValid);
+    if (!colorRampKeys().contains(ramp) || !minimumValid || !maximumValid ||
+        !std::isfinite(minimum) || !std::isfinite(maximum) ||
+        (!settings.value(QStringLiteral("automatic")).toBool() && minimum >= maximum) ||
+        !QColor(settings.value(QStringLiteral("solidColor")).toString()).isValid() ||
+        !QColor(settings.value(QStringLiteral("invalidColor")).toString()).isValid())
+    {
+        return false;
+    }
+    m_coloringSettings = settings;
+    update();
+    return true;
+}
+
 IDOSDisplayMode IDOSGridRenderProvider::displayMode() const
 {
     return m_displayMode;
@@ -267,7 +336,8 @@ void IDOSGridRenderProvider::applyActorProperties()
         }
         if (actor->GetMapper()->GetScalarVisibility() == 0)
         {
-            actor->GetProperty()->SetColor(0.35, 0.72, 1.0);
+            const QColor color(m_coloringSettings.value(QStringLiteral("solidColor")).toString());
+            actor->GetProperty()->SetColor(color.redF(), color.greenF(), color.blueF());
         }
         actor->GetProperty()->SetEdgeColor(m_highlighted ? 1.0 : 0.0, m_highlighted ? 0.95 : 0.0,
                                            m_highlighted ? 0.15 : 0.0);
@@ -284,4 +354,264 @@ void IDOSGridRenderProvider::applyActorProperties()
         m_legends.at(index)->SetVisibility(m_visible);
     }
 #endif
+}
+
+QList<QColor> IDOSGridRenderProvider::colorRampColors(const QString& key, bool reversed)
+{
+    const QList<QColor> stops = colorRampStops(key);
+    QList<QColor> colors;
+    for (int index = 0; index < 256; ++index)
+    {
+        const double fraction = static_cast<double>(reversed ? 255 - index : index) / 255.0;
+        QColor color;
+        if (key == QStringLiteral("gray"))
+        {
+            color = QColor::fromRgbF(fraction, fraction, fraction);
+        }
+        else if (key == QStringLiteral("blueYellow"))
+        {
+            color = QColor::fromRgbF(0.1 + 0.85 * fraction, 0.2 + 0.7 * fraction, 0.8 - 0.7 * fraction);
+        }
+        else if (stops.size() >= 2)
+        {
+            const double position = fraction * (stops.size() - 1);
+            const int first = qMin(static_cast<int>(position), stops.size() - 2);
+            const double weight = position - first;
+            const QColor left = stops.at(first);
+            const QColor right = stops.at(first + 1);
+            color = QColor::fromRgbF(left.redF() * (1.0 - weight) + right.redF() * weight,
+                                    left.greenF() * (1.0 - weight) + right.greenF() * weight,
+                                    left.blueF() * (1.0 - weight) + right.blueF() * weight);
+        }
+        else
+        {
+            color = QColor::fromHsvF((1.0 - fraction) * 0.667, 0.85, 0.95);
+        }
+        colors.append(color);
+    }
+    return colors;
+}
+
+QStringList IDOSGridRenderProvider::colorRampKeys()
+{
+    return {
+        QStringLiteral("Default"),
+        QStringLiteral("SoftRainbow"),
+        QStringLiteral("OceanBreeze"),
+        QStringLiteral("WarmAmber"),
+        QStringLiteral("FreshMint"),
+        QStringLiteral("TwilightPurple"),
+        QStringLiteral("EarthTones"),
+        QStringLiteral("GlacierBlue"),
+        QStringLiteral("WarmColdDiverging"),
+        QStringLiteral("LavaMetal"),
+        QStringLiteral("DarkForest"),
+        QStringLiteral("VintageSunset"),
+        QStringLiteral("Aurora"),
+        QStringLiteral("MineralSand"),
+        QStringLiteral("Porcelain"),
+        QStringLiteral("AutumnBerry"),
+        QStringLiteral("MonochromeJade"),
+        QStringLiteral("GraphiteScale"),
+        QStringLiteral("Cyberpunk"),
+        QStringLiteral("blueRed"),
+        QStringLiteral("blueYellow"),
+        QStringLiteral("gray")};
+}
+
+QList<QColor> IDOSGridRenderProvider::colorRampStops(const QString& key)
+{
+    if (key == QStringLiteral("Default"))
+    {
+        return {
+            QColor::fromRgbF(0.0, 0.0, 0.5),
+            QColor::fromRgbF(0.0, 0.0, 1.0),
+            QColor::fromRgbF(0.0, 1.0, 1.0),
+            QColor::fromRgbF(0.0, 0.85, 0.25),
+            QColor::fromRgbF(1.0, 1.0, 0.0),
+            QColor::fromRgbF(1.0, 0.45, 0.0),
+            QColor::fromRgbF(1.0, 0.0, 0.0),
+            QColor::fromRgbF(0.5, 0.0, 0.0)};
+    }
+    if (key == QStringLiteral("SoftRainbow"))
+    {
+        return {
+            QColor::fromRgbF(0.40, 0.55, 0.85),
+            QColor::fromRgbF(0.35, 0.70, 0.80),
+            QColor::fromRgbF(0.45, 0.75, 0.55),
+            QColor::fromRgbF(0.80, 0.80, 0.45),
+            QColor::fromRgbF(0.90, 0.65, 0.40),
+            QColor::fromRgbF(0.85, 0.45, 0.45)};
+    }
+    if (key == QStringLiteral("OceanBreeze"))
+    {
+        return {
+            QColor::fromRgbF(0.15, 0.25, 0.45),
+            QColor::fromRgbF(0.20, 0.45, 0.65),
+            QColor::fromRgbF(0.35, 0.65, 0.75),
+            QColor::fromRgbF(0.60, 0.80, 0.80),
+            QColor::fromRgbF(0.85, 0.90, 0.85),
+            QColor::fromRgbF(0.95, 0.95, 0.90)};
+    }
+    if (key == QStringLiteral("WarmAmber"))
+    {
+        return {
+            QColor::fromRgbF(0.98, 0.95, 0.85),
+            QColor::fromRgbF(0.95, 0.85, 0.65),
+            QColor::fromRgbF(0.90, 0.70, 0.45),
+            QColor::fromRgbF(0.85, 0.55, 0.30),
+            QColor::fromRgbF(0.70, 0.40, 0.20),
+            QColor::fromRgbF(0.50, 0.25, 0.10)};
+    }
+    if (key == QStringLiteral("FreshMint"))
+    {
+        return {
+            QColor::fromRgbF(0.85, 0.95, 0.85),
+            QColor::fromRgbF(0.70, 0.90, 0.85),
+            QColor::fromRgbF(0.55, 0.85, 0.85),
+            QColor::fromRgbF(0.40, 0.75, 0.80),
+            QColor::fromRgbF(0.25, 0.60, 0.70),
+            QColor::fromRgbF(0.15, 0.40, 0.55)};
+    }
+    if (key == QStringLiteral("TwilightPurple"))
+    {
+        return {
+            QColor::fromRgbF(0.90, 0.85, 0.95),
+            QColor::fromRgbF(0.80, 0.70, 0.90),
+            QColor::fromRgbF(0.70, 0.55, 0.85),
+            QColor::fromRgbF(0.60, 0.40, 0.75),
+            QColor::fromRgbF(0.45, 0.25, 0.60),
+            QColor::fromRgbF(0.30, 0.15, 0.45)};
+    }
+    if (key == QStringLiteral("EarthTones"))
+    {
+        return {
+            QColor::fromRgbF(0.95, 0.90, 0.80),
+            QColor::fromRgbF(0.85, 0.75, 0.60),
+            QColor::fromRgbF(0.75, 0.60, 0.45),
+            QColor::fromRgbF(0.65, 0.45, 0.30),
+            QColor::fromRgbF(0.50, 0.30, 0.20),
+            QColor::fromRgbF(0.35, 0.18, 0.10)};
+    }
+    if (key == QStringLiteral("GlacierBlue"))
+    {
+        return {
+            QColor::fromRgbF(0.95, 0.97, 1.00),
+            QColor::fromRgbF(0.80, 0.90, 0.98),
+            QColor::fromRgbF(0.60, 0.80, 0.95),
+            QColor::fromRgbF(0.40, 0.65, 0.90),
+            QColor::fromRgbF(0.20, 0.45, 0.80),
+            QColor::fromRgbF(0.10, 0.25, 0.60)};
+    }
+    if (key == QStringLiteral("WarmColdDiverging"))
+    {
+        return {
+            QColor::fromRgbF(0.85, 0.45, 0.30),
+            QColor::fromRgbF(0.95, 0.75, 0.55),
+            QColor::fromRgbF(0.98, 0.95, 0.90),
+            QColor::fromRgbF(0.75, 0.85, 0.90),
+            QColor::fromRgbF(0.45, 0.65, 0.80),
+            QColor::fromRgbF(0.20, 0.40, 0.65)};
+    }
+    if (key == QStringLiteral("LavaMetal"))
+    {
+        return {
+            QColor::fromRgbF(0.35, 0.10, 0.05),
+            QColor::fromRgbF(0.60, 0.15, 0.10),
+            QColor::fromRgbF(0.85, 0.30, 0.15),
+            QColor::fromRgbF(0.98, 0.55, 0.20),
+            QColor::fromRgbF(1.00, 0.80, 0.30),
+            QColor::fromRgbF(1.00, 0.95, 0.60)};
+    }
+    if (key == QStringLiteral("DarkForest"))
+    {
+        return {
+            QColor::fromRgbF(0.10, 0.20, 0.10),
+            QColor::fromRgbF(0.15, 0.35, 0.20),
+            QColor::fromRgbF(0.25, 0.50, 0.35),
+            QColor::fromRgbF(0.45, 0.65, 0.55),
+            QColor::fromRgbF(0.65, 0.75, 0.65),
+            QColor::fromRgbF(0.85, 0.88, 0.82)};
+    }
+    if (key == QStringLiteral("VintageSunset"))
+    {
+        return {
+            QColor::fromRgbF(0.45, 0.25, 0.45),
+            QColor::fromRgbF(0.70, 0.35, 0.50),
+            QColor::fromRgbF(0.90, 0.55, 0.55),
+            QColor::fromRgbF(0.98, 0.75, 0.55),
+            QColor::fromRgbF(0.98, 0.88, 0.65),
+            QColor::fromRgbF(0.95, 0.95, 0.80)};
+    }
+    if (key == QStringLiteral("Aurora"))
+    {
+        return {
+            QColor::fromRgbF(0.20, 0.10, 0.35),
+            QColor::fromRgbF(0.35, 0.25, 0.60),
+            QColor::fromRgbF(0.40, 0.60, 0.75),
+            QColor::fromRgbF(0.50, 0.85, 0.80),
+            QColor::fromRgbF(0.70, 0.95, 0.85),
+            QColor::fromRgbF(0.90, 0.98, 0.95)};
+    }
+    if (key == QStringLiteral("MineralSand"))
+    {
+        return {
+            QColor::fromRgbF(0.25, 0.18, 0.12),
+            QColor::fromRgbF(0.45, 0.30, 0.20),
+            QColor::fromRgbF(0.65, 0.45, 0.30),
+            QColor::fromRgbF(0.80, 0.60, 0.45),
+            QColor::fromRgbF(0.90, 0.75, 0.60),
+            QColor::fromRgbF(0.96, 0.88, 0.78)};
+    }
+    if (key == QStringLiteral("Porcelain"))
+    {
+        return {
+            QColor::fromRgbF(0.98, 0.97, 0.94),
+            QColor::fromRgbF(0.85, 0.90, 0.92),
+            QColor::fromRgbF(0.60, 0.75, 0.85),
+            QColor::fromRgbF(0.35, 0.55, 0.75),
+            QColor::fromRgbF(0.15, 0.35, 0.55),
+            QColor::fromRgbF(0.05, 0.15, 0.30)};
+    }
+    if (key == QStringLiteral("AutumnBerry"))
+    {
+        return {
+            QColor::fromRgbF(0.30, 0.10, 0.20),
+            QColor::fromRgbF(0.55, 0.15, 0.25),
+            QColor::fromRgbF(0.80, 0.30, 0.25),
+            QColor::fromRgbF(0.95, 0.50, 0.30),
+            QColor::fromRgbF(0.98, 0.70, 0.35),
+            QColor::fromRgbF(0.95, 0.85, 0.50)};
+    }
+    if (key == QStringLiteral("MonochromeJade"))
+    {
+        return {
+            QColor::fromRgbF(0.05, 0.25, 0.15),
+            QColor::fromRgbF(0.15, 0.45, 0.30),
+            QColor::fromRgbF(0.30, 0.65, 0.45),
+            QColor::fromRgbF(0.55, 0.80, 0.60),
+            QColor::fromRgbF(0.80, 0.92, 0.80),
+            QColor::fromRgbF(0.95, 0.98, 0.92)};
+    }
+    if (key == QStringLiteral("GraphiteScale"))
+    {
+        return {
+            QColor::fromRgbF(0.10, 0.10, 0.10),
+            QColor::fromRgbF(0.25, 0.25, 0.25),
+            QColor::fromRgbF(0.45, 0.45, 0.45),
+            QColor::fromRgbF(0.65, 0.65, 0.65),
+            QColor::fromRgbF(0.85, 0.85, 0.85),
+            QColor::fromRgbF(0.98, 0.98, 0.98)};
+    }
+    if (key == QStringLiteral("Cyberpunk"))
+    {
+        return {
+            QColor::fromRgbF(0.40, 0.00, 0.40),
+            QColor::fromRgbF(0.80, 0.10, 0.60),
+            QColor::fromRgbF(0.60, 0.20, 0.80),
+            QColor::fromRgbF(0.10, 0.50, 0.90),
+            QColor::fromRgbF(0.00, 0.80, 0.80),
+            QColor::fromRgbF(0.70, 0.90, 0.90)};
+    }
+    return {};
 }

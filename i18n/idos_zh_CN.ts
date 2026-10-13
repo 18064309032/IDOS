@@ -16,6 +16,34 @@
       <translation>Ribbon 页创建被拒绝：对象名称=%1，标题=%2</translation>
     </message>
     <message>
+      <source>Ribbon panel creation rejected: categoryObjectName=%1, title=%2</source>
+      <translation>Ribbon 面板创建被拒绝：类别名称=%1，标题=%2</translation>
+    </message>
+    <message>
+      <source>Ribbon panel creation failed: ribbon main window or ribbon bar is null.</source>
+      <translation>Ribbon 面板创建失败：主窗口或 Ribbon 栏为空。</translation>
+    </message>
+    <message>
+      <source>Ribbon panel creation rejected: category not found, objectName=%1</source>
+      <translation>Ribbon 面板创建被拒绝：找不到类别，名称=%1</translation>
+    </message>
+    <message>
+      <source>Ribbon panel creation failed: categoryObjectName=%1, title=%2</source>
+      <translation>Ribbon 面板创建失败：类别名称=%1，标题=%2</translation>
+    </message>
+    <message>
+      <source>Ribbon panel removal rejected: panel is not owned by this interface.</source>
+      <translation>Ribbon 面板移除被拒绝：此接口不拥有该面板。</translation>
+    </message>
+    <message>
+      <source>Ribbon panel is owned but its ribbon bar is unavailable.</source>
+      <translation>接口拥有 Ribbon 面板，但 Ribbon 栏不可用。</translation>
+    </message>
+    <message>
+      <source>Ribbon panel is owned but is not attached to a category.</source>
+      <translation>接口拥有 Ribbon 面板，但面板未附加到类别。</translation>
+    </message>
+    <message>
       <source>Ribbon category creation failed: ribbon main window or ribbon bar is null.</source>
       <translation>Ribbon 页创建失败：Ribbon 主窗口或工具栏为空。</translation>
     </message>
@@ -466,6 +494,24 @@ It will be removed from all cases that reference it.</source>
   </context>
   <context>
     <name>IDOSMainWindow</name>
+    <message>
+        <source>The Numerical Simulation module could not be loaded. Simulation functions are unavailable.
+%1</source>
+        <translation>无法加载数值模拟模块，模拟功能不可用。
+%1</translation>
+    </message>
+    <message>
+        <source>Required Module Unavailable</source>
+        <translation>必需模块不可用</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>结果</translation>
+    </message>
+    <message>
+        <source>Simulation</source>
+        <translation>模拟</translation>
+    </message>
     <message>
       <source>Orientation Marker</source>
       <translation>方向标</translation>
@@ -1067,6 +1113,14 @@ It will be removed from all cases that reference it.</source>
   <context>
     <name>IDOSPluginListModel</name>
     <message>
+        <source>Required</source>
+        <translation>必需模块</translation>
+    </message>
+    <message>
+        <source>Required plugins cannot be disabled.</source>
+        <translation>必需插件不能禁用。</translation>
+    </message>
+    <message>
       <source>Plugin</source>
       <translation>插件</translation>
     </message>
@@ -1146,8 +1200,8 @@ It will be removed from all cases that reference it.</source>
       <translation>已安装插件</translation>
     </message>
     <message>
-      <source>Use the checkbox to enable or disable a plugin.</source>
-      <translation>使用复选框启用或禁用插件。</translation>
+      <source>Use the checkbox to enable or disable optional plugins. Required modules are always enabled.</source>
+      <translation>使用勾选框启用或禁用可选插件，必需模块始终启用。</translation>
     </message>
     <message>
       <source>Category</source>
@@ -1176,6 +1230,14 @@ It will be removed from all cases that reference it.</source>
   </context>
   <context>
     <name>IDOSPluginRegistry</name>
+    <message>
+        <source>Required plugins cannot be unloaded.</source>
+        <translation>必需插件不能卸载。</translation>
+    </message>
+    <message>
+        <source>Required plugins cannot be disabled.</source>
+        <translation>必需插件不能禁用。</translation>
+    </message>
     <message>
         <source>A view tool callback is still running.</source>
         <translation>视图工具回调仍在执行。</translation>
@@ -1425,6 +1487,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
   <context>
     <name>IDOSSimulationPlugin</name>
     <message>
+        <source>The required Home ribbon groups are unavailable.</source>
+        <translation>主页所需的功能分组不可用。</translation>
+    </message>
+    <message>
       <source>Numerical Simulation</source>
       <translation>数值模拟</translation>
     </message>
@@ -1612,7 +1678,26 @@ It will be removed from all cases that reference it.</source>
       <translation>确定删除井 "%1" 吗？
 它将从所有引用它的工况中移除。</translation>
     </message>
-  </context>
+      <message><source>View Data...</source><translation>查看数据…</translation></message>
+    <message><source>Well Data - %1</source><translation>井数据 - %1</translation></message>
+    <message><source>Horizon</source><translation>层位</translation></message>
+    <message><source>Measured depth (m)</source><translation>测量深度（米）</translation></message>
+    <message><source>Top depth (m)</source><translation>顶深（米）</translation></message>
+    <message><source>Bottom depth (m)</source><translation>底深（米）</translation></message>
+    <message><source>Grid layer</source><translation>网格层号</translation></message>
+    <message><source>Status</source><translation>状态</translation></message>
+    <message><source>Event date</source><translation>事件日期</translation></message>
+    <message><source>Not mapped</source><translation>未映射</translation></message>
+    <message><source>Open</source><translation>打开</translation></message>
+    <message><source>Shut</source><translation>关闭</translation></message>
+    <message><source>Unspecified unit</source><translation>单位未声明</translation></message>
+    <message><source>Two-way time</source><translation>双程时间</translation></message>
+    <message><source>One-way time</source><translation>单程时间</translation></message>
+    <message><source>Time (type unspecified)</source><translation>时间（类型未声明）</translation></message>
+    <message><source>Depth (%1)</source><translation>深度（%1）</translation></message>
+    <message><source>True vertical depth (%1)</source><translation>垂直深度（%1）</translation></message>
+    <message><source>%1 (%2)</source><translation>%1（%2）</translation></message>
+</context>
   <context>
     <name>QObject</name>
     <message>
@@ -2239,14 +2324,281 @@ It will be removed from all cases that reference it.</source>
         <source>Unified Eclipse restart file path.</source>
         <translation>统一 Eclipse 重启文件路径。</translation>
     </message>
+    <message><source>Well Tops</source><translation>井分层</translation></message>
+    <message><source>Well Perforations</source><translation>井射孔</translation></message>
+    <message><source>Well Checkshots</source><translation>井校深</translation></message>
+    <message><source>Well tops require Well, Horizon and Measured Depth columns.</source><translation>井分层需要井名、层位名和测量深度列。</translation></message>
+    <message><source>Depth units must be M or FT.</source><translation>深度单位必须为 M 或 FT，且应在数据记录之前声明。</translation></message>
+    <message><source>Line %1: invalid well top record.</source><translation>第 %1 行：井分层记录无效。</translation></message>
+    <message><source>No valid well tops were found or the header is incomplete.</source><translation>未找到有效井分层记录，或表头不完整。</translation></message>
+    <message><source>Line %1: invalid perforation record.</source><translation>第 %1 行：射孔记录无效。</translation></message>
+    <message><source>Perforation units must be declared before records as FIELD, METRIC, FT or M.</source><translation>射孔单位须在记录之前声明为 FIELD、METRIC、FT 或 M。</translation></message>
+    <message><source>Line %1: invalid well name.</source><translation>第 %1 行：井名无效。</translation></message>
+    <message><source>No valid perforations were found.</source><translation>未找到有效射孔记录。</translation></message>
+    <message><source>Checkshot units must specify M or FT and MS or S.</source><translation>校深单位须指定深度 M 或 FT，以及时间 MS 或 S。</translation></message>
+    <message><source>Checkshots require Depth, TWT/OWT/Time and Well columns.</source><translation>校深需要深度、TWT/OWT/Time 和井名列。</translation></message>
+    <message><source>Line %1: invalid checkshot record.</source><translation>第 %1 行：校深记录无效。</translation></message>
+    <message><source>Well %1: checkshots require at least two finite, strictly monotonic depth and time samples.</source><translation>井 %1：校深需要至少两个有限、深度和时间均严格单调的采样点。</translation></message>
+    <message><source>No valid checkshots were found.</source><translation>未找到有效校深记录。</translation></message>
+    <message><source>Checkshots (%1 samples)</source><translation>校深（%1 个采样点）</translation></message>
+    <message><source>Well %1: conflicting times at the same checkshot depth.</source><translation>井 %1：同一校深深度对应的时间值冲突。</translation></message>
 </context>
 
 <context>
     <name>IDOSToolBar</name>
     <message>
-        <source>More tools</source>
-        <translation>更多工具</translation>
+        <source>Drag to move toolbar</source>
+        <translation>拖动以移动工具栏</translation>
     </message>
 </context>
 
+<context>
+    <name>IDOSRenderInteractionTool</name>
+    <message>
+        <source>No model point or cell was picked.</source>
+        <translation>未拾取到模型点或单元。</translation>
+    </message>
+    <message>
+        <source>Point Probe</source>
+        <translation>点探针</translation>
+    </message>
+    <message>
+        <source>Data: %1</source>
+        <translation>数据：%1</translation>
+    </message>
+    <message>
+        <source>Cell: %1  Point: %2</source>
+        <translation>单元：%1  点：%2</translation>
+    </message>
+    <message>
+        <source>Cell attributes:</source>
+        <translation>单元属性：</translation>
+    </message>
+    <message>
+        <source>Point: %1</source>
+        <translation>点：%1</translation>
+    </message>
+    <message>
+        <source>Point attributes:</source>
+        <translation>点属性：</translation>
+    </message>
+    <message>
+        <source>No model point was picked.</source>
+        <translation>未拾取到模型点。</translation>
+    </message>
+    <message>
+        <source>Click a model point to center and zoom the view.</source>
+        <translation>单击模型点以居中并缩放视图。</translation>
+    </message>
+    <message>
+        <source>Click a model cell to inspect its coordinates and attributes.</source>
+        <translation>单击模型单元以查看坐标和属性。</translation>
+    </message>
+    <message>
+        <source>Click two model points to measure their distance.</source>
+        <translation>依次单击两个模型点以测量距离。</translation>
+    </message>
+    <message>
+        <source>Click a model object to select it.</source>
+        <translation>单击模型对象以选择它。</translation>
+    </message>
+    <message>
+        <source>View centered on the picked point.</source>
+        <translation>视图已居中到拾取点。</translation>
+    </message>
+    <message>
+        <source>X: %1, Y: %2, Z: %3</source>
+        <translation>X：%1，Y：%2，Z：%3</translation>
+    </message>
+    <message>
+        <source>Pick the second point.</source>
+        <translation>请拾取第二个点。</translation>
+    </message>
+    <message>
+        <source>Distance: %1</source>
+        <translation>距离：%1</translation>
+    </message>
+</context>
+
+<context>
+    <name>IDOSRenderToolMetadata</name>
+    <message>
+        <source>View</source>
+        <translation>视图</translation>
+    </message>
+    <message>
+        <source>Navigate and adjust the current view.</source>
+        <translation>导航并调整当前视图。</translation>
+    </message>
+</context>
+
+<context>
+    <name>IDOSRenderToolProvider</name>
+    <message>
+        <source>Legend</source>
+        <translation>图例</translation>
+    </message>
+    <message>
+        <source>Reset View</source>
+        <translation>视图复位</translation>
+    </message>
+    <message>
+        <source>Point Zoom</source>
+        <translation>点缩放</translation>
+    </message>
+    <message>
+        <source>Point Probe</source>
+        <translation>点探针</translation>
+    </message>
+    <message>
+        <source>Distance Measurement</source>
+        <translation>距离测量</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>选择</translation>
+    </message>
+    <message>
+        <source>Cursor Tracking</source>
+        <translation>光标坐标追踪</translation>
+    </message>
+    <message>
+        <source>Grid X-ray</source>
+        <translation>网格透视</translation>
+    </message>
+    <message>
+        <source>Link View</source>
+        <translation>联动视图</translation>
+    </message>
+    <message>
+        <source>Orthographic Projection</source>
+        <translation>正交投影</translation>
+    </message>
+    <message>
+        <source>Background Color</source>
+        <translation>背景颜色</translation>
+    </message>
+    <message>
+        <source>Screenshot</source>
+        <translation>截图</translation>
+    </message>
+    <message>
+        <source>Scale View</source>
+        <translation>缩放视图</translation>
+    </message>
+    <message>
+        <source>Scale factor:</source>
+        <translation>缩放系数：</translation>
+    </message>
+    <message>
+        <source>Hide All</source>
+        <translation>隐藏全部</translation>
+    </message>
+    <message>
+        <source>Show All</source>
+        <translation>显示全部</translation>
+    </message>
+    <message>
+        <source>Zoom to Selection</source>
+        <translation>缩放至选中对象</translation>
+    </message>
+    <message>
+        <source>Rotate Clockwise</source>
+        <translation>顺时针旋转</translation>
+    </message>
+    <message>
+        <source>Rotate Counterclockwise</source>
+        <translation>逆时针旋转</translation>
+    </message>
+    <message>
+        <source>Fit All</source>
+        <translation>适配全部对象</translation>
+    </message>
+    <message>
+        <source>Standard Views</source>
+        <translation>标准视角</translation>
+    </message>
+    <message>
+        <source>Axes</source>
+        <translation>坐标轴</translation>
+    </message>
+    <message>
+        <source>Top</source>
+        <translation>顶视图</translation>
+    </message>
+    <message>
+        <source>Bottom</source>
+        <translation>底视图</translation>
+    </message>
+    <message>
+        <source>Front</source>
+        <translation>前视图</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>后视图</translation>
+    </message>
+    <message>
+        <source>Left</source>
+        <translation>左视图</translation>
+    </message>
+    <message>
+        <source>Right</source>
+        <translation>右视图</translation>
+    </message>
+    <message>
+        <source>Isometric</source>
+        <translation>等轴测</translation>
+    </message>
+</context>
+
+<context>
+    <name>IDOSColoringWidget</name>
+    <message><source>Coloring Settings</source><translation>着色设置</translation></message>
+    <message><source>Grid: %1
+Target view: %2</source><translation>网格：%1
+目标视图：%2</translation></message>
+    <message><source>Color by</source><translation>着色依据</translation></message>
+    <message><source>Color ramp</source><translation>色带</translation></message>
+    <message><source>Blue to red</source><translation>蓝到红</translation></message>
+    <message><source>Blue to yellow</source><translation>蓝到黄</translation></message>
+    <message><source>Grayscale</source><translation>灰度</translation></message>
+    <message><source>Reverse color ramp</source><translation>反转色带</translation></message>
+    <message><source>Automatic range</source><translation>自动范围</translation></message>
+    <message><source>Minimum</source><translation>最小值</translation></message>
+    <message><source>Maximum</source><translation>最大值</translation></message>
+    <message><source>Solid color</source><translation>单色</translation></message>
+    <message><source>Invalid value color</source><translation>无效值颜色</translation></message>
+    <message><source>Show legend</source><translation>显示图例</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Minimum must be less than maximum.</source><translation>最小值必须小于最大值。</translation></message>
+    <message><source>Default rainbow</source><translation>默认彩虹</translation></message>
+    <message><source>Soft rainbow</source><translation>柔和彩虹</translation></message>
+    <message><source>Ocean breeze</source><translation>海洋微风</translation></message>
+    <message><source>Warm amber</source><translation>暖琥珀</translation></message>
+    <message><source>Fresh mint</source><translation>清新薄荷</translation></message>
+    <message><source>Twilight purple</source><translation>暮光紫</translation></message>
+    <message><source>Earth tones</source><translation>大地色</translation></message>
+    <message><source>Glacier blue</source><translation>冰川蓝</translation></message>
+    <message><source>Warm and cool</source><translation>冷暖对比</translation></message>
+    <message><source>Lava metal</source><translation>熔岩金属</translation></message>
+    <message><source>Dark forest</source><translation>深林</translation></message>
+    <message><source>Vintage sunset</source><translation>复古日落</translation></message>
+    <message><source>Aurora</source><translation>极光</translation></message>
+    <message><source>Mineral sand</source><translation>矿砂</translation></message>
+    <message><source>Porcelain</source><translation>瓷色</translation></message>
+    <message><source>Autumn berry</source><translation>秋日浆果</translation></message>
+    <message><source>Jade</source><translation>翡翠</translation></message>
+    <message><source>Graphite</source><translation>石墨</translation></message>
+    <message><source>Cyberpunk</source><translation>赛博朋克</translation></message>
+    <message><source>Grid:</source><translation>网格：</translation></message>
+    <message><source>Target view:</source><translation>目标视图：</translation></message>
+</context>
+<context>
+    <name>IDOSColoringTreeGuiProvider</name>
+    <message><source>Display in Target View</source><translation>在目标视图中显示</translation></message>
+    <message><source>Color by</source><translation>着色依据</translation></message>
+    <message><source>Solid color</source><translation>单色</translation></message>
+    <message><source>Coloring Settings...</source><translation>着色设置…</translation></message>
+</context>
 </TS>

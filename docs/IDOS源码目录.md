@@ -46,6 +46,8 @@ src/
         idoswellmetadata.cpp
         idoswellcompletion.h
         idoswellcompletion.cpp
+        idoswellcheckshot.h
+        idoswellcheckshot.cpp
         idoswellcontrol.h
         idoswellcontrol.cpp
         idoswellgeometryresolver.h
@@ -149,6 +151,18 @@ src/
         idoswellpathprovider.cpp
         idoswellpathmetadata.h
         idoswellpathmetadata.cpp
+        idoswelltopsprovider.h
+        idoswelltopsprovider.cpp
+        idoswelltopsmetadata.h
+        idoswelltopsmetadata.cpp
+        idoswellcompletionprovider.h
+        idoswellcompletionprovider.cpp
+        idoswellcompletionmetadata.h
+        idoswellcompletionmetadata.cpp
+        idoswellcheckshotprovider.h
+        idoswellcheckshotprovider.cpp
+        idoswellcheckshotmetadata.h
+        idoswellcheckshotmetadata.cpp
 
     providers/las/
         idoswelllasprovider.h
@@ -312,6 +326,19 @@ src/
             idospointsetrenderprovider.cpp
             idospointsetrendermetadata.h
             idospointsetrendermetadata.cpp
+        idossimulationplugin/
+            idossimulationplugin.h
+            idossimulationplugin.cpp
+            idoscoloringwidget.h
+            idoscoloringwidget.cpp
+            idoscoloringtreeguiprovider.h
+            idoscoloringtreeguiprovider.cpp
+            idosrendertoolmetadata.h
+            idosrendertoolmetadata.cpp
+            idosrendertoolprovider.h
+            idosrendertoolprovider.cpp
+            idosrenderinteractiontool.h
+            idosrenderinteractiontool.cpp
 
     assistant/
         CMakeLists.txt
@@ -336,12 +363,14 @@ src/
 
 ## 实施约束
 
+- `IDOSColoringWidget` 和 `IDOSColoringTreeGuiProvider` 已在 `src/plugins/idossimulationplugin` 根目录创建；前者为网格及属性共用的着色设置面板，后者通过现有树 Registry 注册着色菜单，不接管原网格 GuiProvider 的勾选职责。
+
 - `core/data` 保存数据，不依赖界面或渲染；类型专属数据位于 `well`、`grid`、`case`。
 - 内置树构建、菜单、渲染与业务命令按类型放在 `app/well`、`app/grid`、`app/case`；跨类型命令放在 `app/command`。
 - 数据读取按已确定的来源或格式组织；井头与轨迹读取暂保留 `providers/well`，不擅自编造格式目录。
 - 被替代的旧树模型、节点子类、菜单 Provider、类型注册和具体 RenderObject 等在接通新调用路径后删除。
 - 具体命令 Metadata 的文件拆分尚未确定，实施相关功能前应明确清单，不据此自行增加新的抽象。
 - `IDOSInterface` 已位于 gui，仅前置声明 RenderRegistry 和 ToolRegistry，不引入对 app 具体类型及 render 的链接依赖。
-- 通用 Tool、ToolMetadata、ToolRegistry、ToolProvider、ToolBar 的头文件和实现放在 render 根部；内置具体工具放在 app 已有功能目录，插件工具放在插件内，不新增 tools 子目录。
+- 通用 Tool、ToolMetadata、ToolRegistry、ToolProvider、ToolBar 的头文件和实现放在 render 根部；具体视图工具归所属插件，不新增 tools 子目录。
 - 目录固定不代表直接批准删除任何未审查的既有文件；迁移前核对其职责和完整调用路径。
 

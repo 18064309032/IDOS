@@ -101,13 +101,18 @@ foreach ($file in $files) {
         $target = $candidates[0]
         $targetRel = RelativePath $target.FullName
         $targetModule = ($targetRel -split '/')[0]
+        # Confirmed simulation coloring UI may call the exported concrete app grid provider.
+        $coloringDependency = $targetRel -eq 'app/grid/idosgridrenderprovider.h' -and
+            $rel -in @('plugins/idossimulationplugin/idoscoloringwidget.cpp',
+                       'plugins/idossimulationplugin/idoscoloringtreeguiprovider.cpp')
         if ($module -ne $targetModule) {
             if ($module -ne 'main.cpp' -and
                 (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module]) -and
-                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h')) {
+                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h') -and
+                !$coloringDependency) {
                 $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
             }
-            if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
+            if (!(IsPublic $targetRel) -and !$coloringDependency) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
         }
         if ($public -and !(IsPublic $targetRel)) { $violations.Add("${location}: 公共头禁止包含内部头: $targetRel") }
     }

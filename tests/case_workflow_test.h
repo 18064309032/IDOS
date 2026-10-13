@@ -17,6 +17,9 @@ class CaseWorkflowTest : public QObject
     void onProvider();
     void onProviderDimensions();
     void onViewDecorations();
+    void onRequiredSimulationPlugin();
+    void onGridColoring();
+    void onWellInputMenus();
     void onRenderLifecycle();
     void onRenderArchitecture();
     void onExamplePlugin();

@@ -1,10 +1,12 @@
 #ifndef IDOS_GRID_RENDER_PROVIDER_H
 #define IDOS_GRID_RENDER_PROVIDER_H
 
+#include <QColor>
 #include <QList>
 #include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 #include <vtkSmartPointer.h>
 
@@ -34,10 +36,15 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     void setOpacity(double opacity) override;
     void setProperty(IDOSGridProperty* property);
     IDOSGridProperty* property() const;
-    IDOSDisplayMode displayMode() const;
-    bool setDisplayMode(IDOSDisplayMode mode);
+    QVariantMap coloringSettings() const;
+    bool setColoringSettings(const QVariantMap& settings);
+    static QStringList colorRampKeys();
+    static QList<QColor> colorRampColors(const QString& key, bool reversed);
+    IDOSDisplayMode displayMode() const override;
+    bool setDisplayMode(IDOSDisplayMode mode) override;
 
   private:
+    static QList<QColor> colorRampStops(const QString& key);
     void applyActorProperties();
     QPointer<IDOSGrid> m_dataObject;
     QPointer<IDOSGridProperty> m_property;
@@ -47,6 +54,7 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     bool m_highlighted;
     bool m_visible;
     double m_opacity;
+    QVariantMap m_coloringSettings;
 };
 
 #endif

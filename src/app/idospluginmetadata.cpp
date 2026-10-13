@@ -9,8 +9,10 @@ IDOSPluginMetadata::IDOSPluginMetadata(const QString& name,
                                        const QString& icon,
                                        IDOSPlugin::PluginType type,
                                        IDOSPlugin* plugin,
-                                       QLibrary* library)
-    : m_name(name)
+                                       QLibrary* library,
+                                       bool required)
+    :
+    m_name(name)
     , m_description(description)
     , m_category(category)
     , m_version(version)
@@ -18,6 +20,7 @@ IDOSPluginMetadata::IDOSPluginMetadata(const QString& name,
     , m_type(type)
     , m_plugin(plugin)
     , m_library(library)
+    , m_required(required)
 {
     m_name.detach();
     m_description.detach();
@@ -29,6 +32,11 @@ IDOSPluginMetadata::IDOSPluginMetadata(const QString& name,
 QString IDOSPluginMetadata::name() const
 {
     return m_name;
+}
+
+bool IDOSPluginMetadata::required() const
+{
+    return m_required;
 }
 
 QString IDOSPluginMetadata::description() const

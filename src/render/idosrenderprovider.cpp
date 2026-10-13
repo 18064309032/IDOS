@@ -6,6 +6,17 @@ IDOSRenderProvider::~IDOSRenderProvider()
 {
 }
 
+IDOSDisplayMode IDOSRenderProvider::displayMode() const
+{
+    return IDOSDisplayMode::Surface;
+}
+
+bool IDOSRenderProvider::setDisplayMode(IDOSDisplayMode mode)
+{
+    Q_UNUSED(mode)
+    return false;
+}
+
 bool IDOSRenderProvider::dependsOn(const QStringList& dataIds) const
 {
     Q_UNUSED(dataIds)

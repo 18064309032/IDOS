@@ -1,4 +1,5 @@
 #include <QAction>
+#include <QDialog>
 #include <QFileDialog>
 #include <QIcon>
 #include <QInputDialog>
@@ -6,7 +7,10 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPointer>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVariant>
+#include <QVBoxLayout>
 
 #include "command/idoscommandmanager.h"
 #include "command/idosimportcommands.h"
@@ -159,11 +163,90 @@ void IDOSWellTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
         return;
     }
     QAction* import = addAction(menu, view, tr("Import Data..."));
+    const QString part = item->partKey();
+    if (part == QStringLiteral("idos.well.zones") || part == QStringLiteral("idos.well.completions") ||
+        part == QStringLiteral("idos.well.checkshots"))
+    {
+        QAction* show = addAction(menu, view, tr("View Data..."));
+        show->setObjectName(QStringLiteral("viewWellInputDataAction"));
+        show->setProperty("part", part);
+        connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
+    }
     import->setObjectName(QStringLiteral("importWellDataSingleAction"));
     connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
     QAction* remove = addAction(menu, view, tr("Delete Well..."));
     remove->setObjectName(QStringLiteral("deleteWellAction"));
     connect(remove, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onDeleteWell);
+}
+
+void IDOSWellTreeGuiProvider::onViewWellData()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    IDOSWell* well = view != nullptr && action != nullptr
+        ? qobject_cast<IDOSWell*>(view->project()->object(action->property("dataId").toString())) : nullptr;
+    if (well == nullptr)
+    {
+        return;
+    }
+    QDialog* dialog = new QDialog(view);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setObjectName(QStringLiteral("wellInputDataWindow"));
+    dialog->setWindowTitle(tr("Well Data - %1").arg(well->name()));
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    QTableWidget* table = new QTableWidget(dialog);
+    table->setEditTriggers(QTableWidget::NoEditTriggers);
+    const QString part = action->property("part").toString();
+    if (part == QStringLiteral("idos.well.zones"))
+    {
+        table->setColumnCount(2);
+        table->setHorizontalHeaderLabels({tr("Horizon"), tr("Measured depth (m)")});
+        const QList<IDOSWellMarker> markers = well->markers().markers();
+        table->setRowCount(markers.size());
+        for (int row = 0; row < markers.size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(markers.at(row).name()));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(markers.at(row).depth(), 'g', 15)));
+        }
+    }
+    else if (part == QStringLiteral("idos.well.completions"))
+    {
+        table->setColumnCount(5);
+        table->setHorizontalHeaderLabels({tr("Top depth (m)"), tr("Bottom depth (m)"), tr("Grid layer"), tr("Status"), tr("Event date")});
+        const QList<IDOSWellCompletion> completions = well->completions();
+        table->setRowCount(completions.size());
+        for (int row = 0; row < completions.size(); ++row)
+        {
+            const IDOSWellCompletion& completion = completions.at(row);
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(completion.top(), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(completion.bottom(), 'g', 15)));
+            table->setItem(row, 2, new QTableWidgetItem(completion.k() > 0 ? QString::number(completion.k()) : tr("Not mapped")));
+            table->setItem(row, 3, new QTableWidgetItem(completion.isOpen() ? tr("Open") : tr("Shut")));
+            table->setItem(row, 4, new QTableWidgetItem(completion.eventDate()));
+        }
+    }
+    else
+    {
+        const IDOSWellCheckshot& checkshot = well->checkshot();
+        table->setColumnCount(2);
+        const QString depthUnit = checkshot.depthUnit().isEmpty() ? tr("Unspecified unit") : checkshot.depthUnit();
+        const QString timeUnit = checkshot.timeUnit().isEmpty() ? tr("Unspecified unit") : checkshot.timeUnit();
+        const QString timeName = checkshot.timeType() == QStringLiteral("TWT") ? tr("Two-way time")
+            : checkshot.timeType() == QStringLiteral("OWT") ? tr("One-way time") : tr("Time (type unspecified)");
+        const QString depthName = checkshot.depthType() == QStringLiteral("TVD")
+            ? tr("True vertical depth (%1)").arg(depthUnit) : tr("Depth (%1)").arg(depthUnit);
+        table->setHorizontalHeaderLabels({depthName, tr("%1 (%2)").arg(timeName, timeUnit)});
+        table->setRowCount(checkshot.depths().size());
+        for (int row = 0; row < checkshot.depths().size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(checkshot.depths().at(row), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(checkshot.times().at(row), 'g', 15)));
+        }
+    }
+    table->resizeColumnsToContents();
+    layout->addWidget(table);
+    dialog->resize(620, 400);
+    dialog->show();
 }
 
 void IDOSWellTreeGuiProvider::onNewWell()
@@ -222,7 +305,7 @@ int IDOSWellTreeGuiProvider::importWellData(IDOSProject* project, QWidget* paren
     }
     const QStringList files = QFileDialog::getOpenFileNames(
         parent, tr("Import Well Data"), QString(),
-        IDOSDataProviderRegistry::instance().fileFilters());
+        IDOSDataProviderRegistry::instance().fileFilters(QStringLiteral("idos.well.")));
     int imported = 0;
     QStringList errors;
     for (const QString& file : files)
@@ -260,7 +343,7 @@ int IDOSWellTreeGuiProvider::importWellData(IDOSProject* project, const QString&
     }
     const QString file = QFileDialog::getOpenFileName(
         parent, tr("Import Well Data"), QString(),
-        IDOSDataProviderRegistry::instance().fileFilters());
+        IDOSDataProviderRegistry::instance().fileFilters(QStringLiteral("idos.well.")));
     if (file.isEmpty() || target.isNull())
     {
         return 0;

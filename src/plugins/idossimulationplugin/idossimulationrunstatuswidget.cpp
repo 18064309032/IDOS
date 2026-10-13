@@ -194,6 +194,7 @@ void IDOSSimulationRunStatusWidget::setStatus(const QString& status, const QStri
         info.insert(QStringLiteral("outputDirectory"), m_outputDirectory);
         m_case->setRunInfo(info);
     }
+    emit runningChanged();
 }
 
 void IDOSSimulationRunStatusWidget::onStartTriggered()
@@ -254,6 +255,7 @@ void IDOSSimulationRunStatusWidget::onStartTriggered()
     m_stopAttempts = 0;
     m_startButton->setEnabled(false);
     m_stopButton->setEnabled(true);
+    emit runningChanged();
     m_distributionEdit->setEnabled(false);
     m_executableEdit->setEnabled(false);
     m_threadsSpin->setEnabled(false);
@@ -346,6 +348,7 @@ void IDOSSimulationRunStatusWidget::stop()
     setStatus(QStringLiteral("stopping"), tr("Stopping Flow..."));
     m_stopTimer->start(1000);
     onStopTimer();
+    emit runningChanged();
 }
 
 void IDOSSimulationRunStatusWidget::onStopTriggered()
@@ -422,6 +425,7 @@ void IDOSSimulationRunStatusWidget::onFinished(int exitCode, QProcess::ExitStatu
     m_distributionEdit->setEnabled(true);
     m_executableEdit->setEnabled(true);
     m_threadsSpin->setEnabled(true);
+    emit runningChanged();
     if (m_case != nullptr && m_project != nullptr && m_project->object(m_caseId) == m_case.data())
     {
         QVariantMap info = m_case->runInfo();

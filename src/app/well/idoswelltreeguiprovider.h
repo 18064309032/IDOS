@@ -33,6 +33,7 @@ class APP_EXPORT IDOSWellTreeGuiProvider : public IDOSTreeGuiProvider
     void onNewWell();
     void onImportWell();
     void onDeleteWell();
+    void onViewWellData();
 
   private:
 
