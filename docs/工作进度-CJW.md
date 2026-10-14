@@ -1,5 +1,32 @@
 # IDOS 工作进度（CJW）
 
+## 架构讨论暂存（2026-10-15，明天继续）
+
+用户要求先保存本次讨论，明天继续。本节为拟调整方向及待决事项，尚未实施；不代表源码、架构文档或目录已经切换。本轮只记录讨论，不移动源码、不删除类、不改接口。此前 UI 持久化、性能优化和验收记录继续有效。
+
+已讨论并认可的方向：
+
+- 同种业务数据的不同格式各有一套 DataProviderMetadata 与 DataProvider，共享数据类型 ID，例如两个井入口都生成 IDOSWell，类型为 idos.well；各格式的 Provider ID 不同。类型 ID、格式 Provider ID、具体对象 ID 分开管理。
+- 同种数据共用 GUI/树和 Render 实现类，不按导入格式重复实现。每个树节点拥有自己的 Provider 实例；每个视图中的 RenderObject 拥有自己的 RenderProvider，非拥有地关联源数据，各视图显示状态独立。
+- Registry 不设静态单例。用户最终倾向 MainWindow 统一创建和持有 DataProviderRegistry、TreeRegistry、RenderRegistry、PluginRegistry；IDOSInterface 仅提供必要访问入口，不并存 Application、MainWindow、单例三种归属路径。工程切换保留能力注册，重建工程相关实例。
+- PluginMetadata/PluginRegistry 管理插件信息与生命周期；插件加载时注册具体能力，卸载 DLL 前清理相关实例、菜单、动作、回调和注册。
+- 用户倾向将树体系及其 Provider 放在 app 层，以便协调 Project、RenderServer。这是对原 core/gui 树分层的拟调整，需整体梳理依赖，不能只移动 TreeItem；具体目录及迁移清单尚未确认，不执行目录变更。
+- MainWindow 只装配数据树、工况树的根 Provider 并设置给 Model。根 Provider 初始化根和固定分类，业务节点 Provider 初始化内部子项；Model 保持通用 Qt 模型接口。TreeServer 统一协调工程增删改同步，避免根 Provider 重复维护同步逻辑。
+- Provider 创建时绑定所属节点，按需设置 Project、RenderServer 等非拥有引用；能从所属节点取得的关系不重复保存。菜单操作仍记录发起时的实际目标，执行前检查有效性，不能临时改用新的活动视图。
+- 装配工程时一次创建已有节点及各视图展示对象对应的轻量 Provider，后续持续复用；数据或视图增删时增量创建和销毁。菜单、对话框、几何、GPU 等昂贵资源按需生成，避免重新拖慢打开速度。
+
+明天必须先定案的问题：
+
+1. 数据对象工厂：可评估合并 IDOSDataMetadata、IDOSDataRegistry 与格式注册体系，但需明确同类型的唯一工厂、冲突检测及注册/注销规则。工程恢复不能依赖原始格式 Provider 是否启用。此前直接建议删除两类过早，目前尚未决定删除。
+2. 存储职责：通用 HDF5 编码拟从 DataMetadata 移到现有 IDOSProject；具体字段继续由数据对象 projectData/restoreProjectData 提供。不新增用户已否定的 ProjectStorage 类。
+3. 所有权：建议 Model 关联 Tree，Tree 拥有根节点，父节点拥有子节点，每个节点拥有自己的 Provider；Provider 回指节点和服务均非拥有。setRootProvider 是装配入口，不能造成 Model 与根节点重复拥有 Provider，也不能由根 Provider 和根节点互相拥有。
+4. 扩展能力：当前多个 TreeGuiProvider 可以为同一节点贡献菜单，例如井的基础操作与显示设置。若改成每节点一个 Provider，或合并 TreeProvider/TreeGuiProvider，仍须保留插件追加交互的能力。独立 TreeGuiMetadata 当前尚不存在，是否增加尚未决定，不为形式对称机械增加类。
+5. 收益与成本：当前 populateMenu 已只有 menu、view 两个参数；重构应着眼职责、所有权和生命周期，而非单纯减少类或参数。Provider 预创建成本随数据量和视图数增长，须控制资源初始化时机。
+
+下次从“类型工厂的唯一归属”和“节点/Provider 所有权”开始讨论，再确认接口和完整迁移方案。验收场景包括：同种数据两种格式、无源文件保存重开、两个视图状态隔离、根节点与工程增删改、插件追加菜单及卸载、工程切换清理旧实例。讨论确认后再更新架构设计和源码目录并实施。
+
+## 已完成工作记录
+
 - UI 状态持久化完成（2026-10-15）：.idos 增加可选 presentation（UI 子版本 1），沿用现有 Project、TreeServer/TreeView、RenderServer/View/Provider、MainWindow、ToolBar 和测井窗口，不新增存储类或目录。保存并恢复 2D/3D 视图集合、活动视图与上下文、独立显隐/不透明度、井显示设置、网格模式/边线/着色/属性关联及筛选预览、地震切片、活动/主页相机与联动、背景/坐标轴/图例/光标跟踪、工具栏位置与显隐、测井通道/深度范围、树展开/多选/当前项/滚动。按数据 ID 和稳定树路径关联，不保存临时渲染或树节点 ID；缺失的 UI 条目回退，旧工程无 UI 状态时使用默认视图。切换工程清理旧渲染和测井窗口，恢复阶段不标记修改；显示交互需要保存但不进入业务撤销历史。
 - 本机 UI 设置通过 AppConfigLocation/ui.ini 保存窗口几何、主窗口工具条、按视图集合区分的 ADS 停靠布局及最近 10 个工程；打开工程动作提供最近工程菜单，缺失文件禁用。测试使用独立设置路径或禁用本机设置，不改动用户偏好。业务撤销历史、临时对话框、计算进程、后台读写与崩溃恢复仍不在本轮范围。README、使用指南、架构及调用链同步；平台新增 2 项中文翻译，无 unfinished。
 - 验证：唯一构建目录 D:/CMakeCoder/IDOS-Build 完成 Debug 全目标及全部公共头文件独立编译；完整 CTest 10/10 通过（81.03 秒）。命令用例新增多视图/浮动测井窗口保存重开、每视图参数、相机联动后解除、显示后仍保持干净、工程切换清理、非法 UI 数据回退、地震切片、本机窗口恢复。可见窗口测试初始缺少正式程序既有的 AA_ShareOpenGLContexts，补齐测试 initMain 后再次通过，OpenGL 错误输出为零，最终 command_registry 复测通过（ui-state-command-final.txt）。
