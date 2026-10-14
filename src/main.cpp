@@ -4,10 +4,10 @@
 #include <QSharedPointer>
 #include <QTranslator>
 
-#include "log/idoslogger.h"
-#include "log/idosfiletarget.h"
 #include "idosapplication.h"
 #include "idosmainwindow.h"
+#include "logger/idosfiletarget.h"
+#include "logger/idoslogger.h"
 
 int main(int argc, char* argv[])
 {

@@ -1,7 +1,7 @@
 #include "idosdataobject.h"
 #include "idosproject.h"
-#include "idostree.h"
-#include "idostreeitem.h"
+#include "tree/idostree.h"
+#include "tree/idostreeitem.h"
 
 #include "idostreeguiprovider.h"
 
@@ -50,4 +50,44 @@ bool IDOSTreeGuiProvider::setChecked(IDOSTreeItem* item, bool checked, IDOSTreeV
     item->setChecked(checked);
     emit checkStateChanged();
     return true;
+}
+
+QMimeData* IDOSTreeGuiProvider::createMimeData(const QList<IDOSTreeItem*>& items, const IDOSTreeView* view) const
+{
+    Q_UNUSED(items);
+    Q_UNUSED(view);
+    return nullptr;
+}
+
+bool IDOSTreeGuiProvider::canCut(const QMimeData* data, const IDOSTreeView* view) const
+{
+    Q_UNUSED(data);
+    Q_UNUSED(view);
+    return false;
+}
+
+bool IDOSTreeGuiProvider::canPaste(const QMimeData* data, const IDOSTreeItem* target,
+                                  Qt::DropAction action, const IDOSTreeView* view) const
+{
+    Q_UNUSED(data);
+    Q_UNUSED(target);
+    Q_UNUSED(action);
+    Q_UNUSED(view);
+    return false;
+}
+
+bool IDOSTreeGuiProvider::paste(const QMimeData* data, IDOSTreeItem* target,
+                               Qt::DropAction action, IDOSTreeView* view)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(target);
+    Q_UNUSED(action);
+    Q_UNUSED(view);
+    return false;
+}
+
+void IDOSTreeGuiProvider::populateSelectionMenu(QMenu* menu, IDOSTreeView* view)
+{
+    Q_UNUSED(menu);
+    Q_UNUSED(view);
 }

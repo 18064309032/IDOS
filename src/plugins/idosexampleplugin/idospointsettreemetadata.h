@@ -1,7 +1,7 @@
 #ifndef IDOS_POINT_SET_TREE_METADATA_H
 #define IDOS_POINT_SET_TREE_METADATA_H
 
-#include "idostreemetadata.h"
+#include "providers/idostreemetadata.h"
 
 class IDOSPointSetTreeMetadata : public IDOSTreeMetadata
 {

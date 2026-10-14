@@ -4,17 +4,17 @@
 #include <QMessageBox>
 #include <QVariant>
 
-#include "command/idoscommandmanager.h"
+#include "idoscommandmanager.h"
 #include "idosdataobject.h"
 #include "idospointset.h"
 #include "idosproject.h"
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 #include "idosrenderscene.h"
 #include "idosrenderview.h"
-#include "idostree.h"
-#include "idostreeitem.h"
-#include "idostreeview.h"
+#include "providers/idosrenderprovider.h"
+#include "tree/idostree.h"
+#include "tree/idostreeitem.h"
+#include "tree/idostreeview.h"
 
 #include "idospointsettreeguiprovider.h"
 

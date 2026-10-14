@@ -26,9 +26,9 @@
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
-#include "idosgrid.h"
-#include "idosgridproperty.h"
-#include "idossimulationcaseobject.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridproperty.h"
 
 #include "idossimulationcaseeclipseprovider.h"
 

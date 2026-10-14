@@ -1,9 +1,13 @@
+#include <QObject>
 #include <QSet>
+
+#include "idosproject.h"
 
 #include "idoscaseobject.h"
 
 IDOSCaseObject::IDOSCaseObject(QObject* parent)
-    : IDOSDataObject(parent)
+    :
+    IDOSDataObject(parent)
 {
 }
 
@@ -63,4 +67,51 @@ void IDOSCaseObject::clearItemRefs()
 
     m_itemRefs.clear();
     emit dataChanged();
+}
+
+QVariantMap IDOSCaseObject::projectData() const
+{
+    QVariantMap data;
+    QVariantList itemRefs;
+    for (const IDOSCaseItemRef& value : m_itemRefs)
+    {
+        itemRefs.append(value.projectData());
+    }
+    data.insert(QStringLiteral("itemRefs"), itemRefs);
+    return data;
+}
+
+bool IDOSCaseObject::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("itemRefs")) || data.value(QStringLiteral("itemRefs")).userType() != qMetaTypeId<QVariantList>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("itemRefs"));
+        return false;
+    }
+    m_itemRefs.clear();
+    for (const QVariant& entry : data.value(QStringLiteral("itemRefs")).toList())
+    {
+        IDOSCaseItemRef value;
+        if (!value.restoreProjectData(entry.toMap(), error))
+        {
+            return false;
+        }
+        m_itemRefs.append(value);
+    }
+    return true;
+}
+bool IDOSCaseObject::validateProjectReferences(const IDOSProject* project, QString& error) const
+{
+    QSet<QString> identities;
+    for (const IDOSCaseItemRef& ref : m_itemRefs)
+    {
+        if (ref.objectId() == objectId() || project->object(ref.objectId()) == nullptr ||
+            (!ref.refId().isEmpty() && identities.contains(ref.refId())))
+        {
+            error = tr("A case contains a missing object, a self reference or duplicate reference identities.");
+            return false;
+        }
+        identities.insert(ref.refId());
+    }
+    return true;
 }

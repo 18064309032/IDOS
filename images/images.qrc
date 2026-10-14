@@ -88,5 +88,15 @@
         <file>render-visible.svg</file>
         <file>render-wireframe.svg</file>
         <file>render-zoom.svg</file>
+        <file>simulation-archive.svg</file>
+        <file>simulation-curve-comparison.svg</file>
+        <file>simulation-deck.svg</file>
+        <file>simulation-fit-evaluation.svg</file>
+        <file>simulation-initialize.svg</file>
+        <file>simulation-preflight.svg</file>
+        <file>simulation-report.svg</file>
+        <file>simulation-stop.svg</file>
+        <file>simulation-well-controls.svg</file>
+        <file>simulation-workflow.svg</file>
     </qresource>
 </RCC>

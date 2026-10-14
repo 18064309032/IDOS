@@ -3,7 +3,10 @@
 #include <QObject>
 #include <QVariantList>
 
+#include "idosgrid.h"
+
 #include "idosgridproperty.h"
+#include "idosproject.h"
 
 #include "idosgridfilter.h"
 
@@ -355,4 +358,65 @@ bool IDOSGridFilter::matches(const QVariantMap& criteria, int i, int j, int k, i
     propertyMatch = conditionCount == 0 ? true : criteria.value(QStringLiteral("propertyOperation"), QStringLiteral("show")).toString() != QStringLiteral("show") ? !propertyMatch : propertyMatch;
     const bool match = axisMatch && propertyMatch;
     return criteria.value(QStringLiteral("invert")).toBool() ? !match : match;
+}
+
+bool IDOSGridFilter::canClone() const
+{
+    return true;
+}
+
+IDOSDataObject* IDOSGridFilter::clone() const
+{
+    IDOSGridFilter* copy = new IDOSGridFilter();
+    copy->setName(name());
+    copy->setVisible(isVisible());
+    copy->m_gridId = m_gridId;
+    copy->m_criteria = m_criteria;
+    return copy;
+}
+
+QVariantMap IDOSGridFilter::projectData() const
+{
+    QVariantMap data;
+    data.insert(QStringLiteral("gridId"), QVariant::fromValue(m_gridId));
+    data.insert(QStringLiteral("criteria"), QVariant::fromValue(m_criteria));
+    return data;
+}
+
+bool IDOSGridFilter::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("gridId")) || data.value(QStringLiteral("gridId")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("gridId"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("criteria")) || data.value(QStringLiteral("criteria")).userType() != qMetaTypeId<QVariantMap>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("criteria"));
+        return false;
+    }
+    m_gridId = data.value(QStringLiteral("gridId")).value<QString>();
+    m_criteria = data.value(QStringLiteral("criteria")).value<QVariantMap>();
+    return true;
+}
+bool IDOSGridFilter::validateProjectReferences(const IDOSProject* project, QString& error) const
+{
+    if (qobject_cast<IDOSGrid*>(project->object(m_gridId)) == nullptr || !validateCriteria(m_criteria, error))
+    {
+        if (error.isEmpty())
+        {
+            error = tr("A stored filter has an invalid source grid.");
+        }
+        return false;
+    }
+    for (const QString& id : propertyIds(m_criteria))
+    {
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(project->object(id));
+        if (property != nullptr && property->gridId() != m_gridId)
+        {
+            error = tr("A stored filter refers to a missing or incompatible property.");
+            return false;
+        }
+    }
+    return true;
 }

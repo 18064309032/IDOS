@@ -9,10 +9,10 @@
 #include <QStringList>
 #include <QVariantList>
 
-#include "command/idoscommand.h"
-#include "command/idoscommandmetadata.h"
+#include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscaseitemref.h"
+#include "idoscommand.h"
+#include "idoscommandmetadata.h"
 
 class IDOSCaseObject;
 class IDOSDataObject;
@@ -28,7 +28,6 @@ public:
         Property,
         WellData,
         FluidRock,
-        FluidRockAttach,
         ProjectData
     };
 
@@ -79,7 +78,6 @@ private:
     Mode m_mode;
     QString m_targetGridId;
     QString m_targetCaseId;
-    QString m_targetTableId;
     QString m_caseNameOverride;
     bool m_replaceExistingGrid;
     bool m_loaded;

@@ -9,8 +9,9 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include "idosdataprovider.h"
-#include "idosgridproperty.h"
+#include "data/grid/idosgridproperty.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class IDOSGrid;
 class IDOSSimulationCaseObject;

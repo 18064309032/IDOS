@@ -2,6 +2,7 @@
 #define IDOS_WELL_CHECKSHOT_H
 
 #include <QString>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idos_core.h"
@@ -9,6 +10,9 @@
 class CORE_EXPORT IDOSWellCheckshot
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellCheckshot();
     bool setSamples(const QVector<double>& depths, const QVector<double>& times);
     const QVector<double>& depths() const;

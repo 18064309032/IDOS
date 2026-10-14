@@ -1,12 +1,13 @@
 # IDOS
 
-IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，提供井、网格和工况数据管理、VTK 可视化、可撤销业务命令，以及可扩展的 C++ 插件接口。数值模拟插件通过 WSL2 调用 OPM Flow，支持计算输出跟踪和动态属性结果导入。
+IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，提供井、网格和工况数据管理、VTK 可视化、可撤销业务命令，以及可扩展的 C++ 插件接口。平台通过 WSL2 调用 OPM Flow，支持计算输出跟踪和动态属性结果导入。
 
 项目处于持续开发阶段。本文描述当前代码提供的能力；待实现功能单独列出，不将界面占位入口视为可用功能。
 
 ## 功能
 
-- **数据与工况**：井头、井轨迹、LAS 测井数据、ECLIPSE DATA 与网格导入；工况关联和树节点管理。
+- **数据与工况**：井头、井轨迹、LAS 测井数据、ECLIPSE DATA 与网格导入；数据、工况、网格和属性支持独立副本、复制粘贴、拖动复制及重命名；网格和属性支持兼容目标间移动，已有井/表另通过“添加到工况…”建立关联。
+- **工程文件**：单个 HDF5 二进制 `.idos` 文件保存工程信息、全部平台业务数据及对象关联，支持打开、保存、另存为和未保存修改提示；恢复业务数据不依赖导入源文件。
 - **可视化**：独立二维、三维窗口，网格与井展示、属性着色、选择高亮、标准视角、坐标轴、图例和截图。
 - **数值模拟**：DATA 浏览与生成、运行预检、输入初始化、WSL Flow 启停、实时输出、UNRST 动态属性导入及报告步播放。
 - **业务操作**：命令注册、参数验证、撤销与重做；界面和助手共用业务入口。
@@ -18,7 +19,7 @@ IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，
 
 | 范围 | 状态 |
 |---|---|
-| 工程打开、保存、另存为及设置 | 入口保留，当前禁用；新建工程和数据导入可用 |
+| 工程文件及设置 | 打开、保存、另存为及视图状态恢复已接入；本机保存窗口和停靠布局；工程设置编辑仍待实施 |
 | 内置悬浮工具按钮 | 已提供主视图、适配全部对象、缩放至选中对象、三维标准视角、旋转、正交投影、坐标追踪、视图联动、选择、点缩放、点探针、距离测量、网格透视、缩放、背景、清空显示、截图和坐标轴操作 |
 | Python | 控制台界面存在，运行时未接入，不能执行 Python 代码 |
 | 通用分析模块与拟合评价 | 待实现，不代表专业插件已经具备完整计算能力 |
@@ -43,20 +44,20 @@ IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，
 
 ### 配置与构建
 
-在仓库根目录运行。当前工作约定使用唯一构建目录 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local`，禁止源码内构建。
+在仓库根目录运行。当前工作约定使用唯一构建目录 `D:/CMakeCoder/IDOS-Build`，禁止源码内构建。
 
 ```powershell
-cmake -S . -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local `
+cmake -S . -B D:/CMakeCoder/IDOS-Build `
     -G "Visual Studio 17 2022" -A x64 `
     -DIDOS_QT_DIR="D:/Qt/Qt5.15.2/5.15.2/msvc2019_64" `
     -DIDOS_ENABLE_RENDER=ON -DIDOS_BUILD_TESTS=ON
 
-cmake --build E:/CJW-Archive/IDOS-Build/win-x64-debug-local --config Debug --parallel 6
+cmake --build D:/CMakeCoder/IDOS-Build --config Debug --parallel 6
 ```
 
-Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B E:/CJW-Archive/IDOS-Build/win-x64-debug-local`；显式指定目录以确保配置、编译和测试使用同一位置。
+Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B D:/CMakeCoder/IDOS-Build`；显式指定目录以确保配置、编译和测试使用同一位置。
 
-Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
+Debug 程序位于 `D:/CMakeCoder/IDOS-Build/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
 
 `IDOS_BUILD_TESTS` 默认 `OFF`，开发验证应打开。`IDOS_ENABLE_RENDER` 默认 `ON`；当前源码仍使用 VTK 控件，不能将 `OFF` 视为已支持的无渲染构建模式。
 
@@ -77,11 +78,13 @@ Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idos
 | `core` | 工程、领域数据、类型工厂、树结构/模型/同步、业务命令与历史 |
 | `providers` | 井数据、LAS、ECLIPSE 输入和结果等格式解析 |
 | `render` | 通用展示对象、Scene、View、Provider、注册与同步，以及工具框架 |
-| `gui` | 树界面、节点交互、公共插件访问接口和通用面板 |
-| `app` | 主窗口、服务装配、插件加载、内置具体展示和业务命令 |
+| `gui` | 树界面、节点交互、公共平台接口和通用面板 |
+| `app` | 主窗口、数值模拟、服务装配、插件加载、内置具体展示和业务命令 |
 | `assistant` | 本地模型进程、请求服务、命令调用及助手界面 |
-| `plugins` | 数值模拟等专业扩展及点集示例 |
+| `plugins` | 裂缝建模、地质力学等专业扩展及点集示例 |
 | `analysis` / `python` | 保留的接口目标，通用算法及 Python 运行时待实现 |
+
+物理目录和链接目标分别管理：`gui` 按业务目录组织界面源码，其中业务窗口由 `app/CMakeLists.txt` 显式编入 `idos_app`；通用 `idos_gui` 保持独立。通用 Provider/Metadata/Registry 位于 `core/providers`，具体展示实现位于 `app/providers`。完整文件树见 [源码目录](docs/IDOS源码目录.md)。
 
 树和渲染分别通过 Server 同步工程；每个渲染窗口拥有独立 Scene 和显示状态。注册表拥有 Metadata，工厂创建具体 Provider，通用框架不判断业务子类。数据修改通过命令执行，局部显示操作作用于明确的目标视图。
 
@@ -92,16 +95,16 @@ Debug 程序位于 `E:/CJW-Archive/IDOS-Build/win-x64-debug-local/bin/Debug/idos
 ## 测试
 
 ```powershell
-ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug --output-on-failure
+ctest --test-dir D:/CMakeCoder/IDOS-Build -C Debug --output-on-failure
 ```
 
-测试包括 `command_registry`、`assistant_widget`、`project_dialog`、`well_import`、`well_path`、`case_workflow`、`tree_incremental`，以及两项 include 边界检查。`idos_render_header_checks` 构建目标验证公共头文件自包含。
+测试包括 `command_registry`、`assistant_widget`、`project_dialog`、`well_import`、`well_path`、`seismic_import`、`case_workflow`、`tree_incremental`，以及两项 include 边界检查。`idos_render_header_checks` 构建目标验证公共头文件自包含。
 
 实际 Flow 验证需准备可运行的 SPE1 输入包，并设置路径：
 
 ```powershell
-$env:IDOS_FLOW_SMOKE_DATA = 'E:/CJW-Archive/IDOS-Build/win-x64-debug-local/flow-smoke/SPE1CASE1.DATA'
-ctest --test-dir E:/CJW-Archive/IDOS-Build/win-x64-debug-local -C Debug -R '^case_workflow$' --output-on-failure
+$env:IDOS_FLOW_SMOKE_DATA = 'D:/CMakeCoder/IDOS-Build/flow-smoke/SPE1CASE1.DATA'
+ctest --test-dir D:/CMakeCoder/IDOS-Build -C Debug -R '^case_workflow$' --output-on-failure
 ```
 
 未设置该变量时，本机 Flow 用例跳过，不能将普通回归通过解释为求解器计算已验收。验证与翻译流程见 [开发指南](docs/开发指南.md)。

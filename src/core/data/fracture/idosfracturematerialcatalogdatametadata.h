@@ -1,8 +1,8 @@
 #ifndef IDOS_FRACTURE_MATERIAL_CATALOG_DATA_METADATA_H
 #define IDOS_FRACTURE_MATERIAL_CATALOG_DATA_METADATA_H
 
-#include "idosdatametadata.h"
 #include "idosfracturematerialcatalog.h"
+#include "providers/idosdatametadata.h"
 
 class CORE_EXPORT IDOSFractureMaterialCatalogDataMetadata : public IDOSDataMetadata
 {

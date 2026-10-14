@@ -10,7 +10,7 @@
 #include <QTime>
 #include <QVariantMap>
 
-#include "idosproductionhistory.h"
+#include "data/production/idosproductionhistory.h"
 
 #include "idosproductionhistoryprovider.h"
 

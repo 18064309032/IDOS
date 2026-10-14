@@ -13,7 +13,7 @@
 #include <QVBoxLayout>
 
 #include "idosassistantservice.h"
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
 
 #include "idosassistantwidget.h"
 

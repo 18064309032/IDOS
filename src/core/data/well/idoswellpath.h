@@ -2,6 +2,7 @@
 #define IDOS_WELL_PATH_H
 
 #include <QStringList>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idos_core.h"
@@ -17,6 +18,9 @@
 class CORE_EXPORT IDOSWellPath
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellPath();
 
     QVector<IDOSWellPathPoint> points() const;

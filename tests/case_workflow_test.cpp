@@ -12,9 +12,9 @@
 #include <QComboBox>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
+#include <QDialog>
 #include <QDir>
 #include <QDoubleSpinBox>
-#include <QDialog>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
@@ -28,8 +28,8 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
-#include <QPlainTextEdit>
 #include <QPixmap>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScopedPointer>
@@ -38,9 +38,9 @@
 #include <QSize>
 #include <QSlider>
 #include <QSpinBox>
-#include <QTemporaryDir>
-#include <QTabWidget>
 #include <QTableWidget>
+#include <QTabWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QToolButton>
 #include <QTranslator>
@@ -59,60 +59,62 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 
-#include <SARibbonBar.h>
-#include <SARibbonCategory.h>
-#include <SARibbonPanel.h>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <SARibbonBar.h>
+#include <SARibbonCategory.h>
+#include <SARibbonPanel.h>
 
-#include "command/idoscommandmanager.h"
-#include "command/idoscommandregistry.h"
+#include "command/idosdeletegridcommand.h"
+#include "command/idosgridfiltercommand.h"
+#include "command/idosimportrestartresultscommand.h"
+#include "data/case/idoscaseitemref.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/fluidrock/idosfluidrocktable.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridfilter.h"
+#include "data/grid/idosgridproperty.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellhead.h"
+#include "data/well/idoswelllogchannel.h"
+#include "data/well/idoswelllogset.h"
+#include "data/well/idoswellpath.h"
+#include "data/well/idoswellpathpoint.h"
+#include "grid/idosgridfilterwidget.h"
+#include "grid/idosgridsettingwidget.h"
 #include "idosapplication.h"
 #include "idoscasedialog.h"
-#include "idoscaseitemref.h"
-#include "idosdatametadata.h"
-#include "idosdataprovider.h"
-#include "idosdataproviderregistry.h"
-#include "idosdataregistry.h"
-#include "idosdeletegridcommand.h"
-#include "idosgrid.h"
-#include "idosgridfilter.h"
-#include "idosgridfiltercommand.h"
-#include "idosgridfilterwidget.h"
-#include "idosgridproperty.h"
-#include "idosgridrendermetadata.h"
-#include "idosgridrenderprovider.h"
-#include "idosgridsettingwidget.h"
-#include "idosimportrestartresultscommand.h"
+#include "idoscommandmanager.h"
+#include "idoscommandregistry.h"
 #include "idosmainwindow.h"
 #include "idospluginregistry.h"
 #include "idosproject.h"
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 #include "idosrenderregistry.h"
 #include "idosrenderscene.h"
 #include "idosrenderserver.h"
 #include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
-#include "idossimulationcaseobject.h"
-#include "idossimulationcasetreeguiprovider.h"
-#include "idossimulationinitializewidget.h"
-#include "idossimulationresultplaybackwidget.h"
-#include "idossimulationrunstatuswidget.h"
-#include "idostreemodel.h"
-#include "idostreeregistry.h"
-#include "idostreeview.h"
-#include "idoswell.h"
-#include "idoswellhead.h"
-#include "idoswelllogchannel.h"
-#include "idoswelllogset.h"
-#include "idoswellpath.h"
-#include "idoswellpathpoint.h"
-#include "idoswellrendermetadata.h"
-#include "idoswellrenderprovider.h"
-#include "log/idoslogger.h"
+#include "idostoolregistry.h"
+#include "logger/idoslogger.h"
+#include "providers/case/idossimulationcasetreeguiprovider.h"
+#include "providers/grid/idosgridrendermetadata.h"
+#include "providers/grid/idosgridrenderprovider.h"
+#include "providers/idosdatametadata.h"
+#include "providers/idosdataprovider.h"
+#include "providers/idosdataproviderregistry.h"
+#include "providers/idosdataregistry.h"
+#include "providers/idosrenderprovider.h"
+#include "providers/idostreeregistry.h"
+#include "providers/well/idoswellrendermetadata.h"
+#include "providers/well/idoswellrenderprovider.h"
+#include "simulation/idossimulationinitializewidget.h"
+#include "simulation/idossimulationresultplaybackwidget.h"
+#include "simulation/idossimulationrunstatuswidget.h"
+#include "tree/idostreemodel.h"
+#include "tree/idostreeview.h"
 
 #include "case_workflow_test.h"
 
@@ -581,7 +583,7 @@ void CaseWorkflowTest::onViewDecorations()
     QVERIFY(!legendAction->isEnabled());
 }
 
-void CaseWorkflowTest::onRequiredSimulationPlugin()
+void CaseWorkflowTest::onPlatformSimulation()
 {
     IDOSPluginRegistry* registry = IDOSPluginRegistry::instance();
     QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
@@ -591,7 +593,7 @@ void CaseWorkflowTest::onRequiredSimulationPlugin()
     settings.setValue(settingKey, false);
     {
         IDOSMainWindow window;
-        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
+        QVERIFY(!registry->isLoaded(QStringLiteral("idossimulationplugin")));
         SARibbonCategory* home = window.ribbonBar()->categoryByObjectName(QStringLiteral("idosHomeCategory"));
         QVERIFY(home != nullptr);
         QVERIFY(window.ribbonBar()->categoryByObjectName(QStringLiteral("idosSimulationCategory")) == nullptr);
@@ -617,23 +619,17 @@ void CaseWorkflowTest::onRequiredSimulationPlugin()
             }
             QVERIFY(found);
         }
-        QString path;
         const QVariantList catalog = registry->pluginCatalog(registry->libraryDir().path());
         for (const QVariant& entry : catalog)
         {
-            const QVariantMap plugin = entry.toMap();
-            if (plugin.value(QStringLiteral("key")).toString() == QStringLiteral("idossimulationplugin"))
-            {
-                QVERIFY(plugin.value(QStringLiteral("required")).toBool());
-                QVERIFY(plugin.value(QStringLiteral("enabled")).toBool());
-                path = plugin.value(QStringLiteral("path")).toString();
-            }
+            QVERIFY(entry.toMap().value(QStringLiteral("key")).toString() != QStringLiteral("idossimulationplugin"));
         }
-        QVERIFY(!path.isEmpty());
-        registry->setPluginEnabled(path, false);
-        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
-        registry->unloadCppPlugin(path);
-        QVERIFY(registry->isLoaded(QStringLiteral("idossimulationplugin")));
+        const QList<IDOSRenderView*> views = window.findChildren<IDOSRenderView*>();
+        QVERIFY(!views.isEmpty());
+        QVERIFY(window.toolRegistry()->metadata(QStringLiteral("idos.view.navigation")) != nullptr);
+        registry->unloadAll();
+        QVERIFY(window.findChild<QAction*>(QStringLiteral("simulationRunPreflightAction")) != nullptr);
+        QVERIFY(window.toolRegistry()->metadata(QStringLiteral("idos.view.navigation")) != nullptr);
     }
     QVERIFY(!registry->isLoaded(QStringLiteral("idossimulationplugin")));
     if (hadSetting)
@@ -1678,6 +1674,67 @@ void CaseWorkflowTest::onProvider()
     }
 }
 
+void CaseWorkflowTest::onFluidRockReferences()
+{
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    IDOSSimulationCaseObject* caseObject = new IDOSSimulationCaseObject();
+    caseObject->setName(QStringLiteral("Table Case"));
+    project->add(caseObject);
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("tables.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("PROPS\nPVTW\n100 1 0.00001 0.5 0 /\nSWOF\n0.2 0 1 0\n1 1 0 0 /\n");
+    file.close();
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), path);
+    arguments.insert(QStringLiteral("category"), QStringLiteral("fluid"));
+    QVERIFY2(project->commandManager()->execute(QStringLiteral("data.fluidRock.import"), arguments)
+                 .value(QStringLiteral("success")).toBool(), qPrintable(project->commandManager()->error()));
+    QCOMPARE(project->objects().size(), 2);
+    QVERIFY(caseObject->itemRefs().isEmpty());
+    IDOSFluidRockTable* table = nullptr;
+    for (IDOSDataObject* object : project->objects())
+    {
+        IDOSFluidRockTable* candidate = qobject_cast<IDOSFluidRockTable*>(object);
+        if (candidate != nullptr)
+        {
+            table = candidate;
+        }
+    }
+    QVERIFY(table != nullptr);
+    QCOMPARE(table->category(), IDOSFluidRockTable::Category::Fluid);
+    QCOMPARE(table->tableData().value(QStringLiteral("keyword")).toString(), QStringLiteral("PVTW"));
+    arguments = QJsonObject();
+    arguments.insert(QStringLiteral("targetCaseId"), caseObject->objectId());
+    arguments.insert(QStringLiteral("tableId"), table->objectId());
+    QVERIFY(project->commandManager()->execute(QStringLiteral("case.fluidRock.attach"), arguments)
+                .value(QStringLiteral("success")).toBool());
+    QCOMPARE(caseObject->itemRefs().size(), 1);
+    QCOMPARE(caseObject->itemRefs().first().objectId(), table->objectId());
+    caseObject->setCurveTables(QVariantList{table->tableData()});
+    IDOSTreeModel* model = window.caseTreeModel();
+    const QModelIndex caseIndex = model->index(0, 0, QModelIndex());
+    const QModelIndex tableGroup = model->index(2, 0, caseIndex);
+    QCOMPARE(model->rowCount(tableGroup), 1);
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("case.fluidRock.attach"), arguments)
+                 .value(QStringLiteral("success")).toBool());
+    project->commandManager()->undo();
+    QVERIFY(caseObject->itemRefs().isEmpty());
+    QCOMPARE(project->objects().size(), 2);
+    project->commandManager()->redo();
+    QCOMPARE(caseObject->itemRefs().size(), 1);
+    project->commandManager()->undo();
+    project->commandManager()->undo();
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(QFile::remove(path));
+    project->commandManager()->redo();
+    QCOMPARE(project->objects().size(), 2);
+    QVERIFY(caseObject->itemRefs().isEmpty());
+}
+
 void CaseWorkflowTest::onCreateAndImport()
 {
     IDOSMainWindow window;
@@ -1809,7 +1866,9 @@ void CaseWorkflowTest::onDialog()
         }
         else
         {
-            fileDialog->selectFile(QFINDTESTDATA("data/case.DATA"));
+            QLineEdit* fileName = fileDialog->findChild<QLineEdit*>(QStringLiteral("fileNameEdit"));
+            QVERIFY(fileName != nullptr);
+            fileName->setText(QFINDTESTDATA("data/case.DATA"));
             QMetaObject::invokeMethod(fileDialog, "accept", Qt::QueuedConnection);
         }
         return;
@@ -2026,9 +2085,19 @@ void CaseWorkflowTest::onGridFilters()
     secondCondition.insert(QStringLiteral("maximum"), 60.0);
     QVariantMap combinationCriteria;
     combinationCriteria.insert(QStringLiteral("conditions"), QVariantList{testCondition, secondCondition});
-    QCOMPARE(IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0}));
+    const QVector<quint8> intersected = IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references);
+    QCOMPARE(intersected.size(), 6);
+    for (quint8 selected : intersected)
+    {
+        QCOMPARE(selected, quint8(0));
+    }
     combinationCriteria.insert(QStringLiteral("anyProperty"), true);
-    QCOMPARE(IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 1}));
+    const QVector<quint8> united = IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references);
+    QCOMPARE(united.size(), 6);
+    for (int index = 0; index < united.size(); ++index)
+    {
+        QCOMPARE(united.at(index), quint8(index == 2 || index == 5 ? 1 : 0));
+    }
     QString validationError;
     QVariantMap malformed;
     malformed.insert(QStringLiteral("conditions"), QStringLiteral("invalid"));
@@ -2202,18 +2271,18 @@ void CaseWorkflowTest::onGridFilterCriteria()
     condition.insert(QStringLiteral("includeMaximum"), false);
     QVariantMap criteria;
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 0})));
     condition.insert(QStringLiteral("includeInvalidValues"), true);
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 1, 0, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 1, 0, 0})));
     criteria.insert(QStringLiteral("propertyOperation"), QStringLiteral("hide"));
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 1, 1}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 1, 1})));
     condition.insert(QStringLiteral("propertyId"), QStringLiteral("missing"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0})));
     condition.insert(QStringLiteral("enabled"), false);
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 1}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 1})));
     QVERIFY(IDOSGridFilter::propertyIds(criteria).isEmpty());
     QVERIFY(property.setValues(QVector<double>{1.0, 1.0000005, 1.000002, invalid, 4.0, 5.0}));
     condition.insert(QStringLiteral("propertyId"), property.objectId());
@@ -2223,10 +2292,10 @@ void CaseWorkflowTest::onGridFilterCriteria()
     condition.insert(QStringLiteral("includeInvalidValues"), false);
     criteria.remove(QStringLiteral("propertyOperation"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
     condition.insert(QStringLiteral("operation"), QStringLiteral("notEqual"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 1, 1}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 1, 1})));
     criteria.clear();
     QVariantMap iAxis;
     iAxis.insert(QStringLiteral("enabled"), true);
@@ -2240,21 +2309,38 @@ void CaseWorkflowTest::onGridFilterCriteria()
     QVariantMap axes;
     axes.insert(QStringLiteral("i"), iAxis);
     criteria.insert(QStringLiteral("axes"), axes);
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 1, 1, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 1, 1, 0})));
     axes.insert(QStringLiteral("j"), jAxis);
     criteria.insert(QStringLiteral("axes"), axes);
     criteria.insert(QStringLiteral("axisUnion"), true);
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 0})));
     criteria.insert(QStringLiteral("axisUnion"), false);
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0}));
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
     criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("hide"));
     const QVector<quint8> hidden = IDOSGridFilter::selection(criteria, 3, 2, 1, references);
-    QCOMPARE(hidden, QVector<quint8>({0, 0, 1, 1, 1, 1}));
+    QVERIFY(sameSelection(hidden, QVector<quint8>({0, 0, 1, 1, 1, 1})));
     criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("invert"));
-    QCOMPARE(IDOSGridFilter::selection(criteria, 3, 2, 1, references), hidden);
+    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), hidden));
     QString error;
     iAxis.insert(QStringLiteral("values"), QVariantList{0});
     axes.insert(QStringLiteral("i"), iAxis);
     criteria.insert(QStringLiteral("axes"), axes);
     QVERIFY(!IDOSGridFilter::validateCriteria(criteria, error));
+}
+
+
+bool CaseWorkflowTest::sameSelection(const QVector<quint8>& first, const QVector<quint8>& second) const
+{
+    if (first.size() != second.size())
+    {
+        return false;
+    }
+    for (int index = 0; index < first.size(); ++index)
+    {
+        if (first.at(index) != second.at(index))
+        {
+            return false;
+        }
+    }
+    return true;
 }

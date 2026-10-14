@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QMap>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idos_core.h"
@@ -26,6 +27,10 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     Q_OBJECT
 
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     /** 属性类别（对应 tNavigator 模型树的"静态属性/动态属性"分组）。 */
     enum class Kind
     {
@@ -37,6 +42,8 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     ~IDOSGridProperty() override;
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
 
     /**
      * @brief 容器对象引用：返回所属网格的 objectId。

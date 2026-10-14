@@ -1,3 +1,5 @@
+#include <QObject>
+
 #include "idoswelllogset.h"
 
 IDOSWellLogSet::IDOSWellLogSet()
@@ -59,4 +61,36 @@ bool IDOSWellLogSet::isEmpty() const
 void IDOSWellLogSet::clear()
 {
     m_channels.clear();
+}
+
+QVariantMap IDOSWellLogSet::projectData() const
+{
+    QVariantMap data;
+    QVariantList channels;
+    for (const IDOSWellLogChannel& value : m_channels)
+    {
+        channels.append(value.projectData());
+    }
+    data.insert(QStringLiteral("channels"), channels);
+    return data;
+}
+
+bool IDOSWellLogSet::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("channels")) || data.value(QStringLiteral("channels")).userType() != qMetaTypeId<QVariantList>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("channels"));
+        return false;
+    }
+    m_channels.clear();
+    for (const QVariant& entry : data.value(QStringLiteral("channels")).toList())
+    {
+        IDOSWellLogChannel value;
+        if (!value.restoreProjectData(entry.toMap(), error))
+        {
+            return false;
+        }
+        m_channels.append(value);
+    }
+    return true;
 }

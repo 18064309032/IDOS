@@ -3,7 +3,8 @@
 
 #include <QByteArray>
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class PROVIDERS_EXPORT IDOSSegyProvider : public IDOSDataProvider
 {

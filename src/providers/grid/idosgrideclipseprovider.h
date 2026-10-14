@@ -4,7 +4,8 @@
 #include <utility>
 #include <vector>
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 /**
  * @brief ECLIPSE 角点网格解析 provider（.GRID / .EGRID）。

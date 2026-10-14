@@ -1,9 +1,9 @@
 #ifndef IDOS_RENAME_OBJECT_COMMAND_H
 #define IDOS_RENAME_OBJECT_COMMAND_H
 
-#include "command/idoscommand.h"
-#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
+#include "idoscommand.h"
+#include "idoscommandmetadata.h"
 
 class APP_EXPORT IDOSRenameObjectCommand : public IDOSCommand
 {

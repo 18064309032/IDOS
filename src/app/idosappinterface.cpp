@@ -7,7 +7,7 @@
 
 #include "idosmainwindow.h"
 #include "idosproject.h"
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
 
 #include "idosappinterface.h"
 
@@ -26,16 +26,7 @@ QMainWindow* IDOSAppInterface::mainWindow() const
 
 SARibbonPanel* IDOSAppInterface::homeRibbonPanel(const QString& groupId) const
 {
-    if (m_mainWindow == nullptr || m_mainWindow->ribbonBar() == nullptr)
-    {
-        return nullptr;
-    }
-    SARibbonCategory* home = m_mainWindow->ribbonBar()->categoryByObjectName(QStringLiteral("idosHomeCategory"));
-    if (home == nullptr)
-    {
-        return nullptr;
-    }
-    return home->panelByObjectName(QStringLiteral("idosHomePanel_") + groupId);
+    return m_mainWindow != nullptr ? m_mainWindow->homeRibbonPanel(groupId) : nullptr;
 }
 
 SARibbonCategory* IDOSAppInterface::addRibbonCategory(const QString& objectName,

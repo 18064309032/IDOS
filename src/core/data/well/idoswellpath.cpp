@@ -1,7 +1,10 @@
+#include <QObject>
+
 #include "idoswellpath.h"
 
 IDOSWellPath::IDOSWellPath()
-    : m_points()
+    :
+    m_points()
     , m_sourceComments()
     , m_spatialReference()
 {
@@ -66,4 +69,53 @@ IDOSWellSpatialReference IDOSWellPath::spatialReference() const
 void IDOSWellPath::setSpatialReference(const IDOSWellSpatialReference& reference)
 {
     m_spatialReference = reference;
+}
+
+QVariantMap IDOSWellPath::projectData() const
+{
+    QVariantMap data;
+    QVariantList points;
+    for (const IDOSWellPathPoint& value : m_points)
+    {
+        points.append(value.projectData());
+    }
+    data.insert(QStringLiteral("points"), points);
+    data.insert(QStringLiteral("sourceComments"), QVariant::fromValue(m_sourceComments));
+    data.insert(QStringLiteral("spatialReference"), m_spatialReference.projectData());
+    return data;
+}
+
+bool IDOSWellPath::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("points")) || data.value(QStringLiteral("points")).userType() != qMetaTypeId<QVariantList>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("points"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("sourceComments")) || data.value(QStringLiteral("sourceComments")).userType() != qMetaTypeId<QStringList>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("sourceComments"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("spatialReference")) || data.value(QStringLiteral("spatialReference")).userType() != qMetaTypeId<QVariantMap>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("spatialReference"));
+        return false;
+    }
+    m_points.clear();
+    for (const QVariant& entry : data.value(QStringLiteral("points")).toList())
+    {
+        IDOSWellPathPoint value;
+        if (!value.restoreProjectData(entry.toMap(), error))
+        {
+            return false;
+        }
+        m_points.append(value);
+    }
+    m_sourceComments = data.value(QStringLiteral("sourceComments")).value<QStringList>();
+    if (!m_spatialReference.restoreProjectData(data.value(QStringLiteral("spatialReference")).toMap(), error))
+    {
+        return false;
+    }
+    return true;
 }

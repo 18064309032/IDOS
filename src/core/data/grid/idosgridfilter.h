@@ -14,8 +14,14 @@ class CORE_EXPORT IDOSGridFilter : public IDOSDataObject
 {
     Q_OBJECT
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     explicit IDOSGridFilter(QObject* parent = nullptr);
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
     QString containerId() const override;
     QString gridId() const;
     void setGridId(const QString& id);

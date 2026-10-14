@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 #include "idoswellmarker.h"
@@ -16,6 +17,9 @@
 class CORE_EXPORT IDOSWellMarkerSet
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellMarkerSet();
 
     /** 全部层位（按导入顺序）。 */

@@ -8,12 +8,14 @@
 #include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 #include "idos_core.h"
 #include "idosdataobject.h"
 #include "idosprojectmetadata.h"
 
 class IDOSCommandManager;
+class IDOSDataRegistry;
 
 /**
  * @brief 工程根对象。
@@ -36,6 +38,13 @@ class CORE_EXPORT IDOSProject : public QObject
     explicit IDOSProject(QObject* parent = nullptr);
     ~IDOSProject() override;
 
+    static IDOSProject* load(const QString& path, const IDOSDataRegistry* registry, QString& error, QObject* parent = nullptr);
+    bool save(const QString& path, const IDOSDataRegistry* registry, QString& error);
+    QString filePath() const;
+    bool isModified() const;
+    QVariantMap presentationState() const;
+    void setPresentationState(const QVariantMap& state);
+    void markPresentationModified();
     const IDOSProjectMetadata& metadata() const;
     bool setMetadata(const IDOSProjectMetadata& metadata);
     IDOSCommandManager* commandManager() const;
@@ -76,6 +85,7 @@ class CORE_EXPORT IDOSProject : public QObject
 
   signals:
     void metadataChanged();
+    void modifiedChanged(bool modified);
     void currentObjectChanged(IDOSDataObject* object);
     void currentCaseChanged(const QString& caseId);
 
@@ -107,6 +117,9 @@ class CORE_EXPORT IDOSProject : public QObject
     void onObjectNameChanged(const QString& name);
 
   private:
+    void setModified(bool modified);
+    static QByteArray storagePath(const QString& path);
+    static bool replaceStorageFile(const QString& temporary, const QString& destination);
     void notifyAdded(const QString& objectId);
     void notifyRemoved(const QString& objectId);
     void notifyDataChanged(const QString& objectId);
@@ -114,6 +127,9 @@ class CORE_EXPORT IDOSProject : public QObject
     void connectObject(IDOSDataObject* object);
     void disconnectObject(IDOSDataObject* object);
 
+    QString m_filePath;
+    QVariantMap m_presentationState;
+    bool m_modified = false;
     QHash<QString, IDOSDataObject*> m_objects; // All data objects use Qt parent-child ownership.
     IDOSProjectMetadata m_metadata;
     IDOSCommandManager* m_commandManager;

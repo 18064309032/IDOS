@@ -1,7 +1,7 @@
 #ifndef IDOSGRIDMETADATA_H
 #define IDOSGRIDMETADATA_H
 
-#include "idosdatametadata.h"
+#include "providers/idosdatametadata.h"
 
 class CORE_EXPORT IDOSGridMetadata : public IDOSDataMetadata
 {

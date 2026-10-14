@@ -7,7 +7,7 @@
 #include <QTextCursor>
 #include <QVBoxLayout>
 
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
 
 #include "idosruntimeinfowidget.h"
 

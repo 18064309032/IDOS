@@ -6,7 +6,8 @@
 #include <QStringList>
 #include <QVariantList>
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class IDOSDataObject;
 

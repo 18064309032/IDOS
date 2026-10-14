@@ -5,7 +5,7 @@
 
 #include <vtkSmartPointer.h>
 
-#include "idosrenderprovider.h"
+#include "providers/idosrenderprovider.h"
 
 class IDOSPointSet;
 class vtkActor;

@@ -15,6 +15,9 @@
 class CORE_EXPORT IDOSWellPathPoint
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellPathPoint();
     IDOSWellPathPoint(double md, double x, double y, double z, double tvd);
 

@@ -1,7 +1,8 @@
 #ifndef IDOS_FRACTURE_MATERIAL_CATALOG_PROVIDER_H
 #define IDOS_FRACTURE_MATERIAL_CATALOG_PROVIDER_H
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class PROVIDERS_EXPORT IDOSFractureMaterialCatalogProvider : public IDOSDataProvider
 {

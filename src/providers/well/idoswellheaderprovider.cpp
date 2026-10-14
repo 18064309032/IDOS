@@ -7,9 +7,9 @@
 #include <QStringList>
 #include <QTextStream>
 
-#include "idoswell.h"
-#include "idoswellhead.h"
-#include "idoswellspatialreference.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellhead.h"
+#include "data/well/idoswellspatialreference.h"
 
 #include "idoswellheaderprovider.h"
 

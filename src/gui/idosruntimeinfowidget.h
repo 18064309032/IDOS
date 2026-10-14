@@ -4,7 +4,7 @@
 #include <QWidget>
 
 #include "idos_gui.h"
-#include "log/idosloglevel.h"
+#include "logger/idosloglevel.h"
 
 class QPlainTextEdit;
 

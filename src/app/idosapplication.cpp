@@ -1,33 +1,34 @@
 #include <memory>
 
 #include "case/idossimulationcaseeclipsemetadata.h"
+#include "data/case/idossimulationcasemetadata.h"
+#include "data/fluidrock/idosfluidrocktablemetadata.h"
+#include "data/fracture/idosfracturematerialcatalog.h"
+#include "data/fracture/idosfracturematerialcatalogdatametadata.h"
+#include "data/fracture/idosfracturescheduledatametadata.h"
+#include "data/fracture/idosnaturalfracturesetdatametadata.h"
+#include "data/grid/idosgridboundarydatametadata.h"
+#include "data/grid/idosgridfiltermetadata.h"
+#include "data/grid/idosgridmetadata.h"
+#include "data/grid/idosgridpropertymetadata.h"
+#include "data/grid/idosgridsurfacedatametadata.h"
+#include "data/production/idosproductionhistorydatametadata.h"
+#include "data/seismic/idosmicroseismicdatametadata.h"
+#include "data/seismic/idosseismicvolumedatametadata.h"
+#include "data/well/idoswellmetadata.h"
+#include "fracture/idosfracturematerialcatalogmetadata.h"
+#include "fracture/idosfractureschedulemetadata.h"
+#include "fracture/idosnaturalfracturemetadata.h"
 #include "grid/idosgridboundarymetadata.h"
 #include "grid/idosgrideclipsemetadata.h"
 #include "grid/idosgridpropertyeclipsemetadata.h"
 #include "grid/idosgridsurfacemetadata.h"
-#include "idosdataproviderregistry.h"
-#include "idosdataregistry.h"
-#include "idosfluidrocktablemetadata.h"
-#include "idosfracturematerialcatalog.h"
-#include "idosfracturematerialcatalogdatametadata.h"
-#include "idosfracturematerialcatalogmetadata.h"
-#include "idosfracturescheduledatametadata.h"
-#include "idosfractureschedulemetadata.h"
-#include "idosgridboundarydatametadata.h"
-#include "idosgridfiltermetadata.h"
-#include "idosgridmetadata.h"
-#include "idosgridsurfacedatametadata.h"
-#include "idosmicroseismicdatametadata.h"
-#include "idosmicroseismicmetadata.h"
-#include "idosseismicvolumedatametadata.h"
-#include "idosnaturalfracturemetadata.h"
-#include "idosnaturalfracturesetdatametadata.h"
-#include "idosproductionhistorydatametadata.h"
-#include "idosproductionhistorymetadata.h"
-#include "idossimulationcasemetadata.h"
-#include "idoswellmetadata.h"
 #include "las/idoswelllasmetadata.h"
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
+#include "production/idosproductionhistorymetadata.h"
+#include "providers/idosdataproviderregistry.h"
+#include "providers/idosdataregistry.h"
+#include "seismic/idosmicroseismicmetadata.h"
 #include "seismic/idossegyprovidermetadata.h"
 #include "well/idoswellcheckshotmetadata.h"
 #include "well/idoswellcompletionmetadata.h"
@@ -44,23 +45,7 @@ IDOSApplication::IDOSApplication(int& argc, char** argv)
 {
     qInstallMessageHandler(IDOSApplication::handleQtMessage);
     initProviders();
-    m_dataRegistry->add(new IDOSWellMetadata());
-    m_dataRegistry->add(new IDOSGridMetadata());
-    m_dataRegistry->add(new IDOSGridFilterMetadata());
-    m_dataRegistry->add(new IDOSGridSurfaceDataMetadata());
-    m_dataRegistry->add(new IDOSGridBoundaryDataMetadata());
-    m_dataRegistry->add(new IDOSSimulationCaseMetadata());
-    m_dataRegistry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::Fluid));
-    m_dataRegistry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::RockPhysics));
-    m_dataRegistry->add(new IDOSMicroseismicDataMetadata());
-    m_dataRegistry->add(new IDOSSeismicVolumeDataMetadata());
-    m_dataRegistry->add(new IDOSFractureScheduleDataMetadata());
-    m_dataRegistry->add(new IDOSNaturalFractureSetDataMetadata());
-    m_dataRegistry->add(new IDOSProductionHistoryDataMetadata());
-    m_dataRegistry->add(new IDOSFractureMaterialCatalogDataMetadata(
-        IDOSFractureMaterialCatalog::Kind::Fluid));
-    m_dataRegistry->add(new IDOSFractureMaterialCatalogDataMetadata(
-        IDOSFractureMaterialCatalog::Kind::Proppant));
+    initDataRegistry(m_dataRegistry);
 }
 
 IDOSDataRegistry* IDOSApplication::dataRegistry() const
@@ -175,4 +160,26 @@ void IDOSApplication::initProviders()
     {
         registry.add(new IDOSSimulationCaseEclipseMetadata());
     }
+}
+
+void IDOSApplication::initDataRegistry(IDOSDataRegistry* registry)
+{
+    registry->add(new IDOSWellMetadata());
+    registry->add(new IDOSGridMetadata());
+    registry->add(new IDOSGridPropertyMetadata());
+    registry->add(new IDOSGridFilterMetadata());
+    registry->add(new IDOSGridSurfaceDataMetadata());
+    registry->add(new IDOSGridBoundaryDataMetadata());
+    registry->add(new IDOSSimulationCaseMetadata());
+    registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::Fluid));
+    registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::RockPhysics));
+    registry->add(new IDOSMicroseismicDataMetadata());
+    registry->add(new IDOSSeismicVolumeDataMetadata());
+    registry->add(new IDOSFractureScheduleDataMetadata());
+    registry->add(new IDOSNaturalFractureSetDataMetadata());
+    registry->add(new IDOSProductionHistoryDataMetadata());
+    registry->add(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalog::Kind::Fluid));
+    registry->add(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalog::Kind::Proppant));
 }

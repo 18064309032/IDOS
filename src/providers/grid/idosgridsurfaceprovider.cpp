@@ -9,7 +9,7 @@
 #include <QtGlobal>
 #include <QVector>
 
-#include "idosgridsurface.h"
+#include "data/grid/idosgridsurface.h"
 
 #include "idosgridsurfaceprovider.h"
 

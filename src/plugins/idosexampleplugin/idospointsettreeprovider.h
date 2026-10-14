@@ -1,7 +1,7 @@
 #ifndef IDOS_POINT_SET_TREE_PROVIDER_H
 #define IDOS_POINT_SET_TREE_PROVIDER_H
 
-#include "idostreeprovider.h"
+#include "providers/idostreeprovider.h"
 
 class IDOSPointSetTreeProvider : public IDOSTreeProvider
 {

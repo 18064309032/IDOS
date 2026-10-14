@@ -1,3 +1,5 @@
+#include <QObject>
+
 #include "idoswellcompletion.h"
 
 IDOSWellCompletion::IDOSWellCompletion()
@@ -80,4 +82,57 @@ double IDOSWellCompletion::top() const
 void IDOSWellCompletion::setTop(double top)
 {
     m_top = top;
+}
+
+QVariantMap IDOSWellCompletion::projectData() const
+{
+    QVariantMap data;
+    data.insert(QStringLiteral("k"), QVariant::fromValue(m_k));
+    data.insert(QStringLiteral("open"), QVariant::fromValue(m_open));
+    data.insert(QStringLiteral("bottom"), QVariant::fromValue(m_bottom));
+    data.insert(QStringLiteral("top"), QVariant::fromValue(m_top));
+    data.insert(QStringLiteral("eventDate"), QVariant::fromValue(m_eventDate));
+    data.insert(QStringLiteral("attributes"), QVariant::fromValue(m_attributes));
+    return data;
+}
+
+bool IDOSWellCompletion::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("k")) || data.value(QStringLiteral("k")).userType() != qMetaTypeId<int>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("k"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("open")) || data.value(QStringLiteral("open")).userType() != qMetaTypeId<bool>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("open"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("bottom")) || data.value(QStringLiteral("bottom")).userType() != qMetaTypeId<double>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("bottom"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("top")) || data.value(QStringLiteral("top")).userType() != qMetaTypeId<double>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("top"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("eventDate")) || data.value(QStringLiteral("eventDate")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("eventDate"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("attributes")) || data.value(QStringLiteral("attributes")).userType() != qMetaTypeId<QVariantMap>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("attributes"));
+        return false;
+    }
+    m_k = data.value(QStringLiteral("k")).value<int>();
+    m_open = data.value(QStringLiteral("open")).value<bool>();
+    m_bottom = data.value(QStringLiteral("bottom")).value<double>();
+    m_top = data.value(QStringLiteral("top")).value<double>();
+    m_eventDate = data.value(QStringLiteral("eventDate")).value<QString>();
+    m_attributes = data.value(QStringLiteral("attributes")).value<QVariantMap>();
+    return true;
 }

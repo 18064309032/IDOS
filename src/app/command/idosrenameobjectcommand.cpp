@@ -51,6 +51,17 @@ bool IDOSRenameObjectCommand::validateCommand(QString& error) const
         return false;
     }
 
+    IDOSDataObject* target = project()->object(m_objectId);
+    for (IDOSDataObject* candidate : project()->objects())
+    {
+        if (candidate != target && candidate->typeId() == target->typeId() &&
+            candidate->containerId() == target->containerId() &&
+            candidate->name().compare(m_newName.trimmed(), Qt::CaseInsensitive) == 0)
+        {
+            error = QObject::tr("An object with this name already exists in this location.");
+            return false;
+        }
+    }
     return true;
 }
 

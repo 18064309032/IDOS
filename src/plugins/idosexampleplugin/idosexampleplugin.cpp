@@ -11,10 +11,9 @@
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
-#include "command/idoscommandmanager.h"
-#include "command/idoscommandregistry.h"
+#include "idoscommandmanager.h"
+#include "idoscommandregistry.h"
 #include "idosdataobject.h"
-#include "idosdataregistry.h"
 #include "idosinterface.h"
 #include "idospointsetcommands.h"
 #include "idospointsetmetadata.h"
@@ -23,7 +22,8 @@
 #include "idospointsettreemetadata.h"
 #include "idosproject.h"
 #include "idosrenderregistry.h"
-#include "idostreeregistry.h"
+#include "providers/idosdataregistry.h"
+#include "providers/idostreeregistry.h"
 
 #include "idosexampleplugin.h"
 

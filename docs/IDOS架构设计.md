@@ -1,6 +1,6 @@
 # IDOS 架构设计
 
-更新日期：2026-10-13。
+更新日期：2026-10-14。
 
 > 本文记录已确认架构与当前主要接口，后续目标不等于全部完成。签名以源码头文件为准，实施及验收状态见工作进度；直接改造现有框架，不保留两套调用链。工具框架已实现，具体内置工具待接入。
 
@@ -24,8 +24,8 @@
 | 模块 | 职责 |
 |---|---|
 | core | 数据对象、工程、数据类型工厂与注册、树结构/模型/同步、命令与历史 |
-| providers | 文件和外部数据源解析，格式工厂与注册 |
-| gui | 通用树 View、GuiProvider、平台公共界面接口 |
+| providers | 文件和外部数据源的具体格式解析实现；通用格式接口与注册位于 core |
+| gui | 通用树 View、GuiProvider 和通用面板；平台公共接口位于 gui 根部 |
 | render | 通用渲染对象、Provider、Metadata、Registry、Server、Scene、View、VTK 与视图工具框架；不保留 RenderGuiProvider |
 | app | 服务装配、内置具体树/渲染实现、导入命令和 UI 协调 |
 | plugins | 专业数据、展示、交互和命令的具体扩展 |
@@ -34,7 +34,9 @@
 
 providers、gui、render、assistant 面向 core。core 不依赖界面、渲染、app 或插件。gui 与 render 不互相依赖，通过工程事件和应用层协作。具体实现放在 app 或插件，通用模块不反向依赖具体实现。VTK 构造限于 render 和具体 RenderProvider。
 
-源码目录以 [IDOS源码目录.md](IDOS源码目录.md) 的固定文件布局为准。公共接口位于所属功能目录根部，同名头文件与源文件成对放置。IDOSProject 位于 core 根目录；通用树结构、模型和同步位于 core/tree，树视图与 GUI 扩展接口位于 gui/tree；插件加载、描述、列表模型和管理界面位于 app 根目录。不设置 app/plugins 或 app/render，不保留 IDOSRenderController。目录调整须经用户确认。
+源码目录以 [IDOS源码目录.md](IDOS源码目录.md) 的固定文件布局为准。用户于 2026-10-14 确认按桌面 src 方案重新归类。同名头文件与源文件成对放置：core 根部保存基础对象、工程、命令和 TreeServer，core/tree 保存 Tree、TreeItem、TreeModel，core/providers 保存通用数据/树 Provider、Metadata、Registry，日志位于 core/logger；TreeView 与 TreeGuiProvider 均位于 gui/tree；渲染 Provider/Metadata 位于 render/providers，Registry 和通用框架位于 render 根部。具体展示实现按 well、grid、case、fluidrock、seismic、data 分入 app/providers 的业务目录，内置工具位于 app/providers/render；gui 按 tree、well、grid、simulation 分类；工况及通用窗口位于 gui 根部，IDOSInterface 位于 gui 根部并由 idos_gui 导出。具体命令位于 app/command，插件管理界面位于 app/plugin，插件 Metadata/Registry 位于 app 根部。不保留 IDOSRenderController。目录调整须经用户确认。
+
+物理目录不等同于链接目标。gui 根部及业务目录归档的 20 组业务界面由 app/CMakeLists.txt 明确列入 idos_app，继续使用 APP_EXPORT；其余通用界面编入 idos_gui。业务界面可使用具体 app Provider，idos_gui 自身不依赖 app 或 render，通用公开头不得包含这些业务界面。边界检查依据 CMake 的明确文件清单判断归属，不按 gui 整目录放开依赖。此轮保持既有业务绑定，不引入额外适配层。
 
 ## 3. 数据与工程
 
@@ -51,7 +53,7 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 
 微地震事件集、压裂泵注程序、天然裂缝集和生产历史均作为工程数据对象，由各自的 Provider 解析后经导入命令加入工程，并由数据树具体 Metadata/Provider 放入对应分类。解析器保留来源文件和样例字段；格式兼容范围由工作进度记录。
 
-这些数据对象及其 DataMetadata 位于已确认的 `core/data/fluidrock`；流体/岩石表的 TreeMetadata/TreeProvider 位于 `app/fluidrock`，ECLIPSE 表文本解析 Provider 位于 `providers/fluidrock`。树节点的所属树不决定数据对象的目录或所有权。
+这些数据对象及其 DataMetadata 位于已确认的 `core/data/fluidrock`；流体/岩石表的 TreeMetadata/TreeProvider 位于 `app/providers/fluidrock`，ECLIPSE 表文本解析 Provider 位于 `providers/fluidrock`。树节点的所属树不决定数据对象的目录或所有权。
 
 工程发布新增、删除前、删除、业务数据变化和批量通知。删除前通知在批量操作内仍立即发送，以解除展示关联。beginUpdate/endUpdate 只合并通知，不提供业务回滚。
 
@@ -64,6 +66,8 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 | IDOSDataProvider | 一次解析；read(filePath)、lastError() |
 | IDOSDataProviderMetadata | 格式描述、匹配和工厂；id()、displayName()、fileExtensions()、canHandle(filePath)、create() |
 | IDOSDataProviderRegistry | 格式注册和匹配；instance()、add()、remove()、metadata()、create(id)、providers(filePath) |
+
+通用 DataProvider、DataProviderMetadata、DataProviderRegistry 与 DataMetadata、DataRegistry 位于 core/providers；具体格式实现位于顶层 providers 的业务目录，依赖 core。
 
 类型工厂回答“创建什么数据”，格式工厂回答“如何读取数据”。一个类型可有多个格式，一个格式可产生多种数据。手工或算法产生的数据不必经过 DataProvider。
 
@@ -168,6 +172,8 @@ IDOSAssistantService 负责模型请求、命令调用、结果处理与目标�
 
 应用负责服务装配、活动视图、树定位和工具栏协调。IDOSInterface 提供 project()、dataRegistry()、treeRegistry()、renderRegistry()、commandRegistry()、toolRegistry() 和 projectChanged()，插件通过公共入口调用，不访问主窗口内部实现。gui 仅前置声明渲染及工具 Registry，不增加对 render 的编译或链接依赖。
 
+工况菜单的生成输入与属性曲线请求由主窗口直接连接至 IDOSSimulation，执行时校验目标工程与工况 ID；不经过插件接口信号中转。IDOSSimulation 由主窗口拥有，先于 Registry 和共享主页控件销毁，负责取消任务、关闭业务窗口和移除自有动作。通用视图工具及井显示菜单由主窗口注册。
+
 插件实现 canUnload()，检查存活数据、命令历史和自身持有的任务，包含脱离工程但尚未销毁的实例。PluginRegistry 拥有插件实例，拒绝不安全的卸载，不把卸载失败保存为禁用。具体 GuiProvider 注销时同步清理自己创建的 QAction，避免存活菜单保留已卸载 DLL 的代码与数据。
 
 ```text
@@ -216,7 +222,7 @@ IDOSFaultRenderMetadata / IDOSFaultRenderProvider
 
 ## 13. 视图工具框架接口设计（2026-10-13，通用框架已实现）
 
-本节记录已确定并实现的通用工具框架；五个类 IDOSToolMetadata、IDOSToolRegistry、IDOSToolProvider、IDOSToolBar、IDOSTool 位于 src/render 根部。具体工具由所属 app 功能或插件注册；当前导航和交互工具归数值模拟插件，插件卸载时注销。工具条仍由应用随视图装配，无业务注册时自动隐藏。不增加 ToolManager、ToolServer、Context、包装层或命名空间，不恢复已删除的 RenderGuiProvider 和渲染右键菜单。验收状态以工作进度文档为准。
+本节记录已确定并实现的通用工具框架；五个类 IDOSToolRegistry、IDOSToolBar、IDOSTool 位于 src/render 根部，IDOSToolMetadata、IDOSToolProvider 位于 src/render/providers。具体工具由所属 app 功能或插件注册；当前导航工具实现位于 app/providers/render，通用 IDOSRenderInteractionTool 位于 render 根部，由平台注册。工具条仍由应用随视图装配，无业务注册时自动隐藏。不增加 ToolManager、ToolServer、Context、包装层或命名空间，不恢复已删除的 RenderGuiProvider 和渲染右键菜单。验收状态以工作进度文档为准。
 
 ### 13.1 职责与所有权
 
@@ -467,19 +473,19 @@ if (!view->setToolBar(toolBar))
 
 ### 13.9 实施与验收
 
-通用框架已实现，应用持有 Registry，创建 View 时装配 ToolBar，插件入口已开放。数值模拟必需模块注册视图工具 Provider，提供视图复位、图例、适配全部对象、缩放至选中对象、三维标准视角、顺/逆时针旋转、正交投影、光标坐标追踪、视图联动、点缩放、点探针、距离测量、网格透视、背景颜色、隐藏/显示全部、截图及坐标轴操作；Provider 操作绑定所在 View，并从该 View 更新状态。交互工具由 Provider 持有并通过通用 View 生命周期接口启停。主页移除重复的视图分组。程序退出时同步注销 Metadata，清理所有视图中的工具实例；无工具注册时工具条自动隐藏。
+通用框架已实现，应用持有 Registry，创建 View 时装配 ToolBar，插件入口已开放。平台注册内置视图工具 Provider，提供视图复位、图例、适配全部对象、缩放至选中对象、三维标准视角、顺/逆时针旋转、正交投影、光标坐标追踪、视图联动、点缩放、点探针、距离测量、网格透视、背景颜色、隐藏/显示全部、截图及坐标轴操作；Provider 操作绑定所在 View，并从该 View 更新状态。交互工具由 Provider 持有并通过通用 View 生命周期接口启停。主页移除重复的视图分组。程序退出时同步注销 Metadata，清理所有视图中的工具实例；无工具注册时工具条自动隐藏。
 
 交互验收包括多个返回 false 的工具与相机操作并行、消费后停止分发、互斥切换、拖动捕获和跨边界释放、失焦取消、回调内启停及注销保护、打开菜单时卸载。真实工具若需要几何拾取等能力，按需求扩充现有 View 的明确接口，不暴露全部 VTK 成员。
 
 ## 14. 实施状态（截至 2026-10-13）
 
-通用工具框架、成员函数 VTK 监听、回调注销保护及空工具条隐藏已实现；视图工具由数值模拟插件注册。工程持久化、Python 运行时和拟合评价仍待实施。测试结果按工作进度中的具体日期和范围解释，不将历史全量通过记录套用于后续全部改动。
+通用工具框架、成员函数 VTK 监听、回调注销保护及空工具条隐藏已实现；视图工具由平台直接注册。工程持久化、Python 运行时和拟合评价仍待实施。测试结果按工作进度中的具体日期和范围解释，不将历史全量通过记录套用于后续全部改动。
 
 - 数据对象及井、网格、工况数据已迁入 core/data；新增独立 DataMetadata、DataRegistry 与内置类型 Metadata，由应用注册。删除旧 TypeRegistry、ObjectTypeMetadata 及其模板工厂。
 - Project 的旧 addObject/takeObject/removeObject/objectById 接口已替换为 add/take/remove/object，全部源码和测试调用同步修改，不保留别名。
 - CommandManager 直接拥有命令历史，失败不提交历史或清除重做记录，撤销失败不移动历史位置，结果在命令销毁后保留。删除 QUndoStack 和 QUndoCommand 依赖；命令使用 execute/undo，注册表通过 setRegistry 绑定。具体业务命令迁入 app 对应目录。
-- RenderObject 已成为通用具体类，RenderMetadata 通过 create 创建 Provider，RenderServer 负责装配对象。删除井和网格的 RenderObject 子类，具体渲染 Provider/Metadata 迁入 app/well 和 app/grid。
-- 平台插件接口、加载与管理设施已迁入固定目录；工况对话框迁入 app/case。源码目录边界检查已同步功能目录规则。
+- RenderObject 已成为通用具体类，RenderMetadata 通过 create 创建 Provider，RenderServer 负责装配对象。删除井和网格的 RenderObject 子类，具体井/网格渲染 Provider/Metadata 分别位于 app/providers/well 和 app/providers/grid。
+- 平台插件接口、加载与管理设施已迁入固定目录；工况对话框位于 gui 根部，编入 idos_app。源码目录边界检查已同步功能目录规则。
 - 通用 Tree、TreeItem、TreeProvider、TreeMetadata、TreeRegistry、TreeModel 与 TreeServer 已实现；井、网格及工况分支由对应 Provider 构建，引用节点使用源数据注册的 Provider。旧专属模型、节点类、构建器、注册表及集中菜单接口已删除。
 - 数据更新调用已有 TreeProvider 的 update，保留分支根节点的 ID、Provider 和持久索引；新分支调用 populate，分类或数据实例改变时重新装配。默认 update 调用 populate，具体 Provider 可覆盖以实现更细粒度更新。
 - 工况统一使用 DataObject 的 typeId；模拟工况标识为 idos.case.simulation，删除重复 caseTypeId。删除无调用的 pendingImportPaths、IDOSItemState、IDOSColorMap 及旧 GUI 分层清单，目录回归检查采用当前模块边界。
@@ -490,22 +496,22 @@ if (!view->setToolBar(toolBar))
 - 框架主体改造已落地，固定构建目录的 Debug 构建及 9 项回归测试全部通过。回归包含动态树注册、节点所有权、菜单目标、工程切换、渲染生命周期、井合并撤销重做及助手旧工程响应拒绝；独立头文件编译和目录边界检查通过，中文翻译无未完成项。这些检查覆盖现有内置实现，第三方新数据类型及插件卸载仍应按第 11 节逐项验收。
 - idosexampleplugin 已完成点集扩展验收，只依赖公共 core/gui/render 接口，不链接 app。专项测试覆盖 DLL 加载、工厂和命令注册、失败命令不入历史、八个子节点、工况引用、树更新、实际三维截图、各视图状态隔离、删除和撤销重做、旧树菜单目标、跨工程及延迟删除的卸载保护、未关闭树菜单时注销、工厂创建的游离实例与重新加载。渲染菜单及相应测试已按当前需求移除；本次验证结果和未完成事项以工作进度文档为准。此示例验证点集链路，其他新工况和业务扩展仍按第 11 节验收。
 
-## 14. 必需数值模拟模块与主页入口
+## 14. 平台数值模拟与主页入口
 
-- 数值模拟是默认业务模块，专业插件计算模型、参数、属性场或分析指标，核心模拟流程负责工况输入组织、检查、运行和结果管理。业务实现保留在 idossimulationplugin，不写入通用 Model、View、Scene 或 Registry。
-- 插件功能类型仍为 UI；IDOSPluginMetadata 增加 required 布尔字段。插件可以通过 required() 导出声明必需身份，缺少该导出按 false 处理。数值模拟声明 true，启动优先加载并忽略历史禁用设置，用户禁用、单独卸载及普通批量卸载均被注册器拒绝，管理器不提供可编辑勾选。关闭宿主时才走明确的 shutdown 清理路径。必需模块加载失败由应用明确提示。
+- 数值模拟是默认业务模块，专业插件计算模型、参数、属性场或分析指标，核心模拟流程负责工况输入组织、检查、运行和结果管理。模拟服务位于 app 根部，模拟窗口位于 gui/simulation并编入 idos_app，由主窗口直接装配 IDOSSimulation，不写入通用 Model、View、Scene 或 Registry。
+- 数值模拟是平台内置功能，不参与插件发现、启用和卸载。通用插件 required 契约保留供其他扩展使用；原数值模拟 DLL 导出、独立构建目标和必需插件配置已删除。
 - 主页固定顺序为“工程、窗口、模拟、结果、输出、扩展”。工况的新建及导入保留在工况树。移除独立数值模拟 RibbonPage 和主页视图分组。
-- IDOSInterface.homeRibbonPanel(groupId) 开放平台现有 simulation、results、output 分组。平台拥有主页和 Panel；插件拥有其 QAction、播放控件对应的 QWidgetAction 和业务窗口，不得删除共享 Panel。退出时先移除插件动作并释放 Ribbon 按钮、播放控件和视图 Provider，销毁插件业务实例；动态库保持映射至进程结束，避免 Qt 后续清理访问库内资源。普通插件卸载仍显式卸载 DLL。
+- IDOSMainWindow.homeRibbonPanel(groupId) 提供主页 simulation、results、output 分组；IDOSSimulation 拥有模拟动作、播放控件及业务窗口。IDOSInterface 仍为其他插件开放主页 Panel 查询。模拟退出清理由平台直接执行，不涉及动态库卸载；其他插件继续执行既有安全卸载规则。
 - 模拟分组承载 Deck、解析摘要、预检、初始化、运行状态/启动、停止和工作流；结果分组承载表格、属性曲线、井控查看、结果文件、报告步播放、曲线对比和拟合评价入口；输出分组承载 DATA 导出、运行归档和工况报告，并保留平台截图/图片导出。未实现的拟合评价继续禁用。
 - 移除主页视图入口后，复位、图例、方向标、视角、适配及背景均由目标视图的悬浮工具条提供。共享主页模拟动作继续根据当前工况及任务状态更新，不将平台业务逻辑搬入 Ribbon 创建函数。
 
 ### 网格显示设置
 
-- `IDOSGridSettingWidget` 位于现有 `src/app/grid`，直接替换旧着色面板；`IDOSGridTreeGuiProvider` 合并旧着色菜单职责并保留原有菜单和勾选，删除插件中的专用着色 GuiProvider 及注册链。通用 TreeView 不判断网格业务。
+- `IDOSGridSettingWidget` 位于 `src/gui/grid` 并编入 idos_app，直接替换旧着色面板；`IDOSGridTreeGuiProvider` 合并旧着色菜单职责并保留原有菜单和勾选，删除插件中的专用着色 GuiProvider 及注册链。通用 TreeView 不判断网格业务。
 - 网格及网格属性共用面板。网格入口打开外观页并读取当前显示状态，属性入口打开着色页并预选属性。外观页提供表面、线框、表面加边线、点显示、显隐、不透明度、边线颜色和像素线宽；着色页保留属性、22 种色带、反转、范围、无效值颜色及图例。表面边线开关对应已有 Surface/SurfaceWithEdges 模式，不维护第二份边线显隐状态。
 - 每视图 `IDOSGridRenderProvider` 保存显示模式、透明度、边线颜色和线宽，以及原有着色设置。高亮临时覆盖边线颜色和宽度，取消后恢复用户设置；属性、报告步、数据更新和网格透视恢复不重置外观。局部显示直接调用目标 Provider 并通知 Scene，不进入业务历史。
 - 菜单保存发起时的工程、树、网格/属性 ID 与目标视图弱引用，执行时重新核对身份。改变活动视图不重定向旧菜单或面板。工程切换、网格/渲染对象移除或视图关闭使面板失效；属性移除回退单色。菜单 Provider 注销时同步销毁其面板和显示动作。
-- App 内部直接调用具体 GridRenderProvider，不增加通用网格协议或包装层。删除旧插件着色代码的 app 依赖例外，保留已确认的井显示例外。剖切、裁剪和专业网格编辑不在本阶段实现。
+- App 内部直接调用具体 GridRenderProvider，不增加通用网格协议或包装层。删除旧插件着色代码的 app 依赖例外，井显示界面归档 gui 并编入 idos_app，不再需要跨插件依赖例外。剖切、裁剪和专业网格编辑不在本阶段实现。
 ## 15. 井输入数据解析
 
 井分层、实测射孔和 Checkshot 文件解析由 `src/providers/well` 中的具体 Provider/Metadata 提供。新增 `IDOSWellTopsProvider/Metadata`、`IDOSWellCompletionProvider/Metadata`、`IDOSWellCheckshotProvider/Metadata`；应用启动注册后沿用已有井导入命令。`IDOSWellCheckshot` 位于 `core/data/well`，作为 Well 的值类型成员保存原始时深采样、单位及声明的深度/时间类型，不把时深记录转换为三维点。实测射孔深度统一为米，未映射网格层号为 0，日期保持源文本；导入合并和快照撤销包含射孔及校深数据。射孔工作簿的阶段、簇、孔数、孔径和其他来源列保存在完井记录扩展属性中，不映射为网格层号；井完井数据表追加显示这些来源列。查看入口由现有井 GuiProvider 提供。
@@ -514,14 +520,56 @@ if (!view->setToolBar(toolBar))
 
 井口默认使用旧版 0～27 专用符号，保留点、球体和圆锥选项。Provider 在类内实现符号几何及预览，不增加符号工厂或包装层；自动模式优先读取已有 WellHead.symbol，无井头时使用井类型和开关状态回退，手动覆盖只改变目标视图。按旧编号划分生产、注入、关闭、停井配色；实测关闭射孔采用关闭配色，停井符号下沿用停井配色。显示设置提供四类井色、四类射孔色及沿用井色开关，也可关闭状态着色以使用各部分单色。井口符号、轨迹和射孔线默认启用 VTK 管状线及旧版光照参数，线宽仍使用像素，不引入物理管径几何。当前数据模型没有独立停井字段，停井由文件/显示符号表达；本阶段不迁入二维井组样式，不改变 MD 裁剪规则。
 
-具体井节点及 idos.well.trajectory 节点提供“显示设置…”入口，其他井数据分类不增加该入口。数值模拟插件中的 IDOSWellDisplayTreeGuiProvider 组合菜单，IDOSWellDisplayWidget 提供共用面板，两组成对文件放在插件根目录。沿用已确认的网格面板调用方式，仅这两个实现文件允许调用 app/well/idoswellrenderprovider.h。每视图 IDOSWellRenderProvider 保存权威显示状态，提供 displaySettings/setDisplaySettings；面板绑定打开时的工程、井身份和目标视图，局部修改不进入命令历史。支持井口形状、颜色和大小，轨迹颜色、宽度、平滑及 MD 裁剪，实测射孔颜色与宽度，以及井名标签。源数据保持不变；COMPDAT 网格层号不转换为实测射孔深度。数据删除、工程切换、视图关闭和插件清理时关闭面板并解除关联。
+具体井节点及 idos.well.trajectory 节点提供“显示设置…”入口，其他井数据分类不增加该入口。app/providers/well 中的 IDOSWellDisplayTreeGuiProvider 组合菜单，IDOSWellDisplayWidget 提供共用面板，菜单与井渲染实现位于 app/providers/well，面板位于 gui/well 并编入 idos_app，直接调用具体 Provider。每视图 IDOSWellRenderProvider 保存权威显示状态，提供 displaySettings/setDisplaySettings；面板绑定打开时的工程、井身份和目标视图，局部修改不进入命令历史。支持井口形状、颜色和大小，轨迹颜色、宽度、平滑及 MD 裁剪，实测射孔颜色与宽度，以及井名标签。源数据保持不变；COMPDAT 网格层号不转换为实测射孔深度。数据删除、工程切换、视图关闭和平台清理时关闭面板并解除关联。
 
 ## 17. 网格筛选
 
 IDOSGridFilter 继承 IDOSDataObject，保存源网格 ID 与 I/J/K 范围／勾选项、属性比较、条件组合及分别的网格／属性显示操作；属性比较支持七种方式、区间边界包含、无效值及相等容差。方向范围与勾选项取并集，三方向按并集／交集组合，网格和属性结果分别应用显示／隐藏／反选后取交集；IDOSGridFilterMetadata 注册数据工厂。两组成对文件位于 core/data/grid。原始网格几何不复制，单元选择为计算结果；缺失属性使筛选失效，不删除条件，也不因反选而显示所有单元。
 
-IDOSGridFilterWidget 为独立筛选窗口，成对文件位于现有 app/grid；沿用旧版网格筛选／属性筛选两页、方向列表和间隔选择、属性列表与条件编辑、范围拖动和直方图。IDOSGridSettingWidget 只保留外观／着色；网格右键“网格筛选…”打开筛选窗口进入临时预览；保存及另存为通过 IDOSGridFilterCommand/Metadata 的 create/update/delete 命令，命令成对文件位于 app/grid，重命名使用现有命令。保存的结果由现有 IDOSGridTreeProvider 装配在源网格“筛选”分类下，现有 GridTreeGuiProvider 提供编辑、重命名、删除和独立勾选，不新增树模型或菜单层。
+IDOSGridFilterWidget 为独立筛选窗口，成对文件位于 gui/grid并编入 idos_app；沿用旧版网格筛选／属性筛选两页、方向列表和间隔选择、属性列表与条件编辑、范围拖动和直方图。IDOSGridSettingWidget 只保留外观／着色；网格右键“网格筛选…”打开筛选窗口进入临时预览；保存及另存为通过 IDOSGridFilterCommand/Metadata 的 create/update/delete 命令，命令成对文件位于 app/command，重命名使用现有命令。保存的结果由现有 IDOSGridTreeProvider 装配在源网格“筛选”分类下，现有 GridTreeGuiProvider 提供编辑、重命名、删除和独立勾选，不新增树模型或菜单层。
 
-IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何和外观，不包装另一 Provider，关联 Filter 数据并拥有各视图独立状态；IDOSGridFilterRenderMetadata 创建该 Provider，两组成对文件位于 app/grid。RenderProvider 增加 dependencyIds/setDataReference 非拥有接口，由 RenderServer 统一解析和绑定依赖后调用 update，不识别具体子类。Grid Provider 的临时筛选也使用这条依赖绑定路径。动态条件按属性当前报告步重新计算，绘制单元附加原始单元 ID 和 I/J/K 数组。删除网格命令同时脱离筛选数据，撤销恢复；源数据重新绑定由 Server 处理。项目持久化仍未实现，保存仅进入当前工程。
+IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何和外观，不包装另一 Provider，关联 Filter 数据并拥有各视图独立状态；IDOSGridFilterRenderMetadata 创建该 Provider，两组成对文件位于 app/providers/grid。RenderProvider 增加 dependencyIds/setDataReference 非拥有接口，由 RenderServer 统一解析和绑定依赖后调用 update，不识别具体子类。Grid Provider 的临时筛选也使用这条依赖绑定路径。动态条件按属性当前报告步重新计算，绘制单元附加原始单元 ID 和 I/J/K 数组。删除网格命令同时脱离筛选数据，撤销恢复；源数据重新绑定由 Server 处理。项目持久化仍未实现，保存仅进入当前工程。
 
 主网格的临时预览保存成结果时，GridRenderProvider 记录对应结果 ID（仅目标视图的非拥有引用）；取消该结果勾选清除对应预览，恢复主网格完整活跃单元，保留显隐、着色和外观。后续应用其他临时条件解除旧关联，不误清其他预览。删除结果或撤销创建时由 RenderServer 的既有依赖移除流程通知 Provider 清理；通用层不增加业务判断。
+
+## 18. 对象复制、剪切、粘贴与拖放（2026-10-14，需求纠正）
+
+用户确认操作目标是数据、工况、网格和属性对象本身。先前“复制引用／剪切引用”菜单及其拖放语义不符合需求，已经替换。添加已有数据到工况使用独立“添加到工况…”菜单。
+
+- TreeView 处理选中集合、菜单组合、Ctrl+C/X/V、Qt MIME 及拖放目标提示。TreeGuiProvider 缺省不支持业务操作；新增 populateSelectionMenu 供具体业务实现补充多选菜单。通用框架不判断领域类型。
+- 具体 CaseTreeGuiProvider 解析同工程 application/x-idos-objects 载荷，确认实际对象和目标归属；objects.copy / objects.move 经 CommandManager 调用 IDOSTransferObjectsCommand。重命名共用 object.rename。关联入口调用 CaseReferenceCommand，既有 case.fluidRock.attach 仍复用它。
+- DataObject 提供缺省不支持的 canClone/clone，具体数据类复制全部值类型字段并由构造分配新 ID，不复制 QObject 所有权及连接。工况不复制运行状态和输出目录。业务命令负责递归复制关系和重映射；Metadata 和 Server 不参与业务修改。
+- 工况副本复制关联数据和私有网格，网格副本复制属性、动态报告步和筛选。筛选条件中的属性 ID 指向新属性。独立副本修改不影响源数据；同一复制事务内的重复依赖复用同一新对象。
+- 网格可在工况间移动，属性可在相同尺寸网格间移动；依赖属性的筛选存在时拒绝属性移动。剪切只记源，粘贴或放置成功才改变归属。普通/Ctrl 拖动复制，Shift 拖动移动。失败不进入历史；批量通知不替代预检和回滚。
+- 数据树分类和工况均直接属于工程，不新增未保存的任意父子关系和行间排序。固定分类之间不移动对象。井部件、跨工程、外部拖入及筛选单独跨网格复制不开放。
+- 重命名使用对象 name，动态属性树也显示 name，保留用于模拟器的 keyword。相同类型、相同容器中拒绝同名对象。
+- 生命周期补齐：删除工况私有网格时一并接管属性及筛选，撤销恢复。
+
+验收结果及后续事项以工作进度文档最新记录为准；旧的引用交互验收不代表本次对象操作。
+
+## 19. 单文件二进制工程持久化
+
+用户确认只保留一个 .idos 工程文件，保存解析后的实际数据，不嵌入原始导入文件。工程信息和关系由 IDOS 定义，底层使用现有 VTK 随附 HDF5 库，不新增 ProjectStorage、读写管理器或另一套对象管理体系。
+
+- IDOSProject::save / load 负责工程级流程、版本、身份、文件路径和未保存状态。load 返回独立临时工程，所有对象读完后调用具体数据校验关系，再由 MainWindow 切换。原工程不参与加载修改。
+- IDOSDataRegistry 按 typeId 查找 IDOSDataMetadata。Metadata 的 writeProjectData / readProjectData 负责 HDF5 分发；具体对象和组合值类型通过 projectData / restoreProjectData 明确列出字段。未知或未实现的类型保存失败，不静默跳过。
+- IDOSObject 只授予 Project 恢复原 ID 的友元权限，正常创建继续生成新 ID。新增具体 IDOSGridPropertyMetadata，补齐属性恢复的类型注册。
+- 文件 /IDOS 保存格式 ID、版本 2、工程元信息、当前选择和对象索引；/Objects/<序号>/Data 保存具体对象数据。对象索引包含稳定 ID、typeId、name 和 visible。当前只写版本 2，兼容读取版本 1。
+- 版本 2 的复合数据使用 Kind 21：Metadata 保存固定 Qt_5_15、小端 QDataStream 元数据，魔数为 0x49444f32；原生数组独立放入 A0、A1 等数据集。相同字段的记录列表按列编码，数值列直接作为原生数组，避免逐记录、逐字段创建 HDF5 对象。版本 1 的 Kind 子分组读取继续保留。解码限定内置标量类型，并校验深度、计数和数组引用。
+- 浮点／整型数组直接保存为 HDF5 原生数据集，固定小端格式；达到 1024 项时分块、Deflate 1 压缩并带 Fletcher32 校验。Qt 容器不按 C++ 内存布局转储，不使用 JSON 或 ZIP 包装。
+- 网格保留 COORD/ZCORN/ACTNUM，属性保留静态数值及全部动态报告步；井保留井头存在标记、空间参考、轨迹、曲线、层位、时深、完井、模拟井控及扩展字段；地震保存实际采样数组。HDF5 作为工程容器；当前没有生成标准 /VTKHDF 数据集或提供 ParaView 直接读取，后续互通另按 VTKHDF 标准实现，不能将两者混称为已完成。
+- 保存先生成同目录临时 HDF5 文件，确认关闭成功后原子替换目标；正常磁盘路径不再完整复制临时文件。Windows 使用 MoveFileExW，Qt 临时文件先释放底层句柄；失败保留原目标。中文路径下，窄字符 HDF5 库无法打开时使用 Qt 文件读写与 HDF5 内存映像兼容，内存回退通过 QSaveFile 提交，仍受 QByteArray 的 2 GB 大小限制且额外占用内存。
+- 加载在独立工程中批量恢复，校验后一次切换展示；日志分别记录保存准备、写入、提交，读取头部、恢复、校验以及界面重建耗时。当前读写仍为同步执行，尚未实现后台任务或进度取消。
+- 加载校验文件版本、对象身份、字段类型、枚举值、数组尺寸、报告步和关系；拒绝外部链接、外部原始数据和虚拟数据集，确保工程数据自包含。筛选允许保留已丢失属性的条件，以支持既有“失效但保留编辑内容”的行为。
+- MainWindow 接入打开、保存、另存为与 Save/Discard/Cancel 提示。Server 根据加载后的工程重建树和渲染；不增加具体业务特判或 Metadata 同步调用。UI 状态扩展见下节，业务撤销历史不持久化。
+- 新增字段必须同步 projectData/restoreProjectData、类型版本与保存恢复测试；不依赖源文件重新导入来弥补未保存字段。
+
+## 20. 工程 UI 状态与本机窗口设置
+
+- IDOSProject 的 presentationState 为可选 QVariantMap，复用 .idos 版本 2 容器；UI 子版本为 1。兼容没有该字段的版本 1/2 工程，不新增存储管理类。工程数据先完成读取与校验，MainWindow 再装配视图集合，RenderServer 统一收集和恢复渲染状态。
+- RenderServer 按稳定视图 ID、数据 ID、数据 typeId 定位，恢复时不使用重新生成的 RenderObject ID。RenderProvider 的 presentationState/restorePresentationState 提供通用显隐、不透明度和显示模式；具体井、网格和地震 Provider 扩展各自参数。Server 负责再次绑定属性等非拥有依赖，再更新展示；Metadata 不同步工程。
+- RenderView 保存 2D/3D 模式、背景、方向、坐标轴、图例、光标跟踪、活动与主页相机、工具栏位置和显隐。联动在所有独立相机恢复后建立，并保留解除联动时的独立相机。相机数值和正尺度校验，异常 UI 条目回退默认或前一状态，不影响业务数据加载。
+- TreeServer 提供由稳定 key 组成的路径，不持久化树节点临时 ID；TreeView 保存展开、多选、当前项及滚动位置，MainWindow 协调恢复，不向 core 引入 QWidget。树和渲染模块继续互不依赖。测井曲线窗口由现有 App 界面保存井 ID、通道和深度范围，切换工程时清理旧窗口再恢复。
+- 恢复期间屏蔽工程 UI 修改标记与树选择联动；恢复完成后工程保持干净。用户修改显示、相机、视图集合或树状态会标记需要保存，不加入业务撤销栈。保存前再次收集快照；按稳定 ID 排序，避免运行时对象顺序差异误报变更。旧工程缺少 UI 快照本身不触发未保存提示，显式保存会补齐。
+- 本机 ui.ini 位于 QStandardPaths::AppConfigLocation；保存主窗口几何、主窗口工具条状态、按视图集合区分的 ADS 停靠布局，以及最多 10 个最近工程。恢复窗口时检查屏幕可见范围；最近工程从打开工程动作的菜单进入，缺失文件禁用。IDOS_UI_SETTINGS_PATH 可指定隔离设置文件，IDOS_DISABLE_UI_SETTINGS 可禁用本机设置，供测试使用。
+- 本阶段不保存业务撤销历史、运行中的计算任务或临时业务对话框；读写仍同步执行，后台任务与崩溃恢复另行实施。

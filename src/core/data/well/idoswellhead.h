@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_HEAD_H
 #define IDOS_WELL_HEAD_H
 
+#include <QVariantMap>
+
 #include "idos_core.h"
 #include "idoswellspatialreference.h"
 
@@ -13,6 +15,9 @@
 class CORE_EXPORT IDOSWellHead
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellHead();
 
     double surfaceX() const;

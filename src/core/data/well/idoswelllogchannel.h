@@ -2,6 +2,7 @@
 #define IDOS_WELL_LOG_CHANNEL_H
 
 #include <QString>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idos_core.h"
@@ -19,6 +20,9 @@
 class CORE_EXPORT IDOSWellLogChannel
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellLogChannel();
     explicit IDOSWellLogChannel(const QString& name);
 

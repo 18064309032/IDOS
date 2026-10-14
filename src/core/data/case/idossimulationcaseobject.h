@@ -15,10 +15,15 @@ class CORE_EXPORT IDOSSimulationCaseObject : public IDOSCaseObject
     Q_OBJECT
 
   public:
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     explicit IDOSSimulationCaseObject(QObject* parent = nullptr);
     ~IDOSSimulationCaseObject() override;
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
 
     QString sourceFile() const;
     void setSourceFile(const QString& path);

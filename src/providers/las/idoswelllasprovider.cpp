@@ -5,10 +5,10 @@
 #include <QRegularExpression>
 #include <QTextStream>
 
-#include "idoswell.h"
-#include "idoswellhead.h"
-#include "idoswelllogchannel.h"
-#include "idoswelllogset.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellhead.h"
+#include "data/well/idoswelllogchannel.h"
+#include "data/well/idoswelllogset.h"
 
 #include "idoswelllasprovider.h"
 

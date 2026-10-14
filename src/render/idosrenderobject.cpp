@@ -1,6 +1,6 @@
 #include <QUuid>
 
-#include "idosrenderprovider.h"
+#include "providers/idosrenderprovider.h"
 
 #include "idosrenderobject.h"
 

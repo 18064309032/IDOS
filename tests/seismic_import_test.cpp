@@ -2,15 +2,14 @@
 
 #include <QFile>
 #include <QTemporaryDir>
-#include <QTextCodec>
 #include <QtTest>
 
+#include "data/seismic/idosseismicvolume.h"
 #include "idosapplication.h"
-#include "idosdataprovider.h"
-#include "idosdataprovidermetadata.h"
-#include "idosdataproviderregistry.h"
-#include "idosseismicvolume.h"
-#include "idosseismicvolumerenderprovider.h"
+#include "providers/idosdataprovider.h"
+#include "providers/idosdataprovidermetadata.h"
+#include "providers/idosdataproviderregistry.h"
+#include "providers/seismic/idosseismicvolumerenderprovider.h"
 
 #include "seismic_import_test.h"
 
@@ -48,8 +47,18 @@ void SeismicImportTest::onSegyCustomHeaderAndSamples()
     QCOMPARE(volume->crosslineMaximum(), 401);
     const QVector<qint64> expectedOffsets = QVector<qint64>() << 0 << 2;
     const QVector<int> expectedCounts = QVector<int>() << 2 << 2;
-    QCOMPARE(volume->traceSampleOffsets(), expectedOffsets);
-    QCOMPARE(volume->traceSampleCounts(), expectedCounts);
+    const QVector<qint64> offsets = volume->traceSampleOffsets();
+    const QVector<int> counts = volume->traceSampleCounts();
+    QCOMPARE(offsets.size(), expectedOffsets.size());
+    QCOMPARE(counts.size(), expectedCounts.size());
+    for (int index = 0; index < offsets.size(); ++index)
+    {
+        QCOMPARE(offsets.at(index), expectedOffsets.at(index));
+    }
+    for (int index = 0; index < counts.size(); ++index)
+    {
+        QCOMPARE(counts.at(index), expectedCounts.at(index));
+    }
     QCOMPARE(volume->sampleValues().size(), 4);
     QVERIFY(qAbs(volume->sampleValues().at(0) - 1.0F) < 0.0001F);
     QVERIFY(qAbs(volume->sampleValues().at(1) + 2.0F) < 0.0001F);
@@ -67,26 +76,10 @@ void SeismicImportTest::onSegyCustomHeaderAndSamples()
 
 QByteArray SeismicImportTest::createSegyFile() const
 {
-    QString text;
-    for (int lineNumber = 1; lineNumber <= 40; ++lineNumber)
-    {
-        QString line;
-        if (lineNumber == 16)
-        {
-            line = QStringLiteral("C16 Inline 17 Xline 25");
-        }
-        text.append(line.leftJustified(80, QLatin1Char(' ')));
-    }
-    QTextCodec* codec = QTextCodec::codecForName("IBM 037");
-    if (codec == nullptr)
-    {
-        return {};
-    }
-    const QByteArray textHeader = codec->fromUnicode(text);
-    if (textHeader.size() != 3200)
-    {
-        return {};
-    }
+    QByteArray textHeader(3200, '\x40');
+    textHeader.replace(0, 3, QByteArray::fromHex("c3f0f1"));
+    const QByteArray customHeader = QByteArray::fromHex("c3f1f640c9959389958540f1f740e79389958540f2f5");
+    textHeader.replace(15 * 80, customHeader.size(), customHeader);
 
     QByteArray bytes = textHeader;
     QByteArray binaryHeader(400, '\0');

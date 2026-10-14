@@ -1,5 +1,7 @@
 #include <cmath>
 
+#include <QObject>
+
 #include "idoswellcheckshot.h"
 
 IDOSWellCheckshot::IDOSWellCheckshot()
@@ -84,4 +86,57 @@ QString IDOSWellCheckshot::depthType() const
 void IDOSWellCheckshot::setDepthType(const QString& depthType)
 {
     m_depthType = depthType;
+}
+
+QVariantMap IDOSWellCheckshot::projectData() const
+{
+    QVariantMap data;
+    data.insert(QStringLiteral("depths"), QVariant::fromValue(m_depths));
+    data.insert(QStringLiteral("times"), QVariant::fromValue(m_times));
+    data.insert(QStringLiteral("depthUnit"), QVariant::fromValue(m_depthUnit));
+    data.insert(QStringLiteral("timeUnit"), QVariant::fromValue(m_timeUnit));
+    data.insert(QStringLiteral("timeType"), QVariant::fromValue(m_timeType));
+    data.insert(QStringLiteral("depthType"), QVariant::fromValue(m_depthType));
+    return data;
+}
+
+bool IDOSWellCheckshot::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("depths")) || data.value(QStringLiteral("depths")).userType() != qMetaTypeId<QVector<double>>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("depths"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("times")) || data.value(QStringLiteral("times")).userType() != qMetaTypeId<QVector<double>>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("times"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("depthUnit")) || data.value(QStringLiteral("depthUnit")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("depthUnit"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("timeUnit")) || data.value(QStringLiteral("timeUnit")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("timeUnit"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("timeType")) || data.value(QStringLiteral("timeType")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("timeType"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("depthType")) || data.value(QStringLiteral("depthType")).userType() != qMetaTypeId<QString>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("depthType"));
+        return false;
+    }
+    m_depths = data.value(QStringLiteral("depths")).value<QVector<double>>();
+    m_times = data.value(QStringLiteral("times")).value<QVector<double>>();
+    m_depthUnit = data.value(QStringLiteral("depthUnit")).value<QString>();
+    m_timeUnit = data.value(QStringLiteral("timeUnit")).value<QString>();
+    m_timeType = data.value(QStringLiteral("timeType")).value<QString>();
+    m_depthType = data.value(QStringLiteral("depthType")).value<QString>();
+    return true;
 }

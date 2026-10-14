@@ -11,6 +11,9 @@ class CORE_EXPORT IDOSFluidRockTable : public IDOSDataObject
     Q_OBJECT
 
   public:
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     enum class Category
     {
         Fluid,
@@ -21,6 +24,8 @@ class CORE_EXPORT IDOSFluidRockTable : public IDOSDataObject
     ~IDOSFluidRockTable() override;
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
     Category category() const;
     QVariantMap tableData() const;
     void setTableData(const QVariantMap& data);

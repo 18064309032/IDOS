@@ -3,7 +3,8 @@
 
 #include <QObject>
 
-#include "idosdataprovidermetadata.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovidermetadata.h"
 
 /**
  * @brief ECLIPSE 网格 provider 的元数据 + 工厂。

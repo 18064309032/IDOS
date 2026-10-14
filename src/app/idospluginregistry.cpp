@@ -15,7 +15,7 @@
 #include "idosinterface.h"
 #include "idosplugin.h"
 #include "idostoolregistry.h"
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
 
 #include "idospluginregistry.h"
 

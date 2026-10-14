@@ -4,7 +4,7 @@
 #include <QList>
 #include <QPointer>
 
-#include "idostreeguiprovider.h"
+#include "tree/idostreeguiprovider.h"
 
 class QAction;
 

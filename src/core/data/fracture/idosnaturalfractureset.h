@@ -2,6 +2,7 @@
 #define IDOS_NATURAL_FRACTURE_SET_H
 
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "idosdataobject.h"
 
@@ -10,9 +11,14 @@ class CORE_EXPORT IDOSNaturalFractureSet : public IDOSDataObject
     Q_OBJECT
 
   public:
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     explicit IDOSNaturalFractureSet(QObject* parent = nullptr);
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
     QString sourceFile() const;
     void setSourceFile(const QString& sourceFile);
     QString lengthUnit() const;

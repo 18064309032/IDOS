@@ -1,3 +1,4 @@
+#include <cmath>
 #include <limits>
 
 #include <QEasingCurve>
@@ -13,8 +14,8 @@
 #include <QString>
 #include <QThread>
 #include <QVBoxLayout>
-
 #include <QVTKOpenGLNativeWidget.h>
+
 #include <vtkActor.h>
 #include <vtkAxesActor.h>
 #include <vtkCamera.h>
@@ -32,10 +33,10 @@
 #include <vtkStringOutputWindow.h>
 
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 #include "idosrenderscene.h"
 #include "idostool.h"
 #include "idostoolbar.h"
+#include "providers/idosrenderprovider.h"
 
 #include "idosrenderview.h"
 
@@ -62,6 +63,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_savedCamera()
     , m_linkedCamera()
     , m_cameraObserverTag(0)
+    , m_interactionObserverTag(0)
     , m_twoDInteractorStyle(vtkSmartPointer<vtkInteractorStyleImage>::New())
     , m_threeDInteractorStyle(vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New())
     , m_axesActor(vtkSmartPointer<vtkAxesActor>::New())
@@ -114,6 +116,8 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
 
     m_vtkWidget->setRenderWindow(m_renderWindow);
     m_vtkWidget->interactor()->SetInteractorStyle(m_threeDInteractorStyle);
+    m_interactionObserverTag = m_vtkWidget->interactor()->AddObserver(
+        vtkCommand::EndInteractionEvent, this, &IDOSRenderView::onCameraInteraction);
     m_renderWindow->AddRenderer(m_renderer);
     m_renderer->SetBackground(0.08, 0.09, 0.11);
     m_homeCamera->DeepCopy(m_renderer->GetActiveCamera());
@@ -130,6 +134,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
 
 IDOSRenderView::~IDOSRenderView()
 {
+    m_vtkWidget->interactor()->RemoveObserver(m_interactionObserverTag);
     unlinkCamera();
     clearEnabledTools();
     delete m_toolBar.data();
@@ -886,6 +891,7 @@ bool IDOSRenderView::setToolBar(IDOSToolBar* toolBar)
     {
         connect(toolBar, &QObject::destroyed, this, &IDOSRenderView::onToolBarDestroyed);
         connect(toolBar, &IDOSToolBar::layoutChanged, this, &IDOSRenderView::onToolBarLayoutChanged);
+        connect(toolBar, &IDOSToolBar::presentationChanged, this, &IDOSRenderView::viewStateChanged);
         toolBar->setView(this);
         positionToolBar();
     }
@@ -1123,4 +1129,134 @@ void IDOSRenderView::onToolCallbackFinished(bool consumed)
 void IDOSRenderView::onToolBarLayoutChanged()
 {
     positionToolBar();
+}
+
+QVariantMap IDOSRenderView::cameraState(vtkCamera* camera)
+{
+    QVariantMap state;
+    QVariantList position;
+    QVariantList focalPoint;
+    QVariantList viewUp;
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        position.append(camera->GetPosition()[axis]);
+        focalPoint.append(camera->GetFocalPoint()[axis]);
+        viewUp.append(camera->GetViewUp()[axis]);
+    }
+    state.insert(QStringLiteral("position"), position);
+    state.insert(QStringLiteral("focalPoint"), focalPoint);
+    state.insert(QStringLiteral("viewUp"), viewUp);
+    state.insert(QStringLiteral("parallel"), camera->GetParallelProjection() != 0);
+    state.insert(QStringLiteral("parallelScale"), camera->GetParallelScale());
+    state.insert(QStringLiteral("viewAngle"), camera->GetViewAngle());
+    return state;
+}
+
+bool IDOSRenderView::restoreCameraState(vtkCamera* camera, const QVariantMap& state)
+{
+    const QVariantList position = state.value(QStringLiteral("position")).toList();
+    const QVariantList focal = state.value(QStringLiteral("focalPoint")).toList();
+    const QVariantList up = state.value(QStringLiteral("viewUp")).toList();
+    const double scale = state.value(QStringLiteral("parallelScale")).toDouble();
+    const double angle = state.value(QStringLiteral("viewAngle")).toDouble();
+    if (position.size() != 3 || focal.size() != 3 || up.size() != 3 ||
+        !std::isfinite(scale) || scale <= 0.0 || !std::isfinite(angle) || angle <= 0.0 || angle >= 180.0)
+    {
+        return false;
+    }
+    double p[3];
+    double f[3];
+    double u[3];
+    double distance = 0.0;
+    double upLength = 0.0;
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        bool validP = false;
+        bool validF = false;
+        bool validU = false;
+        p[axis] = position.at(axis).toDouble(&validP);
+        f[axis] = focal.at(axis).toDouble(&validF);
+        u[axis] = up.at(axis).toDouble(&validU);
+        if (!validP || !validF || !validU || !std::isfinite(p[axis]) || !std::isfinite(f[axis]) || !std::isfinite(u[axis]))
+        {
+            return false;
+        }
+        distance += (p[axis] - f[axis]) * (p[axis] - f[axis]);
+        upLength += u[axis] * u[axis];
+    }
+    if (!(distance > 0.0) || !(upLength > 0.0) || !std::isfinite(distance) || !std::isfinite(upLength))
+    {
+        return false;
+    }
+    camera->SetPosition(p);
+    camera->SetFocalPoint(f);
+    camera->SetViewUp(u);
+    camera->SetParallelProjection(state.value(QStringLiteral("parallel")).toBool() ? 1 : 0);
+    camera->SetParallelScale(scale);
+    camera->SetViewAngle(angle);
+    return true;
+}
+
+QVariantMap IDOSRenderView::presentationState() const
+{
+    QVariantMap state;
+    state.insert(QStringLiteral("twoDimensional"), isTwoDimensional());
+    state.insert(QStringLiteral("orientation"), static_cast<int>(orientation()));
+    state.insert(QStringLiteral("background"), background().name(QColor::HexArgb));
+    state.insert(QStringLiteral("axes"), axesVisible());
+    state.insert(QStringLiteral("legend"), legendVisible());
+    state.insert(QStringLiteral("cursorTracking"), cursorTrackingEnabled());
+    state.insert(QStringLiteral("camera"), cameraState(m_savedCamera != nullptr ? m_savedCamera.GetPointer() : m_renderer->GetActiveCamera()));
+    state.insert(QStringLiteral("homeCamera"), cameraState(m_homeCamera));
+    state.insert(QStringLiteral("homeTwoDimensional"), m_homeTwoDimensional);
+    state.insert(QStringLiteral("homeInitialized"), m_homeViewInitialized);
+    if (m_toolBar != nullptr)
+    {
+        state.insert(QStringLiteral("toolBar"), m_toolBar->presentationState());
+    }
+    return state;
+}
+
+bool IDOSRenderView::restorePresentationState(const QVariantMap& state)
+{
+    const QColor color(state.value(QStringLiteral("background")).toString());
+    const int direction = state.value(QStringLiteral("orientation")).toInt();
+    vtkSmartPointer<vtkCamera> camera = vtkSmartPointer<vtkCamera>::New();
+    if (!color.isValid() || direction < static_cast<int>(IDOSOrientation::Perspective) ||
+        direction > static_cast<int>(IDOSOrientation::Isometric) ||
+        !restoreCameraState(camera, state.value(QStringLiteral("camera")).toMap()))
+    {
+        return false;
+    }
+    unlinkCamera();
+    setTwoDimensional(state.value(QStringLiteral("twoDimensional")).toBool());
+    m_orientation = static_cast<IDOSOrientation>(direction);
+    setBackground(color);
+    setAxesVisible(state.value(QStringLiteral("axes")).toBool());
+    setLegendVisible(state.value(QStringLiteral("legend")).toBool());
+    setCursorTrackingEnabled(state.value(QStringLiteral("cursorTracking")).toBool());
+    m_renderer->GetActiveCamera()->DeepCopy(camera);
+    m_renderer->ResetCameraClippingRange();
+    m_homeViewInitialized = state.value(QStringLiteral("homeInitialized")).toBool() &&
+        restoreCameraState(m_homeCamera, state.value(QStringLiteral("homeCamera")).toMap());
+    m_homeTwoDimensional = state.value(QStringLiteral("homeTwoDimensional")).toBool();
+    if (m_toolBar != nullptr)
+    {
+        m_toolBar->restorePresentationState(state.value(QStringLiteral("toolBar")).toMap());
+        positionToolBar();
+    }
+    render();
+    emit viewStateChanged();
+    return true;
+}
+
+void IDOSRenderView::onCameraInteraction()
+{
+    emit viewStateChanged();
+}
+
+bool IDOSRenderView::isCameraLinkedTo(const IDOSRenderView* view) const
+{
+    return view != nullptr && view != this && isCameraLinked() &&
+        m_linkedCamera.GetPointer() == view->m_renderer->GetActiveCamera();
 }

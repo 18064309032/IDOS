@@ -7,9 +7,9 @@
 #include <QRegularExpression>
 #include <QTextStream>
 
-#include "idoswell.h"
-#include "idoswellmarker.h"
-#include "idoswellmarkerset.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellmarker.h"
+#include "data/well/idoswellmarkerset.h"
 
 #include "idoswelltopsprovider.h"
 

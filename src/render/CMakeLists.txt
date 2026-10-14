@@ -1,46 +1,48 @@
 add_library(idos_render SHARED
-    idostool.h
-    idostool.cpp
-    idostoolmetadata.h
-    idostoolmetadata.cpp
-    idostoolregistry.h
-    idostoolregistry.cpp
-    idostoolprovider.h
-    idostoolprovider.cpp
-    idostoolbar.h
-    idostoolbar.cpp
-    idosrenderserver.h
-    idosrenderserver.cpp
-    idosrendermetadata.h
-    idosrendermetadata.cpp
-    idosrenderregistry.h
-    idosrenderregistry.cpp
     idos_render.h
-    idosrenderobject.h
+    idosrenderinteractiontool.cpp
+    idosrenderinteractiontool.h
     idosrenderobject.cpp
-    idosrenderprovider.h
-    idosrenderprovider.cpp
-    idosrenderscene.h
+    idosrenderobject.h
+    idosrenderregistry.cpp
+    idosrenderregistry.h
     idosrenderscene.cpp
-    idosrendertypes.h
+    idosrenderscene.h
+    idosrenderserver.cpp
+    idosrenderserver.h
     idosrendertypes.cpp
-    idosrenderview.h
+    idosrendertypes.h
     idosrenderview.cpp
+    idosrenderview.h
+    idostool.cpp
+    idostool.h
+    idostoolbar.cpp
+    idostoolbar.h
+    idostoolregistry.cpp
+    idostoolregistry.h
+    providers/idosrendermetadata.cpp
+    providers/idosrendermetadata.h
+    providers/idosrenderprovider.cpp
+    providers/idosrenderprovider.h
+    providers/idostoolmetadata.cpp
+    providers/idostoolmetadata.h
+    providers/idostoolprovider.cpp
+    providers/idostoolprovider.h
 )
 
-target_include_directories(idos_render
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
+target_include_directories(idos_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(idos_render PUBLIC idos_core Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)
     target_compile_definitions(idos_render PUBLIC IDOS_ENABLE_RENDER)
-    target_include_directories(idos_render PUBLIC
-        "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/include/vtk-9.6"
-    )
+    target_include_directories(idos_render PUBLIC "${CMAKE_SOURCE_DIR}/thirdparty/vtk9.6.0/include/vtk-9.6")
     target_link_libraries(idos_render PRIVATE
+        VTK::CommonTransforms
+        VTK::FiltersCore
+        VTK::FiltersExtraction
+        VTK::FiltersGeneral
+        VTK::FiltersSources
         VTK::CommonCore
         VTK::CommonDataModel
         VTK::RenderingCore

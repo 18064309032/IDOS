@@ -12,6 +12,7 @@ class WellPathTest : public QObject
 
   private slots:
     void onParseSample();
+    void onMultipleWellsAndExtraColumns();
     void onInvalidInput();
     void onResolveGeometry();
 };

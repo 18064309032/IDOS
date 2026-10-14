@@ -1,11 +1,16 @@
 #ifndef IDOS_WELL_SPATIAL_REFERENCE_H
 #define IDOS_WELL_SPATIAL_REFERENCE_H
 
+#include <QVariantMap>
+
 #include "idos_core.h"
 
 class CORE_EXPORT IDOSWellSpatialReference
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     enum class VerticalDatum
     {
         Unknown,

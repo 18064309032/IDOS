@@ -2,6 +2,7 @@
 #define IDOS_WELL_H
 
 #include <QList>
+#include <QVariantMap>
 
 #include "idosdataobject.h"
 #include "idoswellcheckshot.h"
@@ -23,6 +24,10 @@ class CORE_EXPORT IDOSWell : public IDOSDataObject
     Q_OBJECT
 
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     /**
      * @brief 井类型。
      */
@@ -36,6 +41,8 @@ class CORE_EXPORT IDOSWell : public IDOSDataObject
     ~IDOSWell() override;
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
 
     /** 井类型。 */
     Type type() const;

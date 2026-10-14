@@ -5,7 +5,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 /**
  * @brief 井头汇总表解析 provider（Wellheader.txt）。

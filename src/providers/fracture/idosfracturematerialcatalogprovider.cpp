@@ -6,7 +6,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "idosfracturematerialcatalog.h"
+#include "data/fracture/idosfracturematerialcatalog.h"
 
 #include "idosfracturematerialcatalogprovider.h"
 

@@ -8,6 +8,7 @@
 #include <QPoint>
 #include <QPointer>
 #include <QString>
+#include <QVariantMap>
 #include <QWidget>
 
 #include <vtkSmartPointer.h>
@@ -47,6 +48,8 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
 
     // The view owns this scene for its entire lifetime.
     IDOSRenderScene* scene() const;
+    QVariantMap presentationState() const;
+    bool restorePresentationState(const QVariantMap& state);
 
     QList<QString> selection() const;
     void setSelection(const QList<QString>& ids);
@@ -66,6 +69,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool linkCameraTo(IDOSRenderView* sourceView);
     void unlinkCamera();
     bool isCameraLinked() const;
+    bool isCameraLinkedTo(const IDOSRenderView* view) const;
     bool cursorTrackingEnabled() const;
     void setCursorTrackingEnabled(bool enabled);
     void setTwoDimensional(bool enabled);
@@ -116,9 +120,12 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void onToolCallbackFinished(bool consumed);
     void onToolBarLayoutChanged();
     void onLinkedCameraModified(vtkObject* source, unsigned long eventId, void* callData);
+    void onCameraInteraction();
 
   private:
     bool toolsBusy() const;
+    static QVariantMap cameraState(vtkCamera* camera);
+    static bool restoreCameraState(vtkCamera* camera, const QVariantMap& state);
     void positionToolBar();
     void cancelToolInteraction();
     void clearEnabledTools();
@@ -145,6 +152,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkCamera> m_savedCamera;
     vtkWeakPointer<vtkCamera> m_linkedCamera;
     unsigned long m_cameraObserverTag;
+    unsigned long m_interactionObserverTag;
     vtkSmartPointer<vtkInteractorStyleImage> m_twoDInteractorStyle;
     vtkSmartPointer<vtkInteractorStyleTrackballCamera> m_threeDInteractorStyle;
     vtkSmartPointer<vtkAxesActor> m_axesActor;

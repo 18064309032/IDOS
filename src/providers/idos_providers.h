@@ -3,6 +3,8 @@
 
 #include <qglobal.h>
 
+#include "idos_providers.h"
+
 #if defined(IDOS_PROVIDERS_LIB)
 #define PROVIDERS_EXPORT Q_DECL_EXPORT
 #else

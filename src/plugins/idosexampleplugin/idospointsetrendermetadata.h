@@ -1,7 +1,7 @@
 #ifndef IDOS_POINT_SET_RENDER_METADATA_H
 #define IDOS_POINT_SET_RENDER_METADATA_H
 
-#include "idosrendermetadata.h"
+#include "providers/idosrendermetadata.h"
 
 class IDOSPointSetRenderMetadata : public IDOSRenderMetadata
 {

@@ -3,7 +3,7 @@
 #include <QVector3D>
 
 #include "idospointset.h"
-#include "idostreeitem.h"
+#include "tree/idostreeitem.h"
 
 #include "idospointsettreeprovider.h"
 

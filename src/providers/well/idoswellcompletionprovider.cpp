@@ -6,10 +6,10 @@
 #include <QObject>
 #include <QTextStream>
 
-#include "xlsxdocument.h"
+#include <xlsxdocument.h>
 
-#include "idoswell.h"
-#include "idoswellcompletion.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellcompletion.h"
 
 #include "idoswellcompletionprovider.h"
 

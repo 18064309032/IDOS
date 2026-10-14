@@ -7,7 +7,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "idosdataprovidermetadata.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovidermetadata.h"
 
 class PROVIDERS_EXPORT IDOSGridPropertyEclipseMetadata : public IDOSDataProviderMetadata
 {

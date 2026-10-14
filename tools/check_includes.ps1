@@ -20,13 +20,27 @@ $allowed = @{
     app = @('core','gui','providers','render','analysis','python','assistant')
     plugins = @('core','gui','render','providers')
 }
+# Physical GUI storage also contains explicitly app-owned UI source files.
+# Use the actual app target source list, not a blanket GUI-to-app exception.
+$platformUiFiles = @()
+$appBuildFile = Join-Path $root 'app/CMakeLists.txt'
+if (Test-Path -LiteralPath $appBuildFile) {
+    $appBuildText = [IO.File]::ReadAllText($appBuildFile)
+    $platformUiFiles = @([regex]::Matches($appBuildText, 'src/(gui/[^"\r\n]+\.(?:h|cpp))') | ForEach-Object { $_.Groups[1].Value })
+}
+function ModuleOf($rel) {
+    if ($rel -in $platformUiFiles) { return 'app' }
+    return ($rel -split '/')[0]
+}
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
 function IsPublic($rel) {
+    if ($rel -in $platformUiFiles) { return $false }
     ($rel -split '/').Count -eq 2 -or
-    $rel -match '^core/(data|tree|command|log)/[^/]+\.h(pp)?$' -or
-    $rel -match '^core/data/(well|grid|case)/[^/]+\.h(pp)?$' -or
+    $rel -match '^core/(data|tree|providers|logger)/[^/]+\.h(pp)?$' -or
+    $rel -match '^core/data/(well|grid|case|fluidrock|fracture|production|seismic)/[^/]+\.h(pp)?$' -or
     $rel -match '^gui/tree/[^/]+\.h(pp)?$' -or
-    $rel -match '^providers/(well|las|eclipse)/[^/]+\.h(pp)?$' -or
+    $rel -match '^render/providers/[^/]+\.h(pp)?$' -or
+    $rel -match '^providers/(well|las|grid|case|fluidrock|fracture|production|seismic)/[^/]+\.h(pp)?$' -or
     $rel -match '^plugins/[^/]+/[^/]+\.h(pp)?$'
 }
 function WithoutComments($content) {
@@ -46,7 +60,7 @@ foreach ($header in $headers) {
 }
 foreach ($file in $files) {
     $rel = RelativePath $file.FullName
-    $module = ($rel -split '/')[0]
+    $module = ModuleOf $rel
     $content = WithoutComments ([IO.File]::ReadAllText($file.FullName))
     $public = $file.Extension -in '.h','.hpp' -and (IsPublic $rel)
     if ($public) {
@@ -100,19 +114,14 @@ foreach ($file in $files) {
         if ($candidates.Count -ne 1) { $violations.Add("${location}: 头文件归属不唯一: $inc"); continue }
         $target = $candidates[0]
         $targetRel = RelativePath $target.FullName
-        $targetModule = ($targetRel -split '/')[0]
-        # Confirmed simulation well display UI may call its concrete app provider.
-        $wellDisplayDependency = $targetRel -eq 'app/well/idoswellrenderprovider.h' -and
-            $rel -in @('plugins/idossimulationplugin/idoswelldisplaywidget.cpp',
-                       'plugins/idossimulationplugin/idoswelldisplaytreeguiprovider.cpp')
+        $targetModule = ModuleOf $targetRel
         if ($module -ne $targetModule) {
             if ($module -ne 'main.cpp' -and
                 (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module]) -and
-                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h') -and
-                !$wellDisplayDependency) {
+                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h')) {
                 $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
             }
-            if (!(IsPublic $targetRel) -and !$wellDisplayDependency) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
+            if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }
         }
         if ($public -and !(IsPublic $targetRel)) { $violations.Add("${location}: 公共头禁止包含内部头: $targetRel") }
     }

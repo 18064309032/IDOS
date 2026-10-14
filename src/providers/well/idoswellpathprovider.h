@@ -5,9 +5,10 @@
 #include <QStringList>
 #include <QVector>
 
-#include "idosdataprovider.h"
-#include "idoswellpathpoint.h"
-#include "idoswellspatialreference.h"
+#include "data/well/idoswellpathpoint.h"
+#include "data/well/idoswellspatialreference.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class PROVIDERS_EXPORT IDOSWellPathProvider : public IDOSDataProvider
 {

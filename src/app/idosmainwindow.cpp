@@ -8,8 +8,11 @@
 #include <QCloseEvent>
 #include <QColorDialog>
 #include <QDialog>
+#include <QDir>
+#include <QElapsedTimer>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QImage>
 #include <QItemSelectionModel>
@@ -18,8 +21,13 @@
 #include <QList>
 #include <QMenu>
 #include <QMessageBox>
+#include <QScopedValueRollback>
+#include <QScreen>
+#include <QScrollBar>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringList>
 #include <QTimer>
@@ -37,67 +45,72 @@
 #include <SARibbonQuickAccessBar.h>
 #include <SARibbonSystemButtonBar.h>
 
-#include "command/idoscommandmanager.h"
-#include "command/idoscommandmetadata.h"
-#include "command/idoscommandregistry.h"
+#include "command/idoscasereferencecommand.h"
+#include "command/idoscreatecasecommand.h"
+#include "command/idoscreatewellcommand.h"
+#include "command/idosdeletecasecommand.h"
+#include "command/idosdeletegridcommand.h"
+#include "command/idosdeletepropertycommand.h"
+#include "command/idosdeletewellcommand.h"
+#include "command/idosgridfiltercommand.h"
 #include "command/idosimportcommands.h"
+#include "command/idosimportrestartresultscommand.h"
+#include "command/idosrenameobjectcommand.h"
+#include "command/idostransferobjectscommand.h"
+#include "data/case/idoscaseobject.h"
+#include "data/well/idoswell.h"
 #include "idosappinterface.h"
 #include "idosapplication.h"
 #include "idosassistantservice.h"
 #include "idosassistantwidget.h"
-#include "idoscaseobject.h"
-#include "idoscreatecasecommand.h"
-#include "idoscreatewellcommand.h"
-#include "idosdataregistry.h"
+#include "idoscommandmanager.h"
+#include "idoscommandmetadata.h"
+#include "idoscommandregistry.h"
 #include "idosdebuginfowidget.h"
-#include "idosdeletecasecommand.h"
-#include "idosdeletegridcommand.h"
-#include "idosdeletepropertycommand.h"
-#include "idosdeletewellcommand.h"
-#include "idosfluidrocktabletreeguiprovider.h"
-#include "idosfluidrocktabletreemetadata.h"
-#include "idosgridboundaryrendermetadata.h"
-#include "idosgridfiltercommand.h"
-#include "idosgridfilterrendermetadata.h"
-#include "idosgridrendermetadata.h"
-#include "idosgridsurfacerendermetadata.h"
-#include "idosgridtreeguiprovider.h"
-#include "idosgridtreemetadata.h"
-#include "idosimporteddatatreeguiprovider.h"
-#include "idosimporteddatatreemetadata.h"
-#include "idosimportrestartresultscommand.h"
 #include "idosnewprojectdialog.h"
-#include "idospluginmanagerwidget.h"
 #include "idospluginregistry.h"
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
 #include "idospythonconsolewidget.h"
-#include "idosrenameobjectcommand.h"
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 #include "idosrenderregistry.h"
 #include "idosrenderscene.h"
 #include "idosrenderserver.h"
 #include "idosrendertypes.h"
 #include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
-#include "idosseismicvolumerendermetadata.h"
-#include "idossimulationcasetreeguiprovider.h"
-#include "idossimulationcasetreemetadata.h"
+#include "idossimulation.h"
 #include "idostoolbar.h"
 #include "idostoolregistry.h"
-#include "idostree.h"
-#include "idostreeitem.h"
-#include "idostreemodel.h"
-#include "idostreeregistry.h"
 #include "idostreeserver.h"
-#include "idostreeview.h"
-#include "idoswell.h"
-#include "idoswelllogtrackview.h"
-#include "idoswellrendermetadata.h"
-#include "idoswelltreeguiprovider.h"
-#include "idoswelltreemetadata.h"
-#include "log/idoslogger.h"
+#include "logger/idoslogger.h"
+#include "plugin/idospluginmanagerwidget.h"
+#include "providers/case/idossimulationcasetreeguiprovider.h"
+#include "providers/case/idossimulationcasetreemetadata.h"
+#include "providers/data/idosimporteddatatreeguiprovider.h"
+#include "providers/data/idosimporteddatatreemetadata.h"
+#include "providers/fluidrock/idosfluidrocktabletreeguiprovider.h"
+#include "providers/fluidrock/idosfluidrocktabletreemetadata.h"
+#include "providers/grid/idosgridboundaryrendermetadata.h"
+#include "providers/grid/idosgridfilterrendermetadata.h"
+#include "providers/grid/idosgridrendermetadata.h"
+#include "providers/grid/idosgridsurfacerendermetadata.h"
+#include "providers/grid/idosgridtreeguiprovider.h"
+#include "providers/grid/idosgridtreemetadata.h"
+#include "providers/idosdataregistry.h"
+#include "providers/idosrenderprovider.h"
+#include "providers/idostreeregistry.h"
+#include "providers/render/idosrendertoolmetadata.h"
+#include "providers/seismic/idosseismicvolumerendermetadata.h"
+#include "providers/well/idoswelldisplaytreeguiprovider.h"
+#include "providers/well/idoswellrendermetadata.h"
+#include "providers/well/idoswelltreeguiprovider.h"
+#include "providers/well/idoswelltreemetadata.h"
+#include "tree/idostree.h"
+#include "tree/idostreeitem.h"
+#include "tree/idostreemodel.h"
+#include "tree/idostreeview.h"
+#include "well/idoswelllogtrackview.h"
 
 #include "idosmainwindow.h"
 
@@ -137,6 +150,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_pluginRegistry(nullptr)
     , m_pluginManagerWidget(nullptr)
     , m_appInterface(new IDOSAppInterface(this))
+    , m_simulation(new IDOSSimulation(this))
     , m_debugInfoWidget(nullptr)
     , m_assistantWidget(nullptr)
     , m_pythonConsoleWidget(nullptr)
@@ -150,9 +164,15 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_nextViewIndex(1)
     , m_currentWindowLayout(QStringLiteral("single"))
     , m_syncingTreeSelection(false)
+    , m_restoringPresentation(true)
+    , m_recentProjectsMenu(nullptr)
 {
     IDOSApplication* application = qobject_cast<IDOSApplication*>(QApplication::instance());
     m_dataRegistry = application != nullptr ? application->dataRegistry() : new IDOSDataRegistry(this);
+    if (application == nullptr)
+    {
+        IDOSApplication::initDataRegistry(m_dataRegistry);
+    }
     initProviders();
     initMainWindow();
     initDockManager();
@@ -160,8 +180,19 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     initRibbonAction();
 
     initDockWidgets();
+    m_simulation->initialize();
     IDOS_MESSAGE(tr("Application started."), IDOSLogLevel::Info);
     initPluginManager();
+    const QList<IDOSTreeView*> trees{m_dataTreeView, m_caseTreeView};
+    for (IDOSTreeView* tree : trees)
+    {
+        connect(tree, &QTreeView::expanded, this, &IDOSMainWindow::onPresentationChanged);
+        connect(tree, &QTreeView::collapsed, this, &IDOSMainWindow::onPresentationChanged);
+        connect(tree->selectionModel(), &QItemSelectionModel::selectionChanged, this, &IDOSMainWindow::onPresentationChanged);
+    }
+    m_defaultViewState = activeView()->presentationState();
+    restoreWindowPreferences(true);
+    m_restoringPresentation = false;
     if (!qEnvironmentVariableIsSet("IDOS_DISABLE_ASSISTANT_AUTOSTART"))
     {
         QTimer::singleShot(0, m_assistantWidget, &IDOSAssistantWidget::startAssistant);
@@ -197,8 +228,16 @@ void IDOSMainWindow::initProviders()
     m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.grid.boundary"), QStringLiteral("data.boundaries")));
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellDisplayTreeGuiProvider>(this));
+    m_toolRegistry->add(new IDOSRenderToolMetadata());
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSGridTreeGuiProvider>());
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSSimulationCaseTreeGuiProvider>());
+    const std::shared_ptr<IDOSSimulationCaseTreeGuiProvider> caseGuiProvider =
+        std::make_shared<IDOSSimulationCaseTreeGuiProvider>();
+    connect(caseGuiProvider.get(), &IDOSSimulationCaseTreeGuiProvider::generateInputRequested,
+            m_simulation, &IDOSSimulation::onGenerateInputRequested);
+    connect(caseGuiProvider.get(), &IDOSSimulationCaseTreeGuiProvider::propertyCurvesRequested,
+            m_simulation, &IDOSSimulation::onPropertyCurvesRequested);
+    m_treeRegistry->addGuiProvider(caseGuiProvider);
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSFluidRockTableTreeGuiProvider>());
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSImportedDataTreeGuiProvider>());
     IDOSTreeItem* wellGroup = nullptr;
@@ -417,6 +456,9 @@ void IDOSMainWindow::initDockWidgets()
     IDOSCommandRegistry* commandRegistry = m_assistantWidget->service()->commandRegistry();
     if (commandRegistry != nullptr)
     {
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("copy"))));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("move"))));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("remove"))));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateCaseCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateWellCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteCaseCommandMetadata()));
@@ -426,6 +468,8 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSGridFilterCommandMetadata(QStringLiteral("delete"))));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePropertyCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteWellCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSTransferObjectsCommandMetadata(QStringLiteral("copy"))));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSTransferObjectsCommandMetadata(QStringLiteral("move"))));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSRenameObjectCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportRestartResultsCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportCaseCommandMetadata()));
@@ -472,12 +516,6 @@ void IDOSMainWindow::initPluginManager()
     m_pluginRegistry = IDOSPluginRegistry::instance();
     m_pluginRegistry->setIDosInterface(m_appInterface);
     m_pluginRegistry->restoreSessionPlugins(m_pluginRegistry->libraryDir().path());
-    if (!m_pluginRegistry->isLoaded(QStringLiteral("idossimulationplugin")))
-    {
-        QMessageBox::critical(this, tr("Required Module Unavailable"),
-                              tr("The Numerical Simulation module could not be loaded. Simulation functions are unavailable.\n%1")
-                                  .arg(m_pluginRegistry->pluginError(QStringLiteral("idossimulationplugin"))));
-    }
 
     m_pluginManagerWidget = new IDOSPluginManagerWidget(m_pluginRegistry, this);
     m_pluginManagerWidget->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint
@@ -500,17 +538,27 @@ void IDOSMainWindow::initRibbonAction()
     m_actionOpenProject = new QAction(
         QIcon(QStringLiteral(":/images/app-project-open.svg")), tr("Open Project"), this);
     m_actionOpenProject->setObjectName(QStringLiteral("openProjectAction"));
-    m_actionOpenProject->setEnabled(false);
+    m_actionOpenProject->setShortcut(QKeySequence::Open);
+    connect(m_actionOpenProject, &QAction::triggered, this, &IDOSMainWindow::onOpenProject);
+    m_recentProjectsMenu = new QMenu(tr("Recent Projects"), this);
+    m_recentProjectsMenu->setObjectName(QStringLiteral("recentProjectsMenu"));
+    m_actionOpenProject->setMenu(m_recentProjectsMenu);
+    connect(m_recentProjectsMenu, &QMenu::triggered, this, &IDOSMainWindow::onRecentProjectTriggered);
+    updateRecentProjects();
     projectPanel->addLargeAction(m_actionOpenProject);
     m_actionSaveProject = new QAction(
         QIcon(QStringLiteral(":/images/app-project-save.svg")), tr("Save Project"), this);
     m_actionSaveProject->setObjectName(QStringLiteral("saveProjectAction"));
     m_actionSaveProject->setEnabled(false);
+    m_actionSaveProject->setShortcut(QKeySequence::Save);
+    connect(m_actionSaveProject, &QAction::triggered, this, &IDOSMainWindow::onSaveProject);
     projectPanel->addSmallAction(m_actionSaveProject);
     m_actionSaveProjectAs = new QAction(
         QIcon(QStringLiteral(":/images/app-project-save.svg")), tr("Save Project As"), this);
     m_actionSaveProjectAs->setObjectName(QStringLiteral("saveProjectAsAction"));
     m_actionSaveProjectAs->setEnabled(false);
+    m_actionSaveProjectAs->setShortcut(QKeySequence::SaveAs);
+    connect(m_actionSaveProjectAs, &QAction::triggered, this, &IDOSMainWindow::onSaveProjectAs);
     projectPanel->addSmallAction(m_actionSaveProjectAs);
     m_actionProjectSettings = new QAction(
         QIcon(QStringLiteral(":/images/app-project-settings.svg")), tr("Project Settings"), this);
@@ -672,6 +720,8 @@ void IDOSMainWindow::initRibbonAction()
 
 IDOSMainWindow::~IDOSMainWindow()
 {
+    delete m_simulation;
+    m_simulation = nullptr;
     SARibbonBar* applicationRibbonBar = ribbonBar();
     if (applicationRibbonBar != nullptr)
     {
@@ -770,6 +820,11 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     {
         disconnect(m_commandManager.data(), nullptr, this, nullptr);
     }
+    QScopedValueRollback<bool> presentationGuard(m_restoringPresentation, true);
+    m_project = nullptr;
+    m_renderServer->setProject(nullptr);
+    const QVariantMap presentation = project != nullptr ? project->presentationState() : QVariantMap();
+    prepareProjectViews(presentation);
     m_project = project;
     m_viewCaseIds.clear();
     m_viewContextIds.clear();
@@ -780,9 +835,12 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     m_dataTreeView->refreshCheckStates();
     m_caseTreeView->refreshCheckStates();
     updateTreeSelection(activeViewId());
+    restoreProjectPresentation(presentation);
     if (project)
     {
         connect(project, &QObject::destroyed, this, &IDOSMainWindow::onProjectDestroyed);
+        connect(project, &IDOSProject::modifiedChanged, this, &IDOSMainWindow::onProjectModified);
+        connect(project, &IDOSProject::metadataChanged, this, &IDOSMainWindow::onProjectModified);
         if (m_commandManager != nullptr)
         {
             connect(m_commandManager.data(), &IDOSCommandManager::stateChanged,
@@ -791,6 +849,7 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     }
 
     onCommandStateChanged();
+    onProjectModified();
     IDOS_INFO(tr("Active project changed."));
     emit projectChanged(project);
 }
@@ -838,18 +897,21 @@ bool IDOSMainWindow::createProject(const IDOSProjectMetadata& metadata,
 
 bool IDOSMainWindow::confirmDiscardProject()
 {
-    if (!m_project || m_project->objects().isEmpty())
+    collectProjectPresentation();
+    if (!m_project || !m_project->isModified())
     {
         return true;
     }
     QMessageBox warning(
         QMessageBox::Warning, tr("Unsaved Project"),
-        tr("The current project has not been saved. Continuing will discard it. Do you want to continue?"),
-        QMessageBox::Discard | QMessageBox::Cancel, this);
+        tr("Save changes to the current project before continuing?"),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, this);
+    warning.button(QMessageBox::Save)->setText(tr("Save"));
     warning.button(QMessageBox::Discard)->setText(tr("Discard"));
     warning.button(QMessageBox::Cancel)->setText(tr("Cancel"));
     warning.setDefaultButton(QMessageBox::Cancel);
-    return warning.exec() == QMessageBox::Discard;
+    const int decision = warning.exec();
+    return decision == QMessageBox::Discard || (decision == QMessageBox::Save && saveProject());
 }
 
 void IDOSMainWindow::onPluginManagerTriggered()
@@ -880,7 +942,7 @@ void IDOSMainWindow::onActiveViewContextObjectChanged(const QString& viewId,
                                                        const QString& objectId)
 {
     Q_UNUSED(objectId)
-    if (viewId == activeViewId())
+    if (!m_syncingTreeSelection && viewId == activeViewId())
     {
         updateTreeSelection(viewId);
     }
@@ -1001,8 +1063,13 @@ void IDOSMainWindow::onWindowLayoutTriggered(QAction* action)
         return;
     }
 
+    onPresentationChanged();
     m_currentWindowLayout = action->data().toString();
     applyWindowLayout(m_currentWindowLayout);
+    if (m_currentWindowLayout == QStringLiteral("single"))
+    {
+        setActiveView(QStringLiteral("main3d"));
+    }
 }
 
 void IDOSMainWindow::onRenderViewDockClosed()
@@ -1236,6 +1303,7 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     {
         return;
     }
+    QScopedValueRollback<bool> selectionGuard(m_syncingTreeSelection, true);
 
     QString objectId;
     IDOSDataObject* currentObject = nullptr;
@@ -1259,7 +1327,7 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     {
         const QString caseId = m_project != nullptr ? m_project->currentCaseId() : QString();
         setViewTreeContext(viewId, objectId, caseId);
-        updateTreeSelection(viewId);
+        updateTreeSelection(viewId, m_dataTreeView);
     }
 }
 
@@ -1290,6 +1358,7 @@ void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const 
     {
         return;
     }
+    QScopedValueRollback<bool> selectionGuard(m_syncingTreeSelection, true);
 
     if (m_project != nullptr)
     {
@@ -1306,7 +1375,7 @@ void IDOSMainWindow::onCaseTreeCurrentChanged(const QModelIndex& current, const 
     const QString objectId = objectIdFromCaseTreeIndex(current);
     const QString caseId = caseIdFromCaseTreeIndex(current);
     setViewTreeContext(viewId, objectId, caseId);
-    updateTreeSelection(viewId);
+    updateTreeSelection(viewId, m_caseTreeView);
 }
 
 void IDOSMainWindow::onRenderObjectActivated(const QString& viewId, const QString& objectId)
@@ -1327,7 +1396,7 @@ void IDOSMainWindow::onRenderObjectActivated(const QString& viewId, const QStrin
     updateTreeSelection(viewId);
 }
 
-void IDOSMainWindow::updateTreeSelection(const QString& viewId)
+void IDOSMainWindow::updateTreeSelection(const QString& viewId, QTreeView* source)
 {
     if (m_dataTreeView == nullptr || m_caseTreeView == nullptr)
     {
@@ -1342,10 +1411,15 @@ void IDOSMainWindow::updateTreeSelection(const QString& viewId)
                                       ? QModelIndex()
                                       : m_dataTreeModel->indexFromDataId(objectId);
     const QModelIndex caseIndex = caseTreeIndexForContext(objectId, caseId);
-    m_syncingTreeSelection = true;
-    selectTreeIndex(m_dataTreeView, dataIndex);
-    selectTreeIndex(m_caseTreeView, caseIndex);
-    m_syncingTreeSelection = false;
+    QScopedValueRollback<bool> selectionGuard(m_syncingTreeSelection, true);
+    if (source != m_dataTreeView)
+    {
+        selectTreeIndex(m_dataTreeView, dataIndex);
+    }
+    if (source != m_caseTreeView)
+    {
+        selectTreeIndex(m_caseTreeView, caseIndex);
+    }
 }
 
 void IDOSMainWindow::setViewTreeContext(const QString& viewId,
@@ -1508,6 +1582,8 @@ IDOSWellLogTrackView* IDOSMainWindow::findOrCreateWellLogTrackView(IDOSWell* wel
     IDOSWellLogTrackView* view = new IDOSWellLogTrackView(m_dockManager);
     view->setWell(well);
     dock = new ads::CDockWidget(m_dockManager, tr("Well Log Tracks - %1").arg(well->name()));
+    connect(view, &IDOSWellLogTrackView::presentationChanged, this, &IDOSMainWindow::onPresentationChanged);
+    connect(dock, &ads::CDockWidget::closed, this, &IDOSMainWindow::onPresentationChanged);
     dock->setObjectName(dockObjectName);
     dock->setWidget(view, ads::CDockWidget::ForceNoScrollArea);
     dock->setFeatures(ads::CDockWidget::DockWidgetClosable |
@@ -1528,6 +1604,7 @@ void IDOSMainWindow::closeEvent(QCloseEvent* event)
         event->ignore();
         return;
     }
+    saveWindowPreferences();
     IDOS_INFO(tr("Main window close accepted."));
     SARibbonMainWindow::closeEvent(event);
 }
@@ -1542,6 +1619,7 @@ void IDOSMainWindow::onProjectDestroyed()
     m_treeServer->setProject(nullptr);
     m_renderServer->setProject(nullptr);
     m_assistantWidget->setProject(nullptr);
+    onProjectModified();
     emit projectChanged(nullptr);
     updateTreeSelection(activeViewId());
     onCommandStateChanged();
@@ -1570,6 +1648,8 @@ IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool twoDimensiona
     connect(view, &IDOSRenderView::focused, this, &IDOSMainWindow::onRenderViewFocused);
     connect(view, &IDOSRenderView::decorationsChanged, this, &IDOSMainWindow::onRenderViewDecorations);
     connect(view, &IDOSRenderView::activated, this, &IDOSMainWindow::onRenderViewActivated);
+    connect(view, &IDOSRenderView::viewStateChanged, this, &IDOSMainWindow::onPresentationChanged);
+    connect(view->scene(), &IDOSRenderScene::changed, this, &IDOSMainWindow::onPresentationChanged);
     connect(view, &QObject::destroyed, this, &IDOSMainWindow::onRenderViewDestroyed);
     m_renderServer->addView(view);
     view->setTwoDimensional(twoDimensional);
@@ -1580,6 +1660,7 @@ IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool twoDimensiona
     {
         delete toolBar;
     }
+    onPresentationChanged();
     return view;
 }
 
@@ -1593,6 +1674,7 @@ void IDOSMainWindow::removeView(const QString& id)
     }
     m_viewContextIds.remove(id);
     m_viewCaseIds.remove(id);
+    onPresentationChanged();
 }
 
 void IDOSMainWindow::setActiveView(const QString& id)
@@ -1606,6 +1688,7 @@ void IDOSMainWindow::setActiveView(const QString& id)
 
 void IDOSMainWindow::onRenderCurrentViewChanged(IDOSRenderView* view)
 {
+    onPresentationChanged();
     const QString viewId = view != nullptr ? view->property("viewId").toString() : QString();
     if (m_project != nullptr)
     {
@@ -1755,4 +1838,471 @@ IDOSToolRegistry* IDOSMainWindow::toolRegistry() const
 IDOSCommandRegistry* IDOSMainWindow::commandRegistry() const
 {
     return m_assistantWidget->service()->commandRegistry();
+}
+
+SARibbonPanel* IDOSMainWindow::homeRibbonPanel(const QString& groupId) const
+{
+    if (ribbonBar() == nullptr)
+    {
+        return nullptr;
+    }
+    SARibbonCategory* home = ribbonBar()->categoryByObjectName(QStringLiteral("idosHomeCategory"));
+    if (home == nullptr)
+    {
+        return nullptr;
+    }
+    return home->panelByObjectName(QStringLiteral("idosHomePanel_") + groupId);
+}
+void IDOSMainWindow::onProjectModified()
+{
+    m_actionSaveProject->setEnabled(m_project != nullptr);
+    m_actionSaveProjectAs->setEnabled(m_project != nullptr);
+    const QString label = m_project == nullptr ? QString() : m_project->filePath().isEmpty()
+        ? m_project->metadata().name() : QFileInfo(m_project->filePath()).fileName();
+    setWindowTitle(label.isEmpty() ? tr("IDOS[*]") : tr("IDOS - %1[*]").arg(label));
+    setWindowModified(m_project != nullptr && m_project->isModified());
+}
+
+bool IDOSMainWindow::saveProject(const QString& path)
+{
+    QPointer<IDOSProject> target(m_project);
+    if (target == nullptr)
+    {
+        return false;
+    }
+    QString destination = path.isEmpty() ? target->filePath() : path;
+    if (destination.isEmpty())
+    {
+        destination = QFileDialog::getSaveFileName(this, tr("Save Project"), QString(), tr("IDOS Projects (*.idos)"));
+    }
+    if (destination.isEmpty() || target == nullptr || target.data() != m_project)
+    {
+        return false;
+    }
+    if (QFileInfo(destination).suffix().isEmpty())
+    {
+        destination += QStringLiteral(".idos");
+    }
+    collectProjectPresentation(true);
+    QString error;
+    if (!target->save(destination, m_dataRegistry, error))
+    {
+        QMessageBox::warning(this, tr("Save Project"), error);
+        return false;
+    }
+    onProjectModified();
+    saveWindowPreferences();
+    rememberProject(destination);
+    IDOS_MESSAGE(tr("Project saved: %1").arg(destination), IDOSLogLevel::Info);
+    return true;
+}
+
+bool IDOSMainWindow::openProject(const QString& path, bool confirmDiscard)
+{
+    QString error;
+    IDOSProject* loaded = IDOSProject::load(path, m_dataRegistry, error);
+    if (loaded == nullptr)
+    {
+        QMessageBox::warning(this, tr("Open Project"), error);
+        return false;
+    }
+    if (confirmDiscard && !confirmDiscardProject())
+    {
+        delete loaded;
+        return false;
+    }
+    QElapsedTimer displayTiming;
+    displayTiming.start();
+    IDOSProject* previous = m_project;
+    loaded->setParent(this);
+    setProject(loaded);
+    rememberProject(path);
+    if (previous != nullptr && previous->parent() == this)
+    {
+        previous->deleteLater();
+    }
+    IDOS_DEBUG(tr("Project display setup completed in %1 ms.").arg(displayTiming.elapsed()));
+    IDOS_MESSAGE(tr("Project opened: %1").arg(path), IDOSLogLevel::Info);
+    return true;
+}
+
+void IDOSMainWindow::onOpenProject()
+{
+    const QString path = QFileDialog::getOpenFileName(this, tr("Open Project"), QString(), tr("IDOS Projects (*.idos)"));
+    if (!path.isEmpty())
+    {
+        openProject(path);
+    }
+}
+
+void IDOSMainWindow::onSaveProject()
+{
+    saveProject();
+}
+
+void IDOSMainWindow::onSaveProjectAs()
+{
+    const QString path = QFileDialog::getSaveFileName(this, tr("Save Project As"),
+        m_project != nullptr ? m_project->filePath() : QString(), tr("IDOS Projects (*.idos)"));
+    if (!path.isEmpty())
+    {
+        saveProject(path);
+    }
+}
+
+void IDOSMainWindow::onPresentationChanged()
+{
+    if (!m_restoringPresentation && m_project != nullptr)
+    {
+        m_project->markPresentationModified();
+    }
+}
+
+void IDOSMainWindow::collectProjectPresentation(bool force)
+{
+    if (m_project == nullptr || m_restoringPresentation)
+    {
+        return;
+    }
+    QVariantMap state;
+    state.insert(QStringLiteral("version"), 1);
+    state.insert(QStringLiteral("render"), m_renderServer->presentationState());
+    state.insert(QStringLiteral("dataTree"), m_dataTreeView->presentationState());
+    state.insert(QStringLiteral("caseTree"), m_caseTreeView->presentationState());
+    state.insert(QStringLiteral("windowLayout"), m_currentWindowLayout);
+    QVariantMap closedViews;
+    for (const QString& id : m_viewDocks.keys())
+    {
+        ads::CDockWidget* dock = m_viewDocks.value(id).data();
+        if (dock != nullptr)
+        {
+            closedViews.insert(id, dock->isClosed());
+        }
+    }
+    state.insert(QStringLiteral("closedViews"), closedViews);
+    ads::CDockWidget* focused = m_dockManager->focusedDockWidget();
+    ads::CDockWidget* currentDock = m_viewDocks.value(activeViewId()).data();
+    state.insert(QStringLiteral("activeDock"), focused != nullptr ? focused->objectName()
+        : currentDock != nullptr ? currentDock->objectName() : QString());
+    QVariantMap contexts;
+    for (const QString& id : m_views.keys())
+    {
+        QVariantMap context;
+        context.insert(QStringLiteral("dataId"), m_viewContextIds.value(id));
+        context.insert(QStringLiteral("caseId"), m_viewCaseIds.value(id));
+        contexts.insert(id, context);
+    }
+    state.insert(QStringLiteral("contexts"), contexts);
+    QMap<QString, QVariant> logViews;
+    for (IDOSWellLogTrackView* view : logTrackViews())
+    {
+        ads::CDockWidget* dock = m_dockManager->findDockWidget(
+            QStringLiteral("wellLogTrackDock_%1").arg(view->presentationState().value(QStringLiteral("wellId")).toString()));
+        if (dock != nullptr && !dock->isClosed())
+        {
+            const QVariantMap saved = view->presentationState();
+            logViews.insert(saved.value(QStringLiteral("wellId")).toString(), saved);
+        }
+    }
+    state.insert(QStringLiteral("logViews"), logViews.values());
+    // An untouched old project should not become dirty solely because it lacks a UI snapshot.
+    if (force || !m_project->presentationState().isEmpty() || m_project->isModified())
+    {
+        m_project->setPresentationState(state);
+    }
+}
+
+void IDOSMainWindow::prepareProjectViews(const QVariantMap& state)
+{
+    for (IDOSWellLogTrackView* view : logTrackViews())
+    {
+        const QString wellId = view->presentationState().value(QStringLiteral("wellId")).toString();
+        ads::CDockWidget* dock = m_dockManager->findDockWidget(QStringLiteral("wellLogTrackDock_%1").arg(wellId));
+        if (dock != nullptr)
+        {
+            m_dockManager->removeDockWidget(dock);
+            delete dock;
+        }
+    }
+    const QStringList previousIds = m_views.keys();
+    for (const QString& id : previousIds)
+    {
+        if (id == QStringLiteral("main3d"))
+        {
+            continue;
+        }
+        ads::CDockWidget* dock = m_viewDocks.take(id).data();
+        removeView(id);
+        if (dock != nullptr)
+        {
+            disconnect(dock, nullptr, this, nullptr);
+            m_dockManager->removeDockWidget(dock);
+            delete dock;
+        }
+    }
+    m_nextViewIndex = 1;
+    IDOSRenderView* main = m_views.value(QStringLiteral("main3d")).data();
+    if (main != nullptr && !m_defaultViewState.isEmpty())
+    {
+        main->restorePresentationState(m_defaultViewState);
+    }
+    m_currentWindowLayout = QStringLiteral("single");
+    const QVariantList views = state.value(QStringLiteral("version")).toInt() == 1
+        ? state.value(QStringLiteral("render")).toMap().value(QStringLiteral("views")).toList() : QVariantList();
+    int count = 0;
+    for (const QVariant& value : views)
+    {
+        const QVariantMap entry = value.toMap();
+        const QString id = entry.value(QStringLiteral("id")).toString();
+        if (m_views.contains(id) || !id.startsWith(QStringLiteral("view_")) || ++count > 32)
+        {
+            continue;
+        }
+        bool valid = false;
+        const int index = id.mid(5).toInt(&valid);
+        if (!valid || index < 1 || index > 100000 || id != QStringLiteral("view_%1").arg(index, 4, 10, QLatin1Char('0')))
+        {
+            continue;
+        }
+        m_nextViewIndex = index;
+        createRenderView(entry.value(QStringLiteral("view")).toMap().value(QStringLiteral("twoDimensional")).toBool());
+    }
+    for (const QString& id : m_views.keys())
+    {
+        if (id.startsWith(QStringLiteral("view_")))
+        {
+            m_nextViewIndex = qMax(m_nextViewIndex, id.mid(5).toInt() + 1);
+        }
+    }
+    setActiveView(QStringLiteral("main3d"));
+}
+
+void IDOSMainWindow::restoreProjectPresentation(const QVariantMap& state)
+{
+    if (state.value(QStringLiteral("version")).toInt() == 1)
+    {
+        const QVariantMap contexts = state.value(QStringLiteral("contexts")).toMap();
+        for (const QString& id : m_views.keys())
+        {
+            const QVariantMap context = contexts.value(id).toMap();
+            const QString dataId = context.value(QStringLiteral("dataId")).toString();
+            const QString caseId = context.value(QStringLiteral("caseId")).toString();
+            if (m_project != nullptr && m_project->object(dataId) != nullptr)
+            {
+                m_viewContextIds.insert(id, dataId);
+            }
+            if (m_project != nullptr && m_project->object(caseId) != nullptr)
+            {
+                m_viewCaseIds.insert(id, caseId);
+            }
+        }
+        const QVariantList logViews = state.value(QStringLiteral("logViews")).toList();
+        int logCount = 0;
+        for (const QVariant& value : logViews)
+        {
+            const QVariantMap saved = value.toMap();
+            IDOSWell* well = m_project != nullptr ? qobject_cast<IDOSWell*>(m_project->object(saved.value(QStringLiteral("wellId")).toString())) : nullptr;
+            if (well != nullptr && ++logCount <= 32)
+            {
+                findOrCreateWellLogTrackView(well)->restorePresentationState(saved);
+            }
+        }
+        m_currentWindowLayout = state.value(QStringLiteral("windowLayout"), QStringLiteral("single")).toString();
+        const QStringList layouts{QStringLiteral("single"), QStringLiteral("side-by-side"), QStringLiteral("stacked"),
+            QStringLiteral("grid:1:2"), QStringLiteral("grid:2:1"), QStringLiteral("grid:2:2"),
+            QStringLiteral("grid:2:3"), QStringLiteral("grid:3:2"), QStringLiteral("grid:3:3")};
+        if (!layouts.contains(m_currentWindowLayout))
+        {
+            m_currentWindowLayout = QStringLiteral("single");
+        }
+        applyWindowLayout(m_currentWindowLayout);
+        restoreWindowPreferences(false);
+        m_renderServer->restorePresentationState(state.value(QStringLiteral("render")).toMap());
+        onRenderCurrentViewChanged(activeView());
+        const QVariantMap closedViews = state.value(QStringLiteral("closedViews")).toMap();
+        for (const QString& id : closedViews.keys())
+        {
+            ads::CDockWidget* dock = m_viewDocks.value(id).data();
+            if (dock != nullptr)
+            {
+                dock->toggleView(!closedViews.value(id).toBool());
+            }
+        }
+        ads::CDockWidget* activeDock = m_dockManager->findDockWidget(state.value(QStringLiteral("activeDock")).toString());
+        if (activeDock == nullptr || activeDock->isClosed())
+        {
+            activeDock = m_viewDocks.value(activeViewId()).data();
+        }
+        if (activeDock != nullptr)
+        {
+            activeDock->toggleView(true);
+            activeDock->setAsCurrentTab();
+            m_dockManager->setDockWidgetFocused(activeDock);
+        }
+        QScopedValueRollback<bool> selectionGuard(m_syncingTreeSelection, true);
+        m_dataTreeView->restorePresentationState(state.value(QStringLiteral("dataTree")).toMap());
+        m_caseTreeView->restorePresentationState(state.value(QStringLiteral("caseTree")).toMap());
+    }
+    else
+    {
+        m_dataTreeView->expandToDepth(0);
+        m_caseTreeView->expandToDepth(0);
+        if (m_project != nullptr)
+        {
+            m_viewCaseIds.insert(activeViewId(), m_project->currentCaseId());
+            if (m_project->currentObject() != nullptr)
+            {
+                m_viewContextIds.insert(activeViewId(), m_project->currentObject()->objectId());
+            }
+        }
+        applyWindowLayout(m_currentWindowLayout);
+        restoreWindowPreferences(false);
+    }
+    m_dataTreeView->refreshCheckStates();
+    m_caseTreeView->refreshCheckStates();
+}
+
+QString IDOSMainWindow::windowSettingsPath()
+{
+    const QString overridePath = qEnvironmentVariable("IDOS_UI_SETTINGS_PATH");
+    if (!overridePath.isEmpty())
+    {
+        return overridePath;
+    }
+    if (qEnvironmentVariableIsSet("IDOS_DISABLE_UI_SETTINGS"))
+    {
+        return QString();
+    }
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(directory);
+    return directory + QStringLiteral("/ui.ini");
+}
+
+QString IDOSMainWindow::layoutSettingsKey() const
+{
+    QStringList ids = m_views.keys();
+    for (IDOSWellLogTrackView* view : logTrackViews())
+    {
+        ids.append(QStringLiteral("log_") + view->presentationState().value(QStringLiteral("wellId")).toString());
+    }
+    ids.sort();
+    return QStringLiteral("dockLayouts/") + ids.join(QLatin1Char('_'));
+}
+
+void IDOSMainWindow::saveWindowPreferences()
+{
+    const QString path = windowSettingsPath();
+    if (path.isEmpty())
+    {
+        return;
+    }
+    QSettings settings(path, QSettings::IniFormat);
+    settings.setValue(QStringLiteral("window/geometry"), saveGeometry());
+    settings.setValue(QStringLiteral("window/state"), saveState(1));
+    settings.setValue(layoutSettingsKey(), m_dockManager->saveState(1));
+    settings.sync();
+}
+
+void IDOSMainWindow::restoreWindowPreferences(bool geometry)
+{
+    const QString path = windowSettingsPath();
+    if (path.isEmpty())
+    {
+        return;
+    }
+    QSettings settings(path, QSettings::IniFormat);
+    if (geometry)
+    {
+        restoreGeometry(settings.value(QStringLiteral("window/geometry")).toByteArray());
+        restoreState(settings.value(QStringLiteral("window/state")).toByteArray(), 1);
+        bool visibleOnScreen = false;
+        for (QScreen* screen : QGuiApplication::screens())
+        {
+            if (screen->availableGeometry().intersects(frameGeometry()))
+            {
+                visibleOnScreen = true;
+                break;
+            }
+        }
+        if (!visibleOnScreen && QGuiApplication::primaryScreen() != nullptr)
+        {
+            const QRect available = QGuiApplication::primaryScreen()->availableGeometry();
+            resize(size().boundedTo(available.size()));
+            move(available.center() - rect().center());
+        }
+    }
+    const QByteArray layout = settings.value(layoutSettingsKey()).toByteArray();
+    if (!layout.isEmpty())
+    {
+        m_dockManager->restoreState(layout, 1);
+    }
+}
+
+void IDOSMainWindow::rememberProject(const QString& projectPath)
+{
+    const QString path = windowSettingsPath();
+    if (path.isEmpty())
+    {
+        return;
+    }
+    QSettings settings(path, QSettings::IniFormat);
+    QStringList recent = settings.value(QStringLiteral("recentProjects")).toStringList();
+    const QString absolutePath = QFileInfo(projectPath).absoluteFilePath();
+    recent.removeAll(absolutePath);
+    recent.prepend(absolutePath);
+    while (recent.size() > 10)
+    {
+        recent.removeLast();
+    }
+    settings.setValue(QStringLiteral("recentProjects"), recent);
+    settings.sync();
+    updateRecentProjects();
+}
+
+void IDOSMainWindow::updateRecentProjects()
+{
+    if (m_recentProjectsMenu == nullptr)
+    {
+        return;
+    }
+    m_recentProjectsMenu->clear();
+    const QString path = windowSettingsPath();
+    if (!path.isEmpty())
+    {
+        QSettings settings(path, QSettings::IniFormat);
+        const QStringList recent = settings.value(QStringLiteral("recentProjects")).toStringList();
+        for (const QString& projectPath : recent)
+        {
+            QAction* action = m_recentProjectsMenu->addAction(projectPath);
+            action->setData(projectPath);
+            action->setEnabled(QFileInfo::exists(projectPath));
+        }
+    }
+    if (m_recentProjectsMenu->isEmpty())
+    {
+        m_recentProjectsMenu->addAction(tr("No Recent Projects"))->setEnabled(false);
+    }
+}
+
+void IDOSMainWindow::onRecentProjectTriggered(QAction* action)
+{
+    if (action != nullptr && !action->data().toString().isEmpty())
+    {
+        openProject(action->data().toString());
+    }
+}
+
+QList<IDOSWellLogTrackView*> IDOSMainWindow::logTrackViews() const
+{
+    QList<IDOSWellLogTrackView*> views;
+    const QMap<QString, ads::CDockWidget*> docks = m_dockManager->dockWidgetsMap();
+    for (ads::CDockWidget* dock : docks)
+    {
+        IDOSWellLogTrackView* view = qobject_cast<IDOSWellLogTrackView*>(dock->widget());
+        if (view != nullptr)
+        {
+            views.append(view);
+        }
+    }
+    return views;
 }

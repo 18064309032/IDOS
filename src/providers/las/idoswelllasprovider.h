@@ -4,7 +4,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 /**
  * @brief LAS 2.0 / 3.0 well log provider.

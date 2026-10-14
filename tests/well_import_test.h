@@ -18,6 +18,7 @@ class WellImportTest : public QObject
     void onCommandRestoresLogChannels();
     void onSampleFiles();
     void onPetrelWellHeader();
+    void onSpreadsheetImports();
     void onInvalidRows();
     void onReorderedColumns();
     void onLasImport();

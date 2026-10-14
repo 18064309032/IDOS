@@ -15,6 +15,9 @@
 class CORE_EXPORT IDOSWellCompletion
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellCompletion();
     IDOSWellCompletion(int k, bool open, double bottom, double top);
 

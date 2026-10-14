@@ -3,7 +3,8 @@
 
 #include <QObject>
 
-#include "idosdataprovidermetadata.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovidermetadata.h"
 
 /**
  * @brief LAS 井 provider 的元数据 + 工厂。

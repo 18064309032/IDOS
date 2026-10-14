@@ -1,7 +1,7 @@
 #include <QThread>
 
 #include "idostoolbar.h"
-#include "idostoolmetadata.h"
+#include "providers/idostoolmetadata.h"
 
 #include "idostoolregistry.h"
 

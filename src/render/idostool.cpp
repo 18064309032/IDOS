@@ -1,8 +1,8 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QThread>
-
 #include <QVTKOpenGLNativeWidget.h>
+
 #include <vtkCommand.h>
 #include <vtkObject.h>
 

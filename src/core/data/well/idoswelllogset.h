@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 #include "idoswelllogchannel.h"
@@ -16,6 +17,9 @@
 class CORE_EXPORT IDOSWellLogSet
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellLogSet();
 
     /** 全部通道（按导入顺序）。 */

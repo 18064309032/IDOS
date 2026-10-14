@@ -2,6 +2,7 @@
 #define IDOS_PROJECT_METADATA_H
 
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 
@@ -9,6 +10,9 @@
 class CORE_EXPORT IDOSProjectMetadata
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     enum class UnitSystem
     {
         Metric,

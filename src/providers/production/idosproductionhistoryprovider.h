@@ -1,7 +1,8 @@
 #ifndef IDOS_PRODUCTION_HISTORY_PROVIDER_H
 #define IDOS_PRODUCTION_HISTORY_PROVIDER_H
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class PROVIDERS_EXPORT IDOSProductionHistoryProvider : public IDOSDataProvider
 {

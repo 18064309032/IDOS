@@ -7,6 +7,7 @@
 #include <QPointer>
 #include <QString>
 #include <QToolBar>
+#include <QVariantMap>
 
 #include "idos_render.h"
 
@@ -30,9 +31,12 @@ public:
     bool setView(IDOSRenderView* view);
     bool isBusy() const;
     bool isUserPositioned() const;
+    QVariantMap presentationState() const;
+    void restorePresentationState(const QVariantMap& state);
     void setVisible(bool visible) override;
 signals:
     void layoutChanged();
+    void presentationChanged();
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 private slots:

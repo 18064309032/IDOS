@@ -2,6 +2,7 @@
 #define IDOS_CASE_OBJECT_H
 
 #include <QList>
+#include <QVariantMap>
 
 #include "idoscaseitemref.h"
 #include "idosdataobject.h"
@@ -17,6 +18,10 @@ class CORE_EXPORT IDOSCaseObject : public IDOSDataObject
     Q_OBJECT
 
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     explicit IDOSCaseObject(QObject* parent = nullptr);
     ~IDOSCaseObject() override;
 

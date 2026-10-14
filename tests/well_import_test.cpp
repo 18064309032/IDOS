@@ -5,21 +5,26 @@
 #include <QtGlobal>
 #include <QtTest>
 
+#include <xlsxdocument.h>
+
+#include "command/idosimportcommands.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/fracture/idosfractureschedule.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswelllogchannel.h"
+#include "data/well/idoswelllogset.h"
+#include "data/well/idoswellmarker.h"
+#include "data/well/idoswellmarkerset.h"
+#include "data/well/idoswellspatialreference.h"
+#include "fracture/idosfracturescheduleprovider.h"
 #include "idosapplication.h"
 #include "idoscommandmanager.h"
 #include "idoscommandregistry.h"
-#include "idosdataprovider.h"
-#include "idosdataprovidermetadata.h"
-#include "idosdataproviderregistry.h"
-#include "idosimportcommands.h"
 #include "idosproject.h"
-#include "idossimulationcaseobject.h"
-#include "idoswell.h"
-#include "idoswelllogchannel.h"
-#include "idoswelllogset.h"
-#include "idoswellmarker.h"
-#include "idoswellmarkerset.h"
-#include "idoswellspatialreference.h"
+#include "providers/idosdataprovider.h"
+#include "providers/idosdataprovidermetadata.h"
+#include "providers/idosdataproviderregistry.h"
+#include "well/idoswellcompletionprovider.h"
 
 #include "well_import_test.h"
 
@@ -345,7 +350,7 @@ void WellImportTest::onSampleFiles()
 
 void WellImportTest::onPetrelWellHeader()
 {
-    const QString sample = QFINDTESTDATA("../testdata/井数据/井头/Wellheader.txt");
+    const QString sample = QFINDTESTDATA("data/PetrelWellheader.txt");
     QVERIFY(!sample.isEmpty());
     IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
     QCOMPARE(registry.providers(sample).first()->id(), QStringLiteral("idos.well.header"));
@@ -373,6 +378,57 @@ void WellImportTest::onPetrelWellHeader()
     QCOMPARE(horizontalWell->name(), QStringLiteral("Zi224H"));
     QCOMPARE(horizontalWell->wellHead().bottomDepth(), 6030.0);
     qDeleteAll(objects);
+}
+
+void WellImportTest::onSpreadsheetImports()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString schedulePath = directory.filePath(QStringLiteral("schedule.xlsx"));
+    QXlsx::Document schedule;
+    QVERIFY(schedule.write(1, 1, QStringLiteral("Pump rate (m3/min)")));
+    QVERIFY(schedule.write(1, 2, QStringLiteral("Fluid name")));
+    QVERIFY(schedule.write(1, 3, QStringLiteral("Fluid volume (m3)")));
+    QVERIFY(schedule.write(2, 1, 3.5));
+    QVERIFY(schedule.write(2, 2, QStringLiteral("Water")));
+    QVERIFY(schedule.write(2, 3, 12.0));
+    QVERIFY(schedule.saveAs(schedulePath));
+    IDOSFractureScheduleProvider scheduleProvider;
+    QVERIFY(scheduleProvider.canRead(schedulePath));
+    QList<IDOSDataObject*> objects = scheduleProvider.read(schedulePath);
+    QVERIFY2(objects.size() == 1, qPrintable(scheduleProvider.lastError()));
+    const IDOSFractureSchedule* data = qobject_cast<IDOSFractureSchedule*>(objects.first());
+    QVERIFY(data != nullptr);
+    QCOMPARE(data->samples().size(), 1);
+    QCOMPARE(data->samples().first().toMap().value(QStringLiteral("Fluid volume (m3)")).toDouble(), 12.0);
+    qDeleteAll(objects);
+
+    const QString completionPath = directory.filePath(QStringLiteral("Perforation_TestWell.xlsx"));
+    QXlsx::Document completion;
+    QVERIFY(completion.write(1, 1, QStringLiteral("Perf top MD (m)")));
+    QVERIFY(completion.write(1, 2, QStringLiteral("Perf bottom MD (m)")));
+    QVERIFY(completion.write(1, 3, QStringLiteral("Stage number")));
+    QVERIFY(completion.write(2, 1, 100.0));
+    QVERIFY(completion.write(2, 2, 110.0));
+    QVERIFY(completion.write(2, 3, 2));
+    QVERIFY(completion.saveAs(completionPath));
+    IDOSWellCompletionProvider completionProvider;
+    QVERIFY(completionProvider.canRead(completionPath));
+    objects = completionProvider.read(completionPath);
+    QVERIFY2(objects.size() == 1, qPrintable(completionProvider.lastError()));
+    const IDOSWell* well = qobject_cast<IDOSWell*>(objects.first());
+    QVERIFY(well != nullptr);
+    QCOMPARE(well->name(), QStringLiteral("TestWell"));
+    QCOMPARE(well->completions().size(), 1);
+    QCOMPARE(well->completions().first().top(), 100.0);
+    QCOMPARE(well->completions().first().bottom(), 110.0);
+    QCOMPARE(well->completions().first().attributes().value(QStringLiteral("Stage number")).toInt(), 2);
+    qDeleteAll(objects);
+    QVERIFY(completion.write(2, 2, 90.0));
+    QVERIFY(completion.saveAs(completionPath));
+    objects = completionProvider.read(completionPath);
+    QVERIFY(objects.isEmpty());
+    QVERIFY(!completionProvider.lastError().isEmpty());
 }
 
 void WellImportTest::onInvalidRows()

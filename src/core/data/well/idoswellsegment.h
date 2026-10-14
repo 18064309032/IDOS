@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_SEGMENT_H
 #define IDOS_WELL_SEGMENT_H
 
+#include <QVariantMap>
+
 #include "idos_core.h"
 
 /**
@@ -12,6 +14,9 @@
 class CORE_EXPORT IDOSWellSegment
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellSegment();
     IDOSWellSegment(double depth, double inclination, double azimuth, double tvd, double dx, double dy);
 

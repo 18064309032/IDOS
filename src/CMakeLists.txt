@@ -17,8 +17,14 @@ add_subdirectory(plugins)
 
 # 可执行目标
 add_executable(idos WIN32 main.cpp)
+add_custom_command(TARGET idos POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -f
+        "$<TARGET_FILE_DIR:idos>/plugins/idossimulationplugin.dll"
+        "$<TARGET_FILE_DIR:idos>/i18n/idossimulationplugin_zh_CN.qm"
+    COMMENT "Removing retired simulation plugin deployment files..."
+    VERBATIM
+)
 add_dependencies(idos
-    idossimulationplugin
     idosfracturemodelingplugin
     idosmultiscalefractureplugin
     idosgeomechanicsplugin

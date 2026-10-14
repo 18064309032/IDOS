@@ -1,11 +1,13 @@
+#include <QMap>
+
 #include "idosdataobject.h"
 #include "idosproject.h"
-#include "idosrendermetadata.h"
 #include "idosrenderobject.h"
-#include "idosrenderprovider.h"
 #include "idosrenderregistry.h"
 #include "idosrenderscene.h"
 #include "idosrenderview.h"
+#include "providers/idosrendermetadata.h"
+#include "providers/idosrenderprovider.h"
 
 #include "idosrenderserver.h"
 
@@ -394,6 +396,132 @@ void IDOSRenderServer::bindDataReferences(IDOSRenderProvider* provider)
         if (data != nullptr)
         {
             provider->setDataReference(data);
+        }
+    }
+}
+
+QVariantMap IDOSRenderServer::presentationState() const
+{
+    QVariantMap state;
+    QVariantList views;
+    for (IDOSRenderView* view : m_views)
+    {
+        QVariantMap entry;
+        entry.insert(QStringLiteral("id"), view->property("viewId").toString());
+        entry.insert(QStringLiteral("view"), view->presentationState());
+        for (IDOSRenderView* source : m_views)
+        {
+            if (!source->isCameraLinked() && view->isCameraLinkedTo(source))
+            {
+                entry.insert(QStringLiteral("linkedView"), source->property("viewId").toString());
+                break;
+            }
+        }
+        QMap<QString, QVariant> objects;
+        QStringList selection;
+        for (IDOSRenderObject* object : view->scene()->objects())
+        {
+            IDOSDataObject* data = object->provider()->dataSource();
+            if (data == nullptr)
+            {
+                continue;
+            }
+            QVariantMap item;
+            item.insert(QStringLiteral("dataId"), data->objectId());
+            item.insert(QStringLiteral("typeId"), data->typeId());
+            item.insert(QStringLiteral("provider"), object->provider()->presentationState());
+            objects.insert(data->objectId(), item);
+            if (view->selection().contains(object->id()))
+            {
+                selection.append(data->objectId());
+            }
+        }
+        selection.sort();
+        entry.insert(QStringLiteral("objects"), objects.values());
+        entry.insert(QStringLiteral("selection"), selection);
+        views.append(entry);
+    }
+    state.insert(QStringLiteral("views"), views);
+    state.insert(QStringLiteral("currentView"), m_currentView != nullptr ? m_currentView->property("viewId").toString() : QString());
+    return state;
+}
+
+void IDOSRenderServer::restorePresentationState(const QVariantMap& state)
+{
+    const QVariantList entries = state.value(QStringLiteral("views")).toList();
+    for (IDOSRenderView* view : m_views)
+    {
+        view->unlinkCamera();
+    }
+    for (const QVariant& value : entries)
+    {
+        const QVariantMap entry = value.toMap();
+        for (IDOSRenderView* view : m_views)
+        {
+            if (view->property("viewId").toString() != entry.value(QStringLiteral("id")).toString())
+            {
+                continue;
+            }
+            view->scene()->beginUpdate();
+            const QVariantList objects = entry.value(QStringLiteral("objects")).toList();
+            for (const QVariant& item : objects)
+            {
+                const QVariantMap saved = item.toMap();
+                const QString dataId = saved.value(QStringLiteral("dataId")).toString();
+                IDOSDataObject* data = m_project != nullptr ? m_project->object(dataId) : nullptr;
+                if (data == nullptr || data->typeId() != saved.value(QStringLiteral("typeId")).toString())
+                {
+                    continue;
+                }
+                for (const QString& id : objectIds(view, dataId))
+                {
+                    IDOSRenderObject* object = view->scene()->object(id);
+                    const QVariantMap previous = object->provider()->presentationState();
+                    if (!object->provider()->restorePresentationState(saved.value(QStringLiteral("provider")).toMap()))
+                    {
+                        object->provider()->restorePresentationState(previous);
+                    }
+                    bindDataReferences(object->provider());
+                    object->update();
+                    view->scene()->notifyChanged(id);
+                }
+            }
+            view->scene()->endUpdate();
+            QList<QString> selected;
+            for (const QString& dataId : entry.value(QStringLiteral("selection")).toStringList())
+            {
+                selected.append(objectIds(view, dataId));
+            }
+            view->setSelection(selected);
+            view->restorePresentationState(entry.value(QStringLiteral("view")).toMap());
+        }
+    }
+    for (const QVariant& value : entries)
+    {
+        const QVariantMap entry = value.toMap();
+        for (IDOSRenderView* view : m_views)
+        {
+            if (view->property("viewId").toString() != entry.value(QStringLiteral("id")).toString())
+            {
+                continue;
+            }
+            for (IDOSRenderView* source : m_views)
+            {
+                if (source->property("viewId").toString() == entry.value(QStringLiteral("linkedView")).toString() &&
+                    !source->isCameraLinked())
+                {
+                    view->linkCameraTo(source);
+                    break;
+                }
+            }
+        }
+    }
+    for (IDOSRenderView* view : m_views)
+    {
+        if (view->property("viewId").toString() == state.value(QStringLiteral("currentView")).toString())
+        {
+            setCurrentView(view);
+            break;
         }
     }
 }

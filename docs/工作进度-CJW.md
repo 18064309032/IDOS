@@ -1,12 +1,37 @@
 # IDOS 工作进度（CJW）
 
-更新日期：2026-10-14
+- UI 状态持久化完成（2026-10-15）：.idos 增加可选 presentation（UI 子版本 1），沿用现有 Project、TreeServer/TreeView、RenderServer/View/Provider、MainWindow、ToolBar 和测井窗口，不新增存储类或目录。保存并恢复 2D/3D 视图集合、活动视图与上下文、独立显隐/不透明度、井显示设置、网格模式/边线/着色/属性关联及筛选预览、地震切片、活动/主页相机与联动、背景/坐标轴/图例/光标跟踪、工具栏位置与显隐、测井通道/深度范围、树展开/多选/当前项/滚动。按数据 ID 和稳定树路径关联，不保存临时渲染或树节点 ID；缺失的 UI 条目回退，旧工程无 UI 状态时使用默认视图。切换工程清理旧渲染和测井窗口，恢复阶段不标记修改；显示交互需要保存但不进入业务撤销历史。
+- 本机 UI 设置通过 AppConfigLocation/ui.ini 保存窗口几何、主窗口工具条、按视图集合区分的 ADS 停靠布局及最近 10 个工程；打开工程动作提供最近工程菜单，缺失文件禁用。测试使用独立设置路径或禁用本机设置，不改动用户偏好。业务撤销历史、临时对话框、计算进程、后台读写与崩溃恢复仍不在本轮范围。README、使用指南、架构及调用链同步；平台新增 2 项中文翻译，无 unfinished。
+- 验证：唯一构建目录 D:/CMakeCoder/IDOS-Build 完成 Debug 全目标及全部公共头文件独立编译；完整 CTest 10/10 通过（81.03 秒）。命令用例新增多视图/浮动测井窗口保存重开、每视图参数、相机联动后解除、显示后仍保持干净、工程切换清理、非法 UI 数据回退、地震切片、本机窗口恢复。可见窗口测试初始缺少正式程序既有的 AA_ShareOpenGLContexts，补齐测试 initMain 后再次通过，OpenGL 错误输出为零，最终 command_registry 复测通过（ui-state-command-final.txt）。
+- 警告处理：不屏蔽 C4996/STL4043，不改第三方库。已将本轮完整重编译暴露的业务 QStringList、示例点集及测试 QVector 整体比较改为标准迭代或逐项比较；最后相关目标编译日志无 C4996/STL4043（ui-state-confirm-build.txt、ui-state-context-build.txt）。第三方预编译库缺少 PDB 的既有 LNK4099 调试信息提示仍保留，不宣称全部构建警告清零。
+
+- 工程读写性能优化（2026-10-15）：写入格式升级为版本 2，保留版本 1 读取。复合字段紧凑编码、同构记录按列写原生数组，正常保存以同目录原子替换提交，去掉整文件复制；加载批量恢复，增加读写与显示分段计时。实际桌面 123.idos 的 31 个对象逐字段一致，原文件未改动：763259965 字节降至 7011967 字节，旧版读取 121.335 秒；首次新版保存 2.198 秒、读取 2.406 秒，复测保存 1.229 秒、读取 1.457 秒，显示装配 68 毫秒。结果受缓存及机器负载影响。优化副本位于 D:/CMakeCoder/IDOS-Build/123-optimized.idos。合成 2000 轨迹点及 2000 记录测试：40.77 MB 降至 81.3 KB，保存 2471→47 毫秒、读取 4086→63 毫秒。旧格式读取、全部数据类型往返、覆盖保存、中文路径、非法字段、截断及未来版本、提交失败保留目标均通过；命令测试 22/22，Debug 构建完成，CTest 10/10 通过（60.61 秒）。当前仍同步读写，后台进度与取消尚未实施；旧文件首次打开仍需读取旧布局，另存为即可升级。
+
+更新日期：2026-10-15
 
 本文记录当前工程已落地的主要能力、尚未完成的工作和后续顺序。状态按当前源码核对；“已实现”表示代码中已有对应功能，不代表所有功能都已完成完整的端到端验收。
 
 - 共享业务数据全量接入（2026-10-14，待续）：按用户要求忽略缓存/工程中间文件 DeckCache.ptd、coord.bin、actnum.bin、zcorn.bin。当前已接入范围包括井头、LAS、井轨迹/井斜、井顶、射孔/完井、微地震、压裂泵注工作簿、天然裂缝、流体/岩石表、VOL 生产历史、ECLIPSE DATA/EGRID/INIT/GRDECL/UNRST、ZIMS 地层面/边界及 SEG-Y。已对共享业务数据目录完成一轮扩展名和样例检查。未完成：有效 HDF5 汇总文件及配套 ECLIPSE SMSPEC/UNSMRY 结果导入；18 张工作表的录井/完井日报 Excel（含岩性、井漏、钻井液、套管、岩屑伽马、元素录井、整米/迟到参数、地质记录与专报等）；对全部非 GRDECL 业务格式逐类确认并完成实际导入/查看验收。共享 SEG-Y 样例约 650 MB，需评估并完成真实文件导入及显示验收。用户于 2026-10-14 要求本轮先暂停，未完成项下次继续。上一轮临时尝试的 ECLIPSE 汇总 Provider 改动未编译，已全部撤回；不要据此视为支持。构建验收未执行：用户指定唯一构建目录 E:\CJW-Archive\IDOS-Build\win-x64-debug-local，但当前环境没有 E: 盘符；未切换到其他构建目录。
 
 ## 最新状态摘要
+
+- 单文件二进制工程首版已接入（2026-10-15）：直接扩展 IDOSProject、DataMetadata 与现有数据和值类型，没有新增 ProjectStorage。单个 HDF5 .idos 文件保存工程信息、全部 16 种平台注册类型的业务数据、ID 及关系；接通打开、保存、另存为、未保存提示和失败保护。加载不依赖原始导入文件，树与渲染由现有 Server 重建。Debug 全量构建及独立头文件检查通过；保存恢复专项通过，完整 CTest 的其余 9 项通过，旧工程对话框标题断言更新后专项复测通过。显示状态、标准 VTKHDF 导出和共享大文件性能验收继续后置，详细范围见文末。
+
+- 对象交互需求纠正（2026-10-14）：撤掉“复制引用／剪切引用／从工况移除”通用菜单及引用拖放，改成数据、工况、网格和属性对象本身的复制粘贴、拖动复制和重命名。工况深复制关联对象及网格、属性、筛选并重映射 ID；网格跨工况移动，属性跨同尺寸网格移动；数据树整井及流体/岩石表新增独立“添加到工况…”菜单，支持多选。此前引用交互记录仅为历史，不代表用户需求完成。本次相关 Debug 目标编译通过，命令 16 项及树交互 22 项全部通过，0 skipped；未重跑全量 CTest 或扩展原生鼠标自动化。详细限制见文末。
+- 历史记录：工况引用交互首批（已被本次需求纠正替换，2026-10-14）：整井及流体/岩石表支持同工程工况引用的关联、复制、剪切转移和移除，菜单、Ctrl+C/X/V、普通/Ctrl 拖动复制与 Shift 拖动转移共用可撤销命令；多选、源/目标失效、重复与跨工程拒绝已接入。源数据不复制、不移出工程。修正树/渲染同步覆盖多选，以及工况根节点实际隐藏父节点的识别。Debug 全量构建、214 个头文件独立编译和 CTest 10/10 通过（61.05 秒）；真实 Windows 鼠标复制/Shift 转移及 Ctrl+C/V 已验收。完整数据副本、工况副本、网格/属性/筛选转移和井部件复制仍待实施；工程持久化继续后置。详细范围与日志见文末。
+
+- 树菜单、剪贴板与拖放核对（2026-10-14，设计阶段）：按用户同意的第一步检查当前实现并形成架构第 18 节操作规则表。当前 TreeView 仍是单选，没有复制剪切粘贴和拖放入口；现有表关联命令可复用。纠正此前“复制工况共享网格”的口头建议：现有删除/导入按工况私有网格处理，应复制网格及附属数据，井和表共享引用。井部件沿用整井 dataId，不能仅按对象 ID 复制。发现删除网格会收集筛选而删除工况尚未收集筛选的生命周期差异，实施工况复制/转移前需统一。此轮只完成现状核对、规则清单和实施/验收顺序，没有接入新交互或修改功能代码，不宣称功能已实现。下一步先完成工况引用关联/复制/转移/移除的统一菜单、快捷键和拖放路径，再完成数据与工况副本，之后推进工程持久化。
+
+
+- 同步用户手工目录调整（2026-10-14）：按当前仓库位置同步 12 个头源文件的路径变化，不重新移动用户文件。工况对话框、新建工程、调试信息、运行信息及 Python 控制台回到 gui 根部；gui 保留 tree、well、grid、simulation 业务目录。IDOSInterface 按用户最终调整位于 gui 根部，使用 GUI_EXPORT，由 idos_gui 编译；消费者引用、CMake、独立头文件清单、依赖检查、翻译位置和目录/架构文档同步。此前“gui 根部仅保留 CMake 和导出头”等记录为历史，以本条和当前源码目录为准。验证结果见文末。
+
+
+- 业务目录细分（2026-10-14）：用户确认将 app/providers 与 gui 继续按职责组织，并补充要求整理 gui/providers 和 gui 根部。app/providers 分为 well、grid、case、fluidrock、seismic、data、render；gui 分为 tree、well、grid、case、simulation、output、python、plugin、project，TreeGuiProvider 从 gui/providers 并入 gui/tree，公共插件接口归 gui/plugin，新建工程对话框归 gui/project。gui 根部仅保留 CMake 和导出头，app/providers 根部仅有业务子目录。本轮迁位 110 个头源文件，429 个文件全部保留；业务窗口仍编入 idos_app，未改变功能及链接模块归属。本文此前“gui 根部集中界面”“app/providers 平铺”等描述保留为历史，以本条和当前源码目录文档为准。构建与回归结果见文末记录。
+- 源码目录迁移（2026-10-14）：按用户确认的桌面 src 布局迁移仓库文件，未用桌面副本覆盖源码；177 个文件迁位，429 个 C++ 头源文件全部保留且头源配对同目录。通用 Provider/Metadata/Registry 集中于 core/providers，日志归 core/logger，具体展示实现归 app/providers，具体命令归 app/command，界面归 gui，插件管理界面归 app/plugin，渲染和工具 Provider/Metadata 归 render/providers。DataProvider 通用接口改由 idos_core 导出，RenderInteractionTool 改由 idos_render 导出。gui 中 20 组业务界面仍由 app/CMakeLists.txt 明确编入 idos_app，不改变既有具体 Provider 绑定；idos_gui 不反向依赖 app 或 render。源码目录全文文件树、架构、开发指南、调用链路、AGENTS、CMake、include 边界检查和翻译位置均已同步。此条替代下方历史记录中的 app/case、app/well、app/grid、gui/tree、core/log 等旧目录描述；功能未完成事项维持原记录。验证结果见文末本轮记录。
+
+- 数值模拟集成平台（2026-10-14）：按用户确认移除数值模拟插件边界。IDOSSimulation 及模拟业务窗口迁入 app/case，井显示迁入 app/well，内置视图工具实现迁入 app 根部并由主窗口直接注册；模拟不再参与插件发现与卸载。原 DLL 导出、构建目标、独立 TS/QRC 及跨插件中转信号删除，翻译与图标合并到平台。Debug 构建、全部迁移头文件独立编译及 CTest 10/10 通过（52.86 秒）。下方“数值模拟必需插件”“工具由插件注册”等为历史方案，以本条和文末记录为准；其他专业插件及通用安全卸载机制保留。
+
+- 收尾验收（2026-10-14）：当前源码 `E:/CJW-Archive/IDOS` 已在唯一目录 `D:/CMakeCoder/IDOS-Build` 完成 Debug 全项目构建及独立头文件检查，最终 CTest 10/10 通过（51.32 秒）。补齐 Petrel 井头固定样例、泵注/射孔 Excel、多井轨迹扩展字段和流体表导入/引用/去重/撤销重做回归；修复依赖检查目录清单、插件对 app 菜单类的直接依赖、SEG-Y CP037 解码及工况测试的文件选择阻塞。此前“E 盘不可用”“尚未构建”的记录保留为历史，以本次验收范围为准。实际 WSL Flow 两个用例因未设置 `IDOS_FLOW_SMOKE_DATA` 跳过；共享大文件及全部业务格式的手动实样验收仍未完成。
 
 - 旧工程导入能力核对及迁移（2026-10-14）：只读检查 `D:/VSCoder/IDOS` 的格式清单、Provider、对象和 `data/data/PVT.txt`、`SCAL.txt` 样例。新工程已覆盖井、ECLIPSE DATA/EGRID/UNRST 的主要路径，仍缺地震体、解释层、断层、面/等值厚度/边界、速度网格和生产历史。新增 ECLIPSE GRDECL/INC 属性 Provider，网格属性菜单支持选择这些文件，导入前校验目标网格单元数并按网格尺寸保存，支持 PORO、PERMX/Y/Z、MULTPV、SIGMAV、MULTX/Y/Z、SATNUM、ROCKNUM、PVTNUM、EQLNUM、FIPNUM。DATA 内的相渗表可从工况树打开；另新增 TXT/DAT/PRN ECLIPSE 表文件导入，支持 DENSITY、PVTO、PVDO、PVDG、PVTG、PVZG、PVTW、SWOF、SGOF、SWFN、SGFN、SOF2、SOF3、SLGOF、SGWFN、ROCK。独立表文件导入创建工程级表数据对象；数据树表节点可通过可撤销命令关联到工况。旧工程调用链未直接搬入。当前实现尚未运行时导入验收。
 
@@ -512,7 +537,7 @@ OPM 解析库负责输入和结果读取；Flow 是通过 WSL2 调用的独立�
 唯一构建目录为 D:/CMakeCoder/IDOS-Build；本轮 Debug 配置、主程序/插件及相关测试目标构建通过。井节点菜单按井分组直属对象识别，修复井根节点“删除井”入口；按父节点类别键判断井数据分类与叶节点，恢复分类菜单；网格节点恢复“新建筛选”入口，筛选组菜单仍保留该操作。case_workflow 多次创建主窗口时自动启动本地助手，导致无关子进程启动并让整套回归超时；为该 CTest 设置 IDOS_DISABLE_ASSISTANT_AUTOSTART，并在主窗口启动处尊重此测试环境变量。针对性 CTest（case_workflow、tree_incremental、well_import、well_path）全部通过，4/4，25.23 秒；case_workflow 17.24 秒。构建与部署仍显示现存 VCINSTALLDIR 未设置警告。菜单其余节点/多选及工程持久化按后续计划继续验收。
 
 1. 编译并运行必需插件及主页迁移回归，验收退出清理；随后按“本轮详细状态”的清单验证工具交互、双窗口和结果播放。
-2. 实施工程持久化并验证保存重开，当前相关入口禁用。
+2. 先按架构第 18 节补齐节点菜单、多选、复制剪切粘贴和拖放，并验证撤销/重做；随后实施工程持久化与保存重开，当前保存相关入口仍禁用。
 3. 扩大真实工况、网格/动态属性和报告步播放验收范围。
 4. 按部署需求准备 WSL2、Flow 离线环境，补充安装及运行验证流程。
 5. 根据业务需要实现拟合评价、通用分析、Python 运行时及更多任务配置。
@@ -596,3 +621,82 @@ OPM 解析库负责输入和结果读取；Flow 是通过 WSL2 调用的独立�
 - 井轨迹 Provider 现在按文件内容识别 Petrel 井轨迹（支持 9/11 列、DLS 和 AZIM_GN）及 ECLIPSE 多井 `.TRJ`，不依赖文件扩展名；允许多井单文件导入。轨迹点保留 DLS、网格方位角等额外列，井轨迹表格展示这些来源字段。
 - 轨迹导入选择器扩展到 `.TRJ`、`.DEV` 和无扩展名文件；Metadata 通过内容检查避免仅按扩展名误识别。
 - 尚未构建或用共享目录实样验收。按当前 `AGENTS.md` 唯一构建目录 `E:\CJW-Archive\IDOS-Build\win-x64-debug-local` 在本环境中不可用，未改用其他目录构建。
+
+## 导入功能与构建收尾验收（2026-10-14）
+
+- 使用 CMake 4.4.2、Visual Studio 2022 MSVC 19.44、Qt 5.15.2，从当前 E 盘源码配置到 `D:/CMakeCoder/IDOS-Build`，打开渲染与测试；主程序、全部插件及独立头文件检查构建通过。README 与 CMake 预设统一使用该目录，未使用旧 E 盘构建产物。
+- include 检查同步已确认的 fluidrock、fracture、production、seismic 和拆分后的 grid/case 公共目录；QXlsx 改为第三方尖括号包含。429 个源码文件检查通过，检查器 40 个边界用例通过，继续拒绝插件直接包含 app 内部工况菜单类。
+- 工况生成输入及属性曲线请求由主窗口接入公共 IDOSInterface 信号，再由数值模拟插件响应；删除插件遍历并转换具体 app GuiProvider 的依赖。架构文档同步，未增加类或目录。
+- Petrel 井头回归原先指向仓库缺失的共享文件，现加入测试内固定样例。新增 Excel 泵注数据保留、射孔区间/扩展字段及非法深度检查，多井轨迹与 DLS/AZIM_GN 保留检查；流体表覆盖按类别独立导入、不自动关联工况、拒绝重复引用、内嵌副本与引用并存时树节点去重，以及撤销/重做和移除源文件后的重做。
+- 全量回归发现 Windows Qt 不提供 IBM 037 编码器，SEG-Y 现直接按 CP037 映射解码文本头；测试使用固定 EBCDIC 字节验证自定义道头位置和 IBM 浮点样本。工况测试此前在文件选择框重复 selectFile 后未能确认，表现为 240 秒超时；改为填写非原生文件对话框的文件名输入再确认。专项定位排除了此前仅凭尾部日志推断插件析构阻塞的结论，不宣称解决所有历史卸载问题。
+- 最终完整 CTest 10/10 通过，51.32 秒，日志 `D:/CMakeCoder/IDOS-Build/closeout-accepted-ctest.log`；case_workflow 11.66 秒，QtTest 19 passed / 0 failed / 2 skipped。两个跳过项为实际 WSL Flow 执行和输出分帧，需设置 SPE1 输入包后单独验收。构建日志为 `closeout-repair-build.log`，最终工况测试重编译日志为 `closeout-case-final-build.log`。翻译 XML 解析及 git diff --check 通过。
+- 构建仍存在第三方静态库缺少 PDB 的 LNK4099，以及 core/测试中 Qt 容器触发的 STL4043；未扩大 providers 原有屏蔽范围，不能宣称全工程零警告。尚未执行 Release、共享目录全部实样、约 650 MB SEG-Y 显示及真实 Flow 验收。工程持久化、汇总结果和日报工作簿等未实现事项继续保留；本轮未扩展这些功能。
+
+## 数值模拟取消插件边界并集成平台（2026-10-14）
+
+- 用户确认迁移后，复用已有模拟业务实现。原 IDOSSimulationPlugin 改为 IDOSSimulation，放在既有 app/case，由主窗口创建、初始化及提前销毁；主页模拟/结果/输出分组保持原有功能。工程切换继续隔离上下文并取消旧任务，平台退出负责停止任务及清理窗口和动作。
+- 模拟业务窗口全部迁入 app/case；井显示面板及菜单迁入 app/well；IDOSRenderToolMetadata、IDOSRenderToolProvider、IDOSRenderInteractionTool 迁入 app 根部。主窗口直接注册内置视图工具及井显示菜单，不新增功能目录、包装层或第二条调用链。
+- 删除数值模拟插件 DLL 导出、独立 CMake 目标、QRC 和 TS；专属图标归平台 images/images.qrc，翻译归 idos_zh_CN.ts。补齐迁移类的 app DLL 导出和全部迁移头文件独立编译检查。平台直接连接工况菜单至模拟功能，去掉之前为跨插件连接添加的两个 IDOSInterface 信号。其他专业插件的公共接口与安全卸载机制保留。
+- 构建后清理当前配置下遗留的 idossimulationplugin.dll 和独立 QM，防止旧产物被重新发现；验证 Debug 插件目录仅包含其余四个扩展 DLL。撤销井显示跨模块依赖例外，检查器继续拒绝插件引用 app 内部 Provider。
+- 原必需插件回归改为平台回归：历史禁用设置不影响功能，插件目录和列表中没有数值模拟，普通插件全部卸载后模拟动作及内置工具仍保留。保留工况、工具、井显示、动态结果播放和退出回归；测试程序直接链接平台实现，不再重复编译模拟窗口源码。
+- 唯一构建目录 D:/CMakeCoder/IDOS-Build 的 Debug 全项目及独立头文件检查通过（simulation-platform-verified-build.log）；429 个源码边界检查及 40 个检查器用例通过。翻译 XML 有效且无 unfinished，git diff --check 通过。完整 CTest 10/10 通过，52.86 秒（simulation-platform-ctest.log），case_workflow 12.69 秒。两个实际 WSL Flow 用例仍因未设置 IDOS_FLOW_SMOKE_DATA 跳过，未宣称完成真实求解器或 Release 验收。第三方缺 PDB 等既有构建警告保留。
+- 架构、固定源码目录、使用指南、开发指南、接口调用链路及 README 已同步。工程持久化与共享实样等后续事项不在此次迁移范围内。
+## 源码目录重新归类实施与验收（2026-10-14）
+
+- 以 C:/Users/Administrator/Desktop/src 为用户确认的布局参考，仅迁移仓库实际文件，不覆盖现有实现。迁位 177 个文件，迁移前后均为 429 个 C++ 头源文件；全部映射目标存在，所有非 main.cpp 的实现均有同目录同名头文件。桌面布局未列出的导出头、DataMetadata/Registry、基础界面及 CMake 文件保留并按职责归类；清理 7 个迁空目录。
+- core/providers 承接通用 DataProvider、TreeProvider、Metadata、Registry；具体数据及对应 Metadata 仍在 core/data 的业务目录，DataObject 和 TreeServer 位于 core 根部。DataProvider 接口由 core 导出，具体格式实现仍由 providers 库导出，并显式包含自身导出头。core/log 更名 core/logger。
+- app/providers 集中具体树、菜单及渲染实现，app/command 集中具体命令，app/plugin 保存插件列表与管理界面；内置工具 Provider/Metadata 位于 app/providers/render，通用 RenderInteractionTool 归 render。render/providers 集中渲染和工具 Provider/Metadata。
+- gui 集中界面源码；其中 20 组业务界面保留 APP_EXPORT，由 app/CMakeLists.txt 显式编入 idos_app。通用 idos_gui 不依赖 app 或 render，公共头不得泄露这些业务界面；依赖检查按精确目标文件清单识别归属，并新增允许业务界面绑定及拒绝通用界面反向依赖的回归用例。未新增包装层或通用业务协议。
+- 同步所有项目 include、CMake 源清单及 include 路径，保留插件 SDK 公开入口；同步 AGENTS、架构、完整源码文件树、README、开发指南及调用链路。lupdate 识别 1259 个已有文本，新增 0，翻译 XML 有效且 unfinished 为 0。
+- 唯一构建目录 D:/CMakeCoder/IDOS-Build 中 Debug 全项目构建及 213 个头文件独立编译通过（layout-build-verified.log）。429 个源码边界检查、45 个边界检查回归用例及 git diff --check 通过。完整 CTest 10/10 通过，66.51 秒（layout-ctest.log）；case_workflow 13.22 秒。两个真实 WSL Flow 用例因未设置 IDOS_FLOW_SMOKE_DATA 跳过，未宣称真实求解器、共享大文件或 Release 验收完成。第三方 OPM/QXlsx 缺 PDB 等既有警告保留。
+## app/providers 与 gui 业务目录细分及验收（2026-10-14）
+
+- 按用户确认的分类，将 app/providers 下 56 个文件迁入 well、grid、case、fluidrock、seismic、data；保留 render 作为跨业务的内置视图工具目录。同一业务的 Provider、Metadata、GuiProvider 保持集中，不再按类型拆散。
+- gui 下 54 个文件归入 tree、well、grid、case、simulation、output、python、plugin、project。TreeView 和 TreeGuiProvider 同放 tree，原 gui/providers 空目录移除；公共插件接口归 plugin，新建工程对话框归 project，根部仅保留 CMakeLists.txt 与 idos_gui.h。
+- 同步项目与测试 include、CMake 源清单、翻译位置、固定目录完整文件树、架构及编码约定。保留原链接目标归属：20 组业务窗口继续由 idos_app 编译，通用 gui 不依赖 app 或 render。依赖检查允许 tree、output、python、plugin、project 的通用公开接口，按 CMake 的精确清单拒绝反向引用业务窗口；新增 3 个公开接口回归，并将业务窗口边界用例更新到分组路径。
+- 本轮总计迁位 110 个文件；429 个头源文件全部存在，非 main.cpp 的实现都有同目录同名头文件，app/gui 的 CMake 源引用无缺失。lupdate 识别 1259 个已有文本，新增 0，中文翻译 unfinished 为 0。git diff --check 通过。
+- D:/CMakeCoder/IDOS-Build 的 Debug 全量构建及 213 个头文件独立编译通过（business-layout-build.log）；再次构建主程序通过，旧目录的 autogen 依赖警告已消失（business-layout-incremental.log）。429 个源码边界检查及 48 个检查器用例通过。完整 CTest 10/10 通过，56.00 秒，case_workflow 12.97 秒（business-layout-ctest.log）。两个实际 WSL Flow 用例仍因未设置 IDOS_FLOW_SMOKE_DATA 跳过；未增加真实求解器、共享大文件或 Release 验收范围。第三方既有构建警告保留。
+## 同步用户最终源码位置及验收（2026-10-14）
+
+- 根据用户手工调整后的实际目录，同步 12 个头源文件的位置变化；保留当前文件位置。工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部，tree、well、grid、simulation 仍按业务分目录。
+- 用户进一步确认 IDOSInterface 的头文件和实现均位于 src/gui 根部。最终使用 GUI_EXPORT、包含 idos_gui.h，并由 idos_gui 编译；core 的构建清单不含该接口。同步所有消费者引用、app/gui/core CMake、213 个独立头文件检查路径、边界用例、翻译位置、AGENTS、架构及完整源码文件树。此前临时移入 core 的配置已替换，不保留两套实现或导出入口。
+- 429 个 C++ 头源文件全部保留，头源配对同目录；CMake 源引用无缺失。lupdate 识别 1259 个已有文本，新增 0，翻译无 unfinished。git diff --check 通过。
+- 唯一构建目录 D:/CMakeCoder/IDOS-Build 中 Debug 全量构建及 213 个头文件独立编译通过（current-layout-build.log）；主程序再次增量构建通过，旧路径的 autogen 依赖警告已消失（current-layout-incremental.log）。最终 CTest 10/10 通过，54.08 秒，case_workflow 11.94 秒（current-layout-ctest.log），包括 429 个源码边界检查及 48 个检查器用例。两个实际 WSL Flow 用例仍因未设置 IDOS_FLOW_SMOKE_DATA 跳过；共享大文件、真实求解器和 Release 的验收范围未扩大。第三方既有缺 PDB 等警告保留。
+## 工况引用菜单、剪贴板与拖放首批实现及验收（2026-10-14）
+
+- 在既有 app/command 中增加 IDOSCaseReferenceCommand 及 Metadata 成对文件，注册 case.references.copy、case.references.move、case.references.remove。支持井和流体/岩石表的批量引用，按对象/源工况/引用 ID/role/partKey/itemKey 校验；复制生成独立引用 ID，转移保留已有引用 ID，旧引用无 ID 时补齐；撤销和重做恢复精确前后列表。项目对象数不因关联、转移或移除引用变化。
+- 原“添加流体/岩石表到工况”的菜单与 case.fluidRock.attach 参数入口由现有 Metadata 创建同一引用命令；删除 IDOSImportObjectsCommand 中旧的表关联模式、校验与修改分支。保留外部入口，不保留第二套修改逻辑。
+- 扩充现有 TreeGuiProvider 的 Qt MIME、复制/剪切、粘贴与移除能力，默认不支持；Case GuiProvider 提供具体业务判断。TreeView 装配菜单和 Ctrl+C/X/V，使用 ExtendedSelection，维护源快照及目标持久索引；多选时不提供只能处理单个对象的旧专属动作。命令执行时再次校验源/目标和工程会话，不持有长期裸节点指针，不把 C++ 指针放入可传递载荷。
+- 拖动使用 Qt QDrag/QMimeData，默认及 Ctrl 拖动增加引用，Shift 拖动转移已有工况引用；合法目标显示边框，非法目标拒绝。原生拖动对象按 Qt 生命周期由父视图拥有；不调用默认 Model 的行移动来伪造数据修改。跨工程、外部文件、固定分类、网格、完整工况和井部件不开放这批操作。
+- 主窗口当前节点与渲染上下文同步增加源树和重入保护，避免间接上下文通知把源树的多选压回单选。工况根节点按实际 tree()->root() 隐藏父节点识别，恢复该节点的既有菜单并使粘贴目标正确。
+- 整批预检和前后列表准备均在写入前完成，更新双方完整状态后再发布通知。重复、失效或混合不兼容批次整体失败，不清空重做历史；剪切本身不移除源，成功粘贴后才清理当前剪切载荷。撤销/重做遇到外部引用变化或源数据消失时拒绝执行，历史位置保持不变。
+- 新增命令原子性及引用部件身份测试，覆盖无效第二项、重复、自粘贴、通知时双方状态完整、失败保留 redo、外部状态漂移及数据失效后的 redo。命令测试完整 14 passed、0 failed（tree-references-command-all.txt）。树交互覆盖菜单源快照、多选、快捷入口、移除保留数据、非法目标/动作/MIME、外部拖入、工程切换及源删除。
+- Windows 原生测试展示两个实际 TreeView，通过真实 Ctrl+C/V 和 Win32 鼠标输入执行跨树复制、Shift 拖动转移及撤销；输入由独立线程发送，避免依赖 OLE 拖放期间的 GUI 定时器，不修改应用业务线程模型。最终交互专项 6 passed、0 failed、0 skipped，5474 ms（tree-references-ui-final.txt）；测试结束释放鼠标/修饰键并恢复光标。树回归禁用无关的助手自动启动。
+- 唯一构建目录 D:/CMakeCoder/IDOS-Build 的 Debug 全项目与 214 个头文件独立编译通过（tree-references-complete-build.log），431 个源码边界检查及 48 个检查器用例通过。完整 CTest 10/10，通过耗时 61.05 秒，tree_incremental 9.70 秒、case_workflow 12.84 秒（tree-references-ctest.log）。两个实际 WSL Flow 用例仍因未设置 IDOS_FLOW_SMOKE_DATA 跳过；未扩大真实求解器、共享大文件或 Release 验收范围。第三方原有 PDB/Qt 容器警告保留。
+- 平台翻译 active 源文本 1276 条，新增文本已完成中文翻译，无 unfinished；架构第 18.6 节、使用指南、固定源码文件树及 CMake 已同步，git diff --check 通过。后续继续完整数据/工况副本及私有网格、部件规则；删除工况未统一筛选生命周期的既有差异仍待对应阶段处理，不宣称这些功能已完成。
+
+## 对象操作需求纠正与验收（2026-10-14）
+
+- 用户明确要求操作数据、工况、网格和属性本身，原“复制引用／剪切引用”的实现方向错误。TreeView 删除引用移除协议，菜单统一 Copy/Cut/Paste，具体 GuiProvider 负责多选关联入口和对象重命名入口。
+- 在既有 app/command 增加 IDOSTransferObjectsCommand 及 Metadata 成对文件，注册 objects.copy / objects.move。具体 DataObject 提供 clone 能力，默认不支持；现有平台具体数据复制全部值字段，构造分配新 ID。工况复制递归复制关联对象与网格子对象，重映射对象与筛选属性 ID；清空运行状态及输出目录，撤销/重做保留新对象 ID。
+- 同工程 application/x-idos-objects 仅包含运行期工程身份和稳定标识，不包含裸指针；粘贴从当前工程内存复制数据，不重新读取源文件。普通/Ctrl 拖动复制，Shift 拖动移动。剪切仅记录源，完成粘贴才改变归属。
+- 工况直接属于工程，数据树分类固定，故工况及工程级数据无同级移动目标，不支持剪切重排；可复制和拖动复制。网格在不同工况间移动；属性在尺寸一致的网格间移动，拒绝名称冲突和有筛选依赖的属性移动。筛选单独跨网格复制、井内曲线等部件、外部文件和跨工程传输未开放。
+- 数据树整井及流体/岩石表新增“添加到工况…”入口，选择具体目标工况，支持多选；此入口共用已有可撤销关联命令，不创建数据副本。数据、网格及属性补充重命名入口，已有工况和筛选入口保留；动态属性树显示 name，模拟器 keyword 不随显示重命名修改。
+- 删除工况时将网格的筛选与属性一并接管，撤销恢复，避免复制工况后删除遗留筛选。
+- 相关 Debug 目标构建通过（object-transfer-build-final.log）；命令测试 16 passed/0 failed/0 skipped（object-transfer-commands.txt），包括独立数值修改、工况深复制、筛选 ID 重映射、删除及撤销、属性移动及尺寸不兼容失败保留 redo；树测试 22 passed/0 failed/0 skipped（object-transfer-tree.txt），包括多选添加到工况、对象数增长、新 ID、菜单/快捷入口、目标兼容性及跨工程/失效源拒绝。源码依赖边界检查 433 个文件通过。中文翻译 1311 项全部完成。日志位于唯一构建目录 D:/CMakeCoder/IDOS-Build。
+- 本次按用户要求控制验证范围，未重跑全部 CTest，未扩展原生鼠标测试；先前原生引用拖放验收不用于宣称本次对象拖放已做原生鼠标验收。
+
+## 单文件 HDF5 工程存储首版及验收（2026-10-15）
+
+- 用户确认采用单个二进制 .idos 工程，工程信息由 IDOS 定义，全部已解析数据保存到文件内部，不嵌入原始导入文件；明确不增加 IDOSProjectStorage。实施在 IDOSProject 提供 load/save/filePath/isModified，元信息和对象变更追踪未保存状态。
+- 扩展 DataMetadata 的工程读写分发和 HDF5 值编解码；既有具体数据及组合值类型逐字段实现 projectData/restoreProjectData，不转储 C++ 内存。Object 只授予 Project 原 ID 恢复权限。新增 IDOSGridPropertyMetadata 成对文件，补齐属性的类型创建和注册；应用与独立窗口测试共用平台数据注册方法。
+- 文件 /IDOS 保存格式标识、版本 1、工程信息、当前选择和对象索引，/Objects/<序号>/Data 保存业务字段。实际数值使用原生小端 HDF5 数组；大于等于 1024 项时分块、Deflate 1 压缩及 Fletcher32 校验。当前文件为 IDOS 自定义 HDF5 结构，未实现标准 VTKHDF 导出，不能声称可被 ParaView 直接打开。
+- 覆盖 16 种平台注册类型：井、网格、属性、筛选、地层面、边界、模拟工况、流体/岩石表、微地震、地震、泵注计划、天然裂缝、生产历史、压裂液/支撑剂目录。井内全部已有字段及存在标记、扩展属性、曲线空值，动态属性全部报告步及当前步均保留。示例插件点集也实现相同存储接口；未来插件未实现存储时明确失败，禁止静默丢失对象。
+- 加载先在临时 Project 恢复对象和原 ID，再校验容器、工况关系、数组尺寸、枚举及报告步，成功后切换当前工程。版本不支持、未注册类型或文件损坏不改变当前工程。筛选保留缺失属性条件，兼容既有失效结果仍可编辑的语义。拒绝 HDF5 外部链接、外部数组和虚拟数据集，确保恢复不读取源文件。
+- 保存先完成临时 HDF5 文件，再通过 QSaveFile 原子替换，发生序列化/写入/提交错误保留旧文件。当前 VTK 随附 HDF5 窄字符接口不能直接读取部分中文路径，增加短路径及 Qt 文件读写/HDF5 内存映像回退。回退受 QByteArray 2 GB 上限约束，并会额外占用内存；共享约 650 MB SEG-Y 工程与更大工程尚未做性能验收。
+- MainWindow 接通打开、保存、另存为，支持 Ctrl+O/S/Shift+S，标题显示工程名/文件名和修改标记；新建、切换及关闭前提供保存/放弃/取消。用户已明确允许关闭当时运行的 IDOS（PID 8316，唯一 Debug 产物路径），解决 DLL 被占用导致的 LNK1168 后完成构建。
+- 新增保存恢复专项覆盖全部平台类型、原始源文件路径不存在、中文工程文件名、工程元信息和选择、网格几何、筛选属性 ID、静态与动态属性、井曲线 NaN、地震采样 NaN、压缩数组、嵌套字典/列表、日期和二进制值；逐对象比较字段及原 ID。失败保护覆盖未支持的值类型中途保存失败后原文件逐字节一致、文件截断、未来版本及类型注册缺失。主窗口用例验证保存标记、打开后的树节点和加载失败前的源工程隔离。
+- 唯一构建目录 D:/CMakeCoder/IDOS-Build：Debug 全目标构建通过（project-storage-complete-build.log），新增属性 Metadata 的独立包含检查通过（project-storage-header-build.log），435 个源码边界检查通过，平台 1359 项和示例插件 27 项中文翻译全部完成。专项 5 passed/0 failed/0 skipped（project-storage-first-tests.txt）。完整 CTest 其余 9 项通过；project_dialog 的旧标题断言与新工程名/未保存标记不一致，按功能更新后仅重建并复测该目标，1/1 通过、3.88 秒（project-storage-dialog-ctest.log）。首轮全套日志保留为 project-storage-ctest.log，不伪称该首轮 10/10。未重复运行已经通过的其他 9 项。
+- 当前持久化范围为业务数据、全局对象显隐和当前选择；不保存撤销历史、相机、窗口布局或各视图独立显隐/着色。恢复只重建展示，不自动恢复或启动求解器进程。工程设置编辑入口仍待实现。后续优先实际工程大文件保存/重开验收，再接视图状态与格式升级策略。
+
+- 编译警告修复（2026-10-15）：IDOSDataMetadata 同构记录字段比较改为显式检查数量和键，避免 Qt 5 QStringList 比较实例化 MSVC 已弃用的 checked_array_iterator。未屏蔽警告或修改第三方代码；idos_core Debug 重编译无该警告，工程往返与性能测试 4/4 通过。

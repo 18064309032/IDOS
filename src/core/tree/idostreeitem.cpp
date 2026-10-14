@@ -1,7 +1,7 @@
 #include <QUuid>
 
 #include "idostree.h"
-#include "idostreeprovider.h"
+#include "providers/idostreeprovider.h"
 
 #include "idostreeitem.h"
 

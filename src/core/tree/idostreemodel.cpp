@@ -109,9 +109,9 @@ Qt::ItemFlags IDOSTreeModel::flags(const QModelIndex& index) const
     IDOSTreeItem* item = nodeFromIndex(index);
     if (item == nullptr)
     {
-        return Qt::NoItemFlags;
+        return Qt::ItemIsDropEnabled;
     }
-    Qt::ItemFlags result = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    Qt::ItemFlags result = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
     if (item->isCheckable())
     {
         result |= Qt::ItemIsUserCheckable;

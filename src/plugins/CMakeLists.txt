@@ -42,7 +42,6 @@ function(idos_add_plugin_translation plugin_target)
     )
 endfunction()
 
-add_subdirectory(idossimulationplugin)
 add_subdirectory(idosfracturemodelingplugin)
 add_subdirectory(idosmultiscalefractureplugin)
 add_subdirectory(idosgeomechanicsplugin)

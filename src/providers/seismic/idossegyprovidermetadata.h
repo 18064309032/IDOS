@@ -3,7 +3,8 @@
 
 #include <QObject>
 
-#include "idosdataprovidermetadata.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovidermetadata.h"
 
 class PROVIDERS_EXPORT IDOSSegyProviderMetadata : public IDOSDataProviderMetadata
 {

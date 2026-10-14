@@ -23,7 +23,8 @@
 - 目标架构以 `docs/IDOS架构设计.md` 的新方案为准。该文档描述待实施架构，不表示当前代码已完成；不受旧类划分约束。
 - 树与渲染独立但职责一致：通用展示对象管理身份与所有权，Provider 提供展示，GuiProvider 提供菜单与交互，Server 同步工程。通用 Model、View、Scene、Server 不判断具体数据或 Provider 子类。
 - 仅允许增加设计方案中的类及对应具体数据、Provider、GuiProvider、Metadata、命令实现；禁止新增方案外的类、结构体、命名空间、匿名命名空间和自由函数。类内接口与成员可以按需要增删调整，非公开辅助方法放在所属类 private 区域。
-- 通用树结构、Provider、Metadata、Registry、Model、Server 放在 src/core/tree，TreeView 和 TreeGuiProvider 放在 src/gui/tree；通用渲染框架放在 src/render；具体业务实现放在 app 或插件。gui 与 render 不互相依赖，均可依赖 core；core 不依赖 gui、render、app 或插件。
+- 源码按已确认的新目录组织：通用树结构和 Model 放在 src/core/tree，TreeServer 放在 core 根部；树及数据读取的 Provider、Metadata、Registry 放在 src/core/providers，TreeView 与 TreeGuiProvider 均放在 src/gui/tree。渲染及工具 Provider、Metadata 放在 src/render/providers，其他通用渲染框架放在 render 根部。具体展示实现按 well、grid、case、fluidrock、seismic、data 分入 src/app/providers 的业务子目录，视图工具放在其 render 子目录；gui 按 tree、well、grid、simulation 分类；工况对话框、新建工程、调试、运行信息及 Python 控制台位于 gui 根部，公共平台接口 IDOSInterface 位于 gui 根部并由 gui 导出。业务命令放在 src/app/command，具体文件解析放在顶层 src/providers。
+- 物理源码目录与链接模块分别管理：平台业务窗口统一归档在 src/gui，但由 src/app/CMakeLists.txt 显式列入 idos_app，保持 APP_EXPORT；通用界面编入 idos_gui。依赖检查按实际目标归属执行，禁止通用 idos_gui 反向依赖 idos_app 或其业务窗口。idos_gui 与 idos_render 不互相依赖，均可依赖 core；core 不依赖 gui、render、app 或插件。
 - RenderObject 为通用具体类，管理独立 ID、名称和 Provider 所有权；RenderMetadata 创建 RenderProvider，由 RenderServer 装入通用 RenderObject。删除仅用于装配 Provider 的具体 RenderObject 子类，不增加数据 Provider 包装层。
 - 每个 RenderView 拥有独立 Scene，Scene 拥有 RenderObject，RenderObject 拥有 Provider；源数据关联非拥有，各视图显示状态独立。数据 ID、节点 ID、渲染 ID 分别管理。
 - 工程同步只由 TreeServer 和 RenderServer 处理，不委托给 Metadata、Provider 或 GuiProvider；不引入 Provider Context、synchronize()、统一交互结果协议或额外适配层。

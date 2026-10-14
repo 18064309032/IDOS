@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVector>
 
 class IDOSRenderObject;
 class IDOSRenderView;
@@ -17,7 +18,7 @@ class CaseWorkflowTest : public QObject
     void onProvider();
     void onProviderDimensions();
     void onViewDecorations();
-    void onRequiredSimulationPlugin();
+    void onPlatformSimulation();
     void onGridSettings();
     void onGridFilters();
     void onGridFilterCriteria();
@@ -28,12 +29,14 @@ class CaseWorkflowTest : public QObject
     void onRenderArchitecture();
     void onExamplePlugin();
     void onCreateAndImport();
+    void onFluidRockReferences();
     void onDialog();
     void onFlowExecution();
     void onSimulationOutput();
     void onFlowOutputFraming();
 
   private:
+    bool sameSelection(const QVector<quint8>& first, const QVector<quint8>& second) const;
     void onCloseContextMenu();
     IDOSRenderObject* findRenderObject(IDOSRenderView* view, const QString& dataId) const;
     QString m_name;

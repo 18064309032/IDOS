@@ -1,4 +1,4 @@
-#include "idosrendermetadata.h"
+#include "providers/idosrendermetadata.h"
 
 #include "idosrenderregistry.h"
 

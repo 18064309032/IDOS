@@ -16,15 +16,14 @@
 #include <QStringList>
 #include <QThread>
 #include <QToolButton>
-#include <QWidgetAction>
-
 #include <QVTKOpenGLNativeWidget.h>
+#include <QWidgetAction>
 
 #include "idosrenderview.h"
 #include "idostool.h"
-#include "idostoolmetadata.h"
-#include "idostoolprovider.h"
 #include "idostoolregistry.h"
+#include "providers/idostoolmetadata.h"
+#include "providers/idostoolprovider.h"
 
 #include "idostoolbar.h"
 
@@ -98,7 +97,11 @@ void IDOSToolBar::setVisible(bool visible)
 {
     if (!m_internalVisibility)
     {
-        m_userHidden = !visible;
+        if (m_userHidden == visible)
+        {
+            m_userHidden = !visible;
+            emit presentationChanged();
+        }
     }
     QToolBar::setVisible(visible);
 }
@@ -513,6 +516,7 @@ bool IDOSToolBar::eventFilter(QObject* watched, QEvent* event)
                 mouseEvent->button() == Qt::LeftButton && m_dragging)
             {
                 m_dragging = false;
+                emit presentationChanged();
                 return true;
             }
         }
@@ -558,4 +562,26 @@ void IDOSToolBar::onActionChanged()
     {
         updateVisibility();
     }
+}
+
+QVariantMap IDOSToolBar::presentationState() const
+{
+    QVariantMap state;
+    state.insert(QStringLiteral("hidden"), m_userHidden);
+    state.insert(QStringLiteral("positioned"), m_userPositioned);
+    state.insert(QStringLiteral("x"), m_userPositioned ? x() : 0);
+    state.insert(QStringLiteral("y"), m_userPositioned ? y() : 0);
+    return state;
+}
+
+void IDOSToolBar::restorePresentationState(const QVariantMap& state)
+{
+    if (state.isEmpty())
+    {
+        return;
+    }
+    m_userPositioned = state.value(QStringLiteral("positioned")).toBool();
+    move(qMax(0, state.value(QStringLiteral("x")).toInt()), qMax(0, state.value(QStringLiteral("y")).toInt()));
+    setVisible(!state.value(QStringLiteral("hidden")).toBool());
+    emit layoutChanged();
 }

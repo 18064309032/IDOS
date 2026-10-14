@@ -7,7 +7,7 @@
 #include <QTextStream>
 #include <QVector>
 
-#include "idosgridboundary.h"
+#include "data/grid/idosgridboundary.h"
 
 #include "idosgridboundaryprovider.h"
 

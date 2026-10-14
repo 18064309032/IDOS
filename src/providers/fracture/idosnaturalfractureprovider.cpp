@@ -7,7 +7,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "idosnaturalfractureset.h"
+#include "data/fracture/idosnaturalfractureset.h"
 
 #include "idosnaturalfractureprovider.h"
 

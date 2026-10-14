@@ -4,7 +4,7 @@
 #include <QList>
 #include <QPointer>
 
-#include "idosdatametadata.h"
+#include "providers/idosdatametadata.h"
 
 class IDOSPointSetMetadata : public IDOSDataMetadata
 {

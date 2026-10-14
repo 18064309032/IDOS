@@ -1,6 +1,7 @@
 #ifndef IDOS_GRID_H
 #define IDOS_GRID_H
 
+#include <QVariantMap>
 #include <QVector>
 #include <QVector3D>
 
@@ -18,6 +19,10 @@ class CORE_EXPORT IDOSGrid : public IDOSDataObject
     Q_OBJECT
 
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     /**
      * @brief 网格类型。
      */
@@ -31,6 +36,8 @@ class CORE_EXPORT IDOSGrid : public IDOSDataObject
     ~IDOSGrid() override;
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
 
     /** 网格类型。 */
     Type type() const;

@@ -6,8 +6,8 @@
 #include <QObject>
 #include <QTextStream>
 
-#include "idoswell.h"
-#include "idoswellcheckshot.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellcheckshot.h"
 
 #include "idoswellcheckshotprovider.h"
 

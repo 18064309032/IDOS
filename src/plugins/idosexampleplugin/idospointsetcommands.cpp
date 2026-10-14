@@ -3,10 +3,10 @@
 #include <QVector>
 #include <QVector3D>
 
-#include "idosdatametadata.h"
-#include "idosdataregistry.h"
 #include "idospointset.h"
 #include "idosproject.h"
+#include "providers/idosdatametadata.h"
+#include "providers/idosdataregistry.h"
 
 #include "idospointsetcommands.h"
 

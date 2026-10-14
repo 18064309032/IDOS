@@ -1,7 +1,7 @@
 #ifndef IDOS_FRACTURE_SCHEDULE_DATA_METADATA_H
 #define IDOS_FRACTURE_SCHEDULE_DATA_METADATA_H
 
-#include "idosdatametadata.h"
+#include "providers/idosdatametadata.h"
 
 class CORE_EXPORT IDOSFractureScheduleDataMetadata : public IDOSDataMetadata
 {

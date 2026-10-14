@@ -10,7 +10,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-#include "idossimulationcaseobject.h"
+#include "data/case/idossimulationcaseobject.h"
 
 #include "idosfluidrocktextprovider.h"
 

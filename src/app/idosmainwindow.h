@@ -1,10 +1,12 @@
 #ifndef IDOS_MAIN_WINDOW_H
 #define IDOS_MAIN_WINDOW_H
 
+#include <QList>
 #include <QMap>
 #include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 #include <SARibbonMainWindow.h>
 
@@ -17,6 +19,7 @@ class QAction;
 class QCloseEvent;
 class QModelIndex;
 class QTreeView;
+class QMenu;
 class IDOSCommandManager;
 class IDOSProject;
 class IDOSTreeModel;
@@ -37,6 +40,8 @@ class IDOSPluginRegistry;
 class IDOSPluginManagerWidget;
 class IDOSAppInterface;
 class IDOSToolRegistry;
+class IDOSSimulation;
+class SARibbonPanel;
 
 namespace ads
 {
@@ -60,6 +65,8 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
     /** 设置工程，同时喂给数据树与工况树两个模型实例。 */
     void setProject(IDOSProject* project);
+    bool openProject(const QString& path, bool confirmDiscard = true);
+    bool saveProject(const QString& path = QString());
     bool createProject(const IDOSProjectMetadata& metadata,
                        bool confirmDiscard);
 
@@ -76,15 +83,22 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSToolRegistry* toolRegistry() const;
     IDOSCommandRegistry* commandRegistry() const;
     IDOSRenderServer* renderServer() const;
+    SARibbonPanel* homeRibbonPanel(const QString& groupId) const;
 
   signals:
     void projectChanged(IDOSProject* project);
 
   public slots:
     void onNewProject();
+    void onOpenProject();
+    void onSaveProject();
+    void onSaveProjectAs();
 
   private slots:
     void onProjectDestroyed();
+    void onProjectModified();
+    void onPresentationChanged();
+    void onRecentProjectTriggered(QAction* action);
     void onRenderViewFocused();
     void onRenderViewDecorations();
     void onRenderViewActivated(const QString& id);
@@ -118,6 +132,16 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void closeEvent(QCloseEvent* event) override;
 
   private:
+    void collectProjectPresentation(bool force = false);
+    void prepareProjectViews(const QVariantMap& state);
+    void restoreProjectPresentation(const QVariantMap& state);
+    void saveWindowPreferences();
+    void restoreWindowPreferences(bool geometry);
+    void rememberProject(const QString& path);
+    void updateRecentProjects();
+    QString layoutSettingsKey() const;
+    QList<IDOSWellLogTrackView*> logTrackViews() const;
+    static QString windowSettingsPath();
     void initProviders();
     IDOSRenderView* activeView() const;
     QString activeViewId() const;
@@ -134,7 +158,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void initPluginManager();
     void createRenderView(bool twoDimensional);
     void applyWindowLayout(const QString& layout);
-    void updateTreeSelection(const QString& viewId);
+    void updateTreeSelection(const QString& viewId, QTreeView* source = nullptr);
     void setViewTreeContext(const QString& viewId, const QString& objectId, const QString& caseId);
     void selectTreeIndex(QTreeView* treeView, const QModelIndex& index);
     QModelIndex caseTreeIndexForContext(const QString& objectId, const QString& caseId) const;
@@ -180,6 +204,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSPluginRegistry* m_pluginRegistry;
     IDOSPluginManagerWidget* m_pluginManagerWidget;
     IDOSAppInterface* m_appInterface;
+    IDOSSimulation* m_simulation;
     IDOSDebugInfoWidget* m_debugInfoWidget;
     IDOSAssistantWidget* m_assistantWidget;
     IDOSPythonConsoleWidget* m_pythonConsoleWidget;
@@ -195,6 +220,9 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     int m_nextViewIndex;
     QString m_currentWindowLayout;
     bool m_syncingTreeSelection;
+    bool m_restoringPresentation;
+    QVariantMap m_defaultViewState;
+    QMenu* m_recentProjectsMenu;
 };
 
 #endif // IDOS_MAIN_WINDOW_H

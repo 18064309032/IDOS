@@ -17,6 +17,7 @@ class APP_EXPORT IDOSApplication : public QApplication
 
     IDOSDataRegistry* dataRegistry() const;
     static void initProviders();
+    static void initDataRegistry(IDOSDataRegistry* registry);
 
   private:
     IDOSDataRegistry* m_dataRegistry;

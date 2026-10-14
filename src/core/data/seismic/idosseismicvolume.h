@@ -2,6 +2,7 @@
 #define IDOS_SEISMIC_VOLUME_H
 
 #include <QString>
+#include <QVariantMap>
 #include <QVector>
 
 #include "idosdataobject.h"
@@ -11,9 +12,15 @@ class CORE_EXPORT IDOSSeismicVolume : public IDOSDataObject
     Q_OBJECT
 
   public:
+    bool validateProjectReferences(const IDOSProject* project, QString& error) const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     explicit IDOSSeismicVolume(QObject* parent = nullptr);
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
     QString sourceFile() const;
     void setSourceFile(const QString& sourceFile);
     QString textHeader() const;

@@ -2,6 +2,7 @@
 #define IDOS_WELL_MARKER_H
 
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 
@@ -13,6 +14,9 @@
 class CORE_EXPORT IDOSWellMarker
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellMarker();
     IDOSWellMarker(const QString& name, double depth);
 

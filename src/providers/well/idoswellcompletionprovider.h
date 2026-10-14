@@ -1,7 +1,8 @@
 #ifndef IDOS_WELL_COMPLETION_PROVIDER_H
 #define IDOS_WELL_COMPLETION_PROVIDER_H
 
-#include "idosdataprovider.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovider.h"
 
 class PROVIDERS_EXPORT IDOSWellCompletionProvider : public IDOSDataProvider
 {

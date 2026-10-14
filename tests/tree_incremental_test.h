@@ -4,10 +4,11 @@
 #include <QAbstractItemModel>
 #include <QModelIndex>
 #include <QObject>
+#include <QPoint>
 
 #include "idostool.h"
-#include "idostoolmetadata.h"
-#include "idostoolprovider.h"
+#include "providers/idostoolmetadata.h"
+#include "providers/idostoolprovider.h"
 
 class IDOSToolRegistry;
 class QMenu;
@@ -81,6 +82,8 @@ class TreeIncrementalTest : public QObject
     void onRegistryLifecycle();
     void onTreeOwnership();
     void onMenuTargets();
+    void onObjectClipboard();
+    void onObjectDropValidation();
     void onToolRegistryAndWindows();
     void onToolInputLifecycle();
     void onToolObserversAndUnregister();
@@ -106,6 +109,8 @@ class TreeIncrementalTest : public QObject
     int m_dataRowsRemoved = 0;
     int m_caseRowsInserted = 0;
     int m_caseRowsRemoved = 0;
+private:
+    void onAcceptDestinationCase();
 };
 
 #endif // TREE_INCREMENTAL_TEST_H

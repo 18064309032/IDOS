@@ -8,7 +8,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "idoswell.h"
+#include "data/well/idoswell.h"
 
 #include "idoswellpathprovider.h"
 

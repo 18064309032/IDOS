@@ -13,6 +13,8 @@ class IDOSPointSet : public IDOSDataObject
   public:
     explicit IDOSPointSet(QObject* parent = nullptr);
     QString typeId() const override;
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
     QVector<QVector3D> points() const;
     void setPoints(const QVector<QVector3D>& points);
 

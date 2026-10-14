@@ -1,9 +1,17 @@
 #include <memory>
 
 #include <QAction>
+#include <QApplication>
+#include <QClipboard>
+#include <QComboBox>
+#include <QDialog>
+#include <QDragEnterEvent>
+#include <QInputDialog>
 #include <QItemSelectionModel>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QMimeData>
+#include <QTimer>
 #include <QPersistentModelIndex>
 #include <QScopedPointer>
 #include <QSignalSpy>
@@ -15,29 +23,31 @@
 #include <vtkObject.h>
 #include <vtkSmartPointer.h>
 
-#include "idoscaseitemref.h"
-#include "idosdatametadata.h"
-#include "idosdataregistry.h"
-#include "idosgrid.h"
-#include "idosgridmetadata.h"
-#include "idosgridproperty.h"
+#include "data/case/idoscaseitemref.h"
+#include "data/case/idossimulationcasemetadata.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridmetadata.h"
+#include "data/grid/idosgridproperty.h"
+#include "data/well/idoswell.h"
+#include "data/well/idoswellmetadata.h"
+#include "idoscommandmanager.h"
 #include "idosmainwindow.h"
 #include "idosproject.h"
 #include "idosrenderview.h"
-#include "idossimulationcasemetadata.h"
-#include "idossimulationcaseobject.h"
 #include "idostoolbar.h"
 #include "idostoolregistry.h"
-#include "idostree.h"
-#include "idostreeitem.h"
-#include "idostreemodel.h"
-#include "idostreeregistry.h"
 #include "idostreeserver.h"
-#include "idostreeview.h"
-#include "idoswell.h"
-#include "idoswellmetadata.h"
-#include "idoswelltreeguiprovider.h"
-#include "idoswelltreemetadata.h"
+#include "providers/case/idossimulationcasetreeguiprovider.h"
+#include "providers/idosdatametadata.h"
+#include "providers/idosdataregistry.h"
+#include "providers/idostreeregistry.h"
+#include "providers/well/idoswelltreeguiprovider.h"
+#include "providers/well/idoswelltreemetadata.h"
+#include "tree/idostree.h"
+#include "tree/idostreeitem.h"
+#include "tree/idostreemodel.h"
+#include "tree/idostreeview.h"
 
 #include "tree_incremental_test.h"
 
@@ -546,7 +556,11 @@ void TreeIncrementalTest::onMenuTargets()
     QScopedPointer<QMenu> menu(view->createMenu(firstIndex));
     QCOMPARE(view->menuItem()->dataId(), first->objectId());
     QCOMPARE(view->selectedItems().size(), 2);
-    QAction* remove = menu->findChild<QAction*>(QStringLiteral("deleteWellAction"));
+    QVERIFY(menu->findChild<QAction*>(QStringLiteral("deleteWellAction")) == nullptr);
+    QVERIFY(menu->findChild<QAction*>(QStringLiteral("copyTreeItemsAction")) != nullptr);
+    view->selectionModel()->setCurrentIndex(firstIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    QScopedPointer<QMenu> singleMenu(view->createMenu(firstIndex));
+    QAction* remove = singleMenu->findChild<QAction*>(QStringLiteral("deleteWellAction"));
     QVERIFY(remove != nullptr);
     QCOMPARE(remove->property("dataId").toString(), first->objectId());
     view->setCurrentIndex(secondIndex);
@@ -841,3 +855,115 @@ void TreeIncrementalTest::onToolObserversAndUnregister()
 }
 
 QTEST_MAIN(TreeIncrementalTest)
+
+void TreeIncrementalTest::onAcceptDestinationCase()
+{
+    QInputDialog* dialog = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
+    if (dialog != nullptr)
+    {
+        dialog->accept();
+    }
+}
+
+void TreeIncrementalTest::onObjectClipboard()
+{
+    IDOSMainWindow window;
+    IDOSProject project;
+    window.setProject(&project);
+    IDOSWell* first = new IDOSWell();
+    first->setName(QStringLiteral("Source well"));
+    IDOSWell* second = new IDOSWell();
+    second->setName(QStringLiteral("Second well"));
+    IDOSSimulationCaseObject* target = new IDOSSimulationCaseObject();
+    target->setName(QStringLiteral("Target case"));
+    project.add(first);
+    project.add(second);
+    project.add(target);
+    IDOSTreeView* dataView = window.dataTreeView();
+    IDOSTreeView* caseView = window.caseTreeView();
+    const QModelIndex firstIndex = window.dataTreeModel()->indexFromDataId(first->objectId());
+    const QModelIndex secondIndex = window.dataTreeModel()->indexFromDataId(second->objectId());
+    dataView->selectionModel()->select(firstIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    dataView->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    QScopedPointer<QMenu> menu(dataView->createMenu(firstIndex));
+    QAction* attach = menu->findChild<QAction*>(QStringLiteral("addToCaseAction"));
+    QVERIFY(attach != nullptr);
+    QVERIFY(menu->findChild<QAction*>(QStringLiteral("removeCaseReferencesAction")) == nullptr);
+    QTimer::singleShot(0, this, &TreeIncrementalTest::onAcceptDestinationCase);
+    attach->trigger();
+    QCOMPARE(target->itemRefs().size(), 2);
+    QCOMPARE(project.objects().size(), 3);
+    project.commandManager()->undo();
+    QVERIFY(target->itemRefs().isEmpty());
+    QAction* copy = menu->findChild<QAction*>(QStringLiteral("copyTreeItemsAction"));
+    QVERIFY(copy != nullptr);
+    QVERIFY(!copy->text().contains(QStringLiteral("References")));
+    copy->trigger();
+    QVERIFY(QApplication::clipboard()->mimeData()->hasFormat(QStringLiteral("application/x-idos-objects")));
+    const QModelIndex wells = window.dataTreeModel()->indexFromNode(window.dataTreeModel()->tree()->find(QStringLiteral("data.wells")));
+    QVERIFY(wells.isValid());
+    QVERIFY(dataView->pasteMimeData(QApplication::clipboard()->mimeData(), wells, Qt::CopyAction));
+    QCOMPARE(project.objects().size(), 5);
+    QVERIFY(target->itemRefs().isEmpty());
+    project.commandManager()->undo();
+    QCOMPARE(project.objects().size(), 3);
+    project.commandManager()->redo();
+    QCOMPARE(project.objects().size(), 5);
+    const QModelIndex targetIndex = window.caseTreeModel()->indexFromDataId(target->objectId());
+    QVERIFY(caseView->pasteMimeData(QApplication::clipboard()->mimeData(), targetIndex, Qt::CopyAction));
+    QCOMPARE(target->itemRefs().size(), 2);
+    QCOMPARE(project.objects().size(), 7);
+    QVERIFY(target->itemRefs().first().objectId() != first->objectId());
+    QVERIFY(target->itemRefs().first().objectId() != second->objectId());
+    // Whole-object rename is available on a data node, independent of association.
+    dataView->setCurrentIndex(window.dataTreeModel()->indexFromDataId(first->objectId()));
+    QScopedPointer<QMenu> renameMenu(dataView->createMenu(dataView->currentIndex()));
+    QVERIFY(renameMenu->findChild<QAction*>(QStringLiteral("renameObjectAction")) != nullptr);
+    QApplication::clipboard()->clear();
+}
+
+void TreeIncrementalTest::onObjectDropValidation()
+{
+    IDOSMainWindow window;
+    IDOSProject project;
+    window.setProject(&project);
+    IDOSWell* well = new IDOSWell();
+    IDOSSimulationCaseObject* target = new IDOSSimulationCaseObject();
+    project.add(well);
+    project.add(target);
+    IDOSTreeView* dataView = window.dataTreeView();
+    IDOSTreeView* caseView = window.caseTreeView();
+    dataView->setCurrentIndex(window.dataTreeModel()->indexFromDataId(well->objectId()));
+    dataView->findChild<QAction*>(QStringLiteral("treeCopyShortcutAction"))->trigger();
+    QMimeData payload;
+    payload.setData(QStringLiteral("application/x-idos-objects"),
+                    QApplication::clipboard()->mimeData()->data(QStringLiteral("application/x-idos-objects")));
+    const QModelIndex targetIndex = window.caseTreeModel()->indexFromDataId(target->objectId());
+    const QModelIndex tables = window.caseTreeModel()->index(2, 0, targetIndex);
+    QVERIFY(!caseView->pasteMimeData(&payload, tables, Qt::CopyAction));
+    QVERIFY(!caseView->pasteMimeData(&payload, targetIndex, Qt::MoveAction));
+    QVERIFY(!caseView->pasteMimeData(&payload, targetIndex, Qt::LinkAction));
+    QVERIFY(caseView->pasteMimeData(&payload, targetIndex, Qt::CopyAction));
+    QCOMPARE(project.objects().size(), 3);
+    const QString copyId = target->itemRefs().first().objectId();
+    QVERIFY(copyId != well->objectId());
+    project.commandManager()->undo();
+    QCOMPARE(project.objects().size(), 2);
+    QVERIFY(project.commandManager()->canRedo());
+    QMimeData foreign;
+    foreign.setData(QStringLiteral("application/x-idos-objects"), QByteArray("{}"));
+    QVERIFY(!caseView->pasteMimeData(&foreign, targetIndex, Qt::CopyAction));
+    QVERIFY(project.commandManager()->canRedo());
+    QDragEnterEvent external(QPoint(2, 2), Qt::CopyAction, &payload, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(caseView->viewport(), &external);
+    QVERIFY(!external.isAccepted());
+    IDOSProject replacement;
+    IDOSSimulationCaseObject* replacementCase = new IDOSSimulationCaseObject();
+    replacement.add(replacementCase);
+    window.setProject(&replacement);
+    QVERIFY(!caseView->pasteMimeData(&payload, window.caseTreeModel()->indexFromDataId(replacementCase->objectId()), Qt::CopyAction));
+    window.setProject(&project);
+    project.remove(well->objectId());
+    QVERIFY(!caseView->pasteMimeData(&payload, window.caseTreeModel()->indexFromDataId(target->objectId()), Qt::CopyAction));
+    QApplication::clipboard()->clear();
+}

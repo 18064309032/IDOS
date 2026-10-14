@@ -1,26 +1,22 @@
 # idos_gui: user interface features
 add_library(idos_gui SHARED
-    tree/idostreeview.h
-    tree/idostreeview.cpp
-    tree/idostreeguiprovider.h
-    tree/idostreeguiprovider.cpp
     idos_gui.h
-    idosinterface.h
     idosinterface.cpp
-    idosdebuginfowidget.h
+    idosinterface.h
     idosdebuginfowidget.cpp
-    idosruntimeinfowidget.h
-    idosruntimeinfowidget.cpp
-    idospythonconsolewidget.h
-    idospythonconsolewidget.cpp
-    idosnewprojectdialog.h
+    idosdebuginfowidget.h
     idosnewprojectdialog.cpp
+    idosnewprojectdialog.h
+    idospythonconsolewidget.cpp
+    idospythonconsolewidget.h
+    idosruntimeinfowidget.cpp
+    idosruntimeinfowidget.h
+    tree/idostreeview.cpp
+    tree/idostreeview.h
+    tree/idostreeguiprovider.cpp
+    tree/idostreeguiprovider.h
 )
-target_include_directories(idos_gui
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tree
-)
+target_include_directories(idos_gui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)
 target_compile_definitions(idos_gui PRIVATE IDOS_GUI_LIB)
 

@@ -15,6 +15,7 @@
 class CORE_EXPORT IDOSObject : public QObject
 {
     Q_OBJECT
+    friend class IDOSProject;
 
   public:
     /**

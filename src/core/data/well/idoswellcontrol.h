@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_CONTROL_H
 #define IDOS_WELL_CONTROL_H
 
+#include <QVariantMap>
+
 #include "idos_core.h"
 
 /**
@@ -12,6 +14,9 @@
 class CORE_EXPORT IDOSWellControl
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSWellControl();
 
     /** 井指数（Well Index），井与地层连通的传导能力。 */

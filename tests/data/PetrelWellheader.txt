@@ -1,0 +1,13 @@
+VERSION 1
+BEGIN HEADER
+1, Name
+2, Surface X
+3, Surface Y
+4, Well symbol
+5, Well datum name
+6, Well datum value
+7, TD (MD)
+8, Description
+END HEADER
+"Zi224Vertical" 18488365.77 3312053.56 1 "KB" 381.1 4516 ""
+"Zi224H" 18488365.77 3312053.56 1 "KB" 381.1 6030 "Horizontal well"

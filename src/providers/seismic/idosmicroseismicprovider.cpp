@@ -4,12 +4,12 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QObject>
-#include <QTime>
 #include <QTextStream>
 #include <QtGlobal>
+#include <QTime>
 #include <QVariantMap>
 
-#include "idosmicroseismicset.h"
+#include "data/seismic/idosmicroseismicset.h"
 
 #include "idosmicroseismicprovider.h"
 

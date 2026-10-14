@@ -1,8 +1,8 @@
 #ifndef IDOS_FLUID_ROCK_TABLE_METADATA_H
 #define IDOS_FLUID_ROCK_TABLE_METADATA_H
 
-#include "idosdatametadata.h"
 #include "idosfluidrocktable.h"
+#include "providers/idosdatametadata.h"
 
 class CORE_EXPORT IDOSFluidRockTableMetadata : public IDOSDataMetadata
 {

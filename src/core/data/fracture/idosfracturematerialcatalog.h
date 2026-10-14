@@ -3,6 +3,7 @@
 
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "idosdataobject.h"
 
@@ -11,6 +12,9 @@ class CORE_EXPORT IDOSFractureMaterialCatalog : public IDOSDataObject
     Q_OBJECT
 
   public:
+    QVariantMap projectData() const override;
+    bool restoreProjectData(const QVariantMap& data, QString& error) override;
+
     enum class Kind
     {
         Fluid,
@@ -20,6 +24,8 @@ class CORE_EXPORT IDOSFractureMaterialCatalog : public IDOSDataObject
     explicit IDOSFractureMaterialCatalog(QObject* parent = nullptr);
 
     QString typeId() const override;
+    bool canClone() const override;
+    IDOSDataObject* clone() const override;
     Kind kind() const;
     void setKind(Kind kind);
     QString sourceFile() const;

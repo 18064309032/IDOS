@@ -9,18 +9,19 @@
 #include <QSet>
 #include <QVector>
 
+#include "command/idoscasereferencecommand.h"
+#include "data/case/idoscaseitemref.h"
+#include "data/case/idoscaseobject.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/fluidrock/idosfluidrocktable.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridproperty.h"
+#include "data/well/idoswell.h"
 #include "fluidrock/idosfluidrocktextprovider.h"
-#include "idoscaseitemref.h"
-#include "idoscaseobject.h"
-#include "idosdataprovider.h"
-#include "idosdataprovidermetadata.h"
-#include "idosdataproviderregistry.h"
-#include "idosfluidrocktable.h"
-#include "idosgrid.h"
-#include "idosgridproperty.h"
 #include "idosproject.h"
-#include "idossimulationcaseobject.h"
-#include "idoswell.h"
+#include "providers/idosdataprovider.h"
+#include "providers/idosdataprovidermetadata.h"
+#include "providers/idosdataproviderregistry.h"
 
 #include "idosimportcommands.h"
 
@@ -35,7 +36,6 @@ IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const Q
     , m_mode(Mode::WellData)
     , m_targetGridId(arguments.value(QStringLiteral("targetGridId")).toString())
     , m_targetCaseId(arguments.value(QStringLiteral("targetCaseId")).toString())
-    , m_targetTableId(arguments.value(QStringLiteral("tableId")).toString())
     , m_caseNameOverride(arguments.value(QStringLiteral("caseName")).toString())
     , m_replaceExistingGrid(arguments.value(QStringLiteral("replaceExistingGrid")).toBool())
     , m_loaded(false)
@@ -57,10 +57,6 @@ IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const Q
     else if (name == QStringLiteral("data.fluidRock.import"))
     {
         m_mode = Mode::FluidRock;
-    }
-    else if (name == QStringLiteral("case.fluidRock.attach"))
-    {
-        m_mode = Mode::FluidRockAttach;
     }
     else if (name == QStringLiteral("data.import"))
     {
@@ -97,14 +93,13 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (m_mode != Mode::FluidRockAttach &&
-        (m_filePath.trimmed().isEmpty() || (!m_loaded && !QFileInfo::exists(m_filePath))))
+    if ((m_filePath.trimmed().isEmpty() || (!m_loaded && !QFileInfo::exists(m_filePath))))
     {
         error = QObject::tr("The import file is unavailable.");
         return false;
     }
 
-    if ((m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::FluidRockAttach) &&
+    if ((m_mode == Mode::Grid || m_mode == Mode::Property) &&
         m_targetCaseId.isEmpty())
     {
         error = QObject::tr("The target case is unavailable.");
@@ -118,7 +113,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
     }
 
     IDOSProject* targetProject = project();
-    if (m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::FluidRockAttach)
+    if (m_mode == Mode::Grid || m_mode == Mode::Property)
     {
         IDOSCaseObject* targetCase =
             qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
@@ -127,32 +122,6 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
             error = QObject::tr("The target case is unavailable.");
             return false;
         }
-        if (m_mode == Mode::FluidRockAttach &&
-            qobject_cast<IDOSSimulationCaseObject*>(targetCase) == nullptr)
-        {
-            error = QObject::tr("The target simulation case is unavailable.");
-            return false;
-        }
-
-        if (m_mode == Mode::FluidRockAttach &&
-            qobject_cast<IDOSFluidRockTable*>(targetProject->object(m_targetTableId)) == nullptr)
-        {
-            error = QObject::tr("The target fluid or rock table is unavailable.");
-            return false;
-        }
-        if (m_mode == Mode::FluidRockAttach)
-        {
-            for (const IDOSCaseItemRef& ref : targetCase->itemRefs())
-            {
-                if (ref.role() == QStringLiteral("case.fluidRockTable") &&
-                    ref.objectId() == m_targetTableId)
-                {
-                    error = QObject::tr("The fluid or rock table is already attached to this case.");
-                    return false;
-                }
-            }
-        }
-
         if (m_mode == Mode::Grid)
         {
             const QList<IDOSCaseItemRef> refs = targetCase->itemRefs();
@@ -195,7 +164,6 @@ QJsonObject IDOSImportObjectsCommand::buildPreview() const
     preview.insert(QStringLiteral("targetWellId"), m_targetWellId);
     preview.insert(QStringLiteral("targetGridId"), m_targetGridId);
     preview.insert(QStringLiteral("targetCaseId"), m_targetCaseId);
-    preview.insert(QStringLiteral("tableId"), m_targetTableId);
     preview.insert(QStringLiteral("caseName"), m_caseNameOverride);
     preview.insert(QStringLiteral("replaceExistingGrid"), m_replaceExistingGrid);
     return preview;
@@ -208,41 +176,6 @@ bool IDOSImportObjectsCommand::apply(QString& error)
     {
         error = QObject::tr("The target project is unavailable.");
         return false;
-    }
-
-    if (m_mode == Mode::FluidRockAttach)
-    {
-        IDOSSimulationCaseObject* targetCase =
-            qobject_cast<IDOSSimulationCaseObject*>(targetProject->object(m_targetCaseId));
-        if (targetCase == nullptr)
-        {
-            error = QObject::tr("The target simulation case is unavailable.");
-            return false;
-        }
-        captureTargetCaseReferences();
-        targetProject->beginUpdate();
-        QList<IDOSCaseItemRef> refs = targetCase->itemRefs();
-        bool alreadyAttached = false;
-        for (const IDOSCaseItemRef& ref : refs)
-        {
-            if (ref.role() == QStringLiteral("case.fluidRockTable") &&
-                ref.objectId() == m_targetTableId)
-            {
-                alreadyAttached = true;
-                break;
-            }
-        }
-        if (!alreadyAttached)
-        {
-            refs.append(IDOSCaseItemRef(QStringLiteral("case.fluidRockTable"), m_targetTableId));
-            targetCase->setItemRefs(refs);
-        }
-        QJsonObject commandResult;
-        commandResult.insert(QStringLiteral("targetCaseId"), m_targetCaseId);
-        commandResult.insert(QStringLiteral("tableId"), m_targetTableId);
-        setResult(commandResult);
-        targetProject->endUpdate();
-        return true;
     }
 
     if (!ensureLoaded(error))
@@ -1263,9 +1196,15 @@ QJsonObject IDOSAttachFluidRockTableCommandMetadata::schema() const
 }
 
 IDOSCommand* IDOSAttachFluidRockTableCommandMetadata::create(const QJsonObject& arguments,
-                                                              IDOSProject* project) const
+                                                          IDOSProject* project) const
 {
-    return new IDOSImportObjectsCommand(project, name(), arguments);
+    QJsonObject item;
+    item.insert(QStringLiteral("objectId"), arguments.value(QStringLiteral("tableId")));
+    item.insert(QStringLiteral("role"), QStringLiteral("case.fluidRockTable"));
+    QJsonObject referenceArguments;
+    referenceArguments.insert(QStringLiteral("targetCaseId"), arguments.value(QStringLiteral("targetCaseId")));
+    referenceArguments.insert(QStringLiteral("items"), QJsonArray{item});
+    return new IDOSCaseReferenceCommand(project, QStringLiteral("copy"), referenceArguments);
 }
 
 IDOSCommand* IDOSImportFluidRockTablesCommandMetadata::create(const QJsonObject& arguments,

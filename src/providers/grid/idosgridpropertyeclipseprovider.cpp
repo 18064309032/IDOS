@@ -17,10 +17,10 @@
 #include <opm/input/eclipse/Parser/ErrorGuard.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
-#include <opm/io/eclipse/EInit.hpp>
 #include <opm/io/eclipse/EclIOdata.hpp>
+#include <opm/io/eclipse/EInit.hpp>
 
-#include "idosgridproperty.h"
+#include "data/grid/idosgridproperty.h"
 
 #include "idosgridpropertyeclipseprovider.h"
 

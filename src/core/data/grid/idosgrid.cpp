@@ -1,7 +1,14 @@
+#include <climits>
+
+#include <QObject>
+
+#include "idosproject.h"
+
 #include "idosgrid.h"
 
 IDOSGrid::IDOSGrid(QObject* parent)
-    : IDOSDataObject(parent)
+    :
+    IDOSDataObject(parent)
     , m_type(Type::CornerPoint)
     , m_nx(0)
     , m_ny(0)
@@ -205,4 +212,108 @@ void IDOSGrid::mergeFrom(const IDOSDataObject* other)
 QString IDOSGrid::typeId() const
 {
     return QStringLiteral("idos.grid");
+}
+
+bool IDOSGrid::canClone() const
+{
+    return true;
+}
+
+IDOSDataObject* IDOSGrid::clone() const
+{
+    IDOSGrid* copy = new IDOSGrid();
+    copy->setName(name());
+    copy->setVisible(isVisible());
+    copy->m_type = m_type;
+    copy->m_nx = m_nx;
+    copy->m_ny = m_ny;
+    copy->m_nz = m_nz;
+    copy->m_coord = m_coord;
+    copy->m_zcorn = m_zcorn;
+    copy->m_actnum = m_actnum;
+    return copy;
+}
+
+QVariantMap IDOSGrid::projectData() const
+{
+    QVariantMap data;
+    data.insert(QStringLiteral("type"), static_cast<int>(m_type));
+    data.insert(QStringLiteral("nx"), QVariant::fromValue(m_nx));
+    data.insert(QStringLiteral("ny"), QVariant::fromValue(m_ny));
+    data.insert(QStringLiteral("nz"), QVariant::fromValue(m_nz));
+    data.insert(QStringLiteral("coord"), QVariant::fromValue(m_coord));
+    data.insert(QStringLiteral("zcorn"), QVariant::fromValue(m_zcorn));
+    data.insert(QStringLiteral("actnum"), QVariant::fromValue(m_actnum));
+    return data;
+}
+
+bool IDOSGrid::restoreProjectData(const QVariantMap& data, QString& error)
+{
+    if (!data.contains(QStringLiteral("type")) || data.value(QStringLiteral("type")).userType() != qMetaTypeId<int>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("type"));
+        return false;
+    }
+    if (data.value(QStringLiteral("type")).toInt() < 0 || data.value(QStringLiteral("type")).toInt() >= 2)
+    {
+        error = QObject::tr("A stored enumeration value is invalid.");
+        return false;
+    }
+    if (!data.contains(QStringLiteral("nx")) || data.value(QStringLiteral("nx")).userType() != qMetaTypeId<int>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("nx"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("ny")) || data.value(QStringLiteral("ny")).userType() != qMetaTypeId<int>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("ny"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("nz")) || data.value(QStringLiteral("nz")).userType() != qMetaTypeId<int>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("nz"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("coord")) || data.value(QStringLiteral("coord")).userType() != qMetaTypeId<QVector<double>>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("coord"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("zcorn")) || data.value(QStringLiteral("zcorn")).userType() != qMetaTypeId<QVector<double>>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("zcorn"));
+        return false;
+    }
+    if (!data.contains(QStringLiteral("actnum")) || data.value(QStringLiteral("actnum")).userType() != qMetaTypeId<QVector<int>>())
+    {
+        error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("actnum"));
+        return false;
+    }
+    m_type = static_cast<Type>(data.value(QStringLiteral("type")).toInt());
+    m_nx = data.value(QStringLiteral("nx")).value<int>();
+    m_ny = data.value(QStringLiteral("ny")).value<int>();
+    m_nz = data.value(QStringLiteral("nz")).value<int>();
+    m_coord = data.value(QStringLiteral("coord")).value<QVector<double>>();
+    m_zcorn = data.value(QStringLiteral("zcorn")).value<QVector<double>>();
+    m_actnum = data.value(QStringLiteral("actnum")).value<QVector<int>>();
+    return true;
+}
+bool IDOSGrid::validateProjectReferences(const IDOSProject* project, QString& error) const
+{
+    Q_UNUSED(project);
+    if (m_nx < 0 || m_ny < 0 || m_nz < 0 || static_cast<qint64>(m_nx) * m_ny > INT_MAX ||
+        static_cast<qint64>(m_nx) * m_ny * m_nz > INT_MAX)
+    {
+        error = tr("Stored grid dimensions are invalid.");
+        return false;
+    }
+    const qint64 cells = static_cast<qint64>(m_nx) * m_ny * m_nz;
+    if ((!m_coord.isEmpty() && m_coord.size() != 6LL * (m_nx + 1LL) * (m_ny + 1LL)) ||
+        (!m_zcorn.isEmpty() && m_zcorn.size() != 8LL * cells) ||
+        (!m_actnum.isEmpty() && m_actnum.size() != cells))
+    {
+        error = tr("Stored grid arrays do not match their dimensions.");
+        return false;
+    }
+    return true;
 }

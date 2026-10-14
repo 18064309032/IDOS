@@ -7,9 +7,9 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "xlsxdocument.h"
+#include <xlsxdocument.h>
 
-#include "idosfractureschedule.h"
+#include "data/fracture/idosfractureschedule.h"
 
 #include "idosfracturescheduleprovider.h"
 

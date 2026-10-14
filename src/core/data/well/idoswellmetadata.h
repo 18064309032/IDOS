@@ -1,7 +1,7 @@
 #ifndef IDOSWELLMETADATA_H
 #define IDOSWELLMETADATA_H
 
-#include "idosdatametadata.h"
+#include "providers/idosdatametadata.h"
 
 class CORE_EXPORT IDOSWellMetadata : public IDOSDataMetadata
 {

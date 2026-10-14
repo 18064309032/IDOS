@@ -2,6 +2,7 @@
 #define IDOS_CASE_ITEM_REF_H
 
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 
@@ -14,6 +15,9 @@
 class CORE_EXPORT IDOSCaseItemRef
 {
   public:
+    QVariantMap projectData() const;
+    bool restoreProjectData(const QVariantMap& data, QString& error);
+
     IDOSCaseItemRef();
     IDOSCaseItemRef(const QString& role, const QString& objectId);
 

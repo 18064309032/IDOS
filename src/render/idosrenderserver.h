@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 #include "idos_render.h"
 
@@ -31,6 +32,8 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     bool setCurrentView(IDOSRenderView* view);
     QList<QString> objectIds(IDOSRenderView* view, const QString& dataId) const;
     IDOSDataObject* dataSource(IDOSRenderView* view, const QString& objectId) const;
+    QVariantMap presentationState() const;
+    void restorePresentationState(const QVariantMap& state);
   signals:
     void objectsChanged(IDOSRenderView* view, const QStringList& dataIds, bool dataChanged);
     void dataAboutToBeRemoved(const QString& dataId);

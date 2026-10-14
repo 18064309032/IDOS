@@ -1,7 +1,8 @@
 #ifndef IDOS_NATURAL_FRACTURE_PROVIDER_METADATA_H
 #define IDOS_NATURAL_FRACTURE_PROVIDER_METADATA_H
 
-#include "idosdataprovidermetadata.h"
+#include "idos_providers.h"
+#include "providers/idosdataprovidermetadata.h"
 
 class PROVIDERS_EXPORT IDOSNaturalFractureMetadata : public IDOSDataProviderMetadata
 {

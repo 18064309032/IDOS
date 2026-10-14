@@ -7,7 +7,7 @@
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-#include "idosgrid.h"
+#include "data/grid/idosgrid.h"
 
 #include "idosgrideclipseprovider.h"
 
