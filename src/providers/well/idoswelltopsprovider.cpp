@@ -16,6 +16,24 @@
 bool IDOSWellTopsProvider::canRead(const QString& filePath) const
 {
     const QString suffix = QFileInfo(filePath).suffix().toLower();
+    if (suffix == QStringLiteral("txt") || suffix == QStringLiteral("dat"))
+    {
+        QFile file(filePath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            QTextStream stream(&file);
+            stream.setCodec("UTF-8");
+            const QStringList fields = stream.readLine().trimmed().split(
+                QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+            if (fields.size() >= 3 &&
+                fields.at(0).compare(QStringLiteral("WELL"), Qt::CaseInsensitive) == 0 &&
+                fields.at(1).compare(QStringLiteral("SURFACE"), Qt::CaseInsensitive) == 0 &&
+                fields.at(2).compare(QStringLiteral("MD"), Qt::CaseInsensitive) == 0)
+            {
+                return true;
+            }
+        }
+    }
     if (!suffix.isEmpty() && !QStringList{QStringLiteral("prn"), QStringLiteral("tops"),
         QStringLiteral("txt"), QStringLiteral("dat")}.contains(suffix))
     {
@@ -59,6 +77,15 @@ bool IDOSWellTopsProvider::canRead(const QString& filePath) const
 QList<IDOSDataObject*> IDOSWellTopsProvider::read(const QString& filePath)
 {
     setLastError(QString());
+    QList<IDOSDataObject*> tabularResult;
+    if (readTabularWellTops(filePath, &tabularResult))
+    {
+        return tabularResult;
+    }
+    if (!lastError().isEmpty())
+    {
+        return {};
+    }
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
@@ -171,4 +198,79 @@ QList<IDOSDataObject*> IDOSWellTopsProvider::read(const QString& filePath)
         result.append(well);
     }
     return result;
+}
+
+bool IDOSWellTopsProvider::readTabularWellTops(const QString& filePath,
+                                              QList<IDOSDataObject*>* result)
+{
+    if (result == nullptr)
+    {
+        setLastError(QObject::tr("The well tops result destination is unavailable."));
+        return false;
+    }
+    QFileInfo fileInfo(filePath);
+    const QString suffix = fileInfo.suffix().toLower();
+    if (suffix != QStringLiteral("txt") && suffix != QStringLiteral("dat"))
+    {
+        return false;
+    }
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        return false;
+    }
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+    QStringList firstFields;
+    while (!stream.atEnd() && firstFields.isEmpty())
+    {
+        const QString line = stream.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith(QLatin1Char('#')) ||
+            line.startsWith(QStringLiteral("//")))
+        {
+            continue;
+        }
+        firstFields = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+    }
+    if (firstFields.size() < 3 || firstFields.at(0).compare(QStringLiteral("WELL"), Qt::CaseInsensitive) != 0 ||
+        firstFields.at(1).compare(QStringLiteral("SURFACE"), Qt::CaseInsensitive) != 0 ||
+        firstFields.at(2).compare(QStringLiteral("MD"), Qt::CaseInsensitive) != 0)
+    {
+        return false;
+    }
+    QMap<QString, IDOSWellMarkerSet> wells;
+    int lineNumber = 1;
+    while (!stream.atEnd())
+    {
+        const QString line = stream.readLine().trimmed();
+        ++lineNumber;
+        if (line.isEmpty())
+        {
+            continue;
+        }
+        const QStringList fields = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+        bool depthValid = false;
+        const double depth = fields.value(2).toDouble(&depthValid);
+        if (fields.size() != 3 || fields.at(0).isEmpty() || fields.at(1).isEmpty() || !depthValid ||
+            !std::isfinite(depth) || depth < 0.0)
+        {
+            setLastError(QObject::tr("Line %1: invalid well top record.").arg(lineNumber));
+            return false;
+        }
+        wells[fields.at(0)].addMarker(IDOSWellMarker(fields.at(1), depth));
+    }
+    if (wells.isEmpty())
+    {
+        setLastError(QObject::tr("The file contains no well top records."));
+        return false;
+    }
+    for (QMap<QString, IDOSWellMarkerSet>::const_iterator iterator = wells.constBegin();
+         iterator != wells.constEnd(); ++iterator)
+    {
+        IDOSWell* well = new IDOSWell();
+        well->setName(iterator.key());
+        well->setMarkers(iterator.value());
+        result->append(well);
+    }
+    return true;
 }

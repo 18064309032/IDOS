@@ -11,6 +11,7 @@
 
 #include "command/idoscommandmanager.h"
 #include "command/idosimportcommands.h"
+#include "command/idosrenameobjectcommand.h"
 #include "idoscasedialog.h"
 #include "idoscaseobject.h"
 #include "idoscreatecasecommand.h"
@@ -22,6 +23,7 @@
 #include "idosdeletegridcommand.h"
 #include "idosdeletepropertycommand.h"
 #include "idosdeletewellcommand.h"
+#include "idosfluidrocktable.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
@@ -69,7 +71,8 @@ bool IDOSSimulationCaseTreeGuiProvider::supports(const IDOSTreeItem* item) const
         return true;
     }
     return item->tree() != nullptr && item->tree()->project() != nullptr &&
-           qobject_cast<IDOSCaseObject*>(item->tree()->project()->object(item->dataId())) != nullptr;
+           (qobject_cast<IDOSCaseObject*>(item->tree()->project()->object(item->dataId())) != nullptr ||
+            qobject_cast<IDOSFluidRockTable*>(item->tree()->project()->object(item->dataId())) != nullptr);
 }
 
 void IDOSSimulationCaseTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
@@ -91,19 +94,124 @@ void IDOSSimulationCaseTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* 
         connect(import, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onImportGrid);
         return;
     }
-    if (item != nullptr && !item->isGroup())
+    if (item == nullptr)
     {
+        QAction* create = addAction(menu, view, tr("New Case..."));
+        create->setObjectName(QStringLiteral("newCaseAction"));
+        connect(create, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onNewCase);
+        QAction* import = addAction(menu, view, tr("Import Case..."));
+        import->setObjectName(QStringLiteral("importCaseAction"));
+        connect(import, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onImportCase);
+        return;
+    }
+    if (item->isGroup())
+    {
+        return;
+    }
+    if (item->key().startsWith(QStringLiteral("case.curveTable:")) ||
+        item->key().startsWith(QStringLiteral("case.fluidRockTable:")))
+    {
+        QAction* viewCurves = addAction(menu, view, tr("View Property Curves..."));
+        viewCurves->setObjectName(QStringLiteral("viewPropertyCurvesAction"));
+        connect(viewCurves, &QAction::triggered, this,
+                &IDOSSimulationCaseTreeGuiProvider::onViewPropertyCurves);
+        return;
+    }
+    IDOSCaseObject* caseObject = qobject_cast<IDOSCaseObject*>(view->project()->object(item->dataId()));
+    if (caseObject != nullptr && item->parent() == nullptr)
+    {
+        QAction* generate = addAction(menu, view, tr("Generate Simulation Input..."));
+        generate->setObjectName(QStringLiteral("generateSimulationInputAction"));
+        connect(generate, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onGenerateInput);
+        QAction* rename = addAction(menu, view, tr("Rename Case..."));
+        rename->setObjectName(QStringLiteral("renameCaseAction"));
+        connect(rename, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onRenameCase);
         QAction* remove = addAction(menu, view, tr("Delete Case..."));
         remove->setObjectName(QStringLiteral("deleteCaseAction"));
         connect(remove, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onDeleteCase);
         return;
     }
-    QAction* create = addAction(menu, view, tr("New Case..."));
-    create->setObjectName(QStringLiteral("newCaseAction"));
-    connect(create, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onNewCase);
-    QAction* import = addAction(menu, view, tr("Import Case..."));
-    import->setObjectName(QStringLiteral("importCaseAction"));
-    connect(import, &QAction::triggered, this, &IDOSSimulationCaseTreeGuiProvider::onImportCase);
+}
+
+void IDOSSimulationCaseTreeGuiProvider::onGenerateInput()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view == nullptr || action == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action->property("dataId").toString();
+    if (qobject_cast<IDOSCaseObject*>(view->project()->object(caseId)) != nullptr)
+    {
+        emit generateInputRequested(view->project(), caseId);
+    }
+}
+
+void IDOSSimulationCaseTreeGuiProvider::onViewPropertyCurves()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view == nullptr || action == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action->property("caseId").toString();
+    IDOSSimulationCaseObject* simulationCase =
+        qobject_cast<IDOSSimulationCaseObject*>(view->project()->object(caseId));
+    if (simulationCase != nullptr && !simulationCase->curveTables().isEmpty())
+    {
+        emit propertyCurvesRequested(view->project(), caseId);
+    }
+}
+
+void IDOSSimulationCaseTreeGuiProvider::onRenameCase()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view == nullptr || action == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action->property("dataId").toString();
+    IDOSCaseObject* caseObject = qobject_cast<IDOSCaseObject*>(view->project()->object(caseId));
+    if (caseObject == nullptr)
+    {
+        return;
+    }
+    QInputDialog dialog(view);
+    dialog.setObjectName(QStringLiteral("renameCaseDialog"));
+    dialog.setWindowTitle(tr("Rename Case"));
+    dialog.setLabelText(tr("Case name:"));
+    dialog.setTextValue(caseObject->name());
+    dialog.setInputMode(QInputDialog::TextInput);
+    QPointer<IDOSProject> targetProject(view->project());
+    if (dialog.exec() != QDialog::Accepted || view->project() == nullptr)
+    {
+        return;
+    }
+    const QString newName = dialog.textValue().trimmed();
+    if (newName.isEmpty())
+    {
+        QMessageBox::warning(view, tr("Rename Case"), tr("Please enter a case name."));
+        return;
+    }
+    caseObject = targetProject != nullptr
+        ? qobject_cast<IDOSCaseObject*>(targetProject->object(caseId)) : nullptr;
+    if (caseObject == nullptr)
+    {
+        return;
+    }
+    if (newName.compare(caseObject->name(), Qt::CaseInsensitive) != 0 && caseNameExists(view, newName))
+    {
+        QMessageBox::warning(view, tr("Rename Case"), tr("A case with this name already exists."));
+        return;
+    }
+    IDOSCommandManager* manager = targetProject != nullptr ? targetProject->commandManager() : nullptr;
+    if (manager != nullptr && !manager->execute(new IDOSRenameObjectCommand(targetProject.data(), caseId, newName)))
+    {
+        QMessageBox::warning(view, tr("Rename Case"), manager->error());
+    }
 }
 
 void IDOSSimulationCaseTreeGuiProvider::onNewCase()

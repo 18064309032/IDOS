@@ -11,12 +11,19 @@
 
 #include <vtkSmartPointer.h>
 
+#ifdef IDOS_ENABLE_RENDER
+#include <vtkActor.h>
+#endif
+
 #include "idos_app.h"
 #include "idosrenderprovider.h"
 #include "idosrendertypes.h"
 
 class IDOSGrid;
 class IDOSGridProperty;
+#ifndef IDOS_ENABLE_RENDER
+class vtkActor;
+#endif
 
 class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
 {

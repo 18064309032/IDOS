@@ -1,4 +1,5 @@
 #include "idoscaseitemref.h"
+#include "idosfluidrocktable.h"
 #include "idosproject.h"
 #include "idoswell.h"
 
@@ -91,7 +92,26 @@ void IDOSSimulationCaseObject::setParsedSourceData(const QVariantMap& data)
 }
 QVariantList IDOSSimulationCaseObject::curveTables() const
 {
-    return m_curveTables;
+    QVariantList tables = m_curveTables;
+    const IDOSProject* project = qobject_cast<const IDOSProject*>(parent());
+    if (project == nullptr)
+    {
+        return tables;
+    }
+    QVariantList referencedTables;
+    for (const IDOSCaseItemRef& ref : itemRefs())
+    {
+        if (ref.role() != QStringLiteral("case.fluidRockTable"))
+        {
+            continue;
+        }
+        IDOSFluidRockTable* table = qobject_cast<IDOSFluidRockTable*>(project->object(ref.objectId()));
+        if (table != nullptr)
+        {
+            referencedTables.append(table->tableData());
+        }
+    }
+    return referencedTables.isEmpty() ? tables : referencedTables;
 }
 void IDOSSimulationCaseObject::setCurveTables(const QVariantList& tables)
 {

@@ -96,6 +96,14 @@ set_tests_properties(well_path PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
 )
 
+add_executable(idos_seismic_import_tests seismic_import_test.h seismic_import_test.cpp)
+target_link_libraries(idos_seismic_import_tests PRIVATE idos_app Qt5::Test VTK::CommonCore VTK::CommonDataModel VTK::RenderingCore)
+add_test(NAME seismic_import COMMAND idos_seismic_import_tests)
+set_tests_properties(seismic_import PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+)
+
 add_executable(idos_case_tests case_workflow_test.h case_workflow_test.cpp)
 target_sources(idos_case_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/src/plugins/idossimulationplugin/idossimulationresultplaybackwidget.cpp"
@@ -114,7 +122,7 @@ add_dependencies(idos_case_tests idossimulationplugin)
 add_test(NAME case_workflow COMMAND idos_case_tests)
 set_tests_properties(case_workflow PROPERTIES
     TIMEOUT 240
-    ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+    ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=${IDOS_QT_DIR}/plugins/platforms;IDOS_TEST_SCREENSHOT_DIR=${CMAKE_CURRENT_BINARY_DIR};IDOS_DISABLE_ASSISTANT_AUTOSTART=1"
 )
 
 add_executable(idos_tree_incremental_tests tree_incremental_test.h tree_incremental_test.cpp)
@@ -130,7 +138,7 @@ set_tests_properties(tree_incremental PROPERTIES
 foreach(_idos_test_target IN ITEMS
     idos_command_registry_tests idos_assistant_widget_tests idos_project_tests
     idos_well_import_tests idos_well_path_tests idos_case_tests
-    idos_tree_incremental_tests)
+    idos_tree_incremental_tests idos_seismic_import_tests)
     target_include_directories(${_idos_test_target} PRIVATE
         "${CMAKE_SOURCE_DIR}/src/app/well"
         "${CMAKE_SOURCE_DIR}/src/app/grid"

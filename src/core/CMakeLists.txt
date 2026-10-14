@@ -38,10 +38,46 @@ add_library(idos_core SHARED
     data/case/idoscaseobject.cpp
     data/idosdataobject.h
     data/idosdataobject.cpp
+    data/fluidrock/idosfluidrocktable.h
+    data/fluidrock/idosfluidrocktable.cpp
+    data/fluidrock/idosfluidrocktablemetadata.h
+    data/fluidrock/idosfluidrocktablemetadata.cpp
+    data/seismic/idosmicroseismicset.h
+    data/seismic/idosmicroseismicset.cpp
+    data/seismic/idosmicroseismicdatametadata.h
+    data/seismic/idosmicroseismicdatametadata.cpp
+    data/seismic/idosseismicvolume.h
+    data/seismic/idosseismicvolume.cpp
+    data/seismic/idosseismicvolumedatametadata.h
+    data/seismic/idosseismicvolumedatametadata.cpp
+    data/fracture/idosfractureschedule.h
+    data/fracture/idosfractureschedule.cpp
+    data/fracture/idosfracturescheduledatametadata.h
+    data/fracture/idosfracturescheduledatametadata.cpp
+    data/fracture/idosnaturalfractureset.h
+    data/fracture/idosnaturalfractureset.cpp
+    data/fracture/idosnaturalfracturesetdatametadata.h
+    data/fracture/idosnaturalfracturesetdatametadata.cpp
+    data/production/idosproductionhistory.h
+    data/production/idosproductionhistory.cpp
+    data/production/idosproductionhistorydatametadata.h
+    data/production/idosproductionhistorydatametadata.cpp
+    data/fracture/idosfracturematerialcatalog.h
+    data/fracture/idosfracturematerialcatalog.cpp
+    data/fracture/idosfracturematerialcatalogdatametadata.h
+    data/fracture/idosfracturematerialcatalogdatametadata.cpp
     data/grid/idosgridfilter.h
     data/grid/idosgridfilter.cpp
     data/grid/idosgridfiltermetadata.h
     data/grid/idosgridfiltermetadata.cpp
+    data/grid/idosgridsurface.h
+    data/grid/idosgridsurface.cpp
+    data/grid/idosgridsurfacedatametadata.h
+    data/grid/idosgridsurfacedatametadata.cpp
+    data/grid/idosgridboundary.h
+    data/grid/idosgridboundary.cpp
+    data/grid/idosgridboundarydatametadata.h
+    data/grid/idosgridboundarydatametadata.cpp
     data/grid/idosgrid.h
     data/grid/idosgrid.cpp
     data/grid/idosgridcell.h
@@ -105,6 +141,10 @@ target_include_directories(idos_core
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/tree
         ${CMAKE_CURRENT_SOURCE_DIR}/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/fluidrock
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/fracture
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/production
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/seismic
         ${CMAKE_CURRENT_SOURCE_DIR}/data/case
         ${CMAKE_CURRENT_SOURCE_DIR}/command
         ${CMAKE_CURRENT_SOURCE_DIR}/data/grid

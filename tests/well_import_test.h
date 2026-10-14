@@ -17,6 +17,7 @@ class WellImportTest : public QObject
     void onTargetedCommandAndFailure();
     void onCommandRestoresLogChannels();
     void onSampleFiles();
+    void onPetrelWellHeader();
     void onInvalidRows();
     void onReorderedColumns();
     void onLasImport();
@@ -24,6 +25,7 @@ class WellImportTest : public QObject
     void onExtendedInputProviders();
     void onExtendedInputUndoRedo();
     void onLegacyExtendedSamples();
+    void onSharedWellTextFormats();
 
   private:
     bool writeInput(const QString& path, const QByteArray& content);

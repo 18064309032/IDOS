@@ -6,6 +6,7 @@
 
 class QAction;
 class IDOSCaseObject;
+class IDOSProject;
 
 class APP_EXPORT IDOSSimulationCaseTreeGuiProvider : public IDOSTreeGuiProvider
 {
@@ -20,6 +21,9 @@ class APP_EXPORT IDOSSimulationCaseTreeGuiProvider : public IDOSTreeGuiProvider
     void onNewCase();
     void onImportCase();
     void onImportGrid();
+    void onGenerateInput();
+    void onViewPropertyCurves();
+    void onRenameCase();
     void onDeleteCase();
 
   private:
@@ -33,6 +37,10 @@ class APP_EXPORT IDOSSimulationCaseTreeGuiProvider : public IDOSTreeGuiProvider
     bool importGrid(IDOSTreeView* view, const QString& targetCaseId);
     QAction* addAction(QMenu* menu, IDOSTreeView* view, const QString& text);
     IDOSTreeView* actionView() const;
+
+  signals:
+    void generateInputRequested(IDOSProject* project, const QString& caseId);
+    void propertyCurvesRequested(IDOSProject* project, const QString& caseId);
 };
 
 #endif

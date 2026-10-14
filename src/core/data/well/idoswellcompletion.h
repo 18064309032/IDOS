@@ -2,6 +2,7 @@
 #define IDOS_WELL_COMPLETION_H
 
 #include <QString>
+#include <QVariantMap>
 
 #include "idos_core.h"
 
@@ -34,6 +35,8 @@ class CORE_EXPORT IDOSWellCompletion
     void setTop(double top);
     QString eventDate() const;
     void setEventDate(const QString& date);
+    QVariantMap attributes() const;
+    void setAttributes(const QVariantMap& attributes);
 
   private:
     int m_k;
@@ -41,6 +44,7 @@ class CORE_EXPORT IDOSWellCompletion
     double m_bottom;
     double m_top;
     QString m_eventDate;
+    QVariantMap m_attributes;
 };
 
 #endif // IDOS_WELL_COMPLETION_H

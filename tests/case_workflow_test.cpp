@@ -106,6 +106,8 @@
 #include "idostreeview.h"
 #include "idoswell.h"
 #include "idoswellhead.h"
+#include "idoswelllogchannel.h"
+#include "idoswelllogset.h"
 #include "idoswellpath.h"
 #include "idoswellpathpoint.h"
 #include "idoswellrendermetadata.h"
@@ -651,6 +653,16 @@ void CaseWorkflowTest::onWellInputMenus()
     window.setProject(&project);
     IDOSWell* well = new IDOSWell();
     well->setName(QStringLiteral("Input Well"));
+    IDOSWellPath path;
+    path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 10.0, 20.0, 0.0, 0.0),
+        IDOSWellPathPoint(100.0, 11.0, 21.0, -100.0, 100.0)});
+    well->setPath(path);
+    IDOSWellLogChannel channel(QStringLiteral("GR"));
+    channel.setUnit(QStringLiteral("API"));
+    channel.setData(QVector<double>{0.0, 100.0}, QVector<double>{45.0, 50.0});
+    IDOSWellLogSet logs;
+    logs.addChannel(channel);
+    well->setLogs(logs);
     IDOSWellMarkerSet markers;
     markers.addMarker(IDOSWellMarker(QStringLiteral("Top Sand"), 100.0));
     well->setMarkers(markers);
@@ -664,8 +676,39 @@ void CaseWorkflowTest::onWellInputMenus()
     IDOSTreeModel* model = window.dataTreeModel();
     const QModelIndex root = model->indexFromDataId(well->objectId());
     QVERIFY(root.isValid());
-    QCOMPARE(model->rowCount(root), 3);
-    for (int row = 0; row < model->rowCount(root); ++row)
+    QCOMPARE(model->rowCount(root), 5);
+    QScopedPointer<QMenu> summaryMenu(window.dataTreeView()->createMenu(root));
+    QAction* summary = summaryMenu->findChild<QAction*>(QStringLiteral("viewWellSummaryAction"));
+    QVERIFY(summary != nullptr);
+    summary->trigger();
+    QDialog* summaryDialog = window.dataTreeView()->findChild<QDialog*>(QStringLiteral("wellInputDataWindow"));
+    QVERIFY(summaryDialog != nullptr);
+    QCOMPARE(summaryDialog->findChild<QTableWidget*>()->rowCount(), 5);
+    delete summaryDialog;
+
+    QScopedPointer<QMenu> trajectoryMenu(window.dataTreeView()->createMenu(model->index(0, 0, root)));
+    QAction* trajectoryView = trajectoryMenu->findChild<QAction*>(QStringLiteral("viewWellPathAction"));
+    QVERIFY(trajectoryView != nullptr);
+    QVERIFY(trajectoryMenu->findChild<QAction*>(QStringLiteral("importWellPathAction")) != nullptr);
+    trajectoryView->trigger();
+    QDialog* trajectoryDialog = window.dataTreeView()->findChild<QDialog*>(QStringLiteral("wellInputDataWindow"));
+    QVERIFY(trajectoryDialog != nullptr);
+    QCOMPARE(trajectoryDialog->findChild<QTableWidget*>()->rowCount(), 2);
+    QCOMPARE(trajectoryDialog->findChild<QTableWidget*>()->columnCount(), 5);
+    delete trajectoryDialog;
+
+    QScopedPointer<QMenu> curvesMenu(window.dataTreeView()->createMenu(model->index(1, 0, root)));
+    QAction* curvesView = curvesMenu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
+    QVERIFY(curvesView != nullptr);
+    QVERIFY(curvesMenu->findChild<QAction*>(QStringLiteral("importWellCurvesAction")) != nullptr);
+    curvesView->trigger();
+    QDialog* curvesDialog = window.dataTreeView()->findChild<QDialog*>(QStringLiteral("wellInputDataWindow"));
+    QVERIFY(curvesDialog != nullptr);
+    QCOMPARE(curvesDialog->findChild<QTableWidget*>()->rowCount(), 2);
+    QCOMPARE(curvesDialog->findChild<QTableWidget*>()->columnCount(), 2);
+    delete curvesDialog;
+
+    for (int row = 2; row < model->rowCount(root); ++row)
     {
         QScopedPointer<QMenu> menu(window.dataTreeView()->createMenu(model->index(row, 0, root)));
         QAction* viewData = menu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
@@ -675,14 +718,25 @@ void CaseWorkflowTest::onWellInputMenus()
         QVERIFY(dialog != nullptr);
         QTableWidget* table = dialog->findChild<QTableWidget*>();
         QVERIFY(table != nullptr);
-        QCOMPARE(table->rowCount(), row == 2 ? 2 : 1);
+        QCOMPARE(table->rowCount(), row == 4 ? 2 : 1);
         QVERIFY(!table->item(0, 0)->text().isEmpty());
-        if (row == 0)
+        if (row == 2)
         {
             QCOMPARE(table->item(0, 2)->text(), QStringLiteral("Not mapped"));
         }
         delete dialog;
     }
+    const QModelIndex markersIndex = model->index(3, 0, root);
+    const QModelIndex markerIndex = model->index(0, 0, markersIndex);
+    QScopedPointer<QMenu> markerMenu(window.dataTreeView()->createMenu(markerIndex));
+    QAction* markerView = markerMenu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
+    QVERIFY(markerView != nullptr);
+    markerView->trigger();
+    QDialog* markerDialog = window.dataTreeView()->findChild<QDialog*>(QStringLiteral("wellInputDataWindow"));
+    QVERIFY(markerDialog != nullptr);
+    QCOMPARE(markerDialog->findChild<QTableWidget*>()->rowCount(), 1);
+    QCOMPARE(markerDialog->findChild<QTableWidget*>()->item(0, 0)->text(), QStringLiteral("Top Sand"));
+    delete markerDialog;
     window.setProject(nullptr);
 }
 
@@ -1017,6 +1071,7 @@ void CaseWorkflowTest::onGridSettings()
     const QModelIndex index = window.caseTreeModel()->indexFromDataId(property->objectId());
     QVERIFY(index.isValid());
     QScopedPointer<QMenu> menu(tree->createMenu(index));
+    QVERIFY(menu->findChild<QAction*>(QStringLiteral("deletePropertyAction")) != nullptr);
     QAction* settings = menu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));
     QVERIFY(settings != nullptr);
     QVERIFY(settings->isEnabled());
@@ -1175,6 +1230,7 @@ void CaseWorkflowTest::onGridSettings()
     const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
     QVERIFY(gridIndex.isValid());
     QScopedPointer<QMenu> gridMenu(tree->createMenu(gridIndex));
+    QVERIFY(gridMenu->findChild<QAction*>(QStringLiteral("deleteGridAction")) != nullptr);
     QCOMPARE(project.currentObject(), static_cast<IDOSDataObject*>(grid));
     QCOMPARE(project.currentCaseId(), simulationCase->objectId());
     QAction* gridSettings = gridMenu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));

@@ -1,6 +1,8 @@
 #ifndef IDOS_WELL_PATH_POINT_H
 #define IDOS_WELL_PATH_POINT_H
 
+#include <QVariantMap>
+
 #include "idos_core.h"
 
 /**
@@ -22,6 +24,8 @@ class CORE_EXPORT IDOSWellPathPoint
     double dy() const;
     double azimuth() const;
     double inclination() const;
+    QVariantMap attributes() const;
+    void setAttributes(const QVariantMap& attributes);
 
     /** 测深（米）。 */
     double md() const;
@@ -44,6 +48,7 @@ class CORE_EXPORT IDOSWellPathPoint
     double m_dy;
     double m_azimuth;
     double m_inclination;
+    QVariantMap m_attributes;
 };
 
 #endif // IDOS_WELL_PATH_POINT_H

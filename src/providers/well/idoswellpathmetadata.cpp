@@ -10,13 +10,20 @@ QString IDOSWellPathMetadata::id() const
 }
 QString IDOSWellPathMetadata::displayName() const
 {
-    return QObject::tr("Petrel Well Trajectory");
+    return QObject::tr("Well Trajectory");
 }
 QStringList IDOSWellPathMetadata::fileExtensions() const
 {
-    return {QStringLiteral("*.dev"), QStringLiteral("*.DEV")};
+    return {QStringLiteral("*.dev"), QStringLiteral("*.DEV"), QStringLiteral("*.trj"), QStringLiteral("*.TRJ"),
+            QStringLiteral("*.txt"), QStringLiteral("*.dat"), QStringLiteral("*")};
 }
 std::unique_ptr<IDOSDataProvider> IDOSWellPathMetadata::create() const
 {
     return std::make_unique<IDOSWellPathProvider>();
+}
+
+bool IDOSWellPathMetadata::canHandle(const QString& filePath) const
+{
+    IDOSWellPathProvider provider;
+    return provider.canRead(filePath);
 }

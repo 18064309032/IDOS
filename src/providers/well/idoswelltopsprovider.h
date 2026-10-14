@@ -8,6 +8,9 @@ class PROVIDERS_EXPORT IDOSWellTopsProvider : public IDOSDataProvider
   public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
     bool canRead(const QString& filePath) const;
+
+  private:
+    bool readTabularWellTops(const QString& filePath, QList<IDOSDataObject*>* result);
 };
 
 #endif

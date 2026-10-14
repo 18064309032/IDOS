@@ -47,6 +47,12 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 
 工况也是具体业务数据，保存配置和数据引用。共享原始数据与工况专属配置分别表达；引用使用稳定数据 ID。数据拥有关系、引用关系和展示父子关系不能混用。
 
+独立导入的流体表与岩石物理函数表属于工程共享数据，在数据树的对应分类中各自作为数据对象管理；工况仅保存其对象 ID 引用，并在工况树中按引用展示。表数据不由工况拥有。
+
+微地震事件集、压裂泵注程序、天然裂缝集和生产历史均作为工程数据对象，由各自的 Provider 解析后经导入命令加入工程，并由数据树具体 Metadata/Provider 放入对应分类。解析器保留来源文件和样例字段；格式兼容范围由工作进度记录。
+
+这些数据对象及其 DataMetadata 位于已确认的 `core/data/fluidrock`；流体/岩石表的 TreeMetadata/TreeProvider 位于 `app/fluidrock`，ECLIPSE 表文本解析 Provider 位于 `providers/fluidrock`。树节点的所属树不决定数据对象的目录或所有权。
+
 工程发布新增、删除前、删除、业务数据变化和批量通知。删除前通知在批量操作内仍立即发送，以解除展示关联。beginUpdate/endUpdate 只合并通知，不提供业务回滚。
 
 数据、树节点、渲染对象分别管理 ID。同一数据可有多个引用节点和各视图独立的渲染对象。
@@ -206,7 +212,7 @@ IDOSFaultRenderMetadata / IDOSFaultRenderProvider
 
 当前代码的旧类型注册名称、专属树模型、集中菜单、具体 RenderObject 子类和 Controller 业务规则是迁移对象，不作为新方案约束。保留可复用解析与算法，删除被替代类和适配层，同步 CMake、测试、翻译和文档。未替代的日志、应用、插件等基础设施不机械删除。
 
-编码、头文件自包含及翻译规则遵循 AGENTS.md。配置、编译及构建测试统一使用 E:\CJW-Archive\IDOS-Build\win-x64-debug-local，禁止源码内构建。
+编码、头文件自包含及翻译规则遵循 AGENTS.md。配置、编译及构建测试统一使用 D:\CMakeCoder\IDOS-Build，禁止源码内构建。
 
 ## 13. 视图工具框架接口设计（2026-10-13，通用框架已实现）
 
@@ -502,7 +508,7 @@ if (!view->setToolBar(toolBar))
 - App 内部直接调用具体 GridRenderProvider，不增加通用网格协议或包装层。删除旧插件着色代码的 app 依赖例外，保留已确认的井显示例外。剖切、裁剪和专业网格编辑不在本阶段实现。
 ## 15. 井输入数据解析
 
-井分层、实测射孔和 Checkshot 文件解析由 `src/providers/well` 中的具体 Provider/Metadata 提供。新增 `IDOSWellTopsProvider/Metadata`、`IDOSWellCompletionProvider/Metadata`、`IDOSWellCheckshotProvider/Metadata`；应用启动注册后沿用已有井导入命令。`IDOSWellCheckshot` 位于 `core/data/well`，作为 Well 的值类型成员保存原始时深采样、单位及声明的深度/时间类型，不把时深记录转换为三维点。实测射孔深度统一为米，未映射网格层号为 0，日期保持源文本；导入合并和快照撤销包含射孔及校深数据。查看入口由现有井 GuiProvider 提供。
+井分层、实测射孔和 Checkshot 文件解析由 `src/providers/well` 中的具体 Provider/Metadata 提供。新增 `IDOSWellTopsProvider/Metadata`、`IDOSWellCompletionProvider/Metadata`、`IDOSWellCheckshotProvider/Metadata`；应用启动注册后沿用已有井导入命令。`IDOSWellCheckshot` 位于 `core/data/well`，作为 Well 的值类型成员保存原始时深采样、单位及声明的深度/时间类型，不把时深记录转换为三维点。实测射孔深度统一为米，未映射网格层号为 0，日期保持源文本；导入合并和快照撤销包含射孔及校深数据。射孔工作簿的阶段、簇、孔数、孔径和其他来源列保存在完井记录扩展属性中，不映射为网格层号；井完井数据表追加显示这些来源列。查看入口由现有井 GuiProvider 提供。
 
 ## 16. 井显示设置
 

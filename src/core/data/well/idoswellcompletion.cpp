@@ -7,6 +7,7 @@ IDOSWellCompletion::IDOSWellCompletion()
     , m_bottom(0.0)
     , m_top(0.0)
     , m_eventDate()
+    , m_attributes()
 {
 }
 
@@ -17,6 +18,7 @@ IDOSWellCompletion::IDOSWellCompletion(int k, bool open, double bottom, double t
     , m_bottom(bottom)
     , m_top(top)
     , m_eventDate()
+    , m_attributes()
 {
 }
 
@@ -33,6 +35,16 @@ QString IDOSWellCompletion::eventDate() const
 void IDOSWellCompletion::setEventDate(const QString& date)
 {
     m_eventDate = date;
+}
+
+QVariantMap IDOSWellCompletion::attributes() const
+{
+    return m_attributes;
+}
+
+void IDOSWellCompletion::setAttributes(const QVariantMap& attributes)
+{
+    m_attributes = attributes;
 }
 
 void IDOSWellCompletion::setK(int k)

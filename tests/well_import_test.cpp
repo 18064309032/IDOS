@@ -19,6 +19,7 @@
 #include "idoswelllogset.h"
 #include "idoswellmarker.h"
 #include "idoswellmarkerset.h"
+#include "idoswellspatialreference.h"
 
 #include "well_import_test.h"
 
@@ -72,6 +73,57 @@ void WellImportTest::onExtendedInputProviders()
     QVERIFY(writeInput(checkPath, "TVD TWT Well\n0 0 A\n100 10 A\n100 20 A\n"));
     QVERIFY(checkshots->read(checkPath).isEmpty());
     QVERIFY(!checkshots->lastError().isEmpty());
+}
+
+void WellImportTest::onSharedWellTextFormats()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+
+    const QString trajectoryPath = directory.filePath(QStringLiteral("T201.txt"));
+    QVERIFY(writeInput(trajectoryPath, "MD\tINCL\tAZIM\n0\t0\t0\n100\t10\t90\n"));
+    const QList<IDOSDataProviderMetadata*> trajectoryMetadata = registry.providers(trajectoryPath);
+    QVERIFY(!trajectoryMetadata.isEmpty());
+    QCOMPARE(trajectoryMetadata.first()->id(), QStringLiteral("idos.well.path"));
+    std::unique_ptr<IDOSDataProvider> trajectoryProvider =
+        registry.create(QStringLiteral("idos.well.path"));
+    QList<IDOSDataObject*> objects = trajectoryProvider->read(trajectoryPath);
+    QCOMPARE(objects.size(), 1);
+    IDOSWell* trajectoryWell = qobject_cast<IDOSWell*>(objects.first());
+    QVERIFY(trajectoryWell != nullptr);
+    QCOMPARE(trajectoryWell->path().pointCount(), 2);
+    QVERIFY(trajectoryWell->path().points().last().x() > 0.0);
+    QVERIFY(trajectoryWell->path().points().last().z() < 0.0);
+    qDeleteAll(objects);
+
+    const QString topsPath = directory.filePath(QStringLiteral("WELL TOP.txt"));
+    QVERIFY(writeInput(topsPath, "WELL\tSURFACE\tMD\nT201\tTopA\t100\nT201\tTopB\t200\n"));
+    const QList<IDOSDataProviderMetadata*> topsMetadata = registry.providers(topsPath);
+    QVERIFY(!topsMetadata.isEmpty());
+    QCOMPARE(topsMetadata.first()->id(), QStringLiteral("idos.well.tops"));
+    std::unique_ptr<IDOSDataProvider> topsProvider = registry.create(QStringLiteral("idos.well.tops"));
+    objects = topsProvider->read(topsPath);
+    QCOMPARE(objects.size(), 1);
+    IDOSWell* topsWell = qobject_cast<IDOSWell*>(objects.first());
+    QVERIFY(topsWell != nullptr);
+    QCOMPARE(topsWell->markers().markerCount(), 2);
+    qDeleteAll(objects);
+
+    const QString headerPath = directory.filePath(QStringLiteral("well header.txt"));
+    QVERIFY(writeInput(headerPath,
+                       "well name\tX\tY\tMD\tKB\nT201\t10\t20\t300\t40\n"));
+    const QList<IDOSDataProviderMetadata*> headerMetadata = registry.providers(headerPath);
+    QVERIFY(!headerMetadata.isEmpty());
+    QCOMPARE(headerMetadata.first()->id(), QStringLiteral("idos.well.header"));
+    std::unique_ptr<IDOSDataProvider> headerProvider = registry.create(QStringLiteral("idos.well.header"));
+    objects = headerProvider->read(headerPath);
+    QCOMPARE(objects.size(), 1);
+    IDOSWell* headerWell = qobject_cast<IDOSWell*>(objects.first());
+    QVERIFY(headerWell != nullptr);
+    QCOMPARE(headerWell->wellHead().surfaceX(), 10.0);
+    QCOMPARE(headerWell->wellHead().bottomDepth(), 300.0);
+    qDeleteAll(objects);
 }
 
 void WellImportTest::onExtendedInputUndoRedo()
@@ -289,6 +341,38 @@ void WellImportTest::onSampleFiles()
         QCOMPARE(well->wellHead().symbol(), 4);
         qDeleteAll(objects);
     }
+}
+
+void WellImportTest::onPetrelWellHeader()
+{
+    const QString sample = QFINDTESTDATA("../testdata/井数据/井头/Wellheader.txt");
+    QVERIFY(!sample.isEmpty());
+    IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    QCOMPARE(registry.providers(sample).first()->id(), QStringLiteral("idos.well.header"));
+    std::unique_ptr<IDOSDataProvider> provider = registry.create(QStringLiteral("idos.well.header"));
+    QVERIFY(provider != nullptr);
+    QList<IDOSDataObject*> objects = provider->read(sample);
+    QCOMPARE(provider->lastError(), QString());
+    QCOMPARE(objects.size(), 2);
+
+    const IDOSWell* verticalWell = qobject_cast<IDOSWell*>(objects.at(0));
+    QVERIFY(verticalWell != nullptr);
+    QCOMPARE(verticalWell->name(), QStringLiteral("Zi224Vertical"));
+    QCOMPARE(verticalWell->wellHead().surfaceX(), 18488365.77);
+    QCOMPARE(verticalWell->wellHead().surfaceY(), 3312053.56);
+    QCOMPARE(verticalWell->wellHead().surfaceElevation(), 381.1);
+    QCOMPARE(verticalWell->wellHead().kb(), 381.1);
+    QCOMPARE(verticalWell->wellHead().bottomDepth(), 4516.0);
+    QCOMPARE(verticalWell->wellHead().spatialReference().verticalDatum(),
+             IDOSWellSpatialReference::VerticalDatum::KellyBushing);
+    QCOMPARE(verticalWell->wellHead().spatialReference().depthDirection(),
+             IDOSWellSpatialReference::DepthDirection::PositiveDown);
+
+    const IDOSWell* horizontalWell = qobject_cast<IDOSWell*>(objects.at(1));
+    QVERIFY(horizontalWell != nullptr);
+    QCOMPARE(horizontalWell->name(), QStringLiteral("Zi224H"));
+    QCOMPARE(horizontalWell->wellHead().bottomDepth(), 6030.0);
+    qDeleteAll(objects);
 }
 
 void WellImportTest::onInvalidRows()

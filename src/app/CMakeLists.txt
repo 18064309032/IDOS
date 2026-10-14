@@ -1,5 +1,15 @@
 # idos_app: application composition
 add_library(idos_app SHARED
+    idosimporteddatatreeprovider.h
+    idosimporteddatatreeprovider.cpp
+    idosimporteddatatreemetadata.h
+    idosimporteddatatreemetadata.cpp
+    idosimporteddatatreeguiprovider.h
+    idosimporteddatatreeguiprovider.cpp
+    idosseismicvolumerenderprovider.h
+    idosseismicvolumerenderprovider.cpp
+    idosseismicvolumerendermetadata.h
+    idosseismicvolumerendermetadata.cpp
     well/idoscreatewellcommand.h
     well/idoscreatewellcommand.cpp
     command/idosrenameobjectcommand.h
@@ -22,6 +32,12 @@ add_library(idos_app SHARED
     case/idossimulationcasetreemetadata.h
     case/idossimulationcasetreeprovider.cpp
     case/idossimulationcasetreeprovider.h
+    fluidrock/idosfluidrocktabletreeguiprovider.cpp
+    fluidrock/idosfluidrocktabletreeguiprovider.h
+    fluidrock/idosfluidrocktabletreemetadata.cpp
+    fluidrock/idosfluidrocktabletreemetadata.h
+    fluidrock/idosfluidrocktabletreeprovider.cpp
+    fluidrock/idosfluidrocktabletreeprovider.h
     grid/idosgridtreeguiprovider.cpp
     grid/idosgridtreeguiprovider.h
     grid/idosgridsettingwidget.cpp
@@ -31,6 +47,14 @@ add_library(idos_app SHARED
     grid/idosgridfiltercommand.cpp
     grid/idosgridfilterrendermetadata.h
     grid/idosgridfilterrendermetadata.cpp
+    grid/idosgridboundaryrenderprovider.h
+    grid/idosgridboundaryrenderprovider.cpp
+    grid/idosgridboundaryrendermetadata.h
+    grid/idosgridboundaryrendermetadata.cpp
+    grid/idosgridsurfacerenderprovider.h
+    grid/idosgridsurfacerenderprovider.cpp
+    grid/idosgridsurfacerendermetadata.h
+    grid/idosgridsurfacerendermetadata.cpp
     grid/idosgridfilterrenderprovider.h
     grid/idosgridfilterrenderprovider.cpp
     grid/idosgridsettingwidget.h
@@ -82,6 +106,7 @@ target_include_directories(idos_app
         ${CMAKE_CURRENT_SOURCE_DIR}/command
 )
 target_include_directories(idos_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/fluidrock
     ${CMAKE_CURRENT_SOURCE_DIR}/well
     ${CMAKE_CURRENT_SOURCE_DIR}/grid
 )

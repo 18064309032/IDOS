@@ -10,6 +10,8 @@
 
 .vscode
 
+/testdata
+
 /resources/assistant/
 
 CMakeUserPresets.json

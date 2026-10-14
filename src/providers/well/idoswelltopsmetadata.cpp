@@ -16,7 +16,8 @@ QString IDOSWellTopsMetadata::displayName() const
 
 QStringList IDOSWellTopsMetadata::fileExtensions() const
 {
-    return {QStringLiteral("*.prn"), QStringLiteral("*.tops"), QStringLiteral("*.txt"), QStringLiteral("*.dat")};
+    return {QStringLiteral("*.prn"), QStringLiteral("*.tops"), QStringLiteral("*.txt"),
+            QStringLiteral("*.dat"), QStringLiteral("WELL TOP.txt")};
 }
 
 std::unique_ptr<IDOSDataProvider> IDOSWellTopsMetadata::create() const

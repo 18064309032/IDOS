@@ -24,6 +24,33 @@ IDOSWellLasProvider::CurveDefinition::CurveDefinition(const QString& name, const
 {
 }
 
+bool IDOSWellLasProvider::canRead(const QString& filePath) const
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        return false;
+    }
+
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+    bool hasVersion = false;
+    bool hasCurve = false;
+    bool hasAscii = false;
+    for (int lineNumber = 0; lineNumber < 200 && !stream.atEnd(); ++lineNumber)
+    {
+        const QString line = stream.readLine().trimmed();
+        if (line.startsWith(QStringLiteral("~"), Qt::CaseInsensitive))
+        {
+            const QString section = line.mid(1).trimmed().toUpper();
+            hasVersion = hasVersion || section.startsWith(QStringLiteral("V"));
+            hasCurve = hasCurve || section.startsWith(QStringLiteral("C"));
+            hasAscii = hasAscii || section.startsWith(QStringLiteral("A"));
+        }
+    }
+    return hasVersion && hasCurve && hasAscii;
+}
+
 QList<IDOSDataObject*> IDOSWellLasProvider::read(const QString& filePath)
 {
     setLastError(QString());

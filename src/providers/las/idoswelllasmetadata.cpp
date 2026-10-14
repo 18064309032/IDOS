@@ -17,7 +17,13 @@ QString IDOSWellLasMetadata::displayName() const
     return QObject::tr("LAS Well");
 }
 
+bool IDOSWellLasMetadata::canHandle(const QString& filePath) const
+{
+    IDOSWellLasProvider provider;
+    return provider.canRead(filePath);
+}
+
 QStringList IDOSWellLasMetadata::fileExtensions() const
 {
-    return QStringList{QStringLiteral("*.las"), QStringLiteral("*.LAS")};
+    return QStringList{QStringLiteral("*.las"), QStringLiteral("*.LAS"), QStringLiteral("*")};
 }

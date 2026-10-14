@@ -9,6 +9,7 @@
 #include <QPointer>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QStringList>
 #include <QVariant>
 #include <QVBoxLayout>
 
@@ -162,21 +163,90 @@ void IDOSWellTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
         connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
         return;
     }
-    QAction* import = addAction(menu, view, tr("Import Data..."));
-    const QString part = item->partKey();
-    if (part == QStringLiteral("idos.well.zones") || part == QStringLiteral("idos.well.completions") ||
-        part == QStringLiteral("idos.well.checkshots"))
+    IDOSWell* well = qobject_cast<IDOSWell*>(view->project()->object(item->dataId()));
+    if (well == nullptr)
     {
-        QAction* show = addAction(menu, view, tr("View Data..."));
+        return;
+    }
+    const QString part = item->partKey();
+    const bool isWellItem = item->parent() != nullptr &&
+                            item->parent()->key() == QStringLiteral("data.wells") &&
+                            item->key().startsWith(QStringLiteral("object:"));
+    const bool isLeafItem = item->parent() != nullptr &&
+                            item->parent()->key().startsWith(QStringLiteral("idos.well."));
+    if (isWellItem)
+    {
+        QAction* importHeader = addAction(menu, view, tr("Import Well Header..."));
+        importHeader->setObjectName(QStringLiteral("importWellHeaderAction"));
+        connect(importHeader, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+        QAction* importWell = addAction(menu, view, tr("Import Well Data..."));
+        importWell->setObjectName(QStringLiteral("importWellDataSingleAction"));
+        connect(importWell, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+        QAction* show = addAction(menu, view, tr("View Well Data..."));
+        show->setObjectName(QStringLiteral("viewWellSummaryAction"));
+        show->setProperty("part", QStringLiteral("idos.well.summary"));
+        connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
+    }
+    else if (!isLeafItem && part == QStringLiteral("idos.well.trajectory"))
+    {
+        QAction* show = addAction(menu, view, tr("View Trajectory Data..."));
+        show->setObjectName(QStringLiteral("viewWellPathAction"));
+        show->setProperty("part", part);
+        connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
+        QAction* import = addAction(menu, view, tr("Import or Replace Trajectory..."));
+        import->setObjectName(QStringLiteral("importWellPathAction"));
+        connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+        return;
+    }
+    else if (part == QStringLiteral("idos.well.logs"))
+    {
+        if (!isLeafItem)
+        {
+            QAction* import = addAction(menu, view, tr("Import Well Curves..."));
+            import->setObjectName(QStringLiteral("importWellCurvesAction"));
+            import->setProperty("part", part);
+            connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+        }
+        QAction* show = addAction(menu, view, tr("View Curve Data..."));
+        show->setObjectName(QStringLiteral("viewWellInputDataAction"));
+        show->setProperty("part", part);
+        show->setProperty("itemKey", item->itemKey());
+        connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
+    }
+    else if (!isLeafItem && (part == QStringLiteral("idos.well.zones") || part == QStringLiteral("idos.well.completions") ||
+        part == QStringLiteral("idos.well.checkshots")))
+    {
+        const QString label = part == QStringLiteral("idos.well.zones") ? tr("Markers")
+            : part == QStringLiteral("idos.well.completions") ? tr("Completions") : tr("Checkshots");
+        QAction* import = addAction(menu, view, tr("Import %1 Data...").arg(label));
+        import->setObjectName(QStringLiteral("importWellPartAction"));
+        import->setProperty("part", part);
+        connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+        QAction* show = addAction(menu, view, tr("View %1 Data...").arg(label));
         show->setObjectName(QStringLiteral("viewWellInputDataAction"));
         show->setProperty("part", part);
         connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
     }
-    import->setObjectName(QStringLiteral("importWellDataSingleAction"));
-    connect(import, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
-    QAction* remove = addAction(menu, view, tr("Delete Well..."));
-    remove->setObjectName(QStringLiteral("deleteWellAction"));
-    connect(remove, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onDeleteWell);
+    else if (isWellItem && part == QStringLiteral("idos.well.trajectory"))
+    {
+        QAction* importHeader = addAction(menu, view, tr("Import Well Header..."));
+        importHeader->setObjectName(QStringLiteral("importWellHeaderAction"));
+        connect(importHeader, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onImportWell);
+    }
+    else if (isLeafItem && part == QStringLiteral("idos.well.zones"))
+    {
+        QAction* show = addAction(menu, view, tr("View Marker Data..."));
+        show->setObjectName(QStringLiteral("viewWellInputDataAction"));
+        show->setProperty("part", part);
+        show->setProperty("itemKey", item->itemKey());
+        connect(show, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onViewWellData);
+    }
+    if (isWellItem)
+    {
+        QAction* remove = addAction(menu, view, tr("Delete Well..."));
+        remove->setObjectName(QStringLiteral("deleteWellAction"));
+        connect(remove, &QAction::triggered, this, &IDOSWellTreeGuiProvider::onDeleteWell);
+    }
 }
 
 void IDOSWellTreeGuiProvider::onViewWellData()
@@ -197,11 +267,96 @@ void IDOSWellTreeGuiProvider::onViewWellData()
     QTableWidget* table = new QTableWidget(dialog);
     table->setEditTriggers(QTableWidget::NoEditTriggers);
     const QString part = action->property("part").toString();
-    if (part == QStringLiteral("idos.well.zones"))
+    if (part == QStringLiteral("idos.well.summary"))
+    {
+        table->setColumnCount(2);
+        table->setHorizontalHeaderLabels({tr("Data"), tr("Count")});
+        QStringList labels;
+        QList<int> counts;
+        if (well->hasPath())
+        {
+            labels.append(tr("Trajectory points"));
+            counts.append(well->path().pointCount());
+        }
+        if (well->hasLogs())
+        {
+            labels.append(tr("Log curves"));
+            counts.append(well->logs().channelCount());
+        }
+        if (well->hasMarkers())
+        {
+            labels.append(tr("Markers"));
+            counts.append(well->markers().markerCount());
+        }
+        if (well->hasCompletions())
+        {
+            labels.append(tr("Completions"));
+            counts.append(well->completions().size());
+        }
+        if (well->hasCheckshot())
+        {
+            labels.append(tr("Checkshot samples"));
+            counts.append(well->checkshot().depths().size());
+        }
+        table->setRowCount(labels.size());
+        for (int row = 0; row < labels.size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(labels.at(row)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(counts.at(row))));
+        }
+    }
+    else if (part == QStringLiteral("idos.well.trajectory"))
+    {
+        const QVector<IDOSWellPathPoint> points = well->path().points();
+        QStringList attributeHeaders;
+        for (const IDOSWellPathPoint& point : points)
+        {
+            const QStringList keys = point.attributes().keys();
+            for (const QString& key : keys)
+            {
+                if (!attributeHeaders.contains(key))
+                {
+                    attributeHeaders.append(key);
+                }
+            }
+        }
+        table->setColumnCount(5 + attributeHeaders.size());
+        QStringList headers = {tr("Measured Depth"), tr("X"), tr("Y"), tr("Z"), tr("True Vertical Depth")};
+        headers.append(attributeHeaders);
+        table->setHorizontalHeaderLabels(headers);
+        table->setRowCount(points.size());
+        for (int row = 0; row < points.size(); ++row)
+        {
+            const IDOSWellPathPoint& point = points.at(row);
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(point.md(), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(point.x(), 'g', 15)));
+            table->setItem(row, 2, new QTableWidgetItem(QString::number(point.y(), 'g', 15)));
+            table->setItem(row, 3, new QTableWidgetItem(QString::number(point.z(), 'g', 15)));
+            table->setItem(row, 4, new QTableWidgetItem(QString::number(point.tvd(), 'g', 15)));
+            const QVariantMap attributes = point.attributes();
+            for (int column = 0; column < attributeHeaders.size(); ++column)
+            {
+                table->setItem(row, 5 + column,
+                               new QTableWidgetItem(attributes.value(attributeHeaders.at(column)).toString()));
+            }
+        }
+    }
+    else if (part == QStringLiteral("idos.well.zones"))
     {
         table->setColumnCount(2);
         table->setHorizontalHeaderLabels({tr("Horizon"), tr("Measured depth (m)")});
-        const QList<IDOSWellMarker> markers = well->markers().markers();
+        QList<IDOSWellMarker> markers = well->markers().markers();
+        const QString markerName = action->property("itemKey").toString();
+        if (!markerName.isEmpty())
+        {
+            for (int index = markers.size() - 1; index >= 0; --index)
+            {
+                if (markers.at(index).name() != markerName)
+                {
+                    markers.removeAt(index);
+                }
+            }
+        }
         table->setRowCount(markers.size());
         for (int row = 0; row < markers.size(); ++row)
         {
@@ -211,9 +366,23 @@ void IDOSWellTreeGuiProvider::onViewWellData()
     }
     else if (part == QStringLiteral("idos.well.completions"))
     {
-        table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({tr("Top depth (m)"), tr("Bottom depth (m)"), tr("Grid layer"), tr("Status"), tr("Event date")});
         const QList<IDOSWellCompletion> completions = well->completions();
+        QStringList attributeHeaders;
+        for (const IDOSWellCompletion& completion : completions)
+        {
+            const QStringList keys = completion.attributes().keys();
+            for (const QString& key : keys)
+            {
+                if (!attributeHeaders.contains(key))
+                {
+                    attributeHeaders.append(key);
+                }
+            }
+        }
+        table->setColumnCount(5 + attributeHeaders.size());
+        QStringList headers = {tr("Top depth (m)"), tr("Bottom depth (m)"), tr("Grid layer"), tr("Status"), tr("Event date")};
+        headers.append(attributeHeaders);
+        table->setHorizontalHeaderLabels(headers);
         table->setRowCount(completions.size());
         for (int row = 0; row < completions.size(); ++row)
         {
@@ -223,6 +392,42 @@ void IDOSWellTreeGuiProvider::onViewWellData()
             table->setItem(row, 2, new QTableWidgetItem(completion.k() > 0 ? QString::number(completion.k()) : tr("Not mapped")));
             table->setItem(row, 3, new QTableWidgetItem(completion.isOpen() ? tr("Open") : tr("Shut")));
             table->setItem(row, 4, new QTableWidgetItem(completion.eventDate()));
+            const QVariantMap attributes = completion.attributes();
+            for (int column = 0; column < attributeHeaders.size(); ++column)
+            {
+                const QVariant value = attributes.value(attributeHeaders.at(column));
+                table->setItem(row, 5 + column, new QTableWidgetItem(value.toString()));
+            }
+        }
+    }
+    else if (part == QStringLiteral("idos.well.logs"))
+    {
+        const QString channelName = action->property("itemKey").toString();
+        QList<IDOSWellLogChannel> channels;
+        for (const IDOSWellLogChannel& channel : well->logs().channels())
+        {
+            if (channelName.isEmpty() || channel.name() == channelName)
+            {
+                channels.append(channel);
+            }
+        }
+        table->setColumnCount(channels.size() + 1);
+        QStringList headers = {tr("Depth (m)")};
+        for (const IDOSWellLogChannel& channel : channels)
+        {
+            const QString unit = channel.unit().isEmpty() ? QString() : QStringLiteral(" (") + channel.unit() + QLatin1Char(')');
+            headers.append(channel.name() + unit);
+        }
+        table->setHorizontalHeaderLabels(headers);
+        table->setRowCount(channels.isEmpty() ? 0 : channels.first().sampleCount());
+        for (int row = 0; row < table->rowCount(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(channels.first().depths().at(row), 'g', 15)));
+            for (int column = 0; column < channels.size(); ++column)
+            {
+                const double value = channels.at(column).values().at(row);
+                table->setItem(row, column + 1, new QTableWidgetItem(qIsNaN(value) ? QString() : QString::number(value, 'g', 15)));
+            }
         }
     }
     else
@@ -273,6 +478,62 @@ void IDOSWellTreeGuiProvider::onImportWell()
     if (id.isEmpty())
     {
         IDOSWellTreeGuiProvider::importWellData(view->project(), view);
+    }
+    else if (qobject_cast<IDOSWell*>(view->project()->object(id)) != nullptr &&
+             (action->objectName() == QStringLiteral("importWellHeaderAction") ||
+              action->objectName() == QStringLiteral("importWellPathAction") ||
+              action->objectName() == QStringLiteral("importWellCurvesAction") ||
+              action->objectName() == QStringLiteral("importWellPartAction")))
+    {
+        QPointer<IDOSProject> project(view->project());
+        QString providerPrefix = action->objectName() == QStringLiteral("importWellHeaderAction")
+            ? QStringLiteral("idos.well.header") : QStringLiteral("idos.well.path");
+        if (action->objectName() == QStringLiteral("importWellCurvesAction"))
+        {
+            providerPrefix = QStringLiteral("idos.well.las");
+        }
+        else if (action->objectName() == QStringLiteral("importWellPartAction"))
+        {
+            const QString part = action->property("part").toString();
+            if (part == QStringLiteral("idos.well.zones"))
+            {
+                providerPrefix = QStringLiteral("idos.well.tops");
+            }
+            else if (part == QStringLiteral("idos.well.completions"))
+            {
+                providerPrefix = QStringLiteral("idos.well.completion");
+            }
+            else if (part == QStringLiteral("idos.well.checkshots"))
+            {
+                providerPrefix = QStringLiteral("idos.well.checkshot");
+            }
+        }
+        const QString importTitle = providerPrefix == QStringLiteral("idos.well.path")
+            ? tr("Import Well Trajectory")
+            : providerPrefix == QStringLiteral("idos.well.header") ? tr("Import Well Header")
+            : providerPrefix == QStringLiteral("idos.well.las") ? tr("Import Well Curves")
+            : providerPrefix == QStringLiteral("idos.well.tops") ? tr("Import Well Markers")
+            : providerPrefix == QStringLiteral("idos.well.completion") ? tr("Import Well Completions")
+            : tr("Import Well Checkshots");
+        const QString file = QFileDialog::getOpenFileName(
+            view, importTitle, QString(),
+            IDOSDataProviderRegistry::instance().fileFilters(providerPrefix));
+        if (file.isEmpty() || project.isNull())
+        {
+            return;
+        }
+        QJsonObject arguments;
+        arguments.insert(QStringLiteral("filePath"), file);
+        arguments.insert(QStringLiteral("targetWellId"), id);
+        IDOSImportWellDataCommandMetadata metadata;
+        IDOSCommandManager* manager = project->commandManager();
+        if (manager == nullptr || !manager->execute(metadata.create(arguments, project.data())))
+        {
+            if (manager != nullptr)
+            {
+                QMessageBox::warning(view, importTitle, manager->error());
+            }
+        }
     }
     else if (qobject_cast<IDOSWell*>(view->project()->object(id)) != nullptr)
     {

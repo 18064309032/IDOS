@@ -90,6 +90,30 @@ set_target_properties(OPM::opmcommon PROPERTIES
     IMPORTED_LOCATION         "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
 )
 
+# QXlsx: prebuilt static library for reading and writing OOXML spreadsheets.
+add_library(QXlsx::QXlsx STATIC IMPORTED GLOBAL)
+set_target_properties(QXlsx::QXlsx PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/QXlsx/include"
+    INTERFACE_COMPILE_DEFINITIONS QXLSX_STATIC
+    INTERFACE_LINK_LIBRARIES "Qt5::Core;Qt5::Gui"
+    IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/QXlsx/lib/QXlsxd.lib"
+    IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/QXlsx/lib/QXlsx.lib"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/thirdparty/QXlsx/lib/QXlsx.lib"
+    MAP_IMPORTED_CONFIG_MINSIZEREL Release
+    MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+)
+
+# Shapelib: prebuilt static library for ESRI Shapefile geometry and attributes.
+add_library(shapelib::shapelib STATIC IMPORTED GLOBAL)
+set_target_properties(shapelib::shapelib PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/shapelib/include"
+    IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/shapelib/lib/shapelibd.lib"
+    IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/shapelib/lib/shapelib.lib"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/thirdparty/shapelib/lib/shapelib.lib"
+    MAP_IMPORTED_CONFIG_MINSIZEREL Release
+    MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+)
+
 # 渲染模块开关。
 # 打开方式：cmake -DIDOS_ENABLE_RENDER=ON --preset win-x64-debug-local
 option(IDOS_ENABLE_RENDER "Enable VTK rendering module" ON)

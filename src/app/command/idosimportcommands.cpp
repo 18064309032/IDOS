@@ -4,14 +4,18 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMap>
 #include <QObject>
 #include <QSet>
+#include <QVector>
 
+#include "fluidrock/idosfluidrocktextprovider.h"
 #include "idoscaseitemref.h"
 #include "idoscaseobject.h"
 #include "idosdataprovider.h"
 #include "idosdataprovidermetadata.h"
 #include "idosdataproviderregistry.h"
+#include "idosfluidrocktable.h"
 #include "idosgrid.h"
 #include "idosgridproperty.h"
 #include "idosproject.h"
@@ -25,9 +29,13 @@ IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const Q
     :
     IDOSCommand(name, Type::Action, project, QObject::tr("Import data"))
     , m_filePath(arguments.value(QStringLiteral("filePath")).toString())
+    , m_fluidRockCategory(arguments.value(QStringLiteral("category")).toString())
+    , m_providerId(arguments.value(QStringLiteral("providerId")).toString())
+    , m_dataTypeId(arguments.value(QStringLiteral("dataTypeId")).toString())
     , m_mode(Mode::WellData)
     , m_targetGridId(arguments.value(QStringLiteral("targetGridId")).toString())
     , m_targetCaseId(arguments.value(QStringLiteral("targetCaseId")).toString())
+    , m_targetTableId(arguments.value(QStringLiteral("tableId")).toString())
     , m_caseNameOverride(arguments.value(QStringLiteral("caseName")).toString())
     , m_replaceExistingGrid(arguments.value(QStringLiteral("replaceExistingGrid")).toBool())
     , m_loaded(false)
@@ -46,6 +54,18 @@ IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const Q
     {
         m_mode = Mode::Property;
     }
+    else if (name == QStringLiteral("data.fluidRock.import"))
+    {
+        m_mode = Mode::FluidRock;
+    }
+    else if (name == QStringLiteral("case.fluidRock.attach"))
+    {
+        m_mode = Mode::FluidRockAttach;
+    }
+    else if (name == QStringLiteral("data.import"))
+    {
+        m_mode = Mode::ProjectData;
+    }
 }
 IDOSImportObjectsCommand::~IDOSImportObjectsCommand()
 {
@@ -62,13 +82,30 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (m_filePath.trimmed().isEmpty() || (!m_loaded && !QFileInfo::exists(m_filePath)))
+    if (m_mode == Mode::FluidRock &&
+        m_fluidRockCategory != QStringLiteral("fluid") &&
+        m_fluidRockCategory != QStringLiteral("rockPhysics"))
+    {
+        error = QObject::tr("The fluid or rock table category is invalid.");
+        return false;
+    }
+
+    if (m_mode == Mode::ProjectData &&
+        (m_providerId.trimmed().isEmpty() || m_dataTypeId.trimmed().isEmpty()))
+    {
+        error = QObject::tr("The data import provider or type is unavailable.");
+        return false;
+    }
+
+    if (m_mode != Mode::FluidRockAttach &&
+        (m_filePath.trimmed().isEmpty() || (!m_loaded && !QFileInfo::exists(m_filePath))))
     {
         error = QObject::tr("The import file is unavailable.");
         return false;
     }
 
-    if ((m_mode == Mode::Grid || m_mode == Mode::Property) && m_targetCaseId.isEmpty())
+    if ((m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::FluidRockAttach) &&
+        m_targetCaseId.isEmpty())
     {
         error = QObject::tr("The target case is unavailable.");
         return false;
@@ -81,7 +118,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
     }
 
     IDOSProject* targetProject = project();
-    if (m_mode == Mode::Grid || m_mode == Mode::Property)
+    if (m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::FluidRockAttach)
     {
         IDOSCaseObject* targetCase =
             qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
@@ -89,6 +126,31 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         {
             error = QObject::tr("The target case is unavailable.");
             return false;
+        }
+        if (m_mode == Mode::FluidRockAttach &&
+            qobject_cast<IDOSSimulationCaseObject*>(targetCase) == nullptr)
+        {
+            error = QObject::tr("The target simulation case is unavailable.");
+            return false;
+        }
+
+        if (m_mode == Mode::FluidRockAttach &&
+            qobject_cast<IDOSFluidRockTable*>(targetProject->object(m_targetTableId)) == nullptr)
+        {
+            error = QObject::tr("The target fluid or rock table is unavailable.");
+            return false;
+        }
+        if (m_mode == Mode::FluidRockAttach)
+        {
+            for (const IDOSCaseItemRef& ref : targetCase->itemRefs())
+            {
+                if (ref.role() == QStringLiteral("case.fluidRockTable") &&
+                    ref.objectId() == m_targetTableId)
+                {
+                    error = QObject::tr("The fluid or rock table is already attached to this case.");
+                    return false;
+                }
+            }
         }
 
         if (m_mode == Mode::Grid)
@@ -128,9 +190,12 @@ QJsonObject IDOSImportObjectsCommand::buildPreview() const
 {
     QJsonObject preview;
     preview.insert(QStringLiteral("filePath"), m_filePath);
+    preview.insert(QStringLiteral("providerId"), m_providerId);
+    preview.insert(QStringLiteral("dataTypeId"), m_dataTypeId);
     preview.insert(QStringLiteral("targetWellId"), m_targetWellId);
     preview.insert(QStringLiteral("targetGridId"), m_targetGridId);
     preview.insert(QStringLiteral("targetCaseId"), m_targetCaseId);
+    preview.insert(QStringLiteral("tableId"), m_targetTableId);
     preview.insert(QStringLiteral("caseName"), m_caseNameOverride);
     preview.insert(QStringLiteral("replaceExistingGrid"), m_replaceExistingGrid);
     return preview;
@@ -143,6 +208,41 @@ bool IDOSImportObjectsCommand::apply(QString& error)
     {
         error = QObject::tr("The target project is unavailable.");
         return false;
+    }
+
+    if (m_mode == Mode::FluidRockAttach)
+    {
+        IDOSSimulationCaseObject* targetCase =
+            qobject_cast<IDOSSimulationCaseObject*>(targetProject->object(m_targetCaseId));
+        if (targetCase == nullptr)
+        {
+            error = QObject::tr("The target simulation case is unavailable.");
+            return false;
+        }
+        captureTargetCaseReferences();
+        targetProject->beginUpdate();
+        QList<IDOSCaseItemRef> refs = targetCase->itemRefs();
+        bool alreadyAttached = false;
+        for (const IDOSCaseItemRef& ref : refs)
+        {
+            if (ref.role() == QStringLiteral("case.fluidRockTable") &&
+                ref.objectId() == m_targetTableId)
+            {
+                alreadyAttached = true;
+                break;
+            }
+        }
+        if (!alreadyAttached)
+        {
+            refs.append(IDOSCaseItemRef(QStringLiteral("case.fluidRockTable"), m_targetTableId));
+            targetCase->setItemRefs(refs);
+        }
+        QJsonObject commandResult;
+        commandResult.insert(QStringLiteral("targetCaseId"), m_targetCaseId);
+        commandResult.insert(QStringLiteral("tableId"), m_targetTableId);
+        setResult(commandResult);
+        targetProject->endUpdate();
+        return true;
     }
 
     if (!ensureLoaded(error))
@@ -261,15 +361,37 @@ bool IDOSImportObjectsCommand::ensureLoaded(QString& error)
 
 bool IDOSImportObjectsCommand::loadObjects(QString& error)
 {
-    QList<IDOSDataProviderMetadata*> metadataList =
-        IDOSDataProviderRegistry::instance().providers(m_filePath);
-    if (metadataList.isEmpty())
+    IDOSDataProviderMetadata* metadata = nullptr;
+    std::unique_ptr<IDOSDataProvider> provider;
+    if (m_mode == Mode::FluidRock)
     {
-        error = QObject::tr("No provider matches file: %1").arg(m_filePath);
-        return false;
+        provider = std::make_unique<IDOSFluidRockTextProvider>();
     }
-
-    std::unique_ptr<IDOSDataProvider> provider = metadataList.first()->create();
+    else if (m_mode == Mode::ProjectData)
+    {
+        metadata = IDOSDataProviderRegistry::instance().metadata(m_providerId);
+        if (metadata == nullptr || !metadata->canHandle(m_filePath))
+        {
+            error = QObject::tr("The selected provider cannot read this file.");
+            return false;
+        }
+        provider = metadata->create();
+    }
+    else
+    {
+        const QList<IDOSDataProviderMetadata*> metadataList =
+            IDOSDataProviderRegistry::instance().providers(m_filePath);
+        if (!metadataList.isEmpty())
+        {
+            metadata = metadataList.first();
+        }
+        if (metadata == nullptr)
+        {
+            error = QObject::tr("No provider matches file: %1").arg(m_filePath);
+            return false;
+        }
+        provider = metadata->create();
+    }
     if (provider == nullptr)
     {
         error = QObject::tr("Failed to create provider for: %1").arg(m_filePath);
@@ -282,6 +404,141 @@ bool IDOSImportObjectsCommand::loadObjects(QString& error)
         error = provider->lastError();
         qDeleteAll(objects);
         return false;
+    }
+
+    if (m_mode == Mode::FluidRock)
+    {
+        IDOSSimulationCaseObject* importedTables = nullptr;
+        for (IDOSDataObject* object : objects)
+        {
+            importedTables = qobject_cast<IDOSSimulationCaseObject*>(object);
+            if (importedTables != nullptr)
+            {
+                break;
+            }
+        }
+        if (importedTables == nullptr || importedTables->curveTables().isEmpty())
+        {
+            error = QObject::tr("The file contains no supported fluid or rock tables.");
+            qDeleteAll(objects);
+            return false;
+        }
+        m_importedCurveTables = importedTables->curveTables();
+        QMap<QString, int> tableIndices;
+        for (IDOSDataObject* object : project()->objects())
+        {
+            IDOSFluidRockTable* existingTable = qobject_cast<IDOSFluidRockTable*>(object);
+            if (existingTable != nullptr)
+            {
+                const QVariantMap table = existingTable->tableData();
+                const QString keyword = table.value(QStringLiteral("keyword")).toString().toUpper();
+                tableIndices.insert(keyword, qMax(tableIndices.value(keyword),
+                                                  table.value(QStringLiteral("tableIndex")).toInt()));
+            }
+        }
+        for (const QVariant& tableValue : m_importedCurveTables)
+        {
+            QVariantMap tableData = tableValue.toMap();
+            const QString keyword = tableData.value(QStringLiteral("keyword")).toString().toUpper();
+            const bool isFluidTable = isFluidKeyword(keyword);
+            if ((m_fluidRockCategory == QStringLiteral("fluid") && !isFluidTable) ||
+                (m_fluidRockCategory == QStringLiteral("rockPhysics") && isFluidTable))
+            {
+                continue;
+            }
+            const int tableIndex = tableIndices.value(keyword) + 1;
+            tableIndices.insert(keyword, tableIndex);
+            tableData.insert(QStringLiteral("keyword"), keyword);
+            tableData.insert(QStringLiteral("tableIndex"), tableIndex);
+            const IDOSFluidRockTable::Category category = isFluidTable
+                ? IDOSFluidRockTable::Category::Fluid : IDOSFluidRockTable::Category::RockPhysics;
+            IDOSFluidRockTable* table = new IDOSFluidRockTable(category);
+            table->setTableData(tableData);
+            table->setSourceFile(m_filePath);
+            table->setName(QObject::tr("%1 — Table %2").arg(keyword).arg(tableIndex));
+            m_objects.append(QPointer<IDOSDataObject>(table));
+        }
+        qDeleteAll(objects);
+        if (m_objects.isEmpty())
+        {
+            error = m_fluidRockCategory == QStringLiteral("fluid")
+                ? QObject::tr("The file contains no supported fluid tables.")
+                : QObject::tr("The file contains no supported rock physics tables.");
+            return false;
+        }
+        m_loaded = true;
+        return true;
+    }
+
+    if (m_mode == Mode::Property)
+    {
+        IDOSGrid* targetGrid = qobject_cast<IDOSGrid*>(project()->object(m_targetGridId));
+        if (targetGrid == nullptr)
+        {
+            error = QObject::tr("The target grid is unavailable.");
+            qDeleteAll(objects);
+            return false;
+        }
+        for (IDOSDataObject* object : objects)
+        {
+            IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+            if (property == nullptr)
+            {
+                continue;
+            }
+
+            QVector<double> propertyValues = property->values();
+            const bool isInitFile = QFileInfo(m_filePath).suffix().compare(QStringLiteral("INIT"), Qt::CaseInsensitive) == 0;
+            if (propertyValues.size() != targetGrid->totalCellCount() && isInitFile)
+            {
+                const QVector<int>& actnum = targetGrid->actnum();
+                int activeCellCount = 0;
+                for (int cellIndex = 0; cellIndex < actnum.size(); ++cellIndex)
+                {
+                    if (actnum.at(cellIndex) != 0)
+                    {
+                        ++activeCellCount;
+                    }
+                }
+                if (actnum.size() == targetGrid->totalCellCount() && propertyValues.size() == activeCellCount)
+                {
+                    QVector<double> expandedValues(targetGrid->totalCellCount(), 0.0);
+                    int activeIndex = 0;
+                    for (int cellIndex = 0; cellIndex < actnum.size(); ++cellIndex)
+                    {
+                        if (actnum.at(cellIndex) != 0)
+                        {
+                            expandedValues[cellIndex] = propertyValues.at(activeIndex);
+                            ++activeIndex;
+                        }
+                    }
+                    property->setValues(expandedValues);
+                    propertyValues = expandedValues;
+                }
+            }
+
+            if (propertyValues.size() != targetGrid->totalCellCount())
+            {
+                error = QObject::tr("Property %1 has %2 cell values; the target grid requires %3.")
+                            .arg(property->keyword())
+                            .arg(propertyValues.size())
+                            .arg(targetGrid->totalCellCount());
+                qDeleteAll(objects);
+                return false;
+            }
+
+            if (isInitFile)
+            {
+                property->setDimensions(targetGrid->nx(), targetGrid->ny(), targetGrid->nz());
+                if (!property->setValues(propertyValues))
+                {
+                    error = QObject::tr("Property %1 could not be expanded to the target grid dimensions.")
+                                .arg(property->keyword());
+                    qDeleteAll(objects);
+                    return false;
+                }
+            }
+        }
     }
 
     for (IDOSDataObject* object : objects)
@@ -334,6 +591,11 @@ bool IDOSImportObjectsCommand::acceptObject(IDOSDataObject* object) const
         return qobject_cast<IDOSWell*>(object) != nullptr;
     }
 
+    if (m_mode == Mode::ProjectData)
+    {
+        return object != nullptr && object->typeId() == m_dataTypeId;
+    }
+
     return false;
 }
 
@@ -345,11 +607,77 @@ void IDOSImportObjectsCommand::prepareObject(IDOSDataObject* object)
         caseObject->setName(m_caseNameOverride.trimmed());
     }
 
+    IDOSSimulationCaseObject* simulationCase =
+        m_mode == Mode::Case ? qobject_cast<IDOSSimulationCaseObject*>(caseObject) : nullptr;
+    if (simulationCase != nullptr)
+    {
+        const QVariantList curveTables = simulationCase->curveTables();
+        QMap<QString, int> tableIndices;
+        for (IDOSDataObject* existingObject : project()->objects())
+        {
+            IDOSFluidRockTable* existingTable = qobject_cast<IDOSFluidRockTable*>(existingObject);
+            if (existingTable != nullptr)
+            {
+                const QVariantMap tableData = existingTable->tableData();
+                const QString keyword = tableData.value(QStringLiteral("keyword")).toString().toUpper();
+                tableIndices.insert(keyword, qMax(tableIndices.value(keyword),
+                                                  tableData.value(QStringLiteral("tableIndex")).toInt()));
+            }
+        }
+        QList<IDOSCaseItemRef> refs = simulationCase->itemRefs();
+        int createdTableCount = 0;
+        for (const QVariant& tableValue : curveTables)
+        {
+            QVariantMap tableData = tableValue.toMap();
+            const QString keyword = tableData.value(QStringLiteral("keyword")).toString().toUpper();
+            if (keyword.isEmpty())
+            {
+                continue;
+            }
+            const int tableIndex = tableIndices.value(keyword) + 1;
+            tableIndices.insert(keyword, tableIndex);
+            tableData.insert(QStringLiteral("keyword"), keyword);
+            tableData.insert(QStringLiteral("tableIndex"), tableIndex);
+            const IDOSFluidRockTable::Category category = isFluidKeyword(keyword)
+                ? IDOSFluidRockTable::Category::Fluid : IDOSFluidRockTable::Category::RockPhysics;
+            IDOSFluidRockTable* table = new IDOSFluidRockTable(category);
+            table->setTableData(tableData);
+            table->setSourceFile(m_filePath);
+            table->setName(QObject::tr("%1 — Table %2").arg(keyword).arg(tableIndex));
+            m_objects.append(QPointer<IDOSDataObject>(table));
+            refs.append(IDOSCaseItemRef(QStringLiteral("case.fluidRockTable"), table->objectId()));
+            ++createdTableCount;
+        }
+        if (createdTableCount > 0)
+        {
+            simulationCase->setCurveTables(QVariantList());
+            simulationCase->setItemRefs(refs);
+        }
+    }
+
     IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
     if (m_mode == Mode::Property && property != nullptr)
     {
+        IDOSGrid* grid = project() != nullptr
+            ? qobject_cast<IDOSGrid*>(project()->object(m_targetGridId)) : nullptr;
+        if (grid != nullptr)
+        {
+            const QVector<double> propertyValues = property->values();
+            property->setDimensions(grid->nx(), grid->ny(), grid->nz());
+            property->setValues(propertyValues);
+        }
         property->setGridId(m_targetGridId);
     }
+}
+
+bool IDOSImportObjectsCommand::isFluidKeyword(const QString& keyword) const
+{
+    const QStringList fluidKeywords = {
+        QStringLiteral("DENSITY"), QStringLiteral("PVTO"), QStringLiteral("PVDO"),
+        QStringLiteral("PVDG"), QStringLiteral("PVTG"), QStringLiteral("PVZG"),
+        QStringLiteral("PVTW")
+    };
+    return fluidKeywords.contains(keyword.toUpper());
 }
 
 bool IDOSImportObjectsCommand::prepareWells(QString& error)
@@ -565,6 +893,10 @@ void IDOSImportObjectsCommand::appendTargetCaseReferences()
         else if (qobject_cast<IDOSGridProperty*>(object.data()) != nullptr)
         {
             role = QStringLiteral("case.gridProperty");
+        }
+        else if (qobject_cast<IDOSFluidRockTable*>(object.data()) != nullptr)
+        {
+            role = QStringLiteral("case.fluidRockTable");
         }
 
         const QString key = role + QLatin1Char(':') + object->objectId();
@@ -874,6 +1206,101 @@ QJsonObject IDOSImportWellDataCommandMetadata::schema() const
 
 IDOSCommand* IDOSImportWellDataCommandMetadata::create(const QJsonObject& arguments,
                                                        IDOSProject* project) const
+{
+    return new IDOSImportObjectsCommand(project, name(), arguments);
+}
+
+IDOSImportFluidRockTablesCommandMetadata::IDOSImportFluidRockTablesCommandMetadata()
+    : IDOSCommandMetadata(QStringLiteral("data.fluidRock.import"),
+                          QObject::tr("Import fluid and rock tables"),
+                          QObject::tr("Import ECLIPSE fluid and rock tables into project data."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSImportFluidRockTablesCommandMetadata::~IDOSImportFluidRockTablesCommandMetadata() = default;
+
+QJsonObject IDOSImportFluidRockTablesCommandMetadata::schema() const
+{
+    QJsonObject properties;
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    QJsonObject categorySchema = IDOSImportObjectsCommand::stringPropertySchema(
+        QObject::tr("Table category to import: fluid or rockPhysics."));
+    QJsonArray categories;
+    categories.append(QStringLiteral("fluid"));
+    categories.append(QStringLiteral("rockPhysics"));
+    categorySchema.insert(QStringLiteral("enum"), categories);
+    properties.insert(QStringLiteral("category"), categorySchema);
+    QJsonArray required;
+    required.append(QStringLiteral("filePath"));
+    required.append(QStringLiteral("category"));
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+}
+
+IDOSAttachFluidRockTableCommandMetadata::IDOSAttachFluidRockTableCommandMetadata()
+    : IDOSCommandMetadata(QStringLiteral("case.fluidRock.attach"),
+                          QObject::tr("Add fluid or rock table to case"),
+                          QObject::tr("Add a project fluid or rock table reference to a simulation case."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSAttachFluidRockTableCommandMetadata::~IDOSAttachFluidRockTableCommandMetadata() = default;
+
+QJsonObject IDOSAttachFluidRockTableCommandMetadata::schema() const
+{
+    QJsonObject properties;
+    properties.insert(QStringLiteral("targetCaseId"),
+                      IDOSImportObjectsCommand::stringPropertySchema(
+                          QObject::tr("Object ID of the target simulation case.")));
+    properties.insert(QStringLiteral("tableId"),
+                      IDOSImportObjectsCommand::stringPropertySchema(
+                          QObject::tr("Object ID of the fluid or rock table.")));
+    QJsonArray required;
+    required.append(QStringLiteral("targetCaseId"));
+    required.append(QStringLiteral("tableId"));
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+}
+
+IDOSCommand* IDOSAttachFluidRockTableCommandMetadata::create(const QJsonObject& arguments,
+                                                              IDOSProject* project) const
+{
+    return new IDOSImportObjectsCommand(project, name(), arguments);
+}
+
+IDOSCommand* IDOSImportFluidRockTablesCommandMetadata::create(const QJsonObject& arguments,
+                                                               IDOSProject* project) const
+{
+    return new IDOSImportObjectsCommand(project, name(), arguments);
+}
+
+IDOSImportProjectDataCommandMetadata::IDOSImportProjectDataCommandMetadata()
+    : IDOSCommandMetadata(QStringLiteral("data.import"),
+                          QObject::tr("Import project data"),
+                          QObject::tr("Import a supported data file into its project data category."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSImportProjectDataCommandMetadata::~IDOSImportProjectDataCommandMetadata() = default;
+
+QJsonObject IDOSImportProjectDataCommandMetadata::schema() const
+{
+    QJsonObject properties;
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("providerId"), IDOSImportObjectsCommand::stringPropertySchema(
+        QObject::tr("Registered data provider ID.")));
+    properties.insert(QStringLiteral("dataTypeId"), IDOSImportObjectsCommand::stringPropertySchema(
+        QObject::tr("Expected project data type ID.")));
+    QJsonArray required;
+    required.append(QStringLiteral("filePath"));
+    required.append(QStringLiteral("providerId"));
+    required.append(QStringLiteral("dataTypeId"));
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+}
+
+IDOSCommand* IDOSImportProjectDataCommandMetadata::create(const QJsonObject& arguments,
+                                                           IDOSProject* project) const
 {
     return new IDOSImportObjectsCommand(project, name(), arguments);
 }

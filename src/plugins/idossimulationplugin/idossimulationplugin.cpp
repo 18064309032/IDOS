@@ -22,6 +22,7 @@
 
 #include "idosinterface.h"
 #include "idosproject.h"
+#include "case/idossimulationcasetreeguiprovider.h"
 #include "idosrendertoolmetadata.h"
 #include "idossimulationcaseinventoryreportwidget.h"
 #include "idossimulationcaseobject.h"
@@ -127,6 +128,25 @@ void IDOSSimulationPlugin::initGui()
             this,
             &IDOSSimulationPlugin::onProjectChanged,
             Qt::UniqueConnection);
+
+    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_interface->treeRegistry()->guiProviders())
+    {
+        IDOSSimulationCaseTreeGuiProvider* caseGuiProvider =
+            qobject_cast<IDOSSimulationCaseTreeGuiProvider*>(provider.get());
+        if (caseGuiProvider != nullptr)
+        {
+            connect(caseGuiProvider,
+                    &IDOSSimulationCaseTreeGuiProvider::generateInputRequested,
+                    this,
+                    &IDOSSimulationPlugin::onGenerateInputRequested,
+                    Qt::UniqueConnection);
+            connect(caseGuiProvider,
+                    &IDOSSimulationCaseTreeGuiProvider::propertyCurvesRequested,
+                    this,
+                    &IDOSSimulationPlugin::onPropertyCurvesRequested,
+                    Qt::UniqueConnection);
+        }
+    }
 
     m_translator = new QTranslator(this);
     const QString translationPath = qApp->applicationDirPath()
@@ -767,6 +787,18 @@ void IDOSSimulationPlugin::onGenerateDataTriggered()
         return;
     }
 
+    onGenerateInputRequested(project, simulationCase->objectId());
+}
+
+void IDOSSimulationPlugin::onGenerateInputRequested(IDOSProject* project, const QString& caseId)
+{
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->object(caseId)) : nullptr;
+    if (simulationCase == nullptr)
+    {
+        return;
+    }
+
     QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
     if (!m_generateDataWidget.isNull())
     {
@@ -813,11 +845,25 @@ void IDOSSimulationPlugin::onPropertyCurvesTriggered()
 {
     IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
     IDOSSimulationCaseObject* simulationCase = currentSimulationCase(project);
+    if (simulationCase != nullptr)
+    {
+        showPropertyCurves(project, simulationCase->objectId());
+    }
+}
+
+void IDOSSimulationPlugin::onPropertyCurvesRequested(IDOSProject* project, const QString& caseId)
+{
+    showPropertyCurves(project, caseId);
+}
+
+void IDOSSimulationPlugin::showPropertyCurves(IDOSProject* project, const QString& caseId)
+{
+    IDOSSimulationCaseObject* simulationCase = project != nullptr
+        ? qobject_cast<IDOSSimulationCaseObject*>(project->object(caseId)) : nullptr;
     if (simulationCase == nullptr || simulationCase->curveTables().isEmpty())
     {
         return;
     }
-
     QWidget* parent = m_interface != nullptr ? m_interface->mainWindow() : nullptr;
     if (!m_propertyCurvesWidget.isNull())
     {

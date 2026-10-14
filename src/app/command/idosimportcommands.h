@@ -7,6 +7,7 @@
 #include <QList>
 #include <QPointer>
 #include <QStringList>
+#include <QVariantList>
 
 #include "command/idoscommand.h"
 #include "command/idoscommandmetadata.h"
@@ -25,7 +26,10 @@ public:
         Case,
         Grid,
         Property,
-        WellData
+        WellData,
+        FluidRock,
+        FluidRockAttach,
+        ProjectData
     };
 
     IDOSImportObjectsCommand(IDOSProject* project, const QString& name,
@@ -43,6 +47,9 @@ private:
     friend class IDOSImportGridCommandMetadata;
     friend class IDOSImportPropertyCommandMetadata;
     friend class IDOSImportWellDataCommandMetadata;
+    friend class IDOSImportFluidRockTablesCommandMetadata;
+    friend class IDOSAttachFluidRockTableCommandMetadata;
+    friend class IDOSImportProjectDataCommandMetadata;
     static QJsonObject filePathSchema();
     static QJsonObject stringPropertySchema(const QString& description);
     static QJsonObject schemaWithProperties(const QJsonObject& properties, const QJsonArray& required);
@@ -50,6 +57,7 @@ private:
     bool loadObjects(QString& error);
     bool acceptObject(IDOSDataObject* object) const;
     void prepareObject(IDOSDataObject* object);
+    bool isFluidKeyword(const QString& keyword) const;
     bool prepareWells(QString& error);
     bool applyWells(QString& error);
     bool revertWells(QString& error);
@@ -65,14 +73,19 @@ private:
     void deleteDetachedObjects();
 
     QString m_filePath;
+    QString m_fluidRockCategory;
+    QString m_providerId;
+    QString m_dataTypeId;
     Mode m_mode;
     QString m_targetGridId;
     QString m_targetCaseId;
+    QString m_targetTableId;
     QString m_caseNameOverride;
     bool m_replaceExistingGrid;
     bool m_loaded;
     QString m_targetWellId;
     bool m_wellsPrepared;
+    QVariantList m_importedCurveTables;
     QHash<QString, QPointer<IDOSWell>> m_wellTargets;
     QHash<QString, IDOSWell*> m_wellBefore;
     QHash<QString, IDOSWell*> m_wellAfter;
@@ -120,6 +133,39 @@ class APP_EXPORT IDOSImportWellDataCommandMetadata : public IDOSCommandMetadata
 public:
     IDOSImportWellDataCommandMetadata();
     ~IDOSImportWellDataCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
+};
+
+class APP_EXPORT IDOSImportFluidRockTablesCommandMetadata : public IDOSCommandMetadata
+{
+  public:
+    IDOSImportFluidRockTablesCommandMetadata();
+    ~IDOSImportFluidRockTablesCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
+};
+
+class APP_EXPORT IDOSAttachFluidRockTableCommandMetadata : public IDOSCommandMetadata
+{
+  public:
+    IDOSAttachFluidRockTableCommandMetadata();
+    ~IDOSAttachFluidRockTableCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
+};
+
+class APP_EXPORT IDOSImportProjectDataCommandMetadata : public IDOSCommandMetadata
+{
+  public:
+    IDOSImportProjectDataCommandMetadata();
+    ~IDOSImportProjectDataCommandMetadata() override;
 
     QJsonObject schema() const override;
     IDOSCommand* create(const QJsonObject& arguments,

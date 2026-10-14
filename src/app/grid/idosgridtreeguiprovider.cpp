@@ -166,7 +166,7 @@ void IDOSGridTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
     }
     if (item->isGroup() && item->key() == QStringLiteral("grid.filters"))
     {
-        QAction* action = addDisplayAction(menu, view, tr("Grid Filter..."), item->dataId(), QString());
+        QAction* action = addDisplayAction(menu, view, tr("New Filter..."), item->dataId(), QString());
         action->setObjectName(QStringLiteral("gridFilterAction"));
         action->setProperty("openFilter", true);
         connect(action, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onSettingsTriggered);
@@ -181,10 +181,16 @@ void IDOSGridTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
             connect(import, &QAction::triggered, this,
                     &IDOSGridTreeGuiProvider::onImportDynamicProperties);
         }
-        else
+        else if (item->key() == QStringLiteral("grid.staticProperties"))
         {
             QAction* import = addAction(menu, view, tr("Import Property..."));
             import->setObjectName(QStringLiteral("importPropertyAction"));
+            connect(import, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onImportProperty);
+        }
+        else if (item->key() == QStringLiteral("grid.regions"))
+        {
+            QAction* import = addAction(menu, view, tr("Import Region Properties..."));
+            import->setObjectName(QStringLiteral("importRegionPropertiesAction"));
             connect(import, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onImportProperty);
         }
     }
@@ -196,6 +202,10 @@ void IDOSGridTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
     }
     else if (qobject_cast<IDOSGrid*>(data) != nullptr)
     {
+        QAction* filterAction = addDisplayAction(menu, view, tr("New Filter..."), item->dataId(), QString());
+        filterAction->setObjectName(QStringLiteral("gridFilterAction"));
+        filterAction->setProperty("openFilter", true);
+        connect(filterAction, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onSettingsTriggered);
         QAction* remove = addAction(menu, view, tr("Delete Grid..."));
         remove->setObjectName(QStringLiteral("deleteGridAction"));
         connect(remove, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onDeleteGrid);
@@ -412,7 +422,7 @@ bool IDOSGridTreeGuiProvider::deleteGrid(IDOSTreeView* view, const QString& grid
         QMessageBox::question(view, tr("Delete Grid"),
                                tr("Are you sure you want to delete grid \"%1\"?\n"
                                   "It will also delete %2 propert(ies) under this grid "
-                                  "and all saved filters, and remove it from its case.")
+                                  "and all saved filters, and remove it from all cases that reference it.")
                                    .arg(grid->name())
                                    .arg(propertyCount),
                                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
@@ -468,11 +478,11 @@ bool IDOSGridTreeGuiProvider::importProperty(IDOSTreeView* view, const QString& 
         return false;
     }
     QPointer<IDOSProject> target(view->project());
-    // 当前能产出网格属性的可识别格式为 ECLIPSE .DATA；后续新增 .GRDECL/.INIT/.UNRST
-    // provider 后在此扩充过滤项
+    // .DATA imports properties together with the parsed simulation deck.
     const QString file = QFileDialog::getOpenFileName(
         view, tr("Import Grid Property"), QString(),
-        tr("ECLIPSE Data Files (*.DATA *.data);;All Files (*)"));
+        tr("ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;"
+           "ECLIPSE Data Files (*.DATA *.data);;All Files (*)"));
     if (file.isEmpty() || target.isNull())
     {
         return false;
@@ -574,13 +584,6 @@ void IDOSGridTreeGuiProvider::populateDisplayMenu(QMenu* menu, IDOSTreeView* vie
         property != nullptr ? property->objectId() : QString());
     settings->setObjectName(QStringLiteral("gridSettingsAction"));
     connect(settings, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onSettingsTriggered);
-    if (property == nullptr)
-    {
-        QAction* filter = addDisplayAction(menu, view, tr("Grid Filter..."), gridId, QString());
-        filter->setObjectName(QStringLiteral("gridFilterAction"));
-        filter->setProperty("openFilter", true);
-        connect(filter, &QAction::triggered, this, &IDOSGridTreeGuiProvider::onSettingsTriggered);
-    }
 }
 
 QAction* IDOSGridTreeGuiProvider::addDisplayAction(QMenu* menu, IDOSTreeView* view, const QString& text,

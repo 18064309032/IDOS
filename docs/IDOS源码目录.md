@@ -1,6 +1,6 @@
 # IDOS 源码目录
 
-更新日期：2026-10-13。
+更新日期：2026-10-14。
 
 本文是已确认的固定源码目录及扩展归属依据。主要框架、具体井/网格/工况实现和通用工具类已按此布局落地；清单不是整个仓库文件枚举，实施及未完成状态见工作进度。未经用户确认，不改变目录划分，不增加方案外类或包装层。
 
@@ -38,6 +38,42 @@ src/
         idosdatametadata.cpp
         idosdataregistry.h
         idosdataregistry.cpp
+
+    core/data/fracture/
+        idosfractureschedule.h
+        idosfractureschedule.cpp
+        idosfracturescheduledatametadata.h
+        idosfracturescheduledatametadata.cpp
+        idosnaturalfractureset.h
+        idosnaturalfractureset.cpp
+        idosnaturalfracturesetdatametadata.h
+        idosnaturalfracturesetdatametadata.cpp
+        idosfracturematerialcatalog.h
+        idosfracturematerialcatalog.cpp
+        idosfracturematerialcatalogdatametadata.h
+        idosfracturematerialcatalogdatametadata.cpp
+
+    core/data/production/
+        idosproductionhistory.h
+        idosproductionhistory.cpp
+        idosproductionhistorydatametadata.h
+        idosproductionhistorydatametadata.cpp
+
+    core/data/seismic/
+        idosmicroseismicset.h
+        idosmicroseismicset.cpp
+        idosmicroseismicdatametadata.h
+        idosmicroseismicdatametadata.cpp
+        idosseismicvolume.h
+        idosseismicvolume.cpp
+        idosseismicvolumedatametadata.h
+        idosseismicvolumedatametadata.cpp
+
+    core/data/fluidrock/
+        idosfluidrocktable.h
+        idosfluidrocktable.cpp
+        idosfluidrocktablemetadata.h
+        idosfluidrocktablemetadata.cpp
 
     core/data/well/
         idoswell.h
@@ -78,6 +114,14 @@ src/
         idosgridfilter.cpp
         idosgridfiltermetadata.h
         idosgridfiltermetadata.cpp
+        idosgridsurface.h
+        idosgridsurface.cpp
+        idosgridsurfacedatametadata.h
+        idosgridsurfacedatametadata.cpp
+        idosgridboundary.h
+        idosgridboundary.cpp
+        idosgridboundarydatametadata.h
+        idosgridboundarydatametadata.cpp
         idosgridmetadata.h
         idosgridmetadata.cpp
         idosgridcell.h
@@ -146,6 +190,36 @@ src/
         idosdataproviderregistry.h
         idosdataproviderregistry.cpp
 
+    providers/fracture/
+        idosfracturescheduleprovider.h
+        idosfracturescheduleprovider.cpp
+        idosfractureschedulemetadata.h
+        idosfractureschedulemetadata.cpp
+        idosnaturalfractureprovider.h
+        idosnaturalfractureprovider.cpp
+        idosnaturalfracturemetadata.h
+        idosnaturalfracturemetadata.cpp
+        idosfracturematerialcatalogprovider.h
+        idosfracturematerialcatalogprovider.cpp
+        idosfracturematerialcatalogmetadata.h
+        idosfracturematerialcatalogmetadata.cpp
+
+    providers/production/
+        idosproductionhistoryprovider.h
+        idosproductionhistoryprovider.cpp
+        idosproductionhistorymetadata.h
+        idosproductionhistorymetadata.cpp
+
+    providers/seismic/
+        idosmicroseismicprovider.h
+        idosmicroseismicprovider.cpp
+        idosmicroseismicmetadata.h
+        idosmicroseismicmetadata.cpp
+        idossegyprovider.h
+        idossegyprovider.cpp
+        idossegyprovidermetadata.h
+        idossegyprovidermetadata.cpp
+
     providers/well/
         idoswellheaderprovider.h
         idoswellheaderprovider.cpp
@@ -174,11 +248,29 @@ src/
         idoswelllasmetadata.h
         idoswelllasmetadata.cpp
 
-    providers/eclipse/
+    providers/fluidrock/
+        idosfluidrocktextprovider.h
+        idosfluidrocktextprovider.cpp
+
+    providers/grid/
+        idosgridsurfaceprovider.h
+        idosgridsurfaceprovider.cpp
+        idosgridsurfacemetadata.h
+        idosgridsurfacemetadata.cpp
+        idosgridboundaryprovider.h
+        idosgridboundaryprovider.cpp
+        idosgridboundarymetadata.h
+        idosgridboundarymetadata.cpp
+        idosgridpropertyeclipseprovider.h
+        idosgridpropertyeclipseprovider.cpp
+        idosgridpropertyeclipsemetadata.h
+        idosgridpropertyeclipsemetadata.cpp
         idosgrideclipseprovider.h
         idosgrideclipseprovider.cpp
         idosgrideclipsemetadata.h
         idosgrideclipsemetadata.cpp
+
+    providers/case/
         idossimulationcaseeclipseprovider.h
         idossimulationcaseeclipseprovider.cpp
         idossimulationcaseeclipsemetadata.h
@@ -239,6 +331,16 @@ src/
         idosappinterface.cpp
         idosmainwindow.h
         idosmainwindow.cpp
+        idosseismicvolumerenderprovider.h
+        idosseismicvolumerenderprovider.cpp
+        idosseismicvolumerendermetadata.h
+        idosseismicvolumerendermetadata.cpp
+        idosimporteddatatreeprovider.h
+        idosimporteddatatreeprovider.cpp
+        idosimporteddatatreemetadata.h
+        idosimporteddatatreemetadata.cpp
+        idosimporteddatatreeguiprovider.h
+        idosimporteddatatreeguiprovider.cpp
         idospluginmetadata.h
         idospluginmetadata.cpp
         idospluginregistry.h
@@ -267,6 +369,14 @@ src/
         idosdeletewellcommand.cpp
 
     app/grid/
+        idosgridsurfacerenderprovider.h
+        idosgridsurfacerenderprovider.cpp
+        idosgridsurfacerendermetadata.h
+        idosgridsurfacerendermetadata.cpp
+        idosgridboundaryrenderprovider.h
+        idosgridboundaryrenderprovider.cpp
+        idosgridboundaryrendermetadata.h
+        idosgridboundaryrendermetadata.cpp
         idosgridtreeprovider.h
         idosgridtreeprovider.cpp
         idosgridtreemetadata.h
@@ -307,6 +417,14 @@ src/
         idoscreatecasecommand.cpp
         idosdeletecasecommand.h
         idosdeletecasecommand.cpp
+
+    app/fluidrock/
+        idosfluidrocktabletreeguiprovider.h
+        idosfluidrocktabletreeguiprovider.cpp
+        idosfluidrocktabletreeprovider.h
+        idosfluidrocktabletreeprovider.cpp
+        idosfluidrocktabletreemetadata.h
+        idosfluidrocktabletreemetadata.cpp
 
     app/command/
         idosrenameobjectcommand.h
@@ -381,9 +499,10 @@ src/
 
 - `IDOSGridSettingWidget` 位于现有 `src/app/grid`，网格及属性共用外观和着色面板；菜单及勾选由现有 `IDOSGridTreeGuiProvider` 统一提供。旧插件着色面板、专用菜单 Provider 及其注册链已删除，不保留两套入口。
 
-- `core/data` 保存数据，不依赖界面或渲染；类型专属数据位于 `well`、`grid`、`case`。
-- 内置树构建、菜单、渲染与业务命令按类型放在 `app/well`、`app/grid`、`app/case`；跨类型命令放在 `app/command`。
-- 数据读取按已确定的来源或格式组织；井头与轨迹读取暂保留 `providers/well`，不擅自编造格式目录。
+- `core/data` 保存数据，不依赖界面或渲染；类型专属数据位于 `well`、`grid`、`case`、`fluidrock`。
+- 内置树构建、菜单、渲染与业务命令按类型放在 `app/well`、`app/grid`、`app/case`、`app/fluidrock`；跨类型命令放在 `app/command`。
+- 数据读取按已确认的数据领域组织到 `providers/well`、`providers/grid`、`providers/case`、`providers/fluidrock`；目录名表示数据领域，Provider 类名保留其 ECLIPSE 格式实现身份。
+- 微地震数据对象与解析器分别位于 `core/data/seismic`、`providers/seismic`；压裂泵注程序、天然裂缝及流体/支撑剂目录位于 `core/data/fracture`、`providers/fracture`；生产历史位于 `core/data/production`、`providers/production`。
 - 被替代的旧树模型、节点子类、菜单 Provider、类型注册和具体 RenderObject 等在接通新调用路径后删除。
 - 具体命令 Metadata 的文件拆分尚未确定，实施相关功能前应明确清单，不据此自行增加新的抽象。
 - `IDOSInterface` 已位于 gui，仅前置声明 RenderRegistry 和 ToolRegistry，不引入对 app 具体类型及 render 的链接依赖。

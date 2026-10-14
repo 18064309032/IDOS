@@ -16,6 +16,7 @@
 class PROVIDERS_EXPORT IDOSWellLasProvider : public IDOSDataProvider
 {
   public:
+    bool canRead(const QString& filePath) const;
     QList<IDOSDataObject*> read(const QString& filePath) override;
 
   private:

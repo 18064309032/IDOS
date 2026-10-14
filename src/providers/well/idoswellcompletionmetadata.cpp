@@ -16,7 +16,8 @@ QString IDOSWellCompletionMetadata::displayName() const
 
 QStringList IDOSWellCompletionMetadata::fileExtensions() const
 {
-    return {QStringLiteral("*.ev"), QStringLiteral("*.perf"), QStringLiteral("*.txt"), QStringLiteral("*.dat")};
+    return {QStringLiteral("*.ev"), QStringLiteral("*.perf"), QStringLiteral("*.txt"), QStringLiteral("*.dat"),
+            QStringLiteral("*.xlsx"), QStringLiteral("*.XLSX")};
 }
 
 std::unique_ptr<IDOSDataProvider> IDOSWellCompletionMetadata::create() const

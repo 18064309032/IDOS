@@ -1,7 +1,8 @@
 #include "idoswellpathpoint.h"
 
 IDOSWellPathPoint::IDOSWellPathPoint()
-    : m_md(0.0)
+    :
+    m_md(0.0)
     , m_x(0.0)
     , m_y(0.0)
     , m_z(0.0)
@@ -10,11 +11,13 @@ IDOSWellPathPoint::IDOSWellPathPoint()
     , m_dy(0.0)
     , m_azimuth(0.0)
     , m_inclination(0.0)
+    , m_attributes()
 {
 }
 
 IDOSWellPathPoint::IDOSWellPathPoint(double md, double x, double y, double z, double tvd)
-    : m_md(md)
+    :
+    m_md(md)
     , m_x(x)
     , m_y(y)
     , m_z(z)
@@ -23,6 +26,7 @@ IDOSWellPathPoint::IDOSWellPathPoint(double md, double x, double y, double z, do
     , m_dy(0.0)
     , m_azimuth(0.0)
     , m_inclination(0.0)
+    , m_attributes()
 {
 }
 
@@ -49,7 +53,8 @@ double IDOSWellPathPoint::tvd() const
 
 IDOSWellPathPoint::IDOSWellPathPoint(double md, double x, double y, double z, double tvd, double dx, double dy,
                                      double azimuth, double inclination)
-    : m_md(md)
+    :
+    m_md(md)
     , m_x(x)
     , m_y(y)
     , m_z(z)
@@ -58,6 +63,7 @@ IDOSWellPathPoint::IDOSWellPathPoint(double md, double x, double y, double z, do
     , m_dy(dy)
     , m_azimuth(azimuth)
     , m_inclination(inclination)
+    , m_attributes()
 {
 }
 
@@ -79,4 +85,14 @@ double IDOSWellPathPoint::azimuth() const
 double IDOSWellPathPoint::inclination() const
 {
     return m_inclination;
+}
+
+QVariantMap IDOSWellPathPoint::attributes() const
+{
+    return m_attributes;
+}
+
+void IDOSWellPathPoint::setAttributes(const QVariantMap& attributes)
+{
+    m_attributes = attributes;
 }

@@ -11,11 +11,18 @@
 
 #include <vtkSmartPointer.h>
 
+#ifdef IDOS_ENABLE_RENDER
+#include <vtkActor.h>
+#endif
+
 #include "idos_app.h"
 #include "idosrenderprovider.h"
 #include "idoswellpathpoint.h"
 
 class IDOSWell;
+#ifndef IDOS_ENABLE_RENDER
+class vtkActor;
+#endif
 class vtkCellArray;
 class vtkPoints;
 

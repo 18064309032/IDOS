@@ -1,6 +1,10 @@
 #ifndef IDOS_WELL_HEADER_PROVIDER_H
 #define IDOS_WELL_HEADER_PROVIDER_H
 
+#include <QList>
+#include <QString>
+#include <QStringList>
+
 #include "idosdataprovider.h"
 
 /**
@@ -14,6 +18,11 @@ class PROVIDERS_EXPORT IDOSWellHeaderProvider : public IDOSDataProvider
 {
   public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
+
+  private:
+    QList<IDOSDataObject*> readWhitespaceHeader(const QString& filePath);
+    bool readPetrel(const QStringList& lines, QList<IDOSDataObject*>* result);
+    QStringList splitQuotedFields(const QString& line) const;
 };
 
 #endif // IDOS_WELL_HEADER_PROVIDER_H

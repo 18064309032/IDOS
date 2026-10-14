@@ -1,15 +1,34 @@
 #include <memory>
 
-#include "eclipse/idosgrideclipsemetadata.h"
-#include "eclipse/idossimulationcaseeclipsemetadata.h"
+#include "case/idossimulationcaseeclipsemetadata.h"
+#include "grid/idosgridboundarymetadata.h"
+#include "grid/idosgrideclipsemetadata.h"
+#include "grid/idosgridpropertyeclipsemetadata.h"
+#include "grid/idosgridsurfacemetadata.h"
 #include "idosdataproviderregistry.h"
 #include "idosdataregistry.h"
+#include "idosfluidrocktablemetadata.h"
+#include "idosfracturematerialcatalog.h"
+#include "idosfracturematerialcatalogdatametadata.h"
+#include "idosfracturematerialcatalogmetadata.h"
+#include "idosfracturescheduledatametadata.h"
+#include "idosfractureschedulemetadata.h"
+#include "idosgridboundarydatametadata.h"
 #include "idosgridfiltermetadata.h"
 #include "idosgridmetadata.h"
+#include "idosgridsurfacedatametadata.h"
+#include "idosmicroseismicdatametadata.h"
+#include "idosmicroseismicmetadata.h"
+#include "idosseismicvolumedatametadata.h"
+#include "idosnaturalfracturemetadata.h"
+#include "idosnaturalfracturesetdatametadata.h"
+#include "idosproductionhistorydatametadata.h"
+#include "idosproductionhistorymetadata.h"
 #include "idossimulationcasemetadata.h"
 #include "idoswellmetadata.h"
 #include "las/idoswelllasmetadata.h"
 #include "log/idoslogger.h"
+#include "seismic/idossegyprovidermetadata.h"
 #include "well/idoswellcheckshotmetadata.h"
 #include "well/idoswellcompletionmetadata.h"
 #include "well/idoswellheadermetadata.h"
@@ -28,7 +47,20 @@ IDOSApplication::IDOSApplication(int& argc, char** argv)
     m_dataRegistry->add(new IDOSWellMetadata());
     m_dataRegistry->add(new IDOSGridMetadata());
     m_dataRegistry->add(new IDOSGridFilterMetadata());
+    m_dataRegistry->add(new IDOSGridSurfaceDataMetadata());
+    m_dataRegistry->add(new IDOSGridBoundaryDataMetadata());
     m_dataRegistry->add(new IDOSSimulationCaseMetadata());
+    m_dataRegistry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::Fluid));
+    m_dataRegistry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::RockPhysics));
+    m_dataRegistry->add(new IDOSMicroseismicDataMetadata());
+    m_dataRegistry->add(new IDOSSeismicVolumeDataMetadata());
+    m_dataRegistry->add(new IDOSFractureScheduleDataMetadata());
+    m_dataRegistry->add(new IDOSNaturalFractureSetDataMetadata());
+    m_dataRegistry->add(new IDOSProductionHistoryDataMetadata());
+    m_dataRegistry->add(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalog::Kind::Fluid));
+    m_dataRegistry->add(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalog::Kind::Proppant));
 }
 
 IDOSDataRegistry* IDOSApplication::dataRegistry() const
@@ -75,6 +107,34 @@ void IDOSApplication::handleQtMessage(QtMsgType type,
 void IDOSApplication::initProviders()
 {
     IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
+    if (registry.metadata(QStringLiteral("idos.microseismic.tsv")) == nullptr)
+    {
+        registry.add(new IDOSMicroseismicMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.seismic.segy")) == nullptr)
+    {
+        registry.add(new IDOSSegyProviderMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.fracture.schedule.tsv")) == nullptr)
+    {
+        registry.add(new IDOSFractureScheduleMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.naturalFracture.ascii")) == nullptr)
+    {
+        registry.add(new IDOSNaturalFractureMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.production.vol")) == nullptr)
+    {
+        registry.add(new IDOSProductionHistoryMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.fracture.materialCatalog.tsv")) == nullptr)
+    {
+        registry.add(new IDOSFractureMaterialCatalogMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.gridproperty.eclipse")) == nullptr)
+    {
+        registry.add(new IDOSGridPropertyEclipseMetadata());
+    }
     if (registry.metadata(QStringLiteral("idos.well.tops")) == nullptr)
     {
         registry.add(new IDOSWellTopsMetadata());
@@ -102,6 +162,14 @@ void IDOSApplication::initProviders()
     if (registry.metadata(QStringLiteral("idos.grid.eclipse")) == nullptr)
     {
         registry.add(new IDOSGridEclipseMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.grid.surface.zims")) == nullptr)
+    {
+        registry.add(new IDOSGridSurfaceMetadata());
+    }
+    if (registry.metadata(QStringLiteral("idos.grid.boundary.xygi")) == nullptr)
+    {
+        registry.add(new IDOSGridBoundaryMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.case.simulation.eclipse")) == nullptr)
     {

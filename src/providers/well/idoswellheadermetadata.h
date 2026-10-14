@@ -8,8 +8,7 @@
 /**
  * @brief 井头汇总表 provider 的元数据 + 工厂。
  *
- * 文件名固定为 Wellheader.txt，canHandle 按文件名匹配
- * （包含 "wellheader"），不靠扩展名。
+ * Supports the legacy seven-column Wellheader format and Petrel VERSION 1 files.
  */
 class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSDataProviderMetadata
 {

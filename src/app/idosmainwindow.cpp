@@ -54,11 +54,17 @@
 #include "idosdeletegridcommand.h"
 #include "idosdeletepropertycommand.h"
 #include "idosdeletewellcommand.h"
+#include "idosfluidrocktabletreeguiprovider.h"
+#include "idosfluidrocktabletreemetadata.h"
+#include "idosgridboundaryrendermetadata.h"
 #include "idosgridfiltercommand.h"
 #include "idosgridfilterrendermetadata.h"
 #include "idosgridrendermetadata.h"
+#include "idosgridsurfacerendermetadata.h"
 #include "idosgridtreeguiprovider.h"
 #include "idosgridtreemetadata.h"
+#include "idosimporteddatatreeguiprovider.h"
+#include "idosimporteddatatreemetadata.h"
 #include "idosimportrestartresultscommand.h"
 #include "idosnewprojectdialog.h"
 #include "idospluginmanagerwidget.h"
@@ -75,6 +81,7 @@
 #include "idosrendertypes.h"
 #include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
+#include "idosseismicvolumerendermetadata.h"
 #include "idossimulationcasetreeguiprovider.h"
 #include "idossimulationcasetreemetadata.h"
 #include "idostoolbar.h"
@@ -155,7 +162,10 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     initDockWidgets();
     IDOS_MESSAGE(tr("Application started."), IDOSLogLevel::Info);
     initPluginManager();
-    QTimer::singleShot(0, m_assistantWidget, &IDOSAssistantWidget::startAssistant);
+    if (!qEnvironmentVariableIsSet("IDOS_DISABLE_ASSISTANT_AUTOSTART"))
+    {
+        QTimer::singleShot(0, m_assistantWidget, &IDOSAssistantWidget::startAssistant);
+    }
 }
 
 void IDOSMainWindow::initProviders()
@@ -166,9 +176,31 @@ void IDOSMainWindow::initProviders()
     m_treeRegistry->add(new IDOSWellTreeMetadata());
     m_treeRegistry->add(new IDOSGridTreeMetadata());
     m_treeRegistry->add(new IDOSSimulationCaseTreeMetadata(m_treeRegistry));
+    m_treeRegistry->add(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::Fluid));
+    m_treeRegistry->add(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::RockPhysics));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.microseismic.set"), QStringLiteral("data.microseismic")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.seismic.volume"), QStringLiteral("data.seismic")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.fracture.schedule"), QStringLiteral("data.hydraulicFractures")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.naturalFracture.set"), QStringLiteral("data.naturalFractures")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.production.history"), QStringLiteral("data.production")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.fracture.fluidCatalog"), QStringLiteral("data.fluids")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.fracture.proppantCatalog"), QStringLiteral("data.hydraulicFractures")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.grid.surface"), QStringLiteral("data.surfaceProperties")));
+    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+        QStringLiteral("idos.grid.boundary"), QStringLiteral("data.boundaries")));
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellTreeGuiProvider>());
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSGridTreeGuiProvider>());
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSSimulationCaseTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSFluidRockTableTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSImportedDataTreeGuiProvider>());
     IDOSTreeItem* wellGroup = nullptr;
     IDOSTreeItem* group0 = new IDOSTreeItem();
     group0->setKey(QStringLiteral("data.wellGroup"));
@@ -290,6 +322,9 @@ void IDOSMainWindow::initProviders()
 
     m_renderRegistry->add(new IDOSGridRenderMetadata());
     m_renderRegistry->add(new IDOSGridFilterRenderMetadata());
+    m_renderRegistry->add(new IDOSGridSurfaceRenderMetadata());
+    m_renderRegistry->add(new IDOSGridBoundaryRenderMetadata());
+    m_renderRegistry->add(new IDOSSeismicVolumeRenderMetadata());
     m_renderRegistry->add(new IDOSWellRenderMetadata());
     connect(m_renderServer, &IDOSRenderServer::objectsChanged, this, &IDOSMainWindow::onRenderObjectsChanged);
     connect(m_renderServer, &IDOSRenderServer::dataAboutToBeRemoved, this, &IDOSMainWindow::onRenderDataRemoving);
@@ -397,6 +432,9 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportGridCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportPropertyCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportFluidRockTablesCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSAttachFluidRockTableCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportProjectDataCommandMetadata()));
     }
     m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
     m_assistantDock->setObjectName(QStringLiteral("assistantDock"));

@@ -55,9 +55,12 @@ class IDOSSimulationPlugin : public QObject, public IDOSPlugin
     void onProjectDataChanged(const QString& objectId);
     void updateActionAvailability();
     IDOSSimulationCaseObject* currentSimulationCase(IDOSProject* project) const;
+    void showPropertyCurves(IDOSProject* project, const QString& caseId);
     void onCaseTableTriggered();
     void onParseSummaryTriggered();
     void onGenerateDataTriggered();
+    void onGenerateInputRequested(IDOSProject* project, const QString& caseId);
+    void onPropertyCurvesRequested(IDOSProject* project, const QString& caseId);
     void onDeckBrowserTriggered();
     void onPropertyCurvesTriggered();
     void onCurveComparisonTriggered();

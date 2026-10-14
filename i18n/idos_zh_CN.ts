@@ -428,6 +428,7 @@
     <message><source>Color by</source><translation>着色依据</translation></message>
     <message><source>Solid color</source><translation>单色</translation></message>
     <message><source>Display Settings...</source><translation>显示设置…</translation></message>
+    <message><source>New Filter...</source><translation>新建筛选…</translation></message>
 
     <message>
       <source>Import Dynamic Properties...</source>
@@ -450,6 +451,10 @@
       <translation>导入属性…</translation>
     </message>
     <message>
+      <source>Import Region Properties...</source>
+      <translation>导入区域属性…</translation>
+    </message>
+    <message>
       <source>Delete Property...</source>
       <translation>删除属性…</translation>
     </message>
@@ -463,9 +468,9 @@
     </message>
     <message>
       <source>Are you sure you want to delete grid "%1"?
-It will also delete %2 propert(ies) under this grid and all saved filters, and remove it from its case.</source>
+It will also delete %2 propert(ies) under this grid and all saved filters, and remove it from all cases that reference it.</source>
       <translation>确定要删除网格"%1"吗？
-该网格下的 %2 个属性及全部已保存筛选将一并删除，并从所属工况移除。</translation>
+该网格下的 %2 个属性及全部已保存筛选将一并删除，并从所有引用它的工况中移除。</translation>
     </message>
     <message>
       <source>Delete Property</source>
@@ -484,6 +489,10 @@ It will be removed from all cases that reference it.</source>
     <message>
       <source>ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
       <translation>ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
+      <translation>ECLIPSE 属性文件 (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
     </message>
     <message>
       <source>Imported %1 properties.</source>
@@ -928,6 +937,14 @@ It will be removed from all cases that reference it.</source>
     <message>
       <source>Rock Physics Functions</source>
       <translation>岩石物理函数</translation>
+    </message>
+    <message>
+      <source>Fluid Table</source>
+      <translation>流体表</translation>
+    </message>
+    <message>
+      <source>Rock Physics Table</source>
+      <translation>岩石物理表</translation>
     </message>
     <message>
       <source>Initial Conditions</source>
@@ -1448,6 +1465,8 @@ It will be removed from all cases that reference it.</source>
   </context>
   <context>
     <name>IDOSSimulationCaseTreeGuiProvider</name>
+    <message><source>Generate Simulation Input...</source><translation>生成模拟输入…</translation></message>
+    <message><source>View Property Curves...</source><translation>查看属性曲线…</translation></message>
     <message>
       <source>Import Grid...</source>
       <translation>导入网格…</translation>
@@ -1455,6 +1474,22 @@ It will be removed from all cases that reference it.</source>
     <message>
       <source>Delete Case...</source>
       <translation>删除工况…</translation>
+    </message>
+    <message>
+      <source>Rename Case...</source>
+      <translation>重命名工况…</translation>
+    </message>
+    <message>
+      <source>Rename Case</source>
+      <translation>重命名工况</translation>
+    </message>
+    <message>
+      <source>Case name:</source>
+      <translation>工况名称：</translation>
+    </message>
+    <message>
+      <source>Please enter a case name.</source>
+      <translation>请输入工况名称。</translation>
     </message>
     <message>
       <source>New Case...</source>
@@ -1661,6 +1696,33 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
   </context>
   <context>
     <name>IDOSWellTreeGuiProvider</name>
+    <message><source>Display Settings...</source><translation>显示设置…</translation></message>
+    <message><source>View Well Data...</source><translation>查看井数据…</translation></message>
+    <message><source>Data</source><translation>数据</translation></message>
+    <message><source>Count</source><translation>数量</translation></message>
+    <message><source>Trajectory points</source><translation>轨迹点</translation></message>
+    <message><source>Log curves</source><translation>测井曲线</translation></message>
+    <message><source>Checkshot samples</source><translation>校深样本</translation></message>
+    <message><source>View Trajectory Data...</source><translation>查看轨迹数据…</translation></message>
+    <message><source>Import or Replace Trajectory...</source><translation>导入／替换轨迹…</translation></message>
+    <message><source>Import Well Curves...</source><translation>导入井曲线…</translation></message>
+    <message><source>View Curve Data...</source><translation>查看曲线数据…</translation></message>
+    <message><source>View Marker Data...</source><translation>查看标志层数据…</translation></message>
+    <message><source>Depth (m)</source><translation>深度（米）</translation></message>
+    <message><source>Import %1 Data...</source><translation>导入%1数据…</translation></message>
+    <message><source>View %1 Data...</source><translation>查看%1数据…</translation></message>
+    <message><source>Markers</source><translation>标志层</translation></message>
+    <message><source>Completions</source><translation>完井</translation></message>
+    <message><source>Checkshots</source><translation>校深</translation></message>
+    <message><source>Measured Depth</source><translation>测量深度</translation></message>
+    <message><source>True Vertical Depth</source><translation>垂直深度</translation></message>
+    <message><source>Import Well Trajectory</source><translation>导入井轨迹</translation></message>
+    <message><source>Import Well Header...</source><translation>导入井头…</translation></message>
+    <message><source>Import Well Header</source><translation>导入井头</translation></message>
+    <message><source>Import Well Curves</source><translation>导入井曲线</translation></message>
+    <message><source>Import Well Markers</source><translation>导入井标志层</translation></message>
+    <message><source>Import Well Completions</source><translation>导入井完井数据</translation></message>
+    <message><source>Import Well Checkshots</source><translation>导入井校深数据</translation></message>
     <message>
       <source>New Well...</source>
       <translation>新建井…</translation>
@@ -1736,7 +1798,510 @@ It will be removed from all cases that reference it.</source>
     <message><source>%1 (%2)</source><translation>%1（%2）</translation></message>
 </context>
   <context>
+    <name>IDOSImportedDataTreeGuiProvider</name>
+    <message>
+      <source>Import SEG-Y Seismic Volume...</source>
+      <translation>导入 SEG-Y 地震体…</translation>
+    </message>
+    <message>
+      <source>Select Inline Section...</source>
+      <translation>选择 Inline 剖面…</translation>
+    </message>
+    <message>
+      <source>Select Inline Section</source>
+      <translation>选择 Inline 剖面</translation>
+    </message>
+    <message>
+      <source>Inline number:</source>
+      <translation>Inline 编号：</translation>
+    </message>
+    <message>
+      <source>SEG-Y Seismic Volumes (*.sgy *.SGY *.segy *.SEGY);;All Files (*)</source>
+      <translation>SEG-Y 地震体 (*.sgy *.SGY *.segy *.SEGY);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Microseismic Events...</source>
+      <translation>导入微地震事件…</translation>
+    </message>
+    <message>
+      <source>Microseismic Event Tables (*.txt *.TXT);;All Files (*)</source>
+      <translation>微地震事件表 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Fracture Pump Schedule...</source>
+      <translation>导入压裂泵注程序…</translation>
+    </message>
+    <message>
+      <source>Fracture Pump Schedules (*.txt *.TXT *.xlsx *.XLSX);;All Files (*)</source>
+      <translation>压裂泵注程序 (*.txt *.TXT *.xlsx *.XLSX);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Natural Fractures...</source>
+      <translation>导入天然裂缝…</translation>
+    </message>
+    <message>
+      <source>ASCII Natural Fracture Files (*.fab *.FAB);;All Files (*)</source>
+      <translation>ASCII 天然裂缝文件 (*.fab *.FAB);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Production History...</source>
+      <translation>导入生产历史…</translation>
+    </message>
+    <message>
+      <source>Production History (*.vol *.VOL);;All Files (*)</source>
+      <translation>生产历史 (*.vol *.VOL);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Proppant Catalog...</source>
+      <translation>导入支撑剂目录…</translation>
+    </message>
+    <message>
+      <source>Proppant Catalog (*.txt *.TXT);;All Files (*)</source>
+      <translation>支撑剂目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Fluid Catalog...</source>
+      <translation>导入压裂液目录…</translation>
+    </message>
+    <message>
+      <source>Fluid Catalog (*.txt *.TXT);;All Files (*)</source>
+      <translation>压裂液目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Grid Surface...</source>
+      <translation>导入地层面…</translation>
+    </message>
+    <message>
+      <source>ZIMS Grid Surface (*);;All Files (*)</source>
+      <translation>ZIMS 地层面文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Import Grid Boundary...</source>
+      <translation>导入网格边界…</translation>
+    </message>
+    <message>
+      <source>Grid Boundary Point Files (*);;All Files (*)</source>
+      <translation>网格边界点文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>%1 (%2 events)</source>
+      <translation>%1（%2 个事件）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 samples)</source>
+      <translation>%1（%2 个采样点）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 fractures)</source>
+      <translation>%1（%2 条裂缝）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 records)</source>
+      <translation>%1（%2 条记录）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 materials)</source>
+      <translation>%1（%2 种材料）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 × %3 surface)</source>
+      <translation>%1（%2 × %3 地层面）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 boundary points)</source>
+      <translation>%1（%2 个边界点）</translation>
+    </message>
+  </context>
+  <context>
     <name>QObject</name>
+    <message>
+      <source>%1 (%2 events)</source>
+      <translation>%1（%2 个事件）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 samples)</source>
+      <translation>%1（%2 个采样点）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 fractures)</source>
+      <translation>%1（%2 条裂缝）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 records)</source>
+      <translation>%1（%2 条记录）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 materials)</source>
+      <translation>%1（%2 种材料）</translation>
+    </message>
+    <message>
+      <source>%1 (%2 traces × %3 samples)</source>
+      <translation>%1（%2 道 × %3 个采样点）</translation>
+    </message>
+    <message>
+      <source>Seismic Volume</source>
+      <translation>地震体</translation>
+    </message>
+    <message>
+      <source>Cannot open SEG-Y file: %1</source>
+      <translation>无法打开 SEG-Y 文件：%1</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file is shorter than its mandatory headers.</source>
+      <translation>SEG-Y 文件短于必需文件头的长度。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file has incomplete textual or binary headers.</source>
+      <translation>SEG-Y 文件的文本头或二进制头不完整。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y binary header has an unsupported sample format or sample count.</source>
+      <translation>SEG-Y 二进制头中的采样格式或采样数不受支持。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y sample interval, sample count, or extended-header count is invalid.</source>
+      <translation>SEG-Y 的采样间隔、采样数或扩展文本头数量无效。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y extended textual headers are incomplete.</source>
+      <translation>SEG-Y 扩展文本头不完整。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y extended textual headers have no end marker.</source>
+      <translation>SEG-Y 扩展文本头缺少结束标记。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file contains more samples than the importer can index.</source>
+      <translation>SEG-Y 文件的采样数超过导入器可索引的范围。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file ends inside a trace header.</source>
+      <translation>SEG-Y 文件在道头中途结束。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file has an invalid or incomplete trace %1.</source>
+      <translation>SEG-Y 文件的第 %1 道无效或不完整。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file ends inside trace %1 samples.</source>
+      <translation>SEG-Y 文件在第 %1 道的样点数据中途结束。</translation>
+    </message>
+    <message>
+      <source>Cannot seek over SEG-Y trace samples.</source>
+      <translation>无法跳过 SEG-Y 道样点数据。</translation>
+    </message>
+    <message>
+      <source>The SEG-Y file contains no traces.</source>
+      <translation>SEG-Y 文件不包含道迹。</translation>
+    </message>
+    <message>
+      <source>SEG-Y sample format %1</source>
+      <translation>SEG-Y 采样格式 %1</translation>
+    </message>
+    <message>
+      <source>Fracture Material Catalog</source>
+      <translation>压裂材料目录</translation>
+    </message>
+    <message>
+      <source>Grid Surface</source>
+      <translation>地层面</translation>
+    </message>
+    <message>
+      <source>Grid Boundary</source>
+      <translation>网格边界</translation>
+    </message>
+    <message>
+      <source>ZIMS Grid Surface</source>
+      <translation>ZIMS 地层面</translation>
+    </message>
+    <message>
+      <source>Grid Boundary Points</source>
+      <translation>网格边界点</translation>
+    </message>
+    <message>
+      <source>Cannot open grid surface file: %1</source>
+      <translation>无法打开地层面文件：%1</translation>
+    </message>
+    <message>
+      <source>The file does not contain a complete ZIMS grid surface header.</source>
+      <translation>文件不包含完整的 ZIMS 地层面表头。</translation>
+    </message>
+    <message>
+      <source>The ZIMS grid surface dimensions or spacing are invalid.</source>
+      <translation>ZIMS 地层面的尺寸或间距无效。</translation>
+    </message>
+    <message>
+      <source>The ZIMS grid surface contains an invalid value.</source>
+      <translation>ZIMS 地层面包含无效数值。</translation>
+    </message>
+    <message>
+      <source>The ZIMS grid surface contains more values than its dimensions.</source>
+      <translation>ZIMS 地层面数值数量超过其尺寸要求。</translation>
+    </message>
+    <message>
+      <source>The ZIMS grid surface contains %1 values; expected %2.</source>
+      <translation>ZIMS 地层面包含 %1 个数值，预期为 %2 个。</translation>
+    </message>
+    <message>
+      <source>Cannot open grid boundary file: %1</source>
+      <translation>无法打开网格边界文件：%1</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid grid boundary coordinate row.</source>
+      <translation>第 %1 行：网格边界坐标记录无效。</translation>
+    </message>
+    <message>
+      <source>The grid boundary file contains fewer than two points.</source>
+      <translation>网格边界文件少于两个点。</translation>
+    </message>
+    <message>
+      <source>Cannot open fracture material catalog: %1</source>
+      <translation>无法打开压裂材料目录：%1</translation>
+    </message>
+    <message>
+      <source>The fracture material catalog has an unsupported header.</source>
+      <translation>压裂材料目录的表头格式不受支持。</translation>
+    </message>
+    <message>
+      <source>Line %1: material record has the wrong number of columns.</source>
+      <translation>第 %1 行的材料记录列数不正确。</translation>
+    </message>
+    <message>
+      <source>The fracture material catalog contains no records.</source>
+      <translation>压裂材料目录不包含任何记录。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid event date or time.</source>
+      <translation>第 %1 行的事件日期或时间无效。</translation>
+    </message>
+    <message>
+      <source>Microseismic Event Set</source>
+      <translation>微地震事件集</translation>
+    </message>
+    <message>
+      <source>Hydraulic Fracture Schedule</source>
+      <translation>水力压裂泵注程序</translation>
+    </message>
+    <message>
+      <source>Natural Fracture Set</source>
+      <translation>天然裂缝集</translation>
+    </message>
+    <message>
+      <source>Production History</source>
+      <translation>生产历史</translation>
+    </message>
+    <message>
+      <source>Microseismic Events (TSV)</source>
+      <translation>微地震事件（制表文本）</translation>
+    </message>
+    <message>
+      <source>Fracture Pump Schedule</source>
+      <translation>压裂泵注程序</translation>
+    </message>
+    <message>
+      <source>ASCII Natural Fractures</source>
+      <translation>ASCII 天然裂缝</translation>
+    </message>
+    <message>
+      <source>Production History (VOL)</source>
+      <translation>生产历史（VOL）</translation>
+    </message>
+    <message>
+      <source>Cannot open microseismic file: %1</source>
+      <translation>无法打开微地震文件：%1</translation>
+    </message>
+    <message>
+      <source>The microseismic file has an unsupported column header.</source>
+      <translation>微地震文件的列标题不受支持。</translation>
+    </message>
+    <message>
+      <source>Line %1: the event row does not match the column header.</source>
+      <translation>第 %1 行：事件数据与列标题不匹配。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid numeric event value.</source>
+      <translation>第 %1 行包含无效的数值事件数据。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid event time value.</source>
+      <translation>第 %1 行的事件时间值无效。</translation>
+    </message>
+    <message>
+      <source>The microseismic file contains no events.</source>
+      <translation>微地震文件中没有事件。</translation>
+    </message>
+    <message>
+      <source>Cannot open fracture schedule: %1</source>
+      <translation>无法打开压裂泵注程序：%1</translation>
+    </message>
+    <message>
+      <source>The fracture schedule has an unsupported column header.</source>
+      <translation>压裂泵注程序的列标题不受支持。</translation>
+    </message>
+    <message>
+      <source>The fracture schedule has an invalid units row.</source>
+      <translation>压裂泵注程序的单位行无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: expected five tab-separated values.</source>
+      <translation>第 %1 行应包含五个制表符分隔的值。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid or decreasing sample time.</source>
+      <translation>第 %1 行的采样时间无效或早于上一条记录。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid numeric sample value.</source>
+      <translation>第 %1 行包含无效的数值采样数据。</translation>
+    </message>
+    <message>
+      <source>The fracture schedule contains no samples.</source>
+      <translation>压裂泵注程序中没有采样数据。</translation>
+    </message>
+    <message>
+      <source>Cannot open fracture schedule workbook.</source>
+      <translation>无法打开压裂泵注程序工作簿。</translation>
+    </message>
+    <message>
+      <source>The workbook contains no supported pump schedule sheets.</source>
+      <translation>工作簿中没有受支持的泵注程序工作表。</translation>
+    </message>
+    <message>
+      <source>Cannot open perforation workbook.</source>
+      <translation>无法打开射孔数据工作簿。</translation>
+    </message>
+    <message>
+      <source>Sheet %1, row %2: invalid measured depth interval.</source>
+      <translation>工作表 %1，第 %2 行：测深区间无效。</translation>
+    </message>
+    <message>
+      <source>The workbook contains no valid perforation intervals.</source>
+      <translation>工作簿中没有有效的射孔测深区间。</translation>
+    </message>
+    <message>
+      <source>Cannot open natural fracture file: %1</source>
+      <translation>无法打开天然裂缝文件：%1</translation>
+    </message>
+    <message>
+      <source>The natural fracture file has an invalid format header.</source>
+      <translation>天然裂缝文件的格式头无效。</translation>
+    </message>
+    <message>
+      <source>Only ASCII natural fracture files are supported.</source>
+      <translation>目前仅支持 ASCII 天然裂缝文件。</translation>
+    </message>
+    <message>
+      <source>The natural fracture coordinate scale is invalid.</source>
+      <translation>天然裂缝坐标比例无效。</translation>
+    </message>
+    <message>
+      <source>The natural fracture count is invalid.</source>
+      <translation>天然裂缝数量无效。</translation>
+    </message>
+    <message>
+      <source>The natural fracture property count is invalid.</source>
+      <translation>天然裂缝属性数量无效。</translation>
+    </message>
+    <message>
+      <source>The natural fracture format section is incomplete.</source>
+      <translation>天然裂缝格式信息不完整。</translation>
+    </message>
+    <message>
+      <source>The natural fracture property definitions do not match the format header.</source>
+      <translation>天然裂缝属性定义与格式头不一致。</translation>
+    </message>
+    <message>
+      <source>The natural fracture geometry section is missing.</source>
+      <translation>缺少天然裂缝几何数据段。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid natural fracture record.</source>
+      <translation>第 %1 行的天然裂缝记录无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid fracture ID, vertex count, or set ID.</source>
+      <translation>第 %1 行的裂缝 ID、顶点数或集合 ID 无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid fracture property value.</source>
+      <translation>第 %1 行的裂缝属性值无效。</translation>
+    </message>
+    <message>
+      <source>The natural fracture geometry is truncated.</source>
+      <translation>天然裂缝几何数据不完整。</translation>
+    </message>
+    <message>
+      <source>Line %1: expected a vertex index and three coordinates.</source>
+      <translation>第 %1 行应包含顶点索引和三个坐标值。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid fracture coordinate.</source>
+      <translation>第 %1 行的裂缝坐标无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: expected a fracture normal vector.</source>
+      <translation>第 %1 行应包含裂缝法向量。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid fracture normal vector.</source>
+      <translation>第 %1 行的裂缝法向量无效。</translation>
+    </message>
+    <message>
+      <source>The natural fracture geometry count does not match the format header.</source>
+      <translation>天然裂缝几何数量与格式头不一致。</translation>
+    </message>
+    <message>
+      <source>Cannot open production history file: %1</source>
+      <translation>无法打开生产历史文件：%1</translation>
+    </message>
+    <message>
+      <source>Line %1: production series has an empty well name.</source>
+      <translation>第 %1 行的生产序列缺少井名。</translation>
+    </message>
+    <message>
+      <source>Line %1: unsupported production history columns.</source>
+      <translation>第 %1 行的生产历史列不受支持。</translation>
+    </message>
+    <message>
+      <source>Line %1: expected %2 production values.</source>
+      <translation>第 %1 行应包含 %2 个生产数据值。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid production date or time.</source>
+      <translation>第 %1 行的生产日期或时间无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid production measurement.</source>
+      <translation>第 %1 行的生产测量值无效。</translation>
+    </message>
+    <message>
+      <source>The VOL file contains no supported production history.</source>
+      <translation>VOL 文件中没有受支持的生产历史数据。</translation>
+    </message>
+    <message>
+      <source>The data import provider or type is unavailable.</source>
+      <translation>数据导入 Provider 或数据类型不可用。</translation>
+    </message>
+    <message>
+      <source>The selected provider cannot read this file.</source>
+      <translation>所选 Provider 无法读取此文件。</translation>
+    </message>
+    <message>
+      <source>Import project data</source>
+      <translation>导入工程数据</translation>
+    </message>
+    <message>
+      <source>Import a supported data file into its project data category.</source>
+      <translation>将受支持的数据文件导入对应的工程数据分类。</translation>
+    </message>
+    <message>
+      <source>Registered data provider ID.</source>
+      <translation>已注册的数据 Provider ID。</translation>
+    </message>
+    <message>
+      <source>Expected project data type ID.</source>
+      <translation>预期的工程数据类型 ID。</translation>
+    </message>
     <message>
       <source>Static Properties</source>
       <translation>静态属性</translation>
@@ -1760,6 +2325,164 @@ It will be removed from all cases that reference it.</source>
     <message>
       <source>ECLIPSE Simulation Case</source>
       <translation>ECLIPSE 模拟工况</translation>
+    </message>
+    <message>
+      <source>ECLIPSE Grid Properties</source>
+      <translation>ECLIPSE 网格属性</translation>
+    </message>
+    <message>
+      <source>%1 — Table %2</source>
+      <translation>%1 — 表 %2</translation>
+    </message>
+    <message>
+      <source>The fluid and rock table file could not be opened.</source>
+      <translation>无法打开流体与岩石表文件。</translation>
+    </message>
+    <message>
+      <source>The %1 table is missing its terminating slash.</source>
+      <translation>%1 表缺少结束斜杠。</translation>
+    </message>
+    <message>
+      <source>The %1 table contains an invalid numeric value: %2</source>
+      <translation>%1 表包含无效数值：%2</translation>
+    </message>
+    <message>
+      <source>A row in the %1 table has too many columns.</source>
+      <translation>%1 表中的一行包含过多列。</translation>
+    </message>
+    <message>
+      <source>The file contains no supported ECLIPSE fluid or rock tables.</source>
+      <translation>文件中没有受支持的 ECLIPSE 流体或岩石表。</translation>
+    </message>
+    <message>
+      <source>The fluid and rock table file is unavailable or has an unsupported extension.</source>
+      <translation>流体与岩石表文件不可用或扩展名不受支持。</translation>
+    </message>
+    <message>
+      <source>The target simulation case is unavailable.</source>
+      <translation>目标模拟工况不可用。</translation>
+    </message>
+  </context>
+  <context>
+    <name>IDOSFluidRockTableTreeGuiProvider</name>
+    <message>
+      <source>Import Fluid Tables...</source>
+      <translation>导入流体表…</translation>
+    </message>
+    <message>
+      <source>Import Rock Physics Functions...</source>
+      <translation>导入岩石物理函数…</translation>
+    </message>
+    <message>
+      <source>Import Fluid Tables</source>
+      <translation>导入流体表</translation>
+    </message>
+    <message>
+      <source>Import Rock Physics Functions</source>
+      <translation>导入岩石物理函数</translation>
+    </message>
+    <message>
+      <source>ECLIPSE Fluid Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+      <translation>ECLIPSE 流体表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>ECLIPSE Rock Physics Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+      <translation>ECLIPSE 岩石物理表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+      <source>Add to Simulation Case...</source>
+      <translation>添加到模拟工况…</translation>
+    </message>
+    <message>
+      <source>Add Table to Simulation Case</source>
+      <translation>将表添加到模拟工况</translation>
+    </message>
+    <message>
+      <source>Create or import a simulation case first.</source>
+      <translation>请先新建或导入模拟工况。</translation>
+    </message>
+    <message>
+      <source>Simulation case:</source>
+      <translation>模拟工况：</translation>
+    </message>
+  </context>
+  <context>
+    <name>QObject</name>
+    <message>
+      <source>Table category to import: fluid or rockPhysics.</source>
+      <translation>要导入的表类别：流体或岩石物理函数。</translation>
+    </message>
+    <message>
+      <source>The fluid or rock table category is invalid.</source>
+      <translation>流体或岩石表类别无效。</translation>
+    </message>
+    <message>
+      <source>The file contains no supported fluid tables.</source>
+      <translation>文件中没有受支持的流体表。</translation>
+    </message>
+    <message>
+      <source>The file contains no supported rock physics tables.</source>
+      <translation>文件中没有受支持的岩石物理表。</translation>
+    </message>
+    <message>
+      <source>Import fluid and rock tables</source>
+      <translation>导入流体与岩石表</translation>
+    </message>
+    <message>
+      <source>Import ECLIPSE fluid and rock tables into project data.</source>
+      <translation>将 ECLIPSE 流体与岩石表导入工程数据。</translation>
+    </message>
+    <message>
+      <source>Add fluid or rock table to case</source>
+      <translation>向工况添加流体或岩石表</translation>
+    </message>
+    <message>
+      <source>Add a project fluid or rock table reference to a simulation case.</source>
+      <translation>将工程中的流体或岩石表引用添加到模拟工况。</translation>
+    </message>
+    <message>
+      <source>Object ID of the target simulation case.</source>
+      <translation>目标模拟工况的对象 ID。</translation>
+    </message>
+    <message>
+      <source>Object ID of the fluid or rock table.</source>
+      <translation>流体或岩石表的对象 ID。</translation>
+    </message>
+    <message>
+      <source>The file contains no supported fluid or rock tables.</source>
+      <translation>文件中没有受支持的流体或岩石表。</translation>
+    </message>
+    <message>
+      <source>The target fluid or rock table is unavailable.</source>
+      <translation>目标流体或岩石表不可用。</translation>
+    </message>
+    <message>
+      <source>The fluid or rock table is already attached to this case.</source>
+      <translation>此流体或岩石表已关联到该工况。</translation>
+    </message>
+    <message>
+      <source>The ECLIPSE grid property file is unavailable or unreadable.</source>
+      <translation>ECLIPSE 网格属性文件不可用或无法读取。</translation>
+    </message>
+    <message>
+      <source>OPM could not parse the grid property file: %1</source>
+      <translation>OPM 无法解析网格属性文件：%1</translation>
+    </message>
+    <message>
+      <source>OPM failed to read the grid property file: %1</source>
+      <translation>OPM 读取网格属性文件失败：%1</translation>
+    </message>
+    <message>
+      <source>The file contains no supported ECLIPSE grid properties.</source>
+      <translation>文件中没有受支持的 ECLIPSE 网格属性。</translation>
+    </message>
+    <message>
+      <source>Property %1 has %2 cell values; the target grid requires %3.</source>
+      <translation>属性 %1 包含 %2 个单元值；目标网格需要 %3 个。</translation>
+    </message>
+    <message>
+      <source>Property %1 could not be expanded to the target grid dimensions.</source>
+      <translation>属性 %1 无法展开到目标网格尺寸。</translation>
     </message>
     <message>
       <source>OPM parse .DATA failed: %1</source>
@@ -1834,29 +2557,45 @@ It will be removed from all cases that reference it.</source>
       <translation>文件中没有井头数据。</translation>
     </message>
     <message>
-      <source>Petrel Well Trajectory</source>
-      <translation>Petrel 井轨迹</translation>
+      <source>The Petrel well header destination is unavailable.</source>
+      <translation>Petrel 井头数据的接收位置不可用。</translation>
+    </message>
+    <message>
+      <source>The file does not contain a valid Petrel well header.</source>
+      <translation>文件不包含有效的 Petrel 井头表头。</translation>
+    </message>
+    <message>
+      <source>Petrel well header requires Name, Surface X, and Surface Y columns.</source>
+      <translation>Petrel 井头表头必须包含 Name、Surface X 和 Surface Y 列。</translation>
+    </message>
+    <message>
+      <source>Line %1: expected at least %2 Petrel well header values.</source>
+      <translation>第 %1 行：Petrel 井头数据至少应有 %2 个字段。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid well name or surface coordinates.</source>
+      <translation>第 %1 行：井名或地面坐标无效。</translation>
+    </message>
+    <message>
+      <source>Line %1: invalid well symbol.</source>
+      <translation>第 %1 行：井符号编号无效。</translation>
+    </message>
+    <message>
+      <source>Well Trajectory</source>
+      <translation>井轨迹</translation>
     </message>
     <message>
       <source>Line %1: empty or repeated WELL NAME.</source>
       <translation>第 %1 行：井名为空或重复声明。</translation>
     </message>
-    <message>
-      <source>Line %1: expected MD X Y Z TVD DX DY AZIM INCL columns.</source>
-      <translation>第 %1 行：应包含 MD、X、Y、Z、TVD、DX、DY、AZIM、INCL 九列。</translation>
-    </message>
-    <message>
-      <source>Line %1: expected nine trajectory values.</source>
-      <translation>第 %1 行：应有九列轨迹数据。</translation>
-    </message>
+    <message><source>Line %1: trajectory row has too few values.</source><translation>第 %1 行：井轨迹记录的字段不足。</translation></message>
+    <message><source>Line %1: invalid number in %2.</source><translation>第 %1 行：%2 数值无效。</translation></message>
     <message>
       <source>Line %1: MD must increase strictly.</source>
       <translation>第 %1 行：测深必须严格递增。</translation>
     </message>
-    <message>
-      <source>A trajectory requires WELL NAME and at least two valid points.</source>
-      <translation>井轨迹必须包含井名和至少两个有效轨迹点。</translation>
-    </message>
+    <message><source>Well %1: a trajectory requires at least two valid points.</source><translation>井 %1：井轨迹至少需要两个有效轨迹点。</translation></message>
+    <message><source>A trajectory file requires well names, recognized columns, and at least two valid points per well.</source><translation>轨迹文件必须包含井名、可识别的列以及每口井至少两个有效轨迹点。</translation></message>
     <message>
       <source>Missing object: %1</source>
       <translation>对象已缺失：%1</translation>
@@ -2367,6 +3106,13 @@ It will be removed from all cases that reference it.</source>
     <message><source>Well tops require Well, Horizon and Measured Depth columns.</source><translation>井分层需要井名、层位名和测量深度列。</translation></message>
     <message><source>Depth units must be M or FT.</source><translation>深度单位必须为 M 或 FT，且应在数据记录之前声明。</translation></message>
     <message><source>Line %1: invalid well top record.</source><translation>第 %1 行：井分层记录无效。</translation></message>
+    <message><source>The trajectory result destination is unavailable.</source><translation>井轨迹结果目标不可用。</translation></message>
+    <message><source>Line %1: invalid MD, inclination, or azimuth trajectory record.</source><translation>第 %1 行：测深、井斜角或方位角轨迹记录无效。</translation></message>
+    <message><source>A tabular trajectory requires at least two survey stations.</source><translation>表格井轨迹至少需要两个测斜站。</translation></message>
+    <message><source>The well tops result destination is unavailable.</source><translation>井分层结果目标不可用。</translation></message>
+    <message><source>The file contains no well top records.</source><translation>文件中没有井分层记录。</translation></message>
+    <message><source>A tabular well header requires Well Name, X, Y, MD, and KB columns.</source><translation>表格井头需要井名、X、Y、MD 和 KB 列。</translation></message>
+    <message><source>A tabular well header contains an invalid row.</source><translation>表格井头包含无效数据行。</translation></message>
     <message><source>No valid well tops were found or the header is incomplete.</source><translation>未找到有效井分层记录，或表头不完整。</translation></message>
     <message><source>Line %1: invalid perforation record.</source><translation>第 %1 行：射孔记录无效。</translation></message>
     <message><source>Perforation units must be declared before records as FIELD, METRIC, FT or M.</source><translation>射孔单位须在记录之前声明为 FIELD、METRIC、FT 或 M。</translation></message>
