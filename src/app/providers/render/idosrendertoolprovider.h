@@ -34,9 +34,11 @@ private slots:
     void onGridXrayToggled(bool enabled);
     void onLinkedViewToggled(bool enabled);
     void onInteractionToggled(bool enabled);
+    void onBoundsToggled(bool enabled);
     void onBackgroundColorTriggered();
     void onScreenshotTriggered();
     void onScaleViewTriggered();
+    void onZScaleTriggered();
     void onClearDisplayTriggered();
     void onOrientationTriggered(QAction* action);
     void onAxesToggled(bool visible);
@@ -56,9 +58,13 @@ private:
     QAction* m_pointProbeAction;
     QAction* m_distanceMeasurementAction;
     QAction* m_selectionAction;
+    QAction* m_clippingPlaneAction;
+    QAction* m_sliceByPointsAction;
+    QAction* m_boundsAction;
     QAction* m_backgroundColorAction;
     QAction* m_screenshotAction;
     QAction* m_scaleViewAction;
+    QAction* m_zScaleAction;
     QAction* m_clearDisplayAction;
     QAction* m_standardViewsAction;
     QAction* m_axesAction;

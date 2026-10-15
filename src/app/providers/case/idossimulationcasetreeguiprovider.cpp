@@ -27,6 +27,7 @@
 #include "command/idostransferobjectscommand.h"
 #include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
+#include "data/case/idossimulationsummaryresults.h"
 #include "data/fluidrock/idosfluidrocktable.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridfilter.h"
@@ -39,6 +40,7 @@
 #include "logger/idoslogger.h"
 #include "providers/idosdataprovider.h"
 #include "providers/idosdataproviderregistry.h"
+#include "simulation/idossimulationsummarycurveswidget.h"
 #include "tree/idostree.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreeview.h"
@@ -81,7 +83,8 @@ bool IDOSSimulationCaseTreeGuiProvider::supports(const IDOSTreeItem* item) const
     }
     return item->tree() != nullptr && item->tree()->project() != nullptr &&
            (qobject_cast<IDOSCaseObject*>(item->tree()->project()->object(item->dataId())) != nullptr ||
-            qobject_cast<IDOSFluidRockTable*>(item->tree()->project()->object(item->dataId())) != nullptr);
+            qobject_cast<IDOSFluidRockTable*>(item->tree()->project()->object(item->dataId())) != nullptr ||
+            qobject_cast<IDOSSimulationSummaryResults*>(item->tree()->project()->object(item->dataId())) != nullptr);
 }
 
 void IDOSSimulationCaseTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* view)
@@ -115,6 +118,21 @@ void IDOSSimulationCaseTreeGuiProvider::populateMenu(QMenu* menu, IDOSTreeView* 
     }
     if (item->isGroup())
     {
+        if (item->key() == QStringLiteral("case.summaryResults"))
+        {
+            QAction* import = addAction(menu, view, tr("Import Summary Results..."));
+            import->setObjectName(QStringLiteral("importSummaryResultsAction"));
+            connect(import, &QAction::triggered, this,
+                    &IDOSSimulationCaseTreeGuiProvider::onImportSummaryResults);
+        }
+        return;
+    }
+    if (item->key().startsWith(QStringLiteral("case.summaryResults:")))
+    {
+        QAction* show = addAction(menu, view, tr("View Summary Curves..."));
+        show->setObjectName(QStringLiteral("viewSummaryCurvesAction"));
+        connect(show, &QAction::triggered, this,
+                &IDOSSimulationCaseTreeGuiProvider::onViewSummaryResults);
         return;
     }
     if (item->key().startsWith(QStringLiteral("case.curveTable:")) ||
@@ -171,6 +189,59 @@ void IDOSSimulationCaseTreeGuiProvider::onViewPropertyCurves()
     if (simulationCase != nullptr && !simulationCase->curveTables().isEmpty())
     {
         emit propertyCurvesRequested(view->project(), caseId);
+    }
+}
+
+void IDOSSimulationCaseTreeGuiProvider::onImportSummaryResults()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view == nullptr || action == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action->property("dataId").toString();
+    if (qobject_cast<IDOSSimulationCaseObject*>(view->project()->object(caseId)) == nullptr)
+    {
+        return;
+    }
+    const QString filePath = QFileDialog::getOpenFileName(
+        view, tr("Import Summary Results"), QString(),
+        tr("ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)"));
+    if (filePath.isEmpty())
+    {
+        return;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), filePath);
+    arguments.insert(QStringLiteral("targetCaseId"), caseId);
+    IDOSCommandManager* manager = view->project()->commandManager();
+    const QJsonObject response = manager != nullptr
+        ? manager->execute(QStringLiteral("case.summary.import"), arguments) : QJsonObject();
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view, tr("Import Summary Results"),
+                             manager != nullptr ? response.value(QStringLiteral("error")).toString()
+                                                : tr("The command manager is unavailable."));
+    }
+}
+
+void IDOSSimulationCaseTreeGuiProvider::onViewSummaryResults()
+{
+    IDOSTreeView* view = actionView();
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view == nullptr || action == nullptr)
+    {
+        return;
+    }
+    const QString summaryId = action->property("dataId").toString();
+    IDOSSimulationSummaryResults* results =
+        qobject_cast<IDOSSimulationSummaryResults*>(view->project()->object(summaryId));
+    if (results != nullptr)
+    {
+        IDOSSimulationSummaryCurvesWidget* widget =
+            new IDOSSimulationSummaryCurvesWidget(results, view);
+        widget->show();
     }
 }
 
@@ -461,7 +532,8 @@ bool IDOSSimulationCaseTreeGuiProvider::deleteCase(IDOSTreeView* view, const QSt
         QMessageBox::question(view, tr("Delete Case"),
                                tr("Are you sure you want to delete case \"%1\"?\n"
                                   "Its %2 grid(s) and %3 propert(ies) will also be deleted. "
-                                  "Referenced wells are kept.")
+                                  "Unshared fluid tables imported with this case will also be deleted. "
+                                  "Shared tables and referenced wells are kept.")
                                    .arg(caseObj->name())
                                    .arg(gridIds.size())
                                    .arg(propertyTotal),

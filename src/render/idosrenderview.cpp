@@ -21,6 +21,7 @@
 #include <vtkCamera.h>
 #include <vtkCellPicker.h>
 #include <vtkCommand.h>
+#include <vtkCubeAxesActor.h>
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkInteractorStyleTrackballCamera.h>
@@ -28,9 +29,11 @@
 #include <vtkOutputWindow.h>
 #include <vtkProp.h>
 #include <vtkPropPicker.h>
+#include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringOutputWindow.h>
+#include <vtkTextProperty.h>
 
 #include "idosrenderobject.h"
 #include "idosrenderscene.h"
@@ -67,6 +70,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_twoDInteractorStyle(vtkSmartPointer<vtkInteractorStyleImage>::New())
     , m_threeDInteractorStyle(vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New())
     , m_axesActor(vtkSmartPointer<vtkAxesActor>::New())
+    , m_boundsAxes(vtkSmartPointer<vtkCubeAxesActor>::New())
     , m_orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
     , m_scene(new IDOSRenderScene(this))
     , m_actorObjectIds()
@@ -79,6 +83,9 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_homeViewInitialized(false)
     , m_cursorTrackingEnabled(false)
     , m_legendVisible(true)
+    , m_boundsVisible(false)
+    , m_zAxisScale(1.0)
+    , m_actorBaseZScales()
     , m_legends()
 {
     configureVtkOutputWindow();
@@ -122,6 +129,39 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     m_renderer->SetBackground(0.08, 0.09, 0.11);
     m_homeCamera->DeepCopy(m_renderer->GetActiveCamera());
 
+    m_boundsAxes->SetFlyModeToOuterEdges();
+    m_boundsAxes->SetXTitle("X Axis");
+    m_boundsAxes->SetYTitle("Y Axis");
+    m_boundsAxes->SetZTitle("Z Axis");
+    m_boundsAxes->SetXLabelFormat("%.2e");
+    m_boundsAxes->SetYLabelFormat("%.2e");
+    m_boundsAxes->SetZLabelFormat("%.2f");
+    m_boundsAxes->SetDrawXGridlines(true);
+    m_boundsAxes->SetDrawYGridlines(true);
+    m_boundsAxes->SetDrawZGridlines(true);
+    m_boundsAxes->SetGridLineLocation(vtkCubeAxesActor::VTK_GRID_LINES_FURTHEST);
+    m_boundsAxes->SetTickLocationToOutside();
+    m_boundsAxes->SetLabelScaling(false, 0, 0, 0);
+    m_boundsAxes->SetScreenSize(12.0);
+    m_boundsAxes->SetLabelOffset(12.0);
+    double titleOffset[2] = {18.0, 8.0};
+    m_boundsAxes->SetTitleOffset(titleOffset);
+    m_boundsAxes->GetProperty()->SetColor(0.5, 0.5, 0.5);
+    m_boundsAxes->GetXAxesGridlinesProperty()->SetColor(0.5, 0.5, 0.5);
+    m_boundsAxes->GetYAxesGridlinesProperty()->SetColor(0.5, 0.5, 0.5);
+    m_boundsAxes->GetZAxesGridlinesProperty()->SetColor(0.5, 0.5, 0.5);
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        m_boundsAxes->GetTitleTextProperty(axis)->SetFontSize(16);
+        m_boundsAxes->GetLabelTextProperty(axis)->SetFontSize(14);
+        m_boundsAxes->GetLabelTextProperty(axis)->SetColor(1.0, 1.0, 1.0);
+    }
+    m_boundsAxes->GetTitleTextProperty(0)->SetColor(1.0, 0.0, 0.0);
+    m_boundsAxes->GetTitleTextProperty(1)->SetColor(0.0, 1.0, 0.0);
+    m_boundsAxes->GetTitleTextProperty(2)->SetColor(0.0, 0.0, 1.0);
+    m_boundsAxes->SetVisibility(0);
+    m_boundsAxes->PickableOff();
+
     m_orientationMarker->SetOrientationMarker(m_axesActor);
     m_orientationMarker->SetInteractor(m_vtkWidget->interactor());
     m_orientationMarker->SetViewport(0.0, 0.0, 0.18, 0.18);
@@ -164,6 +204,40 @@ void IDOSRenderView::setAxesVisible(bool visible)
     emit decorationsChanged();
     emit viewStateChanged();
     m_renderWindow->Render();
+}
+
+bool IDOSRenderView::boundsVisible() const
+{
+    return m_boundsVisible;
+}
+
+void IDOSRenderView::setBoundsVisible(bool visible)
+{
+    m_boundsVisible = visible;
+    rebuildActors();
+    emit decorationsChanged();
+    emit viewStateChanged();
+}
+
+double IDOSRenderView::zAxisScale() const
+{
+    return m_zAxisScale;
+}
+
+void IDOSRenderView::setZAxisScale(double scale)
+{
+    if (!std::isfinite(scale))
+    {
+        return;
+    }
+    const double boundedScale = qBound(0.01, scale, 100.0);
+    if (qAbs(m_zAxisScale - boundedScale) < 1.0e-9)
+    {
+        return;
+    }
+    m_zAxisScale = boundedScale;
+    rebuildActors();
+    resetCamera();
 }
 
 bool IDOSRenderView::legendVisible() const
@@ -686,6 +760,13 @@ void IDOSRenderView::rebuildActors()
     }
 
     const QList<IDOSRenderObject*>& objects = m_scene->objects();
+    double bounds[6] = {std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
+    double logicalBounds[6] = {std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                               std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                               std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
+    bool hasVisibleBounds = false;
     for (int index = 0; index < objects.size(); ++index)
     {
         IDOSRenderObject* object = objects.at(index);
@@ -701,8 +782,41 @@ void IDOSRenderView::rebuildActors()
         const QList<vtkActor*> actors = provider->actors();
         for (vtkActor* actor : actors)
         {
+            if (actor == nullptr)
+            {
+                continue;
+            }
+            double actorScale[3];
+            actor->GetScale(actorScale);
+            if (!m_actorBaseZScales.contains(actor))
+            {
+                m_actorBaseZScales.insert(actor, actorScale[2]);
+            }
+            const double baseZScale = m_actorBaseZScales.value(actor);
+            actor->SetScale(actorScale[0], actorScale[1], baseZScale);
+            double logicalActorBounds[6];
+            actor->GetBounds(logicalActorBounds);
+            actor->SetScale(actorScale[0], actorScale[1], baseZScale * m_zAxisScale);
+
             m_renderer->AddActor(actor);
             m_actorObjectIds.insert(actor, object->id());
+            if (object->visible() && actor->GetVisibility() != 0)
+            {
+                double actorBounds[6];
+                actor->GetBounds(actorBounds);
+                if (actorBounds[0] <= actorBounds[1] && actorBounds[2] <= actorBounds[3] &&
+                    actorBounds[4] <= actorBounds[5])
+                {
+                    for (int axis = 0; axis < 3; ++axis)
+                    {
+                        bounds[axis * 2] = qMin(bounds[axis * 2], actorBounds[axis * 2]);
+                        bounds[axis * 2 + 1] = qMax(bounds[axis * 2 + 1], actorBounds[axis * 2 + 1]);
+                        logicalBounds[axis * 2] = qMin(logicalBounds[axis * 2], logicalActorBounds[axis * 2]);
+                        logicalBounds[axis * 2 + 1] = qMax(logicalBounds[axis * 2 + 1], logicalActorBounds[axis * 2 + 1]);
+                    }
+                    hasVisibleBounds = true;
+                }
+            }
         }
         const QList<vtkSmartPointer<vtkProp>> legends = provider->legends();
         for (int legendIndex = 0; legendIndex < legends.size(); ++legendIndex)
@@ -714,6 +828,37 @@ void IDOSRenderView::rebuildActors()
             legend->SetVisibility(m_legendVisible ? 1 : 0);
             m_legends.append(legend.GetPointer());
         }
+    }
+
+    const QList<vtkActor*> trackedActors = m_actorBaseZScales.keys();
+    for (vtkActor* actor : trackedActors)
+    {
+        if (!m_actorObjectIds.contains(actor))
+        {
+            m_actorBaseZScales.remove(actor);
+        }
+    }
+
+    if (m_boundsVisible && hasVisibleBounds)
+    {
+        double expandedBounds[6];
+        for (int axis = 0; axis < 3; ++axis)
+        {
+            const double margin = (bounds[axis * 2 + 1] - bounds[axis * 2]) * 0.1;
+            expandedBounds[axis * 2] = bounds[axis * 2] - margin;
+            expandedBounds[axis * 2 + 1] = bounds[axis * 2 + 1] + margin;
+        }
+        m_boundsAxes->SetBounds(expandedBounds);
+        m_boundsAxes->SetXAxisRange(logicalBounds[0], logicalBounds[1]);
+        m_boundsAxes->SetYAxisRange(logicalBounds[2], logicalBounds[3]);
+        m_boundsAxes->SetZAxisRange(logicalBounds[4], logicalBounds[5]);
+        m_boundsAxes->SetCamera(m_renderer->GetActiveCamera());
+        m_boundsAxes->SetVisibility(1);
+        m_renderer->AddActor(m_boundsAxes);
+    }
+    else
+    {
+        m_boundsAxes->SetVisibility(0);
     }
 
     emit decorationsChanged();
@@ -1205,6 +1350,8 @@ QVariantMap IDOSRenderView::presentationState() const
     state.insert(QStringLiteral("background"), background().name(QColor::HexArgb));
     state.insert(QStringLiteral("axes"), axesVisible());
     state.insert(QStringLiteral("legend"), legendVisible());
+    state.insert(QStringLiteral("bounds"), boundsVisible());
+    state.insert(QStringLiteral("zAxisScale"), zAxisScale());
     state.insert(QStringLiteral("cursorTracking"), cursorTrackingEnabled());
     state.insert(QStringLiteral("camera"), cameraState(m_savedCamera != nullptr ? m_savedCamera.GetPointer() : m_renderer->GetActiveCamera()));
     state.insert(QStringLiteral("homeCamera"), cameraState(m_homeCamera));
@@ -1234,6 +1381,8 @@ bool IDOSRenderView::restorePresentationState(const QVariantMap& state)
     setBackground(color);
     setAxesVisible(state.value(QStringLiteral("axes")).toBool());
     setLegendVisible(state.value(QStringLiteral("legend")).toBool());
+    setBoundsVisible(state.value(QStringLiteral("bounds")).toBool());
+    setZAxisScale(state.value(QStringLiteral("zAxisScale"), 1.0).toDouble());
     setCursorTrackingEnabled(state.value(QStringLiteral("cursorTracking")).toBool());
     m_renderer->GetActiveCamera()->DeepCopy(camera);
     m_renderer->ResetCameraClippingRange();

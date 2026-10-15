@@ -26,7 +26,7 @@ IDOSSimulationInitializeWidget::IDOSSimulationInitializeWidget(IDOSSimulationCas
     :
     QWidget(parent, Qt::Window)
     , m_sourceFile(simulationCase != nullptr ? simulationCase->sourceFile() : QString())
-    , m_inputFiles(inputFiles(simulationCase))
+    , m_inputFiles()
     , m_simulationCase(simulationCase)
     , m_directoryEdit(nullptr)
     , m_inputTable(nullptr)
@@ -36,6 +36,17 @@ IDOSSimulationInitializeWidget::IDOSSimulationInitializeWidget(IDOSSimulationCas
     setAttribute(Qt::WA_DeleteOnClose);
     setObjectName(QStringLiteral("simulationInitializeWindow"));
     setWindowTitle(tr("Initialize — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
+
+    if (simulationCase != nullptr)
+    {
+        const QString generatedDataFile =
+            simulationCase->runInfo().value(QStringLiteral("generatedDataFile")).toString();
+        if (QFileInfo(generatedDataFile).isFile())
+        {
+            m_sourceFile = QFileInfo(generatedDataFile).absoluteFilePath();
+        }
+    }
+    m_inputFiles = inputFiles(simulationCase);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     QLabel* descriptionLabel = new QLabel(tr("Prepare an isolated run directory and copy the DATA file with its "
@@ -88,6 +99,14 @@ QStringList IDOSSimulationInitializeWidget::inputFiles(IDOSSimulationCaseObject*
 
     files.append(QFileInfo(m_sourceFile).absoluteFilePath());
     if (simulationCase == nullptr)
+    {
+        return files;
+    }
+
+    const QString generatedDataFile =
+        QFileInfo(simulationCase->runInfo().value(QStringLiteral("generatedDataFile")).toString()).absoluteFilePath();
+    if (!generatedDataFile.isEmpty() &&
+        generatedDataFile.compare(QFileInfo(m_sourceFile).absoluteFilePath(), Qt::CaseInsensitive) == 0)
     {
         return files;
     }

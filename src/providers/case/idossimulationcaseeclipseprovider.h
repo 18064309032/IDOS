@@ -1,6 +1,7 @@
 #ifndef IDOS_SIMULATION_CASE_ECLIPSE_PROVIDER_H
 #define IDOS_SIMULATION_CASE_ECLIPSE_PROVIDER_H
 
+#include <memory>
 #include <vector>
 
 #include <QString>
@@ -14,6 +15,7 @@
 #include "providers/idosdataprovider.h"
 
 class IDOSGrid;
+class IDOSProject;
 class IDOSSimulationCaseObject;
 
 namespace Opm
@@ -22,6 +24,7 @@ class Deck;
 class DeckItem;
 class EclipseGrid;
 class FieldPropsManager;
+class Parser;
 } // namespace Opm
 
 /**
@@ -37,10 +40,20 @@ class PROVIDERS_EXPORT IDOSSimulationCaseEclipseProvider : public IDOSDataProvid
 {
   public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
+    bool writeMemoryData(const IDOSSimulationCaseObject* simulationCase, const IDOSProject* project,
+                         const QString& outputDirectory, const QString& fileName, QString* error) const;
 
   private:
-    QVariantMap buildParsedSourceData(const Opm::Deck& deck, const QString& filePath) const;
-    QVariantList buildDeckKeywordIndex(const Opm::Deck& deck) const;
+    bool parseDeckFile(const QString& filePath, std::unique_ptr<Opm::Deck>* deck, QString* error,
+                       QString* parserFilePath = nullptr) const;
+    bool configureParser(Opm::Parser* parser, QString* error) const;
+    bool createNumresCompatibilityFile(const QString& sourcePath, QString* temporaryPath,
+                                      QString* error) const;
+    void removeTemporaryParserFile(const QString& temporaryPath) const;
+    QVariantMap buildParsedSourceData(const Opm::Deck& deck, const QString& filePath,
+                                      const QString& parserFilePath) const;
+    QVariantList buildDeckKeywordIndex(const Opm::Deck& deck, const QString& sourceFilePath,
+                                       const QString& parserFilePath) const;
     QVariantList buildRelativePermeabilityTables(const Opm::Deck& deck) const;
     QVariantList buildWellControlRows(const Opm::Deck& deck) const;
     QVariantMap buildSummary(const Opm::Deck& deck, const QString& filePath) const;

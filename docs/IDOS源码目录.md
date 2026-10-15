@@ -1,6 +1,6 @@
 # IDOS 源码目录
 
-更新日期：2026-10-14。
+更新日期：2026-10-15。
 
 本文为用户确认并已实施的固定源码目录，以当前仓库的实际文件位置为准，已同步 2026-10-14 用户手工调整；保留实际源码、导出头、构建文件及资源。同名 `.h` 和 `.cpp` 必须同目录；后续改变目录划分须经用户确认。
 
@@ -8,7 +8,7 @@
 
 - `core` 根部放对象、工程、命令及 TreeServer；`core/data` 按业务保存数据及对应 DataMetadata，通用数据对象位于 core 根部。
 - `core/providers` 放 DataProvider、TreeProvider 及其 Metadata/Registry，同时保存通用 DataMetadata/Registry；`core/tree` 放 Tree、TreeItem、TreeModel；日志位于 `core/logger`。
-- `gui` 保留 tree、well、grid、simulation 业务目录；TreeView 和 TreeGuiProvider 同放 tree。工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
+- `gui` 保留 tree、well、grid、simulation 业务目录；TreeView 和 TreeGuiProvider 同放 tree。工程启动页、工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
 - `render` 根部放通用渲染框架、Registry 和交互工具；`render/providers` 放 RenderProvider、ToolProvider 及其 Metadata。
 - `app` 根部负责应用装配、模拟服务和插件 Metadata/Registry；`app/command` 放具体命令，`app/plugin` 放插件列表和管理界面，`app/providers` 按 well、grid、case、fluidrock、seismic、data 分组，集中同一业务的树、菜单、渲染实现和 Metadata；内置视图工具放 `app/providers/render`。
 - 顶层 `providers` 只放具体数据格式实现，按业务分类；其他模块及示例插件保留。
@@ -157,6 +157,10 @@ src/
 │   │   │   ├── idossimulationcasemetadata.h
 │   │   │   ├── idossimulationcaseobject.cpp
 │   │   │   └── idossimulationcaseobject.h
+│   │   │   ├── idossimulationsummaryresults.cpp
+│   │   │   ├── idossimulationsummaryresults.h
+│   │   │   ├── idossimulationsummaryresultsmetadata.cpp
+│   │   │   └── idossimulationsummaryresultsmetadata.h
 │   │   ├── fluidrock/
 │   │   │   ├── idosfluidrocktable.cpp
 │   │   │   ├── idosfluidrocktable.h
@@ -326,6 +330,8 @@ src/
 │   │   ├── idossimulationpreflightwidget.h
 │   │   ├── idossimulationpropertycurvewidget.cpp
 │   │   ├── idossimulationpropertycurvewidget.h
+│   │   ├── idossimulationsummarycurveswidget.cpp
+│   │   ├── idossimulationsummarycurveswidget.h
 │   │   ├── idossimulationresultfileswidget.cpp
 │   │   ├── idossimulationresultfileswidget.h
 │   │   ├── idossimulationresultplaybackwidget.cpp
@@ -358,6 +364,8 @@ src/
 │   ├── idosinterface.h
 │   ├── idosnewprojectdialog.cpp
 │   ├── idosnewprojectdialog.h
+│   ├── idosprojectstartwidget.cpp
+│   ├── idosprojectstartwidget.h
 │   ├── idospythonconsolewidget.cpp
 │   ├── idospythonconsolewidget.h
 │   ├── idosruntimeinfowidget.cpp
@@ -427,6 +435,10 @@ src/
 │   │   ├── idossimulationcaseeclipsemetadata.h
 │   │   ├── idossimulationcaseeclipseprovider.cpp
 │   │   └── idossimulationcaseeclipseprovider.h
+│   │   ├── idossimulationsummaryprovider.cpp
+│   │   ├── idossimulationsummaryprovider.h
+│   │   ├── idossimulationsummaryprovidermetadata.cpp
+│   │   └── idossimulationsummaryprovidermetadata.h
 │   ├── fluidrock/
 │   │   ├── idosfluidrocktextprovider.cpp
 │   │   └── idosfluidrocktextprovider.h

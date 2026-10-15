@@ -17,9 +17,11 @@ class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class QAction;
 class QCloseEvent;
+class QLabel;
 class QModelIndex;
 class QTreeView;
-class QMenu;
+class QStackedWidget;
+class IDOSProjectStartWidget;
 class IDOSCommandManager;
 class IDOSProject;
 class IDOSTreeModel;
@@ -53,7 +55,7 @@ class CDockWidget;
  * @brief 主窗口：SARibbon 主窗口 + Qt Advanced Docking System 停靠面板。
  *
  * CDockManager 作为 central widget，数据树 / 工况树通过 CDockManager::addDockWidget
- * 挂载到左侧，中央区域通过 CDockManager::setCentralWidget 留给 3D 视图。
+ * 挂载到左侧；中央页面在启动页与工程渲染视图之间切换。
  */
 class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 {
@@ -93,12 +95,14 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onOpenProject();
     void onSaveProject();
     void onSaveProjectAs();
+    void onCloseProject();
 
   private slots:
     void onProjectDestroyed();
     void onProjectModified();
     void onPresentationChanged();
-    void onRecentProjectTriggered(QAction* action);
+    void onStartPageRecentProjectOpenRequested(const QString& path);
+    void onStartPageRecentProjectRemoveRequested(const QString& path);
     void onRenderViewFocused();
     void onRenderViewDecorations();
     void onRenderViewActivated(const QString& id);
@@ -139,6 +143,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void restoreWindowPreferences(bool geometry);
     void rememberProject(const QString& path);
     void updateRecentProjects();
+    void updateCentralPage();
     QString layoutSettingsKey() const;
     QList<IDOSWellLogTrackView*> logTrackViews() const;
     static QString windowSettingsPath();
@@ -160,6 +165,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void applyWindowLayout(const QString& layout);
     void updateTreeSelection(const QString& viewId, QTreeView* source = nullptr);
     void setViewTreeContext(const QString& viewId, const QString& objectId, const QString& caseId);
+    void updateStatusBarIndicators();
     void selectTreeIndex(QTreeView* treeView, const QModelIndex& index);
     QModelIndex caseTreeIndexForContext(const QString& objectId, const QString& caseId) const;
     QModelIndex findCaseReferenceIndex(const QModelIndex& parentIndex, const QString& objectId) const;
@@ -172,6 +178,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QAction* m_actionOpenProject;
     QAction* m_actionSaveProject;
     QAction* m_actionSaveProjectAs;
+    QAction* m_actionCloseProject;
     QAction* m_actionProjectSettings;
     QAction* m_actionUndo;
     QAction* m_actionRedo;
@@ -208,9 +215,16 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSDebugInfoWidget* m_debugInfoWidget;
     IDOSAssistantWidget* m_assistantWidget;
     IDOSPythonConsoleWidget* m_pythonConsoleWidget;
+    QLabel* m_projectStatusLabel;
+    QLabel* m_projectStatusDot;
+    QLabel* m_viewStatusLabel;
+    QLabel* m_objectCountStatusLabel;
 
     ads::CDockManager* m_dockManager;
     ads::CDockWidget* m_renderDock;
+    QStackedWidget* m_centralPageStack;
+    IDOSProjectStartWidget* m_startPage;
+    QWidget* m_renderPage;
     ads::CDockWidget* m_outputDock;
     ads::CDockWidget* m_debugDock;
     ads::CDockWidget* m_pythonConsoleDock;
@@ -222,7 +236,6 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     bool m_syncingTreeSelection;
     bool m_restoringPresentation;
     QVariantMap m_defaultViewState;
-    QMenu* m_recentProjectsMenu;
 };
 
 #endif // IDOS_MAIN_WINDOW_H

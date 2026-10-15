@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Slice by points</title>
+  <g fill="none" stroke="#437AAA" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3 7 8-4 8 4v10l-8 4-8-4Z"/>
+    <path d="m3 7 8 4 8-4m-8 4v10M6 16l8-10M8 18l8-10"/>
+    <circle cx="6" cy="16" r="1" fill="#fff"/>
+    <circle cx="14" cy="8" r="1" fill="#fff"/>
+  </g>
+</svg>

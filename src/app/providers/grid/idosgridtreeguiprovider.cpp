@@ -3,9 +3,11 @@
 #include <QIcon>
 #include <QInputDialog>
 #include <QJsonObject>
+#include <QMainWindow>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPointer>
+#include <QStatusBar>
 #include <QVariant>
 
 #include "command/idoscreatecasecommand.h"
@@ -508,8 +510,7 @@ bool IDOSGridTreeGuiProvider::importProperty(IDOSTreeView* view, const QString& 
     }
 
     const int importedCount = commandManager->result().value(QStringLiteral("objectCount")).toInt();
-    QMessageBox::information(view, tr("Import Grid Property"),
-                             tr("Imported %1 properties.").arg(importedCount));
+    reportImportSuccess(view, tr("Imported %1 properties.").arg(importedCount));
     return true;
 }
 
@@ -543,14 +544,23 @@ bool IDOSGridTreeGuiProvider::importDynamicProperties(IDOSTreeView* view, const 
     }
 
     const QJsonObject result = commandManager->result();
-    QMessageBox::information(
-        view, tr("Import Dynamic Properties"),
-        tr("Imported %1 dynamic properties across %2 report steps (%3–%4).")
-            .arg(result.value(QStringLiteral("propertyCount")).toInt())
-            .arg(result.value(QStringLiteral("reportStepCount")).toInt())
-            .arg(result.value(QStringLiteral("firstReportStep")).toInt())
-            .arg(result.value(QStringLiteral("lastReportStep")).toInt()));
+    const QString message = tr("Imported %1 dynamic properties across %2 report steps (%3–%4).")
+        .arg(result.value(QStringLiteral("propertyCount")).toInt())
+        .arg(result.value(QStringLiteral("reportStepCount")).toInt())
+        .arg(result.value(QStringLiteral("firstReportStep")).toInt())
+        .arg(result.value(QStringLiteral("lastReportStep")).toInt());
+    reportImportSuccess(view, message);
     return true;
+}
+
+void IDOSGridTreeGuiProvider::reportImportSuccess(IDOSTreeView* view, const QString& message)
+{
+    IDOS_MESSAGE(message, IDOSLogLevel::Info);
+    QMainWindow* mainWindow = view != nullptr ? qobject_cast<QMainWindow*>(view->window()) : nullptr;
+    if (mainWindow != nullptr && mainWindow->statusBar() != nullptr)
+    {
+        mainWindow->statusBar()->showMessage(message, 5000);
+    }
 }
 
 void IDOSGridTreeGuiProvider::populateDisplayMenu(QMenu* menu, IDOSTreeView* view)

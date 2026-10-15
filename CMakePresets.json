@@ -14,7 +14,6 @@
                 "value": "x64",
                 "strategy": "set"
             },
-            "binaryDir": "E:/CJW-Archive/IDOS-Build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": { "type": "STRING", "value": "Debug" }
             }

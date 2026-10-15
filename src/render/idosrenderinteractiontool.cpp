@@ -1,6 +1,8 @@
 #include <cmath>
+#include <limits>
 
 #include <QCursor>
+#include <QDialog>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QLabel>
@@ -8,16 +10,23 @@
 #include <QStringList>
 #include <QTimer>
 #include <QToolTip>
+#include <QVBoxLayout>
 #include <QVTKOpenGLNativeWidget.h>
 
+#include <vtkAppendPolyData.h>
 #include <vtkActor.h>
 #include <vtkActor2D.h>
 #include <vtkAxisActor2D.h>
+#include <vtkCallbackCommand.h>
+#include <vtkCamera.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkCellPicker.h>
+#include <vtkClipPolyData.h>
+#include <vtkCommand.h>
 #include <vtkCoordinate.h>
 #include <vtkCursor2D.h>
+#include <vtkCutter.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
 #include <vtkDataSetAttributes.h>
@@ -26,18 +35,25 @@
 #include <vtkExtractCells.h>
 #include <vtkExtractEdges.h>
 #include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkImplicitPlaneRepresentation.h>
+#include <vtkImplicitPlaneWidget2.h>
 #include <vtkIdList.h>
+#include <vtkMapper.h>
+#include <vtkPlane.h>
 #include <vtkPointData.h>
 #include <vtkPointHandleRepresentation2D.h>
 #include <vtkPointPicker.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
 #include <vtkPolyDataMapper2D.h>
+#include <vtkProperty.h>
 #include <vtkProperty2D.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkTextProperty.h>
 #include <vtkTransform.h>
+#include <vtkTransformFilter.h>
 #include <vtkTransformPolyDataFilter.h>
 #include <vtkUnstructuredGrid.h>
 
@@ -56,6 +72,18 @@ IDOSRenderInteractionTool::IDOSRenderInteractionTool(IDOSRenderView* view, Mode 
     , m_measurementRepresentation(vtkSmartPointer<vtkDistanceRepresentation2D>::New())
     , m_measurementWidget(vtkSmartPointer<vtkDistanceWidget>::New())
     , m_probeActor()
+    , m_clipWidget(vtkSmartPointer<vtkImplicitPlaneWidget2>::New())
+    , m_clipRepresentation(vtkSmartPointer<vtkImplicitPlaneRepresentation>::New())
+    , m_clipPlane(vtkSmartPointer<vtkPlane>::New())
+    , m_clipCallback(vtkSmartPointer<vtkCallbackCommand>::New())
+    , m_clipObserverTag(0)
+    , m_clippedMappers()
+    , m_clipObjectId()
+    , m_slicePreviewActor()
+    , m_sliceDialog(nullptr)
+    , m_sliceRenderWindow()
+    , m_sliceObjectId()
+    , m_slicePoints()
     , m_hasFirstPoint(false)
     , m_firstPoint{0.0, 0.0, 0.0}
 {
@@ -89,12 +117,23 @@ IDOSRenderInteractionTool::IDOSRenderInteractionTool(IDOSRenderView* view, Mode 
     m_measurementRepresentation->InstantiateHandleRepresentation();
     m_measurementWidget->SetRepresentation(m_measurementRepresentation);
     m_measurementWidget->ProcessEventsOff();
+    m_clipCallback->SetClientData(this);
+    m_clipCallback->SetCallback(&IDOSRenderInteractionTool::onClipPlaneInteraction);
+    m_clipRepresentation->SetPlaceFactor(1.0);
+    m_clipWidget->SetRepresentation(m_clipRepresentation);
+    m_clipWidget->SetInteractor(view->vtkWidget()->interactor());
+    connect(view->scene(), &IDOSRenderScene::changed, this, &IDOSRenderInteractionTool::onSceneChanged);
+    connect(view->scene(), &IDOSRenderScene::objectAboutToBeRemoved,
+            this, &IDOSRenderInteractionTool::onSceneObjectAboutToBeRemoved);
 }
 
 IDOSRenderInteractionTool::~IDOSRenderInteractionTool()
 {
     clearMeasurement();
     clearProbe();
+    clearClippingPlane();
+    clearSlicePreview();
+    clearSliceProfileWindow();
     delete m_promptLabel;
 }
 
@@ -107,6 +146,9 @@ void IDOSRenderInteractionTool::cancel()
 {
     clearMeasurement();
     clearProbe();
+    clearClippingPlane();
+    clearSlicePreview();
+    m_slicePoints.clear();
     m_hasFirstPoint = false;
     m_promptLabel->hide();
     QToolTip::hideText();
@@ -124,9 +166,30 @@ bool IDOSRenderInteractionTool::onEventFilter(QObject* watched, QEvent* event)
             QTimer::singleShot(0, this, &IDOSRenderInteractionTool::onDeactivateRequested);
             return true;
         }
+        if (m_mode == Mode::SliceByPoints &&
+            (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter))
+        {
+            executeSlice();
+            return true;
+        }
+        if (m_mode == Mode::SliceByPoints && keyEvent->key() == Qt::Key_Backspace)
+        {
+            if (!m_slicePoints.isEmpty())
+            {
+                m_slicePoints.removeLast();
+                updateSlicePreview();
+                showPrompt(tr("Path points: %1. Click more points or press Enter to create the slice.")
+                               .arg(m_slicePoints.size()));
+            }
+            return true;
+        }
     }
     if (event->type() == QEvent::MouseButtonRelease)
     {
+        if (m_mode == Mode::ClippingPlane)
+        {
+            return false;
+        }
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
         return mouseEvent->button() == Qt::LeftButton;
     }
@@ -143,6 +206,55 @@ bool IDOSRenderInteractionTool::onEventFilter(QObject* watched, QEvent* event)
     if (renderView == nullptr)
     {
         return false;
+    }
+    if (m_mode == Mode::ClippingPlane)
+    {
+        if (!m_clipObjectId.isEmpty())
+        {
+            return false;
+        }
+        const QString objectId = renderView->objectIdAt(mouseEvent->pos());
+        IDOSRenderObject* object = renderView->scene()->object(objectId);
+        if (object == nullptr || !object->visible())
+        {
+            showPrompt(tr("Click a visible 3D object to place the clipping plane."));
+            return true;
+        }
+        m_clipObjectId = objectId;
+        if (startClippingPlane())
+        {
+            showPrompt(tr("Drag the plane to clip the target object. Press Escape to restore it."));
+        }
+        else
+        {
+            m_clipObjectId.clear();
+            showPrompt(tr("The target object cannot be clipped in this view."));
+        }
+        return true;
+    }
+    if (m_mode == Mode::SliceByPoints)
+    {
+        if (m_sliceObjectId.isEmpty())
+        {
+            const QString objectId = renderView->objectIdAt(mouseEvent->pos());
+            IDOSRenderObject* object = renderView->scene()->object(objectId);
+            if (object == nullptr || !object->visible())
+            {
+                showPrompt(tr("Click a visible 3D object to start the slice path."));
+                return true;
+            }
+            m_sliceObjectId = objectId;
+        }
+        double worldPosition[3];
+        if (pickSelectedObjectWorldPosition(mouseEvent->pos(), worldPosition))
+        {
+            addSlicePoint(worldPosition);
+        }
+        else
+        {
+            showPrompt(tr("Click the target object to add a path point."));
+        }
+        return true;
     }
     if (m_mode == Mode::Selection)
     {
@@ -180,7 +292,20 @@ void IDOSRenderInteractionTool::onActivated()
     {
         view()->vtkWidget()->setFocus(Qt::OtherFocusReason);
     }
-    if (m_mode == Mode::PointZoom)
+    if (m_mode == Mode::ClippingPlane)
+    {
+        m_clipObjectId.clear();
+        showPrompt(tr("Click a visible 3D object to place the clipping plane."));
+    }
+    else if (m_mode == Mode::SliceByPoints)
+    {
+        m_slicePoints.clear();
+        m_sliceObjectId.clear();
+        clearSlicePreview();
+        clearSliceProfileWindow();
+        showPrompt(tr("Click a visible 3D object to start the slice path."));
+    }
+    else if (m_mode == Mode::PointZoom)
     {
         showPrompt(tr("Click a model point to center and zoom the view."));
     }
@@ -200,13 +325,16 @@ void IDOSRenderInteractionTool::onActivated()
 
 void IDOSRenderInteractionTool::onDeactivated()
 {
+    clearMeasurement();
+    clearProbe();
+    clearClippingPlane();
+    clearSlicePreview();
+    m_slicePoints.clear();
+    m_hasFirstPoint = false;
     if (m_mode == Mode::Selection && view() != nullptr)
     {
         view()->setSelection(QList<QString>());
     }
-    clearMeasurement();
-    clearProbe();
-    m_hasFirstPoint = false;
     m_promptLabel->hide();
     QToolTip::hideText();
 }
@@ -216,7 +344,8 @@ void IDOSRenderInteractionTool::showPrompt(const QString& text) const
     IDOSRenderView* renderView = view();
     if (renderView != nullptr)
     {
-        if (m_mode == Mode::DistanceMeasurement || m_mode == Mode::PointProbe)
+        if (m_mode == Mode::DistanceMeasurement || m_mode == Mode::PointProbe ||
+            m_mode == Mode::ClippingPlane || m_mode == Mode::SliceByPoints)
         {
             m_promptLabel->setText(text);
             m_promptLabel->adjustSize();
@@ -227,6 +356,466 @@ void IDOSRenderInteractionTool::showPrompt(const QString& text) const
         }
         QToolTip::showText(QCursor::pos(), text, renderView);
     }
+}
+
+void IDOSRenderInteractionTool::onClipPlaneInteraction(vtkObject* caller, unsigned long eventId,
+                                                        void* clientData, void* callData)
+{
+    Q_UNUSED(caller)
+    Q_UNUSED(eventId)
+    Q_UNUSED(callData)
+    IDOSRenderInteractionTool* tool = static_cast<IDOSRenderInteractionTool*>(clientData);
+    if (tool != nullptr)
+    {
+        tool->updateClippingPlane();
+    }
+}
+
+void IDOSRenderInteractionTool::onSceneChanged()
+{
+    if (!isActive())
+    {
+        return;
+    }
+    if (m_mode == Mode::ClippingPlane && !m_clipObjectId.isEmpty())
+    {
+        updateClippingPlane();
+        if (m_clipWidget->GetEnabled() != 0)
+        {
+            m_clipWidget->SetEnabled(0);
+            m_clipWidget->SetEnabled(1);
+        }
+    }
+    else if (m_mode == Mode::SliceByPoints && !m_slicePoints.isEmpty())
+    {
+        updateSlicePreview();
+    }
+}
+
+void IDOSRenderInteractionTool::onSceneObjectAboutToBeRemoved(const QString& id)
+{
+    if (id == m_clipObjectId)
+    {
+        clearClippingPlane();
+        QTimer::singleShot(0, this, &IDOSRenderInteractionTool::onDeactivateRequested);
+    }
+    if (id == m_sliceObjectId)
+    {
+        clearSlicePreview();
+        m_slicePoints.clear();
+        m_sliceObjectId.clear();
+        QTimer::singleShot(0, this, &IDOSRenderInteractionTool::onDeactivateRequested);
+    }
+}
+
+bool IDOSRenderInteractionTool::startClippingPlane()
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || renderView->isTwoDimensional())
+    {
+        return false;
+    }
+    if (m_clipObjectId.isEmpty() && renderView->selection().size() == 1)
+    {
+        m_clipObjectId = renderView->selection().first();
+    }
+    IDOSRenderObject* object = renderView->scene()->object(m_clipObjectId);
+    if (object == nullptr || !object->visible() || object->provider() == nullptr)
+    {
+        return false;
+    }
+    const QList<vtkActor*> actors = object->provider()->actors();
+    double bounds[6] = {std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                        std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()};
+    bool hasBounds = false;
+    for (vtkActor* actor : actors)
+    {
+        if (actor == nullptr || actor->GetVisibility() == 0)
+        {
+            continue;
+        }
+        double actorBounds[6];
+        actor->GetBounds(actorBounds);
+        for (int index = 0; index < 3; ++index)
+        {
+            bounds[index * 2] = qMin(bounds[index * 2], actorBounds[index * 2]);
+            bounds[index * 2 + 1] = qMax(bounds[index * 2 + 1], actorBounds[index * 2 + 1]);
+        }
+        hasBounds = true;
+    }
+    if (!hasBounds)
+    {
+        return false;
+    }
+
+    m_clipObjectId = object->id();
+    m_clipRepresentation->PlaceWidget(bounds);
+    m_clipRepresentation->SetOrigin((bounds[0] + bounds[1]) * 0.5,
+                                     (bounds[2] + bounds[3]) * 0.5,
+                                     (bounds[4] + bounds[5]) * 0.5);
+    m_clipRepresentation->SetNormal(0.0, 0.0, 1.0);
+    m_clipWidget->SetCurrentRenderer(renderView->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer());
+    m_clipWidget->SetInteractor(renderView->vtkWidget()->interactor());
+    m_clipObserverTag = m_clipWidget->AddObserver(vtkCommand::InteractionEvent, m_clipCallback);
+    m_clipRepresentation->GetPlane(m_clipPlane);
+    m_clipWidget->SetEnabled(1);
+    updateClippingPlane();
+    return true;
+}
+
+void IDOSRenderInteractionTool::updateClippingPlane()
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || m_clipObjectId.isEmpty())
+    {
+        return;
+    }
+    if (m_clipRepresentation != nullptr)
+    {
+        m_clipRepresentation->GetPlane(m_clipPlane);
+    }
+    for (vtkSmartPointer<vtkMapper>& mapper : m_clippedMappers)
+    {
+        if (mapper != nullptr)
+        {
+            mapper->RemoveClippingPlane(m_clipPlane);
+            mapper->Modified();
+        }
+    }
+    m_clippedMappers.clear();
+    IDOSRenderObject* object = renderView->scene()->object(m_clipObjectId);
+    if (object != nullptr && object->provider() != nullptr)
+    {
+        const QList<vtkActor*> actors = object->provider()->actors();
+        for (vtkActor* actor : actors)
+        {
+            vtkMapper* mapper = actor != nullptr ? actor->GetMapper() : nullptr;
+            if (mapper != nullptr && !m_clippedMappers.contains(mapper))
+            {
+                mapper->AddClippingPlane(m_clipPlane);
+                mapper->Modified();
+                m_clippedMappers.append(vtkSmartPointer<vtkMapper>(mapper));
+            }
+        }
+    }
+    renderView->render();
+}
+
+void IDOSRenderInteractionTool::clearClippingPlane()
+{
+    if (m_clipWidget != nullptr)
+    {
+        m_clipWidget->SetEnabled(0);
+        if (m_clipObserverTag != 0)
+        {
+            m_clipWidget->RemoveObserver(m_clipObserverTag);
+            m_clipObserverTag = 0;
+        }
+    }
+    for (vtkSmartPointer<vtkMapper>& mapper : m_clippedMappers)
+    {
+        if (mapper != nullptr)
+        {
+            mapper->RemoveClippingPlane(m_clipPlane);
+            mapper->Modified();
+        }
+    }
+    m_clippedMappers.clear();
+    m_clipObjectId.clear();
+    if (view() != nullptr)
+    {
+        view()->render();
+    }
+}
+
+bool IDOSRenderInteractionTool::pickSelectedObjectWorldPosition(const QPoint& position,
+                                                                 double worldPosition[3]) const
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || worldPosition == nullptr || m_sliceObjectId.isEmpty() ||
+        renderView->vtkWidget()->width() <= 0 || renderView->vtkWidget()->height() <= 0)
+    {
+        return false;
+    }
+    IDOSRenderObject* object = renderView->scene()->object(m_sliceObjectId);
+    if (object == nullptr || !object->visible() || object->provider() == nullptr)
+    {
+        return false;
+    }
+    vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
+    picker->SetTolerance(0.005);
+    picker->PickFromListOn();
+    for (vtkActor* actor : object->provider()->actors())
+    {
+        if (actor != nullptr && actor->GetVisibility() != 0)
+        {
+            picker->AddPickList(actor);
+        }
+    }
+    vtkRenderWindow* window = renderView->vtkWidget()->renderWindow();
+    const int* size = window->GetSize();
+    const double x = static_cast<double>(position.x()) * size[0] / renderView->vtkWidget()->width();
+    const double y = size[1] - 1.0 - static_cast<double>(position.y()) * size[1] /
+        renderView->vtkWidget()->height();
+    vtkRenderer* renderer = window->GetRenderers()->GetFirstRenderer();
+    if (renderer == nullptr || picker->Pick(x, y, 0.0, renderer) == 0)
+    {
+        return false;
+    }
+    picker->GetPickPosition(worldPosition);
+    return true;
+}
+
+void IDOSRenderInteractionTool::addSlicePoint(const double worldPosition[3])
+{
+    if (worldPosition == nullptr)
+    {
+        return;
+    }
+    if (!m_slicePoints.isEmpty())
+    {
+        const std::array<double, 3>& previous = m_slicePoints.last();
+        const double dx = worldPosition[0] - previous[0];
+        const double dy = worldPosition[1] - previous[1];
+        if (dx * dx + dy * dy < 1.0e-8)
+        {
+            return;
+        }
+    }
+    m_slicePoints.append({worldPosition[0], worldPosition[1], worldPosition[2]});
+    updateSlicePreview();
+    showPrompt(tr("Path points: %1. Click more points or press Enter to create the slice.")
+                   .arg(m_slicePoints.size()));
+}
+
+void IDOSRenderInteractionTool::updateSlicePreview()
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || m_slicePoints.isEmpty())
+    {
+        clearSlicePreview();
+        return;
+    }
+    vtkRenderer* renderer = renderView->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
+    if (renderer == nullptr)
+    {
+        return;
+    }
+    if (m_slicePreviewActor != nullptr)
+    {
+        renderer->RemoveActor(m_slicePreviewActor);
+    }
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkCellArray> vertices = vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkCellArray> lines = vtkSmartPointer<vtkCellArray>::New();
+    for (int index = 0; index < m_slicePoints.size(); ++index)
+    {
+        const std::array<double, 3>& point = m_slicePoints.at(index);
+        points->InsertNextPoint(point.data());
+        vertices->InsertNextCell(1);
+        vertices->InsertCellPoint(index);
+        if (index > 0)
+        {
+            const vtkIdType ids[2] = {index - 1, index};
+            lines->InsertNextCell(2, ids);
+        }
+    }
+    vtkSmartPointer<vtkPolyData> path = vtkSmartPointer<vtkPolyData>::New();
+    path->SetPoints(points);
+    path->SetVerts(vertices);
+    path->SetLines(lines);
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(path);
+    m_slicePreviewActor = vtkSmartPointer<vtkActor>::New();
+    m_slicePreviewActor->SetMapper(mapper);
+    m_slicePreviewActor->GetProperty()->SetColor(1.0, 0.8, 0.1);
+    m_slicePreviewActor->GetProperty()->SetLineWidth(2.0);
+    m_slicePreviewActor->GetProperty()->SetPointSize(9.0);
+    m_slicePreviewActor->PickableOff();
+    renderer->AddActor(m_slicePreviewActor);
+    renderView->render();
+}
+
+void IDOSRenderInteractionTool::clearSlicePreview()
+{
+    if (m_slicePreviewActor != nullptr && view() != nullptr)
+    {
+        vtkRenderer* renderer = view()->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
+        if (renderer != nullptr)
+        {
+            renderer->RemoveActor(m_slicePreviewActor);
+        }
+        view()->render();
+    }
+    m_slicePreviewActor = nullptr;
+}
+
+void IDOSRenderInteractionTool::executeSlice()
+{
+    IDOSRenderView* renderView = view();
+    IDOSRenderObject* object = renderView != nullptr ? renderView->scene()->object(m_sliceObjectId) : nullptr;
+    if (renderView == nullptr || object == nullptr || object->provider() == nullptr || m_slicePoints.size() < 2)
+    {
+        showPrompt(tr("Add at least two path points on the selected object."));
+        return;
+    }
+
+    vtkSmartPointer<vtkAppendPolyData> append = vtkSmartPointer<vtkAppendPolyData>::New();
+    const QList<vtkActor*> actors = object->provider()->actors();
+    for (vtkActor* actor : actors)
+    {
+        vtkMapper* mapper = actor != nullptr ? actor->GetMapper() : nullptr;
+        vtkDataSet* source = mapper != nullptr
+            ? vtkDataSet::SafeDownCast(mapper->GetInputDataObject(0, 0)) : nullptr;
+        if (source == nullptr)
+        {
+            continue;
+        }
+        vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
+        transform->SetMatrix(actor->GetMatrix());
+        vtkSmartPointer<vtkTransformFilter> transformed = vtkSmartPointer<vtkTransformFilter>::New();
+        transformed->SetInputData(source);
+        transformed->SetTransform(transform);
+        transformed->Update();
+        vtkDataSet* worldData = vtkDataSet::SafeDownCast(transformed->GetOutputDataObject(0));
+        if (worldData == nullptr)
+        {
+            continue;
+        }
+
+        double accumulatedDistance = 0.0;
+        for (int segmentIndex = 0; segmentIndex + 1 < m_slicePoints.size(); ++segmentIndex)
+        {
+            const std::array<double, 3>& first = m_slicePoints.at(segmentIndex);
+            const std::array<double, 3>& second = m_slicePoints.at(segmentIndex + 1);
+            const double dx = second[0] - first[0];
+            const double dy = second[1] - first[1];
+            const double length = std::sqrt(dx * dx + dy * dy);
+            if (length <= 1.0e-6)
+            {
+                continue;
+            }
+            const double axis[3] = {dx / length, dy / length, 0.0};
+            const double normal[3] = {-axis[1], axis[0], 0.0};
+            vtkSmartPointer<vtkPlane> cutPlane = vtkSmartPointer<vtkPlane>::New();
+            cutPlane->SetOrigin(first.data());
+            cutPlane->SetNormal(normal);
+            vtkSmartPointer<vtkCutter> cutter = vtkSmartPointer<vtkCutter>::New();
+            cutter->SetInputData(worldData);
+            cutter->SetCutFunction(cutPlane);
+            cutter->GenerateCutScalarsOff();
+            cutter->Update();
+
+            vtkSmartPointer<vtkPlane> startPlane = vtkSmartPointer<vtkPlane>::New();
+            startPlane->SetOrigin(first.data());
+            startPlane->SetNormal(axis);
+            vtkSmartPointer<vtkClipPolyData> startClip = vtkSmartPointer<vtkClipPolyData>::New();
+            startClip->SetInputConnection(cutter->GetOutputPort());
+            startClip->SetClipFunction(startPlane);
+            startClip->InsideOutOff();
+            vtkSmartPointer<vtkPlane> endPlane = vtkSmartPointer<vtkPlane>::New();
+            endPlane->SetOrigin(second.data());
+            endPlane->SetNormal(axis);
+            vtkSmartPointer<vtkClipPolyData> endClip = vtkSmartPointer<vtkClipPolyData>::New();
+            endClip->SetInputConnection(startClip->GetOutputPort());
+            endClip->SetClipFunction(endPlane);
+            endClip->InsideOutOn();
+            endClip->Update();
+            vtkPolyData* clipped = endClip->GetOutput();
+            if (clipped == nullptr || clipped->GetNumberOfPoints() == 0 || clipped->GetNumberOfCells() == 0)
+            {
+                accumulatedDistance += length;
+                continue;
+            }
+
+            vtkSmartPointer<vtkPolyData> flattened = vtkSmartPointer<vtkPolyData>::New();
+            flattened->DeepCopy(clipped);
+            vtkSmartPointer<vtkPoints> flattenedPoints = vtkSmartPointer<vtkPoints>::New();
+            flattenedPoints->SetDataTypeToDouble();
+            for (vtkIdType pointIndex = 0; pointIndex < clipped->GetNumberOfPoints(); ++pointIndex)
+            {
+                double point[3];
+                clipped->GetPoint(pointIndex, point);
+                const double distance = accumulatedDistance +
+                    (point[0] - first[0]) * axis[0] + (point[1] - first[1]) * axis[1];
+                flattenedPoints->InsertNextPoint(distance, point[2], 0.0);
+            }
+            flattened->SetPoints(flattenedPoints);
+            append->AddInputData(flattened);
+            accumulatedDistance += length;
+        }
+    }
+    append->Update();
+    vtkSmartPointer<vtkPolyData> profile = vtkSmartPointer<vtkPolyData>::New();
+    profile->DeepCopy(append->GetOutput());
+    if (profile->GetNumberOfPoints() == 0 || profile->GetNumberOfCells() == 0)
+    {
+        showPrompt(tr("No slice geometry was found along the selected path."));
+        return;
+    }
+    clearSlicePreview();
+    showSliceProfile(profile);
+    showPrompt(tr("Slice profile created for %1.").arg(object->name()));
+    QTimer::singleShot(0, this, &IDOSRenderInteractionTool::onDeactivateRequested);
+}
+
+void IDOSRenderInteractionTool::showSliceProfile(vtkPolyData* profile)
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || profile == nullptr)
+    {
+        return;
+    }
+    clearSliceProfileWindow();
+    QDialog* dialog = new QDialog(renderView, Qt::Window);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &QObject::destroyed,
+            this, &IDOSRenderInteractionTool::onSliceProfileWindowDestroyed);
+    dialog->setObjectName(QStringLiteral("renderSliceProfileWindow"));
+    dialog->setWindowTitle(tr("Slice Profile"));
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    QVTKOpenGLNativeWidget* widget = new QVTKOpenGLNativeWidget(dialog);
+    widget->setObjectName(QStringLiteral("renderSliceProfileView"));
+    m_sliceRenderWindow = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
+    vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
+    renderer->SetBackground(0.12, 0.16, 0.21);
+    m_sliceRenderWindow->AddRenderer(renderer);
+    widget->setRenderWindow(m_sliceRenderWindow);
+    vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+    mapper->SetInputData(profile);
+    mapper->ScalarVisibilityOff();
+    vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetColor(0.96, 0.72, 0.2);
+    actor->GetProperty()->SetLineWidth(2.0);
+    renderer->AddActor(actor);
+    renderer->GetActiveCamera()->ParallelProjectionOn();
+    renderer->ResetCamera();
+    renderer->ResetCameraClippingRange();
+    layout->addWidget(widget);
+    dialog->resize(1000, 700);
+    m_sliceDialog = dialog;
+    dialog->show();
+    dialog->raise();
+    m_sliceRenderWindow->Render();
+}
+
+void IDOSRenderInteractionTool::clearSliceProfileWindow()
+{
+    if (m_sliceDialog != nullptr)
+    {
+        m_sliceDialog->close();
+    }
+    m_sliceDialog = nullptr;
+    m_sliceRenderWindow = nullptr;
+}
+
+void IDOSRenderInteractionTool::onSliceProfileWindowDestroyed(QObject* object)
+{
+    Q_UNUSED(object)
+    m_sliceDialog = nullptr;
+    m_sliceRenderWindow = nullptr;
 }
 
 void IDOSRenderInteractionTool::handlePickedPoint(const double worldPosition[3])

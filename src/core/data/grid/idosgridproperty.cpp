@@ -16,6 +16,7 @@ IDOSGridProperty::IDOSGridProperty(QObject* parent)
     , m_nx(0)
     , m_ny(0)
     , m_nz(0)
+    , m_valueUnits(ValueUnits::SI)
     , m_currentReportStep(-1)
 {
 }
@@ -58,6 +59,21 @@ void IDOSGridProperty::setKind(Kind kind)
     }
     m_kind = kind;
     emit kindChanged(kind);
+    emit dataChanged();
+}
+
+IDOSGridProperty::ValueUnits IDOSGridProperty::valueUnits() const
+{
+    return m_valueUnits;
+}
+
+void IDOSGridProperty::setValueUnits(ValueUnits valueUnits)
+{
+    if (m_valueUnits == valueUnits)
+    {
+        return;
+    }
+    m_valueUnits = valueUnits;
     emit dataChanged();
 }
 
@@ -259,6 +275,7 @@ IDOSDataObject* IDOSGridProperty::clone() const
     copy->m_nx = m_nx;
     copy->m_ny = m_ny;
     copy->m_nz = m_nz;
+    copy->m_valueUnits = m_valueUnits;
     copy->m_values = m_values;
     copy->m_reportStepValues = m_reportStepValues;
     copy->m_currentReportStep = m_currentReportStep;
@@ -274,6 +291,7 @@ QVariantMap IDOSGridProperty::projectData() const
     data.insert(QStringLiteral("nx"), QVariant::fromValue(m_nx));
     data.insert(QStringLiteral("ny"), QVariant::fromValue(m_ny));
     data.insert(QStringLiteral("nz"), QVariant::fromValue(m_nz));
+    data.insert(QStringLiteral("valueUnits"), static_cast<int>(m_valueUnits));
     data.insert(QStringLiteral("values"), QVariant::fromValue(m_values));
     QVariantMap reportStepValues;
     for (QMap<int, QVector<double>>::const_iterator it = m_reportStepValues.constBegin(); it != m_reportStepValues.constEnd(); ++it)
@@ -337,12 +355,22 @@ bool IDOSGridProperty::restoreProjectData(const QVariantMap& data, QString& erro
         error = QObject::tr("A stored object field is missing or has an invalid type: %1.").arg(QStringLiteral("currentReportStep"));
         return false;
     }
+    if (data.contains(QStringLiteral("valueUnits")) &&
+        (data.value(QStringLiteral("valueUnits")).userType() != qMetaTypeId<int>() ||
+         data.value(QStringLiteral("valueUnits")).toInt() < 0 || data.value(QStringLiteral("valueUnits")).toInt() >= 2))
+    {
+        error = QObject::tr("A stored property unit state is invalid.");
+        return false;
+    }
     m_keyword = data.value(QStringLiteral("keyword")).value<QString>();
     m_kind = static_cast<Kind>(data.value(QStringLiteral("kind")).toInt());
     m_gridId = data.value(QStringLiteral("gridId")).value<QString>();
     m_nx = data.value(QStringLiteral("nx")).value<int>();
     m_ny = data.value(QStringLiteral("ny")).value<int>();
     m_nz = data.value(QStringLiteral("nz")).value<int>();
+    m_valueUnits = data.contains(QStringLiteral("valueUnits"))
+                       ? static_cast<ValueUnits>(data.value(QStringLiteral("valueUnits")).toInt())
+                       : ValueUnits::SI;
     m_values = data.value(QStringLiteral("values")).value<QVector<double>>();
     m_reportStepValues.clear();
     const QVariantMap reportStepValues = data.value(QStringLiteral("reportStepValues")).toMap();

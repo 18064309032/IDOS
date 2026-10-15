@@ -12,6 +12,7 @@
 class IDOSCaseObject;
 class IDOSGrid;
 class IDOSDataObject;
+class IDOSFluidRockTable;
 
 class APP_EXPORT IDOSDeleteCaseCommand : public IDOSCommand
 {
@@ -29,12 +30,15 @@ protected:
 private:
     QStringList collectCaseGridIds() const;
     QStringList collectGridPropertyIds(const QString& gridId) const;
+    QStringList collectCaseFluidRockTableIds() const;
+    bool isReferencedByOtherCase(const QString& objectId) const;
     void clearDetachedObjects();
 
     QString m_caseId;
     QPointer<IDOSCaseObject> m_caseObject;
     QList<QPointer<IDOSGrid>> m_grids;
     QList<QPointer<IDOSDataObject>> m_properties;
+    QList<QPointer<IDOSFluidRockTable>> m_fluidRockTables;
 };
 
 class APP_EXPORT IDOSDeleteCaseCommandMetadata : public IDOSCommandMetadata

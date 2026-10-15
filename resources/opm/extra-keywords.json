@@ -1,0 +1,21 @@
+{
+  "keywords": [],
+  "example": {
+    "name": "MYKEY",
+    "sections": [
+      "PROPS"
+    ],
+    "size": "UNKNOWN",
+    "description": "Example only. Copy this object into the keywords array and replace MYKEY with the real keyword name.",
+    "records": [
+      [
+        {
+          "name": "VALUE",
+          "value_type": "RAW_STRING",
+          "size_type": "ALL",
+          "description": "Preserves record values as raw strings."
+        }
+      ]
+    ]
+  }
+}

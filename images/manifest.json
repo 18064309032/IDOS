@@ -1,5 +1,11 @@
 [
   {
+    "file": "app-project-close.svg",
+    "module": "app",
+    "purpose": "Close a project",
+    "color": "#3566B8"
+  },
+  {
     "file": "app-project-new.svg",
     "module": "app",
     "purpose": "Create a project",
@@ -342,9 +348,21 @@
     "color": "#437AAA"
   },
   {
+    "file": "render-bounds.svg",
+    "module": "render",
+    "purpose": "Show a bounding box with coordinate ticks",
+    "color": "#437AAA"
+  },
+  {
     "file": "render-clear-selection.svg",
     "module": "render",
     "purpose": "Clear scene selection",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-clipping.svg",
+    "module": "render",
+    "purpose": "Place a clipping plane on an object",
     "color": "#437AAA"
   },
   {
@@ -414,6 +432,12 @@
     "color": "#437AAA"
   },
   {
+    "file": "render-slice.svg",
+    "module": "render",
+    "purpose": "Create a slice along picked points",
+    "color": "#437AAA"
+  },
+  {
     "file": "render-standard-views.svg",
     "module": "render",
     "purpose": "Set a standard camera view",
@@ -441,6 +465,12 @@
     "file": "render-view.svg",
     "module": "render",
     "purpose": "Render viewport",
+    "color": "#437AAA"
+  },
+  {
+    "file": "render-z-scale.svg",
+    "module": "render",
+    "purpose": "Adjust vertical exaggeration",
     "color": "#437AAA"
   },
   {

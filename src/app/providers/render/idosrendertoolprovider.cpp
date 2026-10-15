@@ -44,10 +44,17 @@ IDOSRenderToolProvider::IDOSRenderToolProvider(IDOSRenderView* view)
     , m_distanceMeasurementAction(new QAction(QIcon(QStringLiteral(":/images/render-measure.svg")),
                                                tr("Distance Measurement"), this))
     , m_selectionAction(new QAction(QIcon(QStringLiteral(":/images/render-select.svg")), tr("Select"), this))
+    , m_clippingPlaneAction(new QAction(QIcon(QStringLiteral(":/images/render-clipping.svg")),
+                                        tr("Clipping Plane"), this))
+    , m_sliceByPointsAction(new QAction(QIcon(QStringLiteral(":/images/render-slice.svg")),
+                                       tr("Slice by Points"), this))
+    , m_boundsAction(new QAction(QIcon(QStringLiteral(":/images/render-bounds.svg")),
+                                 tr("Show Bounding Box"), this))
     , m_backgroundColorAction(new QAction(QIcon(QStringLiteral(":/images/render-scene.svg")),
                                           tr("Background Color"), this))
     , m_screenshotAction(new QAction(QIcon(QStringLiteral(":/images/render-view.svg")), tr("Screenshot"), this))
     , m_scaleViewAction(new QAction(QIcon(QStringLiteral(":/images/render-zoom.svg")), tr("Scale View"), this))
+    , m_zScaleAction(new QAction(QIcon(QStringLiteral(":/images/render-z-scale.svg")), tr("Z Scale"), this))
     , m_clearDisplayAction(new QAction(QIcon(QStringLiteral(":/images/render-hidden.svg")),
                                        tr("Hide All"), this))
     , m_standardViewsAction(new QAction(QIcon(QStringLiteral(":/images/render-standard-views.svg")),
@@ -76,9 +83,13 @@ IDOSRenderToolProvider::IDOSRenderToolProvider(IDOSRenderView* view)
     m_pointProbeAction->setObjectName(QStringLiteral("viewToolPointProbeAction"));
     m_distanceMeasurementAction->setObjectName(QStringLiteral("viewToolDistanceMeasurementAction"));
     m_selectionAction->setObjectName(QStringLiteral("viewToolSelectionAction"));
+    m_clippingPlaneAction->setObjectName(QStringLiteral("viewToolClippingPlaneAction"));
+    m_sliceByPointsAction->setObjectName(QStringLiteral("viewToolSliceByPointsAction"));
+    m_boundsAction->setObjectName(QStringLiteral("viewToolBoundsAction"));
     m_backgroundColorAction->setObjectName(QStringLiteral("viewToolBackgroundColorAction"));
     m_screenshotAction->setObjectName(QStringLiteral("viewToolScreenshotAction"));
     m_scaleViewAction->setObjectName(QStringLiteral("viewToolScaleAction"));
+    m_zScaleAction->setObjectName(QStringLiteral("viewToolZScaleAction"));
     m_clearDisplayAction->setObjectName(QStringLiteral("viewToolClearDisplayAction"));
     m_standardViewsAction->setObjectName(QStringLiteral("viewToolStandardViewsAction"));
     m_axesAction->setObjectName(QStringLiteral("viewToolAxesAction"));
@@ -91,6 +102,9 @@ IDOSRenderToolProvider::IDOSRenderToolProvider(IDOSRenderView* view)
     m_pointProbeAction->setCheckable(true);
     m_distanceMeasurementAction->setCheckable(true);
     m_selectionAction->setCheckable(true);
+    m_clippingPlaneAction->setCheckable(true);
+    m_sliceByPointsAction->setCheckable(true);
+    m_boundsAction->setCheckable(true);
     m_standardViewsAction->setMenu(m_standardViewsMenu);
     m_orientationActionGroup->setExclusive(true);
 
@@ -162,12 +176,20 @@ IDOSRenderToolProvider::IDOSRenderToolProvider(IDOSRenderView* view)
             this, &IDOSRenderToolProvider::onInteractionToggled);
     connect(m_selectionAction, &QAction::toggled,
             this, &IDOSRenderToolProvider::onInteractionToggled);
+    connect(m_clippingPlaneAction, &QAction::toggled,
+            this, &IDOSRenderToolProvider::onInteractionToggled);
+    connect(m_sliceByPointsAction, &QAction::toggled,
+            this, &IDOSRenderToolProvider::onInteractionToggled);
+    connect(m_boundsAction, &QAction::toggled,
+            this, &IDOSRenderToolProvider::onBoundsToggled);
     connect(m_backgroundColorAction, &QAction::triggered,
             this, &IDOSRenderToolProvider::onBackgroundColorTriggered);
     connect(m_screenshotAction, &QAction::triggered,
             this, &IDOSRenderToolProvider::onScreenshotTriggered);
     connect(m_scaleViewAction, &QAction::triggered,
             this, &IDOSRenderToolProvider::onScaleViewTriggered);
+    connect(m_zScaleAction, &QAction::triggered,
+            this, &IDOSRenderToolProvider::onZScaleTriggered);
     connect(m_clearDisplayAction, &QAction::triggered,
             this, &IDOSRenderToolProvider::onClearDisplayTriggered);
     connect(m_standardViewsMenu, &QMenu::triggered,
@@ -189,6 +211,8 @@ IDOSRenderToolProvider::IDOSRenderToolProvider(IDOSRenderView* view)
     m_interactionTools.append(new IDOSRenderInteractionTool(view, IDOSRenderInteractionTool::Mode::PointProbe));
     m_interactionTools.append(new IDOSRenderInteractionTool(view, IDOSRenderInteractionTool::Mode::DistanceMeasurement));
     m_interactionTools.append(new IDOSRenderInteractionTool(view, IDOSRenderInteractionTool::Mode::Selection));
+    m_interactionTools.append(new IDOSRenderInteractionTool(view, IDOSRenderInteractionTool::Mode::ClippingPlane));
+    m_interactionTools.append(new IDOSRenderInteractionTool(view, IDOSRenderInteractionTool::Mode::SliceByPoints));
     for (IDOSTool* tool : m_interactionTools)
     {
         tool->setParent(this);
@@ -214,9 +238,10 @@ QList<QAction*> IDOSRenderToolProvider::actions() const
 {
     return QList<QAction*>{m_axesAction, m_standardViewsAction, m_resetViewAction, m_legendAction, m_rotateCounterclockwiseAction,
                            m_rotateClockwiseAction, m_projectionAction,
-                           m_fitSelectionAction, m_fitAllAction, m_scaleViewAction,
+                           m_fitSelectionAction, m_fitAllAction, m_scaleViewAction, m_zScaleAction,
                            m_cursorTrackingAction, m_linkedViewAction, m_pointZoomAction, m_pointProbeAction,
-                           m_distanceMeasurementAction, m_selectionAction, m_gridXrayAction, m_backgroundColorAction,
+                           m_distanceMeasurementAction, m_selectionAction, m_clippingPlaneAction,
+                           m_sliceByPointsAction, m_boundsAction, m_gridXrayAction, m_backgroundColorAction,
                            m_clearDisplayAction, m_screenshotAction};
 }
 
@@ -247,9 +272,14 @@ void IDOSRenderToolProvider::updateState()
     m_pointProbeAction->setEnabled(hasView);
     m_distanceMeasurementAction->setEnabled(hasView);
     m_selectionAction->setEnabled(hasView);
+    const bool hasThreeDimensionalView = hasView && !renderView->isTwoDimensional();
+    m_clippingPlaneAction->setEnabled(hasThreeDimensionalView);
+    m_sliceByPointsAction->setEnabled(hasThreeDimensionalView);
+    m_boundsAction->setEnabled(false);
     m_backgroundColorAction->setEnabled(hasView);
     m_screenshotAction->setEnabled(hasView);
     m_scaleViewAction->setEnabled(hasView);
+    m_zScaleAction->setEnabled(hasView && !renderView->isTwoDimensional());
     m_clearDisplayAction->setEnabled(hasView && !renderView->scene()->objects().isEmpty());
 
     if (!hasView)
@@ -262,22 +292,29 @@ void IDOSRenderToolProvider::updateState()
     {
         hasVisibleObjects = hasVisibleObjects || object->visible();
     }
+    m_boundsAction->setEnabled(hasVisibleObjects);
     m_clearDisplayAction->setText(hasVisibleObjects ? tr("Hide All") : tr("Show All"));
     m_clearDisplayAction->setToolTip(m_clearDisplayAction->text());
+    m_zScaleAction->setToolTip(tr("Z Scale: %1x").arg(renderView->zAxisScale(), 0, 'f', 2));
 
     const QSignalBlocker axesBlocker(m_axesAction);
     const QSignalBlocker projectionBlocker(m_projectionAction);
     const QSignalBlocker cursorTrackingBlocker(m_cursorTrackingAction);
     const QSignalBlocker gridXrayBlocker(m_gridXrayAction);
     const QSignalBlocker linkedViewBlocker(m_linkedViewAction);
+    const QSignalBlocker clippingPlaneBlocker(m_clippingPlaneAction);
+    const QSignalBlocker sliceByPointsBlocker(m_sliceByPointsAction);
+    const QSignalBlocker boundsBlocker(m_boundsAction);
     m_axesAction->setChecked(renderView->axesVisible());
     m_projectionAction->setChecked(renderView->parallelProjection());
     m_cursorTrackingAction->setChecked(renderView->cursorTrackingEnabled());
     m_gridXrayAction->setChecked(m_gridXrayEnabled);
     m_linkedViewAction->setChecked(renderView->isCameraLinked() ||
                                    renderView->property("cameraLinkActive").toBool());
+    m_boundsAction->setChecked(renderView->boundsVisible());
     const QList<QAction*> interactionActions = {m_pointZoomAction, m_pointProbeAction,
-                                                m_distanceMeasurementAction, m_selectionAction};
+                                                m_distanceMeasurementAction, m_selectionAction,
+                                                m_clippingPlaneAction, m_sliceByPointsAction};
     for (int index = 0; index < m_interactionTools.size(); ++index)
     {
         const QSignalBlocker interactionBlocker(interactionActions.at(index));
@@ -286,6 +323,15 @@ void IDOSRenderToolProvider::updateState()
     for (QAction* action : m_orientationActionGroup->actions())
     {
         action->setChecked(action->data().toInt() == static_cast<int>(renderView->orientation()));
+    }
+}
+
+void IDOSRenderToolProvider::onBoundsToggled(bool enabled)
+{
+    IDOSRenderView* renderView = view();
+    if (renderView != nullptr)
+    {
+        renderView->setBoundsVisible(enabled);
     }
 }
 
@@ -452,6 +498,14 @@ void IDOSRenderToolProvider::onInteractionToggled(bool enabled)
     {
         index = 3;
     }
+    else if (action == m_clippingPlaneAction)
+    {
+        index = 4;
+    }
+    else if (action == m_sliceByPointsAction)
+    {
+        index = 5;
+    }
     if (index < 0 || index >= m_interactionTools.size())
     {
         return;
@@ -509,6 +563,23 @@ void IDOSRenderToolProvider::onScaleViewTriggered()
     if (accepted)
     {
         renderView->scaleView(factor);
+    }
+}
+
+void IDOSRenderToolProvider::onZScaleTriggered()
+{
+    IDOSRenderView* renderView = view();
+    if (renderView == nullptr || renderView->isTwoDimensional())
+    {
+        return;
+    }
+    bool accepted = false;
+    const double scale = QInputDialog::getDouble(renderView, tr("Z Scale"), tr("Z scale factor:"),
+                                                renderView->zAxisScale(), 0.01, 100.0, 2, &accepted);
+    if (accepted)
+    {
+        renderView->setZAxisScale(scale);
+        updateState();
     }
 }
 

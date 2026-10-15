@@ -4,6 +4,7 @@
 #include <QSignalBlocker>
 #include <QUuid>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
@@ -269,6 +270,18 @@ IDOSDataObject* IDOSTransferObjectsCommand::copyObject(
             if (child == nullptr)
             {
                 return nullptr;
+            }
+            IDOSFluidRockTable* sourceTable =
+                qobject_cast<IDOSFluidRockTable*>(project()->object(ref.objectId()));
+            IDOSFluidRockTable* copiedTable = qobject_cast<IDOSFluidRockTable*>(child);
+            if (sourceTable != nullptr && copiedTable != nullptr)
+            {
+                QVariantMap tableData = copiedTable->tableData();
+                if (tableData.value(QStringLiteral("originCaseId")).toString() == sourceCase->objectId())
+                {
+                    tableData.insert(QStringLiteral("originCaseId"), copyCase->objectId());
+                    copiedTable->setTableData(tableData);
+                }
             }
             IDOSWell* sourceWell = qobject_cast<IDOSWell*>(project()->object(ref.objectId()));
             if (sourceWell != nullptr)

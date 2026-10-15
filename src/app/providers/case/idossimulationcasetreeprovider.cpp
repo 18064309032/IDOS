@@ -86,13 +86,20 @@ void IDOSSimulationCaseTreeProvider::populate(IDOSTreeItem* item)
     IDOSTreeItem* wells = addItem(item, QStringLiteral("case.schedule"), QObject::tr("Wells and Development Plan"));
     wells->setGroup(true);
     addItem(item, QStringLiteral("case.outputSettings"), QObject::tr("Output Settings"))->setGroup(true);
-    addItem(item, QStringLiteral("case.summaryResults"), QObject::tr("Summary Results"))->setGroup(true);
+    IDOSTreeItem* summaryResults = addItem(item, QStringLiteral("case.summaryResults"),
+                                           QObject::tr("Summary Results"));
+    summaryResults->setGroup(true);
     const IDOSProject* project = qobject_cast<const IDOSProject*>(caseObject->parent());
     for (const IDOSCaseItemRef& ref : refs)
     {
+        if (ref.role() == QStringLiteral("case.gridProperty"))
+        {
+            continue;
+        }
         IDOSDataObject* data = project != nullptr ? project->object(ref.objectId()) : nullptr;
         IDOSTreeItem* parent = ref.role() == QStringLiteral("case.grid") ? grids
-                             : ref.role() == QStringLiteral("case.fluidRockTable") ? fluidRock : wells;
+                             : ref.role() == QStringLiteral("case.fluidRockTable") ? fluidRock
+                             : ref.role() == QStringLiteral("case.summaryResults") ? summaryResults : wells;
         IDOSTreeItem* reference = addItem(parent, ref.role() + QLatin1Char(':') + ref.objectId(),
                                         data != nullptr ? data->name() : QObject::tr("Missing object: %1").arg(ref.objectId()));
         reference->setDataId(ref.objectId());

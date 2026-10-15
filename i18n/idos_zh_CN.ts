@@ -1105,6 +1105,21 @@ It will be removed from all cases that reference it.</source>
     </message>
 </context>
 <context>
+    <name>IDOSImportSummaryResultsCommandMetadata</name>
+    <message>
+        <source>Import summary results</source>
+        <translation type="vanished">导入汇总结果</translation>
+    </message>
+    <message>
+        <source>Import ECLIPSE summary vectors into a simulation case.</source>
+        <translation type="vanished">将 ECLIPSE 汇总向量导入模拟工况。</translation>
+    </message>
+    <message>
+        <source>Object ID of the target simulation case.</source>
+        <translation type="vanished">目标模拟工况的对象 ID。</translation>
+    </message>
+</context>
+<context>
     <name>IDOSImportedDataTreeGuiProvider</name>
     <message>
         <source>Import SEG-Y Seismic Volume...</source>
@@ -1229,6 +1244,42 @@ It will be removed from all cases that reference it.</source>
 <context>
     <name>IDOSMainWindow</name>
     <message>
+        <source>No Project</source>
+        <translation>无工程</translation>
+    </message>
+    <message>
+        <source>Untitled Project</source>
+        <translation>未命名工程</translation>
+    </message>
+    <message>
+        <source>Modified</source>
+        <translation>未保存</translation>
+    </message>
+    <message>
+        <source>Saved</source>
+        <translation>已保存</translation>
+    </message>
+    <message>
+        <source>No Project Open</source>
+        <translation>当前没有打开的工程</translation>
+    </message>
+    <message>
+        <source>No Active View</source>
+        <translation>无活动视图</translation>
+    </message>
+    <message>
+        <source>Active render view mode</source>
+        <translation>当前活动渲染视图模式</translation>
+    </message>
+    <message>
+        <source>Objects: %1</source>
+        <translation>对象数：%1</translation>
+    </message>
+    <message>
+        <source>Number of data objects in the active project</source>
+        <translation>当前工程中的数据对象数量</translation>
+    </message>
+    <message>
         <source>The Numerical Simulation module could not be loaded. Simulation functions are unavailable.
 %1</source>
         <translation type="vanished">无法加载数值模拟模块，模拟功能不可用。
@@ -1265,6 +1316,10 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Project</source>
         <translation>工程</translation>
+    </message>
+    <message>
+        <source>Project Management</source>
+        <translation>工程管理</translation>
     </message>
     <message>
         <source>View</source>
@@ -1371,6 +1426,10 @@ It will be removed from all cases that reference it.</source>
         <translation>工程另存为</translation>
     </message>
     <message>
+        <source>Close Project</source>
+        <translation>关闭工程</translation>
+    </message>
+    <message>
         <source>Project Settings</source>
         <translation>工程设置</translation>
     </message>
@@ -1457,6 +1516,10 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>3D View</source>
         <translation>三维视图</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>开始</translation>
     </message>
     <message>
         <source>2D View</source>
@@ -1667,14 +1730,6 @@ It will be removed from all cases that reference it.</source>
         <translation>保存</translation>
     </message>
     <message>
-        <source>IDOS[*]</source>
-        <translation>IDOS[*]</translation>
-    </message>
-    <message>
-        <source>IDOS - %1[*]</source>
-        <translation>IDOS - %1[*]</translation>
-    </message>
-    <message>
         <source>IDOS Projects (*.idos)</source>
         <translation>IDOS 工程 (*.idos)</translation>
     </message>
@@ -1689,14 +1744,6 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Project display setup completed in %1 ms.</source>
         <translation>工程显示重建耗时 %1 毫秒。</translation>
-    </message>
-    <message>
-        <source>Recent Projects</source>
-        <translation>最近工程</translation>
-    </message>
-    <message>
-        <source>No Recent Projects</source>
-        <translation>暂无最近工程</translation>
     </message>
 </context>
 <context>
@@ -1871,6 +1918,42 @@ It will be removed from all cases that reference it.</source>
 </context>
 <context>
     <name>IDOSPluginListModel</name>
+    <message>
+        <source>Example</source>
+        <translation type="vanished">示例</translation>
+    </message>
+    <message>
+        <source>Point set extension example</source>
+        <translation type="vanished">点集扩展示例</translation>
+    </message>
+    <message>
+        <source>Examples</source>
+        <translation type="vanished">示例</translation>
+    </message>
+    <message>
+        <source>Fracture Modeling</source>
+        <translation type="vanished">裂缝建模</translation>
+    </message>
+    <message>
+        <source>Fracture modeling plugin</source>
+        <translation type="vanished">裂缝建模插件</translation>
+    </message>
+    <message>
+        <source>Geomechanics</source>
+        <translation type="vanished">地质力学</translation>
+    </message>
+    <message>
+        <source>Geomechanics plugin</source>
+        <translation type="vanished">地质力学插件</translation>
+    </message>
+    <message>
+        <source>Multiscale Fractures</source>
+        <translation type="vanished">多尺度裂缝</translation>
+    </message>
+    <message>
+        <source>Multiscale fracture plugin</source>
+        <translation type="vanished">多尺度裂缝插件</translation>
+    </message>
     <message>
         <source>Required</source>
         <translation>必需模块</translation>
@@ -2221,6 +2304,61 @@ It will be removed from all cases that reference it.</source>
     </message>
 </context>
 <context>
+    <name>IDOSProjectStartWidget</name>
+    <message>
+        <source>PROJECT WORKSPACE</source>
+        <translation>工程工作区</translation>
+    </message>
+    <message>
+        <source>Welcome to IDOS</source>
+        <translation>欢迎使用 IDOS</translation>
+    </message>
+    <message>
+        <source>Create a project, open an existing project, or continue from the recent list.</source>
+        <translation>新建工程、打开已有工程，或从最近工程继续。</translation>
+    </message>
+    <message>
+        <source>New Project</source>
+        <translation>新建工程</translation>
+    </message>
+    <message>
+        <source>Open Project</source>
+        <translation>打开工程</translation>
+    </message>
+    <message>
+        <source>Start a project with new settings.</source>
+        <translation>使用新的设置创建工程。</translation>
+    </message>
+    <message>
+        <source>Browse for an existing IDOS project.</source>
+        <translation>浏览并打开已有的 IDOS 工程。</translation>
+    </message>
+    <message>
+        <source>Recent Projects</source>
+        <translation>最近工程</translation>
+    </message>
+    <message>
+        <source>No Recent Projects</source>
+        <translation>暂无最近工程</translation>
+    </message>
+    <message>
+        <source>Select a project to continue.</source>
+        <translation>选择一个工程以继续。</translation>
+    </message>
+    <message>
+        <source>Available</source>
+        <translation>可用</translation>
+    </message>
+    <message>
+        <source>File Not Found</source>
+        <translation>文件不存在</translation>
+    </message>
+    <message>
+        <source>Remove from Recent Projects</source>
+        <translation>从最近工程中移除</translation>
+    </message>
+</context>
+<context>
     <name>IDOSPythonConsoleWidget</name>
     <message>
         <source>Python output will appear here.</source>
@@ -2308,6 +2446,58 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Distance: %1</source>
         <translation>距离：%1</translation>
+    </message>
+    <message>
+        <source>Click a visible 3D object to place the clipping plane.</source>
+        <translation>点击一个可见的三维对象以放置裁剪平面。</translation>
+    </message>
+    <message>
+        <source>The target object cannot be clipped in this view.</source>
+        <translation>无法在此视图中裁剪目标对象。</translation>
+    </message>
+    <message>
+        <source>Click a visible 3D object to start the slice path.</source>
+        <translation>点击一个可见的三维对象以开始绘制切片路径。</translation>
+    </message>
+    <message>
+        <source>Select one visible 3D object before enabling the clipping plane.</source>
+        <translation type="vanished">启用裁剪平面前，请先选择一个可见的三维对象。</translation>
+    </message>
+    <message>
+        <source>Drag the plane to clip the target object. Press Escape to restore it.</source>
+        <translation>拖动平面裁剪目标对象。按 Esc 恢复对象。</translation>
+    </message>
+    <message>
+        <source>Select one visible 3D object before creating a slice.</source>
+        <translation type="vanished">创建剖面前，请先选择一个可见的三维对象。</translation>
+    </message>
+    <message>
+        <source>Click at least two path points, then press Enter. Backspace removes the last point.</source>
+        <translation type="vanished">至少点击两个路径点，然后按 Enter。按 Backspace 删除最后一个点。</translation>
+    </message>
+    <message>
+        <source>Path points: %1. Click more points or press Enter to create the slice.</source>
+        <translation>路径点：%1。继续点击添加路径点，或按 Enter 创建剖面。</translation>
+    </message>
+    <message>
+        <source>Click the target object to add a path point.</source>
+        <translation>点击目标对象以添加路径点。</translation>
+    </message>
+    <message>
+        <source>Add at least two path points on the selected object.</source>
+        <translation>请在所选对象上至少添加两个路径点。</translation>
+    </message>
+    <message>
+        <source>No slice geometry was found along the selected path.</source>
+        <translation>沿所选路径未生成剖面几何。</translation>
+    </message>
+    <message>
+        <source>Slice profile created for %1.</source>
+        <translation>已为 %1 创建剖面。</translation>
+    </message>
+    <message>
+        <source>Slice Profile</source>
+        <translation>剖面</translation>
     </message>
 </context>
 <context>
@@ -2438,6 +2628,30 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Isometric</source>
         <translation>等轴测</translation>
+    </message>
+    <message>
+        <source>Clipping Plane</source>
+        <translation>裁剪平面</translation>
+    </message>
+    <message>
+        <source>Slice by Points</source>
+        <translation>按点切片</translation>
+    </message>
+    <message>
+        <source>Show Bounding Box</source>
+        <translation>显示包围框</translation>
+    </message>
+    <message>
+        <source>Z Scale</source>
+        <translation>Z 方向比例</translation>
+    </message>
+    <message>
+        <source>Z scale factor:</source>
+        <translation>Z 方向比例：</translation>
+    </message>
+    <message>
+        <source>Z Scale: %1x</source>
+        <translation>Z 方向比例：%1 倍</translation>
     </message>
 </context>
 <context>
@@ -2894,6 +3108,26 @@ It will be removed from all cases that reference it.</source>
 <context>
     <name>IDOSSimulationCaseTreeGuiProvider</name>
     <message>
+        <source>Import Summary Results...</source>
+        <translation>导入汇总结果…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results</source>
+        <translation>导入汇总结果</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)</source>
+        <translation>ECLIPSE 汇总规格文件 (*.SMSPEC *.smspec);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The command manager is unavailable.</source>
+        <translation>命令管理器不可用。</translation>
+    </message>
+    <message>
+        <source>View Summary Curves...</source>
+        <translation>查看汇总曲线…</translation>
+    </message>
+    <message>
         <source>Generate Simulation Input...</source>
         <translation>生成模拟输入…</translation>
     </message>
@@ -2971,9 +3205,9 @@ It will be removed from all cases that reference it.</source>
     </message>
     <message>
         <source>Are you sure you want to delete case &quot;%1&quot;?
-Its %2 grid(s) and %3 propert(ies) will also be deleted. Referenced wells are kept.</source>
+Its %2 grid(s) and %3 propert(ies) will also be deleted. Unshared fluid tables imported with this case will also be deleted. Shared tables and referenced wells are kept.</source>
         <translation>确定要删除工况&quot;%1&quot;吗？
-其下 %2 个网格和 %3 个属性将一并删除，引用的井保留。</translation>
+其下 %2 个网格和 %3 个属性将一并删除；随此工况导入且未被其他工况引用的流体表也将删除，共享表和引用的井会保留。</translation>
     </message>
     <message>
         <source>Import Grid</source>
@@ -3061,15 +3295,15 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Edit the original DATA text and export it with its indexed input files. The source files will not be changed.</source>
-        <translation>编辑原始 DATA 文本，并连同索引到的输入文件一起导出。源文件不会被修改。</translation>
+        <translation type="vanished">编辑原始 DATA 文本，并连同索引到的输入文件一起导出。源文件不会被修改。</translation>
     </message>
     <message>
         <source>Unable to read the source DATA file: %1</source>
-        <translation>无法读取来源 DATA 文件：%1</translation>
+        <translation type="vanished">无法读取来源 DATA 文件：%1</translation>
     </message>
     <message>
         <source>Package parent directory</source>
-        <translation>数据包上级目录</translation>
+        <translation type="vanished">数据包上级目录</translation>
     </message>
     <message>
         <source>Browse…</source>
@@ -3077,15 +3311,15 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Select package parent directory</source>
-        <translation>选择数据包上级目录</translation>
+        <translation type="vanished">选择数据包上级目录</translation>
     </message>
     <message>
         <source>Generate DATA Package</source>
-        <translation>生成 DATA 数据包</translation>
+        <translation type="vanished">生成 DATA 数据包</translation>
     </message>
     <message>
         <source>DATA package created: %1</source>
-        <translation>DATA 数据包已生成：%1</translation>
+        <translation type="vanished">DATA 数据包已生成：%1</translation>
     </message>
     <message>
         <source>Simulation Case</source>
@@ -3097,51 +3331,99 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>The generated DATA text is empty.</source>
-        <translation>生成的 DATA 文本为空。</translation>
+        <translation type="vanished">生成的 DATA 文本为空。</translation>
     </message>
     <message>
         <source>The package parent directory is missing or not writable.</source>
-        <translation>数据包上级目录不存在或不可写。</translation>
+        <translation type="vanished">数据包上级目录不存在或不可写。</translation>
     </message>
     <message>
         <source>The package directory already exists. Try again in a moment.</source>
-        <translation>数据包目录已存在，请稍后重试。</translation>
+        <translation type="vanished">数据包目录已存在，请稍后重试。</translation>
     </message>
     <message>
         <source>Unable to create a temporary package directory.</source>
-        <translation>无法创建临时数据包目录。</translation>
+        <translation type="vanished">无法创建临时数据包目录。</translation>
     </message>
     <message>
         <source>An indexed input file is missing or unreadable: %1</source>
-        <translation>索引到的输入文件不存在或不可读取：%1</translation>
+        <translation type="vanished">索引到的输入文件不存在或不可读取：%1</translation>
     </message>
     <message>
         <source>Symbolic links cannot be included in a generated DATA package: %1</source>
-        <translation>生成 DATA 数据包时不能包含符号链接：%1</translation>
+        <translation type="vanished">生成 DATA 数据包时不能包含符号链接：%1</translation>
     </message>
     <message>
         <source>An indexed input file is outside the DATA directory tree and cannot be relocated safely: %1</source>
-        <translation>索引到的输入文件位于 DATA 目录树之外，无法安全迁移：%1</translation>
+        <translation type="vanished">索引到的输入文件位于 DATA 目录树之外，无法安全迁移：%1</translation>
     </message>
     <message>
         <source>An indexed input file conflicts with the generated DATA filename: %1</source>
-        <translation>索引到的输入文件与生成的 DATA 文件名冲突：%1</translation>
+        <translation type="vanished">索引到的输入文件与生成的 DATA 文件名冲突：%1</translation>
     </message>
     <message>
         <source>Unable to copy indexed input file into package: %1</source>
-        <translation>无法将索引到的输入文件复制到数据包：%1</translation>
+        <translation type="vanished">无法将索引到的输入文件复制到数据包：%1</translation>
     </message>
     <message>
         <source>Unable to write the generated DATA file.</source>
-        <translation>无法写入生成的 DATA 文件。</translation>
+        <translation type="vanished">无法写入生成的 DATA 文件。</translation>
     </message>
     <message>
         <source>Unable to finalize the DATA package directory.</source>
-        <translation>无法完成 DATA 数据包目录。</translation>
+        <translation type="vanished">无法完成 DATA 数据包目录。</translation>
     </message>
     <message>
         <source>Generating DATA package.</source>
-        <translation>正在生成 DATA 输入包。</translation>
+        <translation type="vanished">正在生成 DATA 输入包。</translation>
+    </message>
+    <message>
+        <source>Generate a standalone DATA file from the case&apos;s current in-memory grid and static properties. Other simulator settings are retained from the source DATA file.</source>
+        <translation>根据工况当前内存中的网格和静态属性生成独立 DATA 文件。其他模拟器设置沿用源 DATA 文件。</translation>
+    </message>
+    <message>
+        <source>Output parent directory</source>
+        <translation>输出上级目录</translation>
+    </message>
+    <message>
+        <source>Generate DATA File</source>
+        <translation>生成 DATA 文件</translation>
+    </message>
+    <message>
+        <source>Select output parent directory</source>
+        <translation>选择输出上级目录</translation>
+    </message>
+    <message>
+        <source>Generating DATA file from case memory.</source>
+        <translation>正在根据工况内存数据生成 DATA 文件。</translation>
+    </message>
+    <message>
+        <source>DATA file created and validated: %1</source>
+        <translation>DATA 文件已生成并通过校验：%1</translation>
+    </message>
+    <message>
+        <source>The simulation case is no longer available.</source>
+        <translation>模拟工况已不可用。</translation>
+    </message>
+    <message>
+        <source>The output parent directory is missing or not writable.</source>
+        <translation>输出上级目录不存在或不可写。</translation>
+    </message>
+    <message>
+        <source>The output directory already exists. Try again in a moment.</source>
+        <translation>输出目录已存在，请稍后重试。</translation>
+    </message>
+    <message>
+        <source>Unable to create a temporary DATA output directory.</source>
+        <translation>无法创建临时 DATA 输出目录。</translation>
+    </message>
+    <message>
+        <source>Unable to finalize the DATA output directory.</source>
+        <translation>无法完成 DATA 输出目录。</translation>
+    </message>
+    <message>
+        <source>Generate DATA to preview the current in-memory grid and properties.</source>
+        <translation>生成 DATA 文件后，可在此预览当前内存中的网格和属性。</translation>
     </message>
 </context>
 <context>
@@ -3829,6 +4111,66 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Importing Flow results: %1</source>
         <translation>正在导入 Flow 结果：%1</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationSummaryCurvesWidget</name>
+    <message>
+        <source>Summary Curves — %1</source>
+        <translation>汇总曲线 — %1</translation>
+    </message>
+    <message>
+        <source>No summary series are available.</source>
+        <translation>没有可用的汇总序列。</translation>
+    </message>
+    <message>
+        <source>The selected series has no finite values.</source>
+        <translation>所选序列没有有限数值。</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationSummaryProvider</name>
+    <message>
+        <source>Select an ECLIPSE summary specification file (.SMSPEC).</source>
+        <translation type="vanished">请选择 ECLIPSE 汇总规格文件（.SMSPEC）。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary results are incomplete.</source>
+        <translation type="vanished">ECLIPSE 汇总结果不完整。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary contains no time steps or variables.</source>
+        <translation type="vanished">ECLIPSE 汇总文件不包含时间步或变量。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary contains no readable variable series.</source>
+        <translation type="vanished">ECLIPSE 汇总文件不包含可读取的变量序列。</translation>
+    </message>
+    <message>
+        <source>Unable to read ECLIPSE summary results: %1</source>
+        <translation type="vanished">无法读取 ECLIPSE 汇总结果：%1</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationSummaryResults</name>
+    <message>
+        <source>Stored summary results have missing or invalid fields.</source>
+        <translation type="vanished">已存储的汇总结果缺少字段或字段无效。</translation>
+    </message>
+    <message>
+        <source>Stored summary results contain an invalid time value.</source>
+        <translation type="vanished">已存储的汇总结果包含无效时间值。</translation>
+    </message>
+    <message>
+        <source>Stored summary results contain an invalid series.</source>
+        <translation type="vanished">已存储的汇总结果包含无效序列。</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationSummaryResultsMetadata</name>
+    <message>
+        <source>ECLIPSE Summary Results</source>
+        <translation type="vanished">ECLIPSE 汇总结果</translation>
     </message>
 </context>
 <context>
@@ -5159,6 +5501,30 @@ It will be removed from all cases that reference it.</source>
         <translation>OPM 解析 .DATA 文件失败：%1</translation>
     </message>
     <message>
+        <source>The source DATA file cannot be opened for compatibility parsing.</source>
+        <translation>无法打开源 DATA 文件以进行兼容性解析。</translation>
+    </message>
+    <message>
+      <source>The OPM custom keyword file could not be loaded: %1</source>
+      <translation>无法加载 OPM 自定义关键字文件：%1</translation>
+    </message>
+    <message>
+        <source>NUMRES could not be inferred because RUNSPEC or SPECGRID is missing.</source>
+        <translation>缺少 RUNSPEC 或 SPECGRID，无法推断 NUMRES。</translation>
+    </message>
+    <message>
+        <source>NUMRES could not be inferred from the SPECGRID record.</source>
+        <translation>无法从 SPECGRID 记录推断 NUMRES。</translation>
+    </message>
+    <message>
+        <source>A temporary DATA file could not be created for compatibility parsing.</source>
+        <translation>无法创建用于兼容性解析的临时 DATA 文件。</translation>
+    </message>
+    <message>
+        <source>The temporary DATA file could not be written for compatibility parsing.</source>
+        <translation>无法写入用于兼容性解析的临时 DATA 文件。</translation>
+    </message>
+    <message>
         <source>ECLIPSE Grid</source>
         <translation>ECLIPSE 网格</translation>
     </message>
@@ -5479,8 +5845,8 @@ It will be removed from all cases that reference it.</source>
         <translation>目标工况已关联到工程。</translation>
     </message>
     <message>
-        <source>Delete a simulation case and its private grid data.</source>
-        <translation>删除一个模拟工况及其私有网格数据。</translation>
+        <source>Delete a simulation case, its private grid data and unshared fluid tables imported with it.</source>
+        <translation>删除一个模拟工况、其私有网格数据，以及随工况导入且未被共享的流体表。</translation>
     </message>
     <message>
         <source>Object ID of the case to delete.</source>
@@ -6181,6 +6547,142 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>A project data block has an invalid type, size or value.</source>
         <translation>工程数据块的类型、长度或数值无效。</translation>
+    </message>
+    <message>
+        <source>Stored summary results have missing or invalid fields.</source>
+        <translation type="unfinished">已存储的汇总结果缺少字段或字段无效。</translation>
+    </message>
+    <message>
+        <source>Stored summary results contain an invalid time value.</source>
+        <translation type="unfinished">已存储的汇总结果包含无效时间值。</translation>
+    </message>
+    <message>
+        <source>Stored summary results contain an invalid series.</source>
+        <translation type="unfinished">已存储的汇总结果包含无效序列。</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Summary Results</source>
+        <translation type="unfinished">ECLIPSE 汇总结果</translation>
+    </message>
+    <message>
+        <source>Summary results have already been imported for this case.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import summary results</source>
+        <translation type="unfinished">导入汇总结果</translation>
+    </message>
+    <message>
+        <source>Import ECLIPSE summary vectors into a simulation case.</source>
+        <translation type="unfinished">将 ECLIPSE 汇总向量导入模拟工况。</translation>
+    </message>
+    <message>
+        <source>The source DATA file is missing or unreadable.</source>
+        <translation>来源 DATA 文件不存在或不可读取。</translation>
+    </message>
+    <message>
+        <source>The case must reference exactly one valid grid.</source>
+        <translation>工况必须且只能引用一个有效网格。</translation>
+    </message>
+    <message>
+        <source>A referenced grid property is missing or invalid.</source>
+        <translation>引用的网格属性不存在或无效。</translation>
+    </message>
+    <message>
+        <source>A referenced case well is missing or invalid.</source>
+        <translation>引用的工况井不存在或无效。</translation>
+    </message>
+    <message>
+        <source>The following wells are linked to the case but are not defined in the source DATA file: %1. They cannot be exported until their grid locations, completion layers and schedule controls are provided.</source>
+        <translation>以下工况井未定义在源 DATA 文件中：%1。需要补充网格位置、完井层位和开发控制后才能导出。</translation>
+    </message>
+    <message>
+        <source>Memory DATA generation currently requires one corner-point grid.</source>
+        <translation>当前内存 DATA 生成功能要求工况包含一个角点网格。</translation>
+    </message>
+    <message>
+        <source>The in-memory grid dimensions and arrays are inconsistent.</source>
+        <translation>内存网格的维度与数组长度不一致。</translation>
+    </message>
+    <message>
+        <source>A referenced property is unsupported, duplicated or has incompatible dimensions: %1</source>
+        <translation>引用的属性不受支持、重复或维度不匹配：%1</translation>
+    </message>
+    <message>
+        <source>A property contains a non-finite or non-integer value: %1</source>
+        <translation type="vanished">属性包含非有限值或非整数值：%1</translation>
+    </message>
+    <message>
+        <source>The source DATA file is missing RUNSPEC, GRID or PROPS section.</source>
+        <translation>源 DATA 文件缺少 RUNSPEC、GRID 或 PROPS 段。</translation>
+    </message>
+    <message>
+        <source>The GRID section could not be located after replacing source keywords.</source>
+        <translation>替换源关键字后无法定位 GRID 段。</translation>
+    </message>
+    <message>
+        <source>The PROPS section could not be located after replacing source keywords.</source>
+        <translation>替换源关键字后无法定位 PROPS 段。</translation>
+    </message>
+    <message>
+        <source>The source DATA file must contain a REGIONS section for integer region properties.</source>
+        <translation>导出整数区域属性时，源 DATA 文件必须包含 REGIONS 段。</translation>
+    </message>
+    <message>
+        <source>Unable to create the DATA output directory.</source>
+        <translation>无法创建 DATA 输出目录。</translation>
+    </message>
+    <message>
+        <source>OPM did not create the generated DATA file.</source>
+        <translation>OPM 未能生成 DATA 文件。</translation>
+    </message>
+    <message>
+        <source>Unable to update aliased grid property keywords in the generated DATA file.</source>
+        <translation>无法更新生成的 DATA 文件中的网格属性别名关键字。</translation>
+    </message>
+    <message>
+        <source>The generated DATA file failed validation: %1</source>
+        <translation>生成的 DATA 文件未通过校验：%1</translation>
+    </message>
+    <message>
+        <source>The generated DATA file is missing referenced grid properties: %1</source>
+        <translation>生成的 DATA 文件缺少工况引用的网格属性：%1</translation>
+    </message>
+    <message>
+        <source>The generated DATA file could not be read for property validation.</source>
+        <translation>无法读取生成的 DATA 文件以校验网格属性。</translation>
+    </message>
+    <message>
+        <source>Select an ECLIPSE summary specification file (.SMSPEC).</source>
+        <translation type="unfinished">请选择 ECLIPSE 汇总规格文件（.SMSPEC）。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary results are incomplete.</source>
+        <translation type="unfinished">ECLIPSE 汇总结果不完整。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary contains no time steps or variables.</source>
+        <translation type="unfinished">ECLIPSE 汇总文件不包含时间步或变量。</translation>
+    </message>
+    <message>
+        <source>The ECLIPSE summary contains no readable variable series.</source>
+        <translation type="unfinished">ECLIPSE 汇总文件不包含可读取的变量序列。</translation>
+    </message>
+    <message>
+        <source>Unable to read ECLIPSE summary results: %1</source>
+        <translation type="unfinished">无法读取 ECLIPSE 汇总结果：%1</translation>
+    </message>
+    <message>
+        <source>A stored property unit state is invalid.</source>
+        <translation>保存的属性单位状态无效。</translation>
+    </message>
+    <message>
+        <source>The unit system of property %1 is unknown; it cannot be exported safely.</source>
+        <translation>属性 %1 的单位系统未知，无法安全导出。</translation>
+    </message>
+    <message>
+        <source>A property contains an invalid value or an out-of-range integer: %1</source>
+        <translation>属性 %1 包含无效值或超出范围的整数。</translation>
     </message>
 </context>
 </TS>

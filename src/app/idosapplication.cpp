@@ -1,7 +1,9 @@
 #include <memory>
 
 #include "case/idossimulationcaseeclipsemetadata.h"
+#include "case/idossimulationsummaryprovidermetadata.h"
 #include "data/case/idossimulationcasemetadata.h"
+#include "data/case/idossimulationsummaryresultsmetadata.h"
 #include "data/fluidrock/idosfluidrocktablemetadata.h"
 #include "data/fracture/idosfracturematerialcatalog.h"
 #include "data/fracture/idosfracturematerialcatalogdatametadata.h"
@@ -160,6 +162,10 @@ void IDOSApplication::initProviders()
     {
         registry.add(new IDOSSimulationCaseEclipseMetadata());
     }
+    if (registry.metadata(QStringLiteral("idos.case.summary.eclipse")) == nullptr)
+    {
+        registry.add(new IDOSSimulationSummaryProviderMetadata());
+    }
 }
 
 void IDOSApplication::initDataRegistry(IDOSDataRegistry* registry)
@@ -171,6 +177,7 @@ void IDOSApplication::initDataRegistry(IDOSDataRegistry* registry)
     registry->add(new IDOSGridSurfaceDataMetadata());
     registry->add(new IDOSGridBoundaryDataMetadata());
     registry->add(new IDOSSimulationCaseMetadata());
+    registry->add(new IDOSSimulationSummaryResultsMetadata());
     registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::Fluid));
     registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::RockPhysics));
     registry->add(new IDOSMicroseismicDataMetadata());

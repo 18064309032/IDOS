@@ -34,6 +34,8 @@ class APP_EXPORT IDOSSimulationCaseTreeGuiProvider : public IDOSTreeGuiProvider
     void onImportGrid();
     void onGenerateInput();
     void onViewPropertyCurves();
+    void onImportSummaryResults();
+    void onViewSummaryResults();
     void onRenameCase();
     void onDeleteCase();
 

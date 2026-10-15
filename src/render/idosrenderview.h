@@ -30,6 +30,7 @@ class QVTKOpenGLNativeWidget;
 class vtkActor;
 class vtkAxesActor;
 class vtkCamera;
+class vtkCubeAxesActor;
 class vtkObject;
 class vtkGenericOpenGLRenderWindow;
 class vtkInteractorStyleImage;
@@ -82,6 +83,10 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void flashScreenshot();
     bool axesVisible() const;
     void setAxesVisible(bool visible);
+    bool boundsVisible() const;
+    void setBoundsVisible(bool visible);
+    double zAxisScale() const;
+    void setZAxisScale(double scale);
     bool legendVisible() const;
     bool legendAvailable() const;
     void setLegendVisible(bool visible);
@@ -156,6 +161,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkInteractorStyleImage> m_twoDInteractorStyle;
     vtkSmartPointer<vtkInteractorStyleTrackballCamera> m_threeDInteractorStyle;
     vtkSmartPointer<vtkAxesActor> m_axesActor;
+    vtkSmartPointer<vtkCubeAxesActor> m_boundsAxes;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
     QHash<vtkActor*, QString> m_actorObjectIds;
@@ -168,6 +174,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool m_homeViewInitialized;
     bool m_cursorTrackingEnabled;
     bool m_legendVisible;
+    bool m_boundsVisible;
+    double m_zAxisScale;
+    QHash<vtkActor*, double> m_actorBaseZScales;
     QList<vtkProp*> m_legends;
 };
 

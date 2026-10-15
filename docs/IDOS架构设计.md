@@ -571,5 +571,6 @@ IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何�
 - RenderView 保存 2D/3D 模式、背景、方向、坐标轴、图例、光标跟踪、活动与主页相机、工具栏位置和显隐。联动在所有独立相机恢复后建立，并保留解除联动时的独立相机。相机数值和正尺度校验，异常 UI 条目回退默认或前一状态，不影响业务数据加载。
 - TreeServer 提供由稳定 key 组成的路径，不持久化树节点临时 ID；TreeView 保存展开、多选、当前项及滚动位置，MainWindow 协调恢复，不向 core 引入 QWidget。树和渲染模块继续互不依赖。测井曲线窗口由现有 App 界面保存井 ID、通道和深度范围，切换工程时清理旧窗口再恢复。
 - 恢复期间屏蔽工程 UI 修改标记与树选择联动；恢复完成后工程保持干净。用户修改显示、相机、视图集合或树状态会标记需要保存，不加入业务撤销栈。保存前再次收集快照；按稳定 ID 排序，避免运行时对象顺序差异误报变更。旧工程缺少 UI 快照本身不触发未保存提示，显式保存会补齐。
-- 本机 ui.ini 位于 QStandardPaths::AppConfigLocation；保存主窗口几何、主窗口工具条状态、按视图集合区分的 ADS 停靠布局，以及最多 10 个最近工程。恢复窗口时检查屏幕可见范围；最近工程从打开工程动作的菜单进入，缺失文件禁用。IDOS_UI_SETTINGS_PATH 可指定隔离设置文件，IDOS_DISABLE_UI_SETTINGS 可禁用本机设置，供测试使用。
+- 本机 ui.ini 位于 QStandardPaths::AppConfigLocation；保存主窗口几何、主窗口工具条状态、按视图集合区分的 ADS 停靠布局，以及最多 10 个最近工程。恢复窗口时检查屏幕可见范围；最近工程显示在启动页。IDOS_UI_SETTINGS_PATH 可指定隔离设置文件，IDOS_DISABLE_UI_SETTINGS 可禁用本机设置，供测试使用。
+- IDOSProjectStartWidget 是 gui 根部的独立通用 QWidget，由 idos_gui 编译；无工程时在主窗口中央展示新建、打开和最近工程入口，工程打开后由 app 主窗口切换为渲染视图。该类只展示最近路径并通过信号请求操作，不读取本机设置或依赖 app。
 - 本阶段不保存业务撤销历史、运行中的计算任务或临时业务对话框；读写仍同步执行，后台任务与崩溃恢复另行实施。

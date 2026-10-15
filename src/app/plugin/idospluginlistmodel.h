@@ -47,6 +47,7 @@ class IDOSPluginListModel : public QAbstractItemModel
     int rowForKey(const QString& key) const;
 
   private:
+    QString localizedMetadataText(const QString& text) const;
     QString statusText(const QVariantMap& plugin) const;
 
     IDOSPluginRegistry* m_registry;

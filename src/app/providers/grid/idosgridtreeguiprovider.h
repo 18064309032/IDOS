@@ -44,6 +44,7 @@ class APP_EXPORT IDOSGridTreeGuiProvider : public IDOSTreeGuiProvider
     bool deleteProperty(IDOSTreeView* view, const QString& propertyId);
     bool importProperty(IDOSTreeView* view, const QString& targetGridId, const QString& targetCaseId);
     bool importDynamicProperties(IDOSTreeView* view, const QString& targetGridId);
+    void reportImportSuccess(IDOSTreeView* view, const QString& message);
     bool deleteGrid(IDOSTreeView* view, const QString& gridId);
     IDOSRenderObject* gridRenderObject(const QString& gridId, IDOSRenderView* view) const;
     QAction* addAction(QMenu* menu, IDOSTreeView* view, const QString& text);

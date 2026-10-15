@@ -154,6 +154,11 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::read(const QString& file
                     continue;
                 }
                 appendProperty(&result, keyword, propertyValues);
+                IDOSGridProperty* importedProperty = qobject_cast<IDOSGridProperty*>(result.last());
+                if (importedProperty != nullptr && type != Opm::EclIO::INTE)
+                {
+                    importedProperty->setValueUnits(IDOSGridProperty::ValueUnits::Unknown);
+                }
             }
         }
         else

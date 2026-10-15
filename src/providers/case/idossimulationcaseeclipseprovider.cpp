@@ -1,15 +1,24 @@
 #include <algorithm>
+#include <cmath>
 #include <exception>
+#include <filesystem>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
+#include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QMap>
 #include <QObject>
+#include <QRegularExpression>
+#include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QUuid>
 #include <QVariant>
 #include <QVariantList>
 #include <QVariantMap>
@@ -19,20 +28,485 @@
 #include <opm/input/eclipse/Deck/DeckItem.hpp>
 #include <opm/input/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/input/eclipse/Deck/DeckRecord.hpp>
+#include <opm/input/eclipse/Deck/FileDeck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 #include <opm/input/eclipse/Parser/ErrorGuard.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Units/Dimension.hpp>
 
 #include "data/case/idossimulationcaseobject.h"
+#include "data/case/idoscaseitemref.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
+#include "data/well/idoswell.h"
+#include "idosproject.h"
 
 #include "idossimulationcaseeclipseprovider.h"
 
-QVariantList IDOSSimulationCaseEclipseProvider::buildDeckKeywordIndex(const Opm::Deck& deck) const
+bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCaseObject* simulationCase,
+                                                        const IDOSProject* project,
+                                                        const QString& outputDirectory,
+                                                        const QString& fileName,
+                                                        QString* error) const
+{
+    if (simulationCase == nullptr || project == nullptr || error == nullptr)
+    {
+        return false;
+    }
+
+    const QFileInfo sourceInfo(simulationCase->sourceFile());
+    if (!sourceInfo.isFile() || !sourceInfo.isReadable())
+    {
+        *error = QObject::tr("The source DATA file is missing or unreadable.");
+        return false;
+    }
+
+    try
+    {
+        std::unique_ptr<Opm::Deck> parsedDeck;
+        QString parseError;
+        if (!parseDeckFile(sourceInfo.absoluteFilePath(), &parsedDeck, &parseError))
+        {
+            *error = parseError;
+            return false;
+        }
+        const Opm::Deck& deck = *parsedDeck;
+        Opm::Parser parser;
+        if (!configureParser(&parser, error))
+        {
+            return false;
+        }
+
+        IDOSGrid* grid = nullptr;
+        QList<IDOSGridProperty*> properties;
+        QList<IDOSWell*> referencedWells;
+        for (const IDOSCaseItemRef& reference : simulationCase->itemRefs())
+        {
+            IDOSDataObject* object = project->object(reference.objectId());
+            if (reference.role() == QStringLiteral("case.grid"))
+            {
+                IDOSGrid* referencedGrid = qobject_cast<IDOSGrid*>(object);
+                if (referencedGrid == nullptr || grid != nullptr)
+                {
+                    *error = QObject::tr("The case must reference exactly one valid grid.");
+                    return false;
+                }
+                grid = referencedGrid;
+            }
+            else if (reference.role() == QStringLiteral("case.gridProperty"))
+            {
+                IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+                if (property == nullptr)
+                {
+                    *error = QObject::tr("A referenced grid property is missing or invalid.");
+                    return false;
+                }
+                properties.append(property);
+            }
+            else if (reference.role() == QStringLiteral("case.well"))
+            {
+                IDOSWell* well = qobject_cast<IDOSWell*>(object);
+                if (well == nullptr)
+                {
+                    *error = QObject::tr("A referenced case well is missing or invalid.");
+                    return false;
+                }
+                referencedWells.append(well);
+            }
+        }
+        if (grid == nullptr || grid->type() != IDOSGrid::Type::CornerPoint)
+        {
+            *error = QObject::tr("Memory DATA generation currently requires one corner-point grid.");
+            return false;
+        }
+
+        if (properties.isEmpty())
+        {
+            for (IDOSDataObject* object : project->objects())
+            {
+                IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+                if (property != nullptr && property->gridId() == grid->objectId() &&
+                    property->kind() == IDOSGridProperty::Kind::Static)
+                {
+                    properties.append(property);
+                }
+            }
+        }
+
+        const qint64 nx = grid->nx();
+        const qint64 ny = grid->ny();
+        const qint64 nz = grid->nz();
+        if (nx <= 0 || ny <= 0 || nz <= 0 || nx > std::numeric_limits<int>::max() / ny ||
+            nx > std::numeric_limits<int>::max() / 6 / (ny + 1) - 1)
+        {
+            *error = QObject::tr("The in-memory grid dimensions and arrays are inconsistent.");
+            return false;
+        }
+        const qint64 cellsPerLayer = nx * ny;
+        if (cellsPerLayer > std::numeric_limits<int>::max() / nz ||
+            cellsPerLayer * nz > std::numeric_limits<int>::max() / 8)
+        {
+            *error = QObject::tr("The in-memory grid dimensions and arrays are inconsistent.");
+            return false;
+        }
+        const qint64 cellCount = cellsPerLayer * nz;
+        const qint64 coordCount = 6 * (nx + 1) * (ny + 1);
+        if (coordCount != grid->coord().size() || 8 * cellCount != grid->zcorn().size() ||
+            cellCount != grid->actnum().size())
+        {
+            *error = QObject::tr("The in-memory grid dimensions and arrays are inconsistent.");
+            return false;
+        }
+
+        const QStringList doubleKeywords = {
+            QStringLiteral("PORO"), QStringLiteral("PERMX"), QStringLiteral("PERMY"), QStringLiteral("PERMZ"),
+            QStringLiteral("MULTPV"), QStringLiteral("SIGMAV"), QStringLiteral("MULTX"), QStringLiteral("MULTY"),
+            QStringLiteral("MULTZ")};
+        const QStringList integerKeywords = {
+            QStringLiteral("SATNUM"), QStringLiteral("ROCKNUM"), QStringLiteral("PVTNUM"),
+            QStringLiteral("EQLNUM"), QStringLiteral("FIPNUM")};
+        const QStringList propertyKeywords = doubleKeywords + integerKeywords + QStringList{QStringLiteral("ACTNUM")};
+        QMap<QString, IDOSGridProperty*> propertiesByKeyword;
+        for (IDOSGridProperty* property : properties)
+        {
+            const QString keyword = property->keyword().trimmed().toUpper();
+            if (property->valueUnits() != IDOSGridProperty::ValueUnits::SI)
+            {
+                *error = QObject::tr("The unit system of property %1 is unknown; it cannot be exported safely.")
+                             .arg(keyword);
+                return false;
+            }
+            if (property->kind() != IDOSGridProperty::Kind::Static || property->gridId() != grid->objectId() ||
+                property->numX() != grid->nx() || property->numY() != grid->ny() ||
+                property->numZ() != grid->nz() || property->values().size() != cellCount ||
+                !propertyKeywords.contains(keyword) ||
+                propertiesByKeyword.contains(keyword))
+            {
+                *error = QObject::tr("A referenced property is unsupported, duplicated or has incompatible dimensions: %1")
+                             .arg(keyword);
+                return false;
+            }
+            for (double value : property->values())
+            {
+                const bool integerProperty = integerKeywords.contains(keyword) || keyword == QStringLiteral("ACTNUM");
+                const bool invalidInteger = integerProperty &&
+                                            (std::floor(value) != value || value < 0.0 ||
+                                             value > std::numeric_limits<int>::max());
+                const bool invalidActnum = keyword == QStringLiteral("ACTNUM") && value > 1.0;
+                if (!std::isfinite(value) || invalidInteger || invalidActnum)
+                {
+                    *error = QObject::tr("A property contains an invalid value or an out-of-range integer: %1")
+                                 .arg(keyword);
+                    return false;
+                }
+            }
+            propertiesByKeyword.insert(keyword, property);
+        }
+
+        Opm::FileDeck fileDeck(deck);
+
+        QSet<QString> sourceWellNames;
+        const std::vector<const Opm::DeckKeyword*> sourceWellKeywords = deck.getKeywordList("WELSPECS");
+        for (const Opm::DeckKeyword* keyword : sourceWellKeywords)
+        {
+            if (keyword == nullptr)
+            {
+                continue;
+            }
+            for (std::size_t recordIndex = 0; recordIndex < keyword->size(); ++recordIndex)
+            {
+                const Opm::DeckRecord& record = keyword->getRecord(recordIndex);
+                if (record.size() > 0 && record.getItem(0).data_size() > 0 && record.getItem(0).hasValue(0))
+                {
+                    sourceWellNames.insert(QString::fromStdString(record.getItem(0).getTrimmedString(0))
+                                               .toCaseFolded());
+                }
+            }
+        }
+        QStringList wellsMissingFromSource;
+        for (IDOSWell* well : referencedWells)
+        {
+            if (!sourceWellNames.contains(well->name().toCaseFolded()))
+            {
+                wellsMissingFromSource.append(well->name());
+            }
+        }
+        if (!wellsMissingFromSource.isEmpty())
+        {
+            wellsMissingFromSource.removeDuplicates();
+            *error = QObject::tr("The following wells are linked to the case but are not defined in the source DATA file: %1. "
+                                 "They cannot be exported until their grid locations, completion layers and schedule controls are provided.")
+                         .arg(wellsMissingFromSource.join(QStringLiteral(", ")));
+            return false;
+        }
+
+        const QStringList replacedKeywords = doubleKeywords + integerKeywords +
+                                             QStringList{QStringLiteral("DIMENS"), QStringLiteral("COORD"),
+                                                         QStringLiteral("ZCORN"), QStringLiteral("ACTNUM"),
+                                                         QStringLiteral("MULT_XYZ")};
+        for (const QString& name : replacedKeywords)
+        {
+            std::vector<Opm::FileDeck::Index> matches;
+            Opm::FileDeck::Index index = fileDeck.start();
+            while (index != fileDeck.stop())
+            {
+                if (QString::fromStdString(fileDeck[index].name()) == name)
+                {
+                    matches.push_back(index);
+                }
+                ++index;
+            }
+            for (std::vector<Opm::FileDeck::Index>::reverse_iterator iterator = matches.rbegin();
+                 iterator != matches.rend(); ++iterator)
+            {
+                fileDeck.erase(*iterator);
+            }
+        }
+
+        const Opm::UnitSystem& units = deck.getActiveUnitSystem();
+        Opm::DeckKeyword dimensionsKeyword(parser.getKeyword("DIMENS"));
+        Opm::DeckRecord dimensionsRecord;
+        dimensionsRecord.addItem(Opm::DeckItem("NX", grid->nx()));
+        dimensionsRecord.addItem(Opm::DeckItem("NY", grid->ny()));
+        dimensionsRecord.addItem(Opm::DeckItem("NZ", grid->nz()));
+        dimensionsKeyword.addRecord(std::move(dimensionsRecord));
+        std::optional<Opm::FileDeck::Index> runspecIndex = fileDeck.find("RUNSPEC");
+        std::optional<Opm::FileDeck::Index> gridIndex = fileDeck.find("GRID");
+        std::optional<Opm::FileDeck::Index> propsIndex = fileDeck.find("PROPS");
+        std::optional<Opm::FileDeck::Index> regionsIndex = fileDeck.find("REGIONS");
+        if (!runspecIndex.has_value() || !gridIndex.has_value() || !propsIndex.has_value())
+        {
+            *error = QObject::tr("The source DATA file is missing RUNSPEC, GRID or PROPS section.");
+            return false;
+        }
+        Opm::FileDeck::Index insertionIndex = runspecIndex.value();
+        ++insertionIndex;
+        fileDeck.insert(insertionIndex, dimensionsKeyword);
+
+        std::vector<double> coordValues;
+        coordValues.reserve(static_cast<std::size_t>(grid->coord().size()));
+        for (double value : grid->coord())
+        {
+            coordValues.push_back(value);
+        }
+        std::vector<double> zcornValues;
+        zcornValues.resize(static_cast<std::size_t>(grid->zcorn().size()));
+        const Opm::ZcornMapper zcornMapper(static_cast<std::size_t>(grid->nx()),
+                                           static_cast<std::size_t>(grid->ny()),
+                                           static_cast<std::size_t>(grid->nz()));
+        const int opmCorners[8] = {0, 1, 3, 2, 4, 5, 7, 6};
+        for (int k = 0; k < grid->nz(); ++k)
+        {
+            for (int j = 0; j < grid->ny(); ++j)
+            {
+                for (int i = 0; i < grid->nx(); ++i)
+                {
+                    const qint64 cellBase = (i + j * grid->nx() + k * cellsPerLayer) * 8;
+                    for (int corner = 0; corner < 8; ++corner)
+                    {
+                        zcornValues[zcornMapper.index(static_cast<std::size_t>(i),
+                                                      static_cast<std::size_t>(j),
+                                                      static_cast<std::size_t>(k), opmCorners[corner])] =
+                            grid->zcorn().at(static_cast<int>(cellBase + corner));
+                    }
+                }
+            }
+        }
+        Opm::DeckKeyword coordKeyword(parser.getKeyword("COORD"), coordValues, units, deck.getDefaultUnitSystem());
+        Opm::DeckKeyword zcornKeyword(parser.getKeyword("ZCORN"), zcornValues, units, deck.getDefaultUnitSystem());
+        std::vector<int> actnumValues = grid->actnum().toStdVector();
+        IDOSGridProperty* actnumProperty = propertiesByKeyword.value(QStringLiteral("ACTNUM"), nullptr);
+        if (actnumProperty != nullptr)
+        {
+            actnumValues.clear();
+            actnumValues.reserve(static_cast<std::size_t>(actnumProperty->values().size()));
+            for (double value : actnumProperty->values())
+            {
+                actnumValues.push_back(static_cast<int>(value));
+            }
+        }
+        Opm::DeckKeyword actnumKeyword(parser.getKeyword("ACTNUM"), actnumValues);
+        gridIndex = fileDeck.find("GRID");
+        if (!gridIndex.has_value())
+        {
+            *error = QObject::tr("The GRID section could not be located after replacing source keywords.");
+            return false;
+        }
+        insertionIndex = gridIndex.value();
+        ++insertionIndex;
+        fileDeck.insert(insertionIndex, coordKeyword);
+        ++insertionIndex;
+        fileDeck.insert(insertionIndex, zcornKeyword);
+        ++insertionIndex;
+        fileDeck.insert(insertionIndex, actnumKeyword);
+        ++insertionIndex;
+
+        propsIndex = fileDeck.find("PROPS");
+        if (!propsIndex.has_value())
+        {
+            *error = QObject::tr("The PROPS section could not be located after replacing source keywords.");
+            return false;
+        }
+        QStringList familyKeywordNames;
+        for (const QString& keyword : doubleKeywords)
+        {
+            IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
+            if (property == nullptr)
+            {
+                continue;
+            }
+            std::vector<double> values;
+            values.reserve(static_cast<std::size_t>(property->values().size()));
+            for (double value : property->values())
+            {
+                values.push_back(value);
+            }
+            Opm::DeckKeyword propertyKeyword(parser.getKeyword(keyword.toStdString()), values, units,
+                                             deck.getDefaultUnitSystem());
+            if (QString::fromStdString(propertyKeyword.name()) == keyword)
+            {
+                fileDeck.insert(insertionIndex, propertyKeyword);
+            }
+            else
+            {
+                fileDeck.insert(insertionIndex, propertyKeyword);
+                familyKeywordNames.append(keyword);
+            }
+            ++insertionIndex;
+        }
+
+        bool hasIntegerProperties = false;
+        for (const QString& keyword : integerKeywords)
+        {
+            hasIntegerProperties = hasIntegerProperties || propertiesByKeyword.contains(keyword);
+        }
+        if (hasIntegerProperties)
+        {
+            regionsIndex = fileDeck.find("REGIONS");
+            if (!regionsIndex.has_value())
+            {
+                *error = QObject::tr("The source DATA file must contain a REGIONS section for integer region properties.");
+                return false;
+            }
+            insertionIndex = regionsIndex.value();
+            ++insertionIndex;
+            for (const QString& keyword : integerKeywords)
+            {
+                IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
+                if (property == nullptr)
+                {
+                    continue;
+                }
+                std::vector<int> values;
+                values.reserve(static_cast<std::size_t>(property->values().size()));
+                for (double value : property->values())
+                {
+                    values.push_back(static_cast<int>(value));
+                }
+                Opm::DeckKeyword propertyKeyword(parser.getKeyword(keyword.toStdString()), values);
+                fileDeck.insert(insertionIndex, propertyKeyword);
+                ++insertionIndex;
+            }
+        }
+
+        if (!QDir().mkpath(outputDirectory))
+        {
+            *error = QObject::tr("Unable to create the DATA output directory.");
+            return false;
+        }
+        fileDeck.dump(outputDirectory.toStdString(), fileName.toStdString(), Opm::FileDeck::OutputMode::INLINE);
+        const QString outputPath = QDir(outputDirectory).absoluteFilePath(fileName);
+        if (!QFileInfo(outputPath).isFile())
+        {
+            *error = QObject::tr("OPM did not create the generated DATA file.");
+            return false;
+        }
+        if (!familyKeywordNames.isEmpty())
+        {
+            QFile generatedFile(outputPath);
+            if (!generatedFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                *error = QObject::tr("Unable to update aliased grid property keywords in the generated DATA file.");
+                return false;
+            }
+            QStringList generatedLines = QString::fromUtf8(generatedFile.readAll()).split(QLatin1Char('\n'));
+            generatedFile.close();
+            int familyKeywordIndex = 0;
+            for (QString& line : generatedLines)
+            {
+                if (line.trimmed().compare(QStringLiteral("MULT_XYZ"), Qt::CaseInsensitive) == 0 &&
+                    familyKeywordIndex < familyKeywordNames.size())
+                {
+                    line = familyKeywordNames.at(familyKeywordIndex);
+                    ++familyKeywordIndex;
+                }
+            }
+            if (familyKeywordIndex != familyKeywordNames.size() ||
+                !generatedFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+            {
+                *error = QObject::tr("Unable to update aliased grid property keywords in the generated DATA file.");
+                return false;
+            }
+            generatedFile.write(generatedLines.join(QLatin1Char('\n')).toUtf8());
+            generatedFile.close();
+        }
+        std::unique_ptr<Opm::Deck> validatedDeck;
+        QString validationError;
+        if (!parseDeckFile(outputPath, &validatedDeck, &validationError))
+        {
+            QFile::remove(outputPath);
+            *error = QObject::tr("The generated DATA file failed validation: %1")
+                         .arg(validationError);
+            return false;
+        }
+        QFile validationFile(outputPath);
+        if (!validationFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            QFile::remove(outputPath);
+            *error = QObject::tr("The generated DATA file could not be read for property validation.");
+            return false;
+        }
+        const QStringList generatedLines = QString::fromUtf8(validationFile.readAll()).split(QLatin1Char('\n'));
+        QSet<QString> generatedKeywords;
+        for (const QString& line : generatedLines)
+        {
+            const QString keyword = line.trimmed().toUpper();
+            if (!keyword.isEmpty())
+            {
+                generatedKeywords.insert(keyword);
+            }
+        }
+        QStringList missingProperties;
+        for (QMap<QString, IDOSGridProperty*>::const_iterator iterator = propertiesByKeyword.constBegin();
+             iterator != propertiesByKeyword.constEnd(); ++iterator)
+        {
+            if (!generatedKeywords.contains(iterator.key()))
+            {
+                missingProperties.append(iterator.key());
+            }
+        }
+        if (!missingProperties.isEmpty())
+        {
+            QFile::remove(outputPath);
+            *error = QObject::tr("The generated DATA file is missing referenced grid properties: %1")
+                         .arg(missingProperties.join(QStringLiteral(", ")));
+            return false;
+        }
+        return true;
+    }
+    catch (const std::exception& exception)
+    {
+        *error = QString::fromUtf8(exception.what());
+        return false;
+    }
+}
+
+QVariantList IDOSSimulationCaseEclipseProvider::buildDeckKeywordIndex(const Opm::Deck& deck,
+                                                                       const QString& sourceFilePath,
+                                                                       const QString& parserFilePath) const
 {
     QVariantList result;
     QVector<QVariantMap> keywordLocations;
@@ -43,7 +517,12 @@ QVariantList IDOSSimulationCaseEclipseProvider::buildDeckKeywordIndex(const Opm:
         const Opm::DeckKeyword& deckKeyword = deck[index - 1];
         const Opm::KeywordLocation& location = deckKeyword.location();
         const QString filePath = QString::fromStdString(location.filename);
-        const QString fileName = QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+        QString fileName = QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+        const QString normalizedParserPath = QDir::cleanPath(QFileInfo(parserFilePath).absoluteFilePath());
+        if (QString::compare(fileName, normalizedParserPath, Qt::CaseInsensitive) == 0)
+        {
+            fileName = QDir::cleanPath(QFileInfo(sourceFilePath).absoluteFilePath());
+        }
         const qulonglong line = static_cast<qulonglong>(location.lineno);
         const qulonglong nextLine = nextLineByFile.value(fileName, 0);
 
@@ -65,11 +544,12 @@ QVariantList IDOSSimulationCaseEclipseProvider::buildDeckKeywordIndex(const Opm:
 }
 
 QVariantMap IDOSSimulationCaseEclipseProvider::buildParsedSourceData(const Opm::Deck& deck,
-                                                                     const QString& filePath) const
+                                                                     const QString& filePath,
+                                                                     const QString& parserFilePath) const
 {
     QVariantMap data;
     data.insert(QStringLiteral("summary"), buildSummary(deck, filePath));
-    data.insert(QStringLiteral("keywordIndex"), buildDeckKeywordIndex(deck));
+    data.insert(QStringLiteral("keywordIndex"), buildDeckKeywordIndex(deck, filePath, parserFilePath));
     return data;
 }
 
@@ -568,6 +1048,251 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
     {
         appendIntProperty(result, fieldProps, grid, keyword);
     }
+
+    for (IDOSDataObject* object : *result)
+    {
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        if (property != nullptr && property->gridId() == grid->objectId())
+        {
+            simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.gridProperty"),
+                                                       property->objectId()));
+        }
+    }
+}
+
+bool IDOSSimulationCaseEclipseProvider::parseDeckFile(const QString& filePath,
+                                                       std::unique_ptr<Opm::Deck>* deck,
+                                                       QString* error,
+                                                       QString* parserFilePath) const
+{
+    if (deck == nullptr || error == nullptr)
+    {
+        return false;
+    }
+
+    Opm::Parser parser;
+    if (!configureParser(&parser, error))
+    {
+        return false;
+    }
+    Opm::ParseContext context;
+    context.setPreserveUnknownKeywords(true);
+    Opm::ErrorGuard errors;
+    std::unique_ptr<Opm::Deck> parsedDeck(new Opm::Deck(
+        parser.parseFile(filePath.toStdString(), context, errors)));
+    if (!errors)
+    {
+        *deck = std::move(parsedDeck);
+        if (parserFilePath != nullptr)
+        {
+            *parserFilePath = filePath;
+        }
+        return true;
+    }
+
+    const QString originalError = QString::fromStdString(errors.formattedErrors());
+    if (!originalError.contains(QStringLiteral("COORDSYS"), Qt::CaseInsensitive) ||
+        !originalError.contains(QStringLiteral("missing NUMRES"), Qt::CaseInsensitive))
+    {
+        *error = originalError;
+        return false;
+    }
+
+    QString temporaryPath;
+    QString compatibilityError;
+    if (!createNumresCompatibilityFile(filePath, &temporaryPath, &compatibilityError))
+    {
+        *error = compatibilityError.isEmpty() ? originalError : compatibilityError;
+        return false;
+    }
+
+    Opm::Parser retryParser;
+    if (!configureParser(&retryParser, error))
+    {
+        return false;
+    }
+    Opm::ParseContext retryContext;
+    retryContext.setPreserveUnknownKeywords(true);
+    Opm::ErrorGuard retryErrors;
+    std::unique_ptr<Opm::Deck> retryDeck;
+    try
+    {
+        retryDeck.reset(new Opm::Deck(
+            retryParser.parseFile(temporaryPath.toStdString(), retryContext, retryErrors)));
+    }
+    catch (...)
+    {
+        removeTemporaryParserFile(temporaryPath);
+        throw;
+    }
+    removeTemporaryParserFile(temporaryPath);
+    if (retryErrors)
+    {
+        *error = QString::fromStdString(retryErrors.formattedErrors());
+        return false;
+    }
+
+    *deck = std::move(retryDeck);
+    if (parserFilePath != nullptr)
+    {
+        *parserFilePath = temporaryPath;
+    }
+    return true;
+}
+
+bool IDOSSimulationCaseEclipseProvider::configureParser(Opm::Parser* parser, QString* error) const
+{
+    if (parser == nullptr || error == nullptr)
+    {
+        return false;
+    }
+
+    const QString keywordFilePath = QDir(QCoreApplication::applicationDirPath())
+                                        .filePath(QStringLiteral("opm/extra-keywords.json"));
+    if (!QFileInfo::exists(keywordFilePath))
+    {
+        return true;
+    }
+
+    try
+    {
+        parser->addParserKeywords(std::filesystem::path(keywordFilePath.toStdWString()));
+    }
+    catch (const std::exception& exception)
+    {
+        *error = QObject::tr("The OPM custom keyword file could not be loaded: %1")
+                     .arg(QString::fromUtf8(exception.what()));
+        return false;
+    }
+
+    return true;
+}
+
+bool IDOSSimulationCaseEclipseProvider::createNumresCompatibilityFile(const QString& sourcePath,
+                                                                       QString* temporaryPath,
+                                                                       QString* error) const
+{
+    if (temporaryPath == nullptr || error == nullptr)
+    {
+        return false;
+    }
+
+    QFile sourceFile(sourcePath);
+    if (!sourceFile.open(QIODevice::ReadOnly))
+    {
+        *error = QObject::tr("The source DATA file cannot be opened for compatibility parsing.");
+        return false;
+    }
+
+    const QByteArray sourceBytes = sourceFile.readAll();
+    const QList<QByteArray> lines = sourceBytes.split('\n');
+    int runSpecLine = -1;
+    int specGridLine = -1;
+    QStringList specGridInlineValues;
+    for (int lineIndex = 0; lineIndex < lines.size(); ++lineIndex)
+    {
+        const QString line = QString::fromLatin1(lines.at(lineIndex).trimmed());
+        if (line.isEmpty() || line.startsWith(QStringLiteral("--")))
+        {
+            continue;
+        }
+        const QStringList tokens = line.split(QRegularExpression(QStringLiteral("\\s+")),
+                                              Qt::SkipEmptyParts);
+        if (tokens.isEmpty())
+        {
+            continue;
+        }
+        const QString keyword = tokens.first().toUpper();
+        if (keyword == QStringLiteral("RUNSPEC"))
+        {
+            runSpecLine = lineIndex;
+        }
+        else if (keyword == QStringLiteral("SPECGRID"))
+        {
+            specGridLine = lineIndex;
+            specGridInlineValues = tokens.mid(1);
+        }
+    }
+
+    if (runSpecLine < 0 || specGridLine < 0)
+    {
+        *error = QObject::tr("NUMRES could not be inferred because RUNSPEC or SPECGRID is missing.");
+        return false;
+    }
+
+    QStringList specGridValues = specGridInlineValues;
+    for (int lineIndex = specGridLine + 1; specGridValues.isEmpty() && lineIndex < lines.size(); ++lineIndex)
+    {
+        const QString line = QString::fromLatin1(lines.at(lineIndex).trimmed());
+        if (line.isEmpty() || line.startsWith(QStringLiteral("--")))
+        {
+            continue;
+        }
+        specGridValues = line.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+        break;
+    }
+
+    if (specGridValues.size() < 4)
+    {
+        *error = QObject::tr("NUMRES could not be inferred from the SPECGRID record.");
+        return false;
+    }
+
+    QString numResValue = specGridValues.at(3);
+    numResValue.remove(QLatin1Char('/'));
+    bool validNumRes = false;
+    const int numRes = numResValue.toInt(&validNumRes);
+    if (!validNumRes || numRes < 1)
+    {
+        *error = QObject::tr("NUMRES could not be inferred from the SPECGRID record.");
+        return false;
+    }
+
+    const QFileInfo sourceInfo(sourcePath);
+    const QString temporaryName = QDir(sourceInfo.absolutePath()).filePath(
+        QStringLiteral(".idos_numres_%1.DATA").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
+    QFile temporaryFile(temporaryName);
+    if (!temporaryFile.open(QIODevice::WriteOnly | QIODevice::NewOnly))
+    {
+        *error = QObject::tr("A temporary DATA file could not be created for compatibility parsing.");
+        return false;
+    }
+
+    const QByteArray lineEnding = sourceBytes.contains("\r\n") ? QByteArray("\r\n") : QByteArray("\n");
+    for (int lineIndex = 0; lineIndex < lines.size(); ++lineIndex)
+    {
+        temporaryFile.write(lines.at(lineIndex));
+        if (lineIndex + 1 < lines.size())
+        {
+            temporaryFile.write("\n");
+        }
+        if (lineIndex == runSpecLine)
+        {
+            temporaryFile.write("NUMRES");
+            temporaryFile.write(lineEnding);
+            temporaryFile.write(QStringLiteral("    %1 /").arg(numRes).toLatin1());
+            temporaryFile.write(lineEnding);
+        }
+    }
+    if (temporaryFile.error() != QFileDevice::NoError)
+    {
+        temporaryFile.close();
+        QFile::remove(temporaryName);
+        *error = QObject::tr("The temporary DATA file could not be written for compatibility parsing.");
+        return false;
+    }
+
+    temporaryFile.close();
+    *temporaryPath = temporaryName;
+    return true;
+}
+
+void IDOSSimulationCaseEclipseProvider::removeTemporaryParserFile(const QString& temporaryPath) const
+{
+    if (!temporaryPath.isEmpty())
+    {
+        QFile::remove(temporaryPath);
+    }
 }
 
 QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& filePath)
@@ -575,21 +1300,17 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
     setLastError(QString());
     QList<IDOSDataObject*> result;
 
-    std::string dataFile = filePath.toStdString();
-    Opm::ErrorGuard errors;
-
     try
     {
-        Opm::Parser parser;
-        Opm::ParseContext context;
-        Opm::Deck deck = parser.parseFile(dataFile, context, errors);
-        if (errors)
+        std::unique_ptr<Opm::Deck> parsedDeck;
+        QString parserFilePath;
+        QString parseError;
+        if (!parseDeckFile(filePath, &parsedDeck, &parseError, &parserFilePath))
         {
-            const QString message = QString::fromStdString(errors.formattedErrors());
-            errors.clear();
-            setLastError(QObject::tr("OPM parse .DATA failed: %1").arg(message));
+            setLastError(QObject::tr("OPM parse .DATA failed: %1").arg(parseError));
             return result;
         }
+        const Opm::Deck& deck = *parsedDeck;
         if (!deck.hasKeyword("RUNSPEC") || !deck.hasKeyword("SCHEDULE"))
         {
             setLastError(QObject::tr("A simulation case requires RUNSPEC and SCHEDULE sections."));
@@ -651,7 +1372,7 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
         simulationCase->setName(caseName.trimmed());
         simulationCase->setSourceFile(QFileInfo(filePath).absoluteFilePath());
         simulationCase->setPendingWellNames(wellNames);
-        simulationCase->setParsedSourceData(buildParsedSourceData(deck, filePath));
+        simulationCase->setParsedSourceData(buildParsedSourceData(deck, filePath, parserFilePath));
         simulationCase->setCurveTables(buildRelativePermeabilityTables(deck));
         simulationCase->setWellControlRows(buildWellControlRows(deck));
 
@@ -665,7 +1386,6 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
             delete object;
         }
         result.clear();
-        errors.clear();
         setLastError(QObject::tr("OPM parse .DATA failed: %1").arg(QString::fromStdString(e.what())));
     }
 

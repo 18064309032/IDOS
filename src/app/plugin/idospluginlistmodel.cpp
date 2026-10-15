@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include <QPixmap>
 #include <QStringList>
 #include <QVariantMap>
@@ -68,7 +69,7 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     {
         if (modelIndex.column() == 0)
         {
-            return plugin.value(QStringLiteral("name"));
+            return localizedMetadataText(plugin.value(QStringLiteral("name")).toString());
         }
         return statusText(plugin);
     }
@@ -102,11 +103,11 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     }
     if (role == PluginDescriptionRole)
     {
-        return plugin.value(QStringLiteral("description"));
+        return localizedMetadataText(plugin.value(QStringLiteral("description")).toString());
     }
     if (role == PluginCategoryRole)
     {
-        return plugin.value(QStringLiteral("category"));
+        return localizedMetadataText(plugin.value(QStringLiteral("category")).toString());
     }
     if (role == PluginVersionRole)
     {
@@ -123,9 +124,12 @@ QVariant IDOSPluginListModel::data(const QModelIndex& modelIndex, int role) cons
     if (role == SearchTextRole)
     {
         const QStringList searchFields = QStringList()
-                                             << plugin.value(QStringLiteral("name")).toString()
-                                             << plugin.value(QStringLiteral("description")).toString()
-                                             << plugin.value(QStringLiteral("category")).toString();
+                                             << localizedMetadataText(
+                                                    plugin.value(QStringLiteral("name")).toString())
+                                             << localizedMetadataText(
+                                                    plugin.value(QStringLiteral("description")).toString())
+                                             << localizedMetadataText(
+                                                    plugin.value(QStringLiteral("category")).toString());
         return searchFields.join(QLatin1Char(' '));
     }
     return QVariant();
@@ -227,6 +231,12 @@ int IDOSPluginListModel::rowForKey(const QString& key) const
         }
     }
     return -1;
+}
+
+QString IDOSPluginListModel::localizedMetadataText(const QString& text) const
+{
+    const QByteArray sourceText = text.toUtf8();
+    return QCoreApplication::translate("IDOSPluginListModel", sourceText.constData());
 }
 
 QString IDOSPluginListModel::statusText(const QVariantMap& plugin) const

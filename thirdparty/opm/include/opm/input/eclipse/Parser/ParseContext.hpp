@@ -96,6 +96,8 @@ class KeywordLocation;
         void update(InputErrorAction action);
         void update(const std::string& keyString , InputErrorAction action);
         void ignoreKeyword(const std::string& keyword);
+        void setPreserveUnknownKeywords(bool preserve);
+        bool preserveUnknownKeywords() const;
         InputErrorAction get(const std::string& key) const;
         std::map<std::string,InputErrorAction>::const_iterator begin() const;
         std::map<std::string,InputErrorAction>::const_iterator end() const;
@@ -393,6 +395,7 @@ class KeywordLocation;
         std::map<std::string , InputErrorAction> m_errorContexts;
         std::set<std::string> ignore_keywords;
         std::string m_input_skip_mode{"100"};
+        bool m_preserveUnknownKeywords{false};
     };
 }
 

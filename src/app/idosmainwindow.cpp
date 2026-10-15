@@ -12,7 +12,9 @@
 #include <QElapsedTimer>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFrame>
 #include <QGuiApplication>
+#include <QHBoxLayout>
 #include <QIcon>
 #include <QImage>
 #include <QItemSelectionModel>
@@ -27,6 +29,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringList>
@@ -71,6 +74,7 @@
 #include "idospluginregistry.h"
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
+#include "idosprojectstartwidget.h"
 #include "idospythonconsolewidget.h"
 #include "idosrenderobject.h"
 #include "idosrenderregistry.h"
@@ -121,6 +125,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_actionOpenProject(nullptr)
     , m_actionSaveProject(nullptr)
     , m_actionSaveProjectAs(nullptr)
+    , m_actionCloseProject(nullptr)
     , m_actionProjectSettings(nullptr)
     , m_actionUndo(nullptr)
     , m_actionRedo(nullptr)
@@ -154,8 +159,15 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_debugInfoWidget(nullptr)
     , m_assistantWidget(nullptr)
     , m_pythonConsoleWidget(nullptr)
+    , m_projectStatusLabel(nullptr)
+    , m_projectStatusDot(nullptr)
+    , m_viewStatusLabel(nullptr)
+    , m_objectCountStatusLabel(nullptr)
     , m_dockManager(nullptr)
     , m_renderDock(nullptr)
+    , m_centralPageStack(nullptr)
+    , m_startPage(nullptr)
+    , m_renderPage(nullptr)
     , m_outputDock(nullptr)
     , m_debugDock(nullptr)
     , m_pythonConsoleDock(nullptr)
@@ -165,7 +177,6 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_currentWindowLayout(QStringLiteral("single"))
     , m_syncingTreeSelection(false)
     , m_restoringPresentation(true)
-    , m_recentProjectsMenu(nullptr)
 {
     IDOSApplication* application = qobject_cast<IDOSApplication*>(QApplication::instance());
     m_dataRegistry = application != nullptr ? application->dataRegistry() : new IDOSDataRegistry(this);
@@ -375,7 +386,43 @@ void IDOSMainWindow::initMainWindow()
 {
     setWindowTitle(tr("IDOS"));
     setWindowIcon(QIcon(":/images/app-logo.svg"));
-    statusBar()->addPermanentWidget(new QLabel(tr("Ready"), statusBar()));
+    statusBar()->setStyleSheet(QStringLiteral(
+        "QStatusBar { background-color: #F7F9FC; border-top: 1px solid #D6DEE8; }"
+        "QStatusBar::item { border: 0; }"
+        "QLabel#statusIndicator { color: #43556B; padding: 0 12px; font-size: 9pt; }"
+        "QLabel#statusProject { color: #263B53; font-weight: 600; padding-left: 0; }"
+        "QLabel#projectStatusDot { min-width: 8px; max-width: 8px; min-height: 8px; "
+        "max-height: 8px; border-radius: 4px; background-color: #94A3B8; }"
+        "QFrame#statusSeparator { color: #D5DEE8; max-width: 1px; margin: 3px 2px; }"));
+    statusBar()->showMessage(tr("Ready"));
+    m_projectStatusLabel = new QLabel(statusBar());
+    m_projectStatusLabel->setObjectName(QStringLiteral("statusProject"));
+    m_projectStatusDot = new QLabel(statusBar());
+    m_projectStatusDot->setObjectName(QStringLiteral("projectStatusDot"));
+    QWidget* projectStatusWidget = new QWidget(statusBar());
+    QHBoxLayout* projectStatusLayout = new QHBoxLayout(projectStatusWidget);
+    projectStatusLayout->setContentsMargins(10, 0, 10, 0);
+    projectStatusLayout->setSpacing(8);
+    projectStatusLayout->addWidget(m_projectStatusDot);
+    projectStatusLayout->addWidget(m_projectStatusLabel);
+    m_viewStatusLabel = new QLabel(statusBar());
+    m_viewStatusLabel->setObjectName(QStringLiteral("statusIndicator"));
+    m_objectCountStatusLabel = new QLabel(statusBar());
+    m_objectCountStatusLabel->setObjectName(QStringLiteral("statusIndicator"));
+    QFrame* projectSeparator = new QFrame(statusBar());
+    projectSeparator->setObjectName(QStringLiteral("statusSeparator"));
+    projectSeparator->setFrameShape(QFrame::VLine);
+    projectSeparator->setFrameShadow(QFrame::Plain);
+    QFrame* viewSeparator = new QFrame(statusBar());
+    viewSeparator->setObjectName(QStringLiteral("statusSeparator"));
+    viewSeparator->setFrameShape(QFrame::VLine);
+    viewSeparator->setFrameShadow(QFrame::Plain);
+    statusBar()->addPermanentWidget(projectStatusWidget);
+    statusBar()->addPermanentWidget(projectSeparator);
+    statusBar()->addPermanentWidget(m_viewStatusLabel);
+    statusBar()->addPermanentWidget(viewSeparator);
+    statusBar()->addPermanentWidget(m_objectCountStatusLabel);
+    updateStatusBarIndicators();
 }
 
 void IDOSMainWindow::initDockManager()
@@ -392,20 +439,34 @@ void IDOSMainWindow::initDockManager()
 
 void IDOSMainWindow::initRenderView()
 {
-    QWidget* renderViewWidget = createView(QStringLiteral("main3d"), false);
-    if (renderViewWidget == nullptr)
+    m_renderPage = createView(QStringLiteral("main3d"), false);
+    if (m_renderPage == nullptr)
     {
         return;
     }
     m_renderDock = new ads::CDockWidget(m_dockManager, tr("3D View"));
     m_renderDock->setObjectName(QStringLiteral("main3DDock"));
     m_renderDock->setIcon(QIcon(QStringLiteral(":/images/render-view.svg")));
-    m_renderDock->setWidget(renderViewWidget);
-    renderViewWidget->setWindowTitle(m_renderDock->windowTitle());
-    connect(m_renderDock, &QWidget::windowTitleChanged, renderViewWidget, &QWidget::setWindowTitle);
     m_renderDock->setFeatures(ads::CDockWidget::NoDockWidgetFeatures);
+    m_renderPage->setWindowTitle(m_renderDock->windowTitle());
+    connect(m_renderDock, &QWidget::windowTitleChanged, m_renderPage, &QWidget::setWindowTitle);
+
+    m_centralPageStack = new QStackedWidget(m_renderDock);
+    m_startPage = new IDOSProjectStartWidget(m_centralPageStack);
+    connect(m_startPage, &IDOSProjectStartWidget::newProjectRequested,
+            this, &IDOSMainWindow::onNewProject);
+    connect(m_startPage, &IDOSProjectStartWidget::openProjectRequested,
+            this, &IDOSMainWindow::onOpenProject);
+    connect(m_startPage, &IDOSProjectStartWidget::recentProjectOpenRequested,
+            this, &IDOSMainWindow::onStartPageRecentProjectOpenRequested);
+    connect(m_startPage, &IDOSProjectStartWidget::recentProjectRemoveRequested,
+            this, &IDOSMainWindow::onStartPageRecentProjectRemoveRequested);
+    m_centralPageStack->addWidget(m_startPage);
+    m_centralPageStack->addWidget(m_renderPage);
+    m_renderDock->setWidget(m_centralPageStack);
     m_dockManager->setCentralWidget(m_renderDock);
     m_viewDocks.insert(QStringLiteral("main3d"), m_renderDock);
+    updateCentralPage();
 }
 
 void IDOSMainWindow::initDockWidgets()
@@ -479,6 +540,7 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportFluidRockTablesCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSAttachFluidRockTableCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportProjectDataCommandMetadata()));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportSummaryResultsCommandMetadata()));
     }
     m_assistantDock = new ads::CDockWidget(m_dockManager, tr("Assistant"));
     m_assistantDock->setObjectName(QStringLiteral("assistantDock"));
@@ -501,7 +563,7 @@ void IDOSMainWindow::initDockWidgets()
     ads::CDockWidget* caseDock = new ads::CDockWidget(m_dockManager, tr("Case"));
     caseDock->setObjectName(QStringLiteral("caseTreeDock"));
     caseDock->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
-    caseDock->setWidget(m_caseTreeView);
+    caseDock->setWidget(m_caseTreeView, ads::CDockWidget::ForceNoScrollArea);
     caseDock->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable);
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
 
@@ -540,10 +602,6 @@ void IDOSMainWindow::initRibbonAction()
     m_actionOpenProject->setObjectName(QStringLiteral("openProjectAction"));
     m_actionOpenProject->setShortcut(QKeySequence::Open);
     connect(m_actionOpenProject, &QAction::triggered, this, &IDOSMainWindow::onOpenProject);
-    m_recentProjectsMenu = new QMenu(tr("Recent Projects"), this);
-    m_recentProjectsMenu->setObjectName(QStringLiteral("recentProjectsMenu"));
-    m_actionOpenProject->setMenu(m_recentProjectsMenu);
-    connect(m_recentProjectsMenu, &QMenu::triggered, this, &IDOSMainWindow::onRecentProjectTriggered);
     updateRecentProjects();
     projectPanel->addLargeAction(m_actionOpenProject);
     m_actionSaveProject = new QAction(
@@ -552,29 +610,38 @@ void IDOSMainWindow::initRibbonAction()
     m_actionSaveProject->setEnabled(false);
     m_actionSaveProject->setShortcut(QKeySequence::Save);
     connect(m_actionSaveProject, &QAction::triggered, this, &IDOSMainWindow::onSaveProject);
-    projectPanel->addSmallAction(m_actionSaveProject);
+    projectPanel->addLargeAction(m_actionSaveProject);
+    SARibbonPanel* projectManagementPanel = projectPage->addPanel(tr("Project Management"));
     m_actionSaveProjectAs = new QAction(
         QIcon(QStringLiteral(":/images/app-project-save.svg")), tr("Save Project As"), this);
     m_actionSaveProjectAs->setObjectName(QStringLiteral("saveProjectAsAction"));
     m_actionSaveProjectAs->setEnabled(false);
     m_actionSaveProjectAs->setShortcut(QKeySequence::SaveAs);
     connect(m_actionSaveProjectAs, &QAction::triggered, this, &IDOSMainWindow::onSaveProjectAs);
-    projectPanel->addSmallAction(m_actionSaveProjectAs);
+    projectManagementPanel->addSmallAction(m_actionSaveProjectAs);
+    m_actionCloseProject = new QAction(
+        QIcon(QStringLiteral(":/images/app-project-close.svg")), tr("Close Project"), this);
+    m_actionCloseProject->setObjectName(QStringLiteral("closeProjectAction"));
+    m_actionCloseProject->setEnabled(false);
+    connect(m_actionCloseProject, &QAction::triggered, this, &IDOSMainWindow::onCloseProject);
+    projectManagementPanel->addSmallAction(m_actionCloseProject);
     m_actionProjectSettings = new QAction(
         QIcon(QStringLiteral(":/images/app-project-settings.svg")), tr("Project Settings"), this);
     m_actionProjectSettings->setObjectName(QStringLiteral("projectSettingsAction"));
     m_actionProjectSettings->setEnabled(false);
-    projectPanel->addSmallAction(m_actionProjectSettings);
+    projectManagementPanel->addSmallAction(m_actionProjectSettings);
     m_actionPluginManager = new QAction(QIcon(QStringLiteral(":/images/app-plugin.svg")),
                                         tr("Plugin Manager"),
                                         this);
     m_actionPluginManager->setObjectName(QStringLiteral("pluginManagerAction"));
+
     QMenu* fileMenu = new QMenu(this);
     fileMenu->addAction(m_actionNewProject);
     fileMenu->addAction(m_actionOpenProject);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionSaveProject);
     fileMenu->addAction(m_actionSaveProjectAs);
+    fileMenu->addAction(m_actionCloseProject);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionProjectSettings);
     fileMenu->addSeparator();
@@ -841,6 +908,10 @@ void IDOSMainWindow::setProject(IDOSProject* project)
         connect(project, &QObject::destroyed, this, &IDOSMainWindow::onProjectDestroyed);
         connect(project, &IDOSProject::modifiedChanged, this, &IDOSMainWindow::onProjectModified);
         connect(project, &IDOSProject::metadataChanged, this, &IDOSMainWindow::onProjectModified);
+        connect(project, &IDOSProject::objectAdded, this, &IDOSMainWindow::updateStatusBarIndicators);
+        connect(project, &IDOSProject::objectRemoved, this, &IDOSMainWindow::updateStatusBarIndicators);
+        connect(project, &IDOSProject::objectsAdded, this, &IDOSMainWindow::updateStatusBarIndicators);
+        connect(project, &IDOSProject::objectsRemoved, this, &IDOSMainWindow::updateStatusBarIndicators);
         if (m_commandManager != nullptr)
         {
             connect(m_commandManager.data(), &IDOSCommandManager::stateChanged,
@@ -850,6 +921,7 @@ void IDOSMainWindow::setProject(IDOSProject* project)
 
     onCommandStateChanged();
     onProjectModified();
+    updateCentralPage();
     IDOS_INFO(tr("Active project changed."));
     emit projectChanged(project);
 }
@@ -1620,6 +1692,8 @@ void IDOSMainWindow::onProjectDestroyed()
     m_renderServer->setProject(nullptr);
     m_assistantWidget->setProject(nullptr);
     onProjectModified();
+    updateStatusBarIndicators();
+    updateCentralPage();
     emit projectChanged(nullptr);
     updateTreeSelection(activeViewId());
     onCommandStateChanged();
@@ -1689,6 +1763,7 @@ void IDOSMainWindow::setActiveView(const QString& id)
 void IDOSMainWindow::onRenderCurrentViewChanged(IDOSRenderView* view)
 {
     onPresentationChanged();
+    updateStatusBarIndicators();
     const QString viewId = view != nullptr ? view->property("viewId").toString() : QString();
     if (m_project != nullptr)
     {
@@ -1857,10 +1932,55 @@ void IDOSMainWindow::onProjectModified()
 {
     m_actionSaveProject->setEnabled(m_project != nullptr);
     m_actionSaveProjectAs->setEnabled(m_project != nullptr);
-    const QString label = m_project == nullptr ? QString() : m_project->filePath().isEmpty()
-        ? m_project->metadata().name() : QFileInfo(m_project->filePath()).fileName();
-    setWindowTitle(label.isEmpty() ? tr("IDOS[*]") : tr("IDOS - %1[*]").arg(label));
-    setWindowModified(m_project != nullptr && m_project->isModified());
+    m_actionCloseProject->setEnabled(m_project != nullptr);
+    const QString projectName = m_project != nullptr ? m_project->metadata().name().trimmed() : QString();
+    const bool modified = m_project != nullptr && m_project->isModified();
+    QString title = projectName.isEmpty() ? tr("IDOS") : projectName;
+    if (modified)
+    {
+        title.append(QLatin1Char('*'));
+    }
+    setWindowTitle(title);
+    setWindowModified(modified);
+    updateStatusBarIndicators();
+}
+
+void IDOSMainWindow::updateStatusBarIndicators()
+{
+    if (m_projectStatusLabel == nullptr ||
+        m_viewStatusLabel == nullptr ||
+        m_objectCountStatusLabel == nullptr)
+    {
+        return;
+    }
+
+    const bool hasProject = m_project != nullptr;
+    const QString projectName = hasProject
+        ? m_project->metadata().name().trimmed()
+        : QString();
+    const QString projectStatus = !hasProject
+        ? tr("No Project")
+        : QStringLiteral("%1  ·  %2")
+              .arg(projectName.isEmpty() ? tr("Untitled Project") : projectName,
+                   m_project->isModified() ? tr("Modified") : tr("Saved"));
+    m_projectStatusLabel->setText(projectStatus);
+    m_projectStatusLabel->setToolTip(hasProject ? m_project->filePath() : tr("No Project Open"));
+    const QString projectDotColor = !hasProject
+        ? QStringLiteral("#94A3B8")
+        : (m_project->isModified() ? QStringLiteral("#D97706") : QStringLiteral("#15966A"));
+    m_projectStatusDot->setStyleSheet(QStringLiteral(
+        "QLabel#projectStatusDot { background-color: %1; }").arg(projectDotColor));
+
+    IDOSRenderView* view = activeView();
+    const QString viewStatus = view == nullptr
+        ? tr("No Active View")
+        : (view->isTwoDimensional() ? tr("2D View") : tr("3D View"));
+    m_viewStatusLabel->setText(viewStatus);
+    m_viewStatusLabel->setToolTip(tr("Active render view mode"));
+
+    const int objectCount = hasProject ? m_project->objects().size() : 0;
+    m_objectCountStatusLabel->setText(tr("Objects: %1").arg(objectCount));
+    m_objectCountStatusLabel->setToolTip(tr("Number of data objects in the active project"));
 }
 
 bool IDOSMainWindow::saveProject(const QString& path)
@@ -1947,6 +2067,21 @@ void IDOSMainWindow::onSaveProjectAs()
     if (!path.isEmpty())
     {
         saveProject(path);
+    }
+}
+
+void IDOSMainWindow::onCloseProject()
+{
+    if (m_project == nullptr || !confirmDiscardProject())
+    {
+        return;
+    }
+
+    IDOSProject* projectToClose = m_project;
+    setProject(nullptr);
+    if (projectToClose->parent() == this)
+    {
+        projectToClose->deleteLater();
     }
 }
 
@@ -2240,12 +2375,13 @@ void IDOSMainWindow::restoreWindowPreferences(bool geometry)
 
 void IDOSMainWindow::rememberProject(const QString& projectPath)
 {
-    const QString path = windowSettingsPath();
-    if (path.isEmpty())
+    const QString settingsPath = windowSettingsPath();
+    if (settingsPath.isEmpty())
     {
         return;
     }
-    QSettings settings(path, QSettings::IniFormat);
+
+    QSettings settings(settingsPath, QSettings::IniFormat);
     QStringList recent = settings.value(QStringLiteral("recentProjects")).toStringList();
     const QString absolutePath = QFileInfo(projectPath).absoluteFilePath();
     recent.removeAll(absolutePath);
@@ -2261,35 +2397,58 @@ void IDOSMainWindow::rememberProject(const QString& projectPath)
 
 void IDOSMainWindow::updateRecentProjects()
 {
-    if (m_recentProjectsMenu == nullptr)
+    if (m_startPage == nullptr)
     {
         return;
     }
-    m_recentProjectsMenu->clear();
-    const QString path = windowSettingsPath();
-    if (!path.isEmpty())
+
+    QStringList recent;
+    const QString settingsPath = windowSettingsPath();
+    if (!settingsPath.isEmpty())
     {
-        QSettings settings(path, QSettings::IniFormat);
-        const QStringList recent = settings.value(QStringLiteral("recentProjects")).toStringList();
-        for (const QString& projectPath : recent)
-        {
-            QAction* action = m_recentProjectsMenu->addAction(projectPath);
-            action->setData(projectPath);
-            action->setEnabled(QFileInfo::exists(projectPath));
-        }
+        QSettings settings(settingsPath, QSettings::IniFormat);
+        recent = settings.value(QStringLiteral("recentProjects")).toStringList();
     }
-    if (m_recentProjectsMenu->isEmpty())
+    m_startPage->setRecentProjects(recent);
+}
+
+void IDOSMainWindow::updateCentralPage()
+{
+    if (m_centralPageStack == nullptr || m_startPage == nullptr || m_renderPage == nullptr)
     {
-        m_recentProjectsMenu->addAction(tr("No Recent Projects"))->setEnabled(false);
+        return;
+    }
+    const bool hasProject = m_project != nullptr;
+    m_centralPageStack->setCurrentWidget(hasProject ? m_renderPage : m_startPage);
+    if (m_renderDock != nullptr)
+    {
+        m_renderDock->setWindowTitle(hasProject ? tr("3D View") : tr("Start"));
     }
 }
 
-void IDOSMainWindow::onRecentProjectTriggered(QAction* action)
+void IDOSMainWindow::onStartPageRecentProjectOpenRequested(const QString& path)
 {
-    if (action != nullptr && !action->data().toString().isEmpty())
+    if (!path.isEmpty())
     {
-        openProject(action->data().toString());
+        openProject(path);
     }
+}
+
+void IDOSMainWindow::onStartPageRecentProjectRemoveRequested(const QString& projectPath)
+{
+    const QString settingsPath = windowSettingsPath();
+    if (settingsPath.isEmpty() || projectPath.isEmpty())
+    {
+        return;
+    }
+
+    QSettings settings(settingsPath, QSettings::IniFormat);
+    QStringList recent = settings.value(QStringLiteral("recentProjects")).toStringList();
+    recent.removeAll(projectPath);
+    recent.removeAll(QFileInfo(projectPath).absoluteFilePath());
+    settings.setValue(QStringLiteral("recentProjects"), recent);
+    settings.sync();
+    updateRecentProjects();
 }
 
 QList<IDOSWellLogTrackView*> IDOSMainWindow::logTrackViews() const

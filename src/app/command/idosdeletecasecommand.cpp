@@ -1,11 +1,15 @@
 #include <utility>
 
+#include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 
 #include "data/case/idoscaseitemref.h"
 #include "data/case/idoscaseobject.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/fluidrock/idosfluidrocktable.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
 #include "idosproject.h"
@@ -79,8 +83,29 @@ bool IDOSDeleteCaseCommand::apply(QString& error)
     }
 
     const QStringList gridIds = collectCaseGridIds();
+    const QStringList fluidRockTableIds = collectCaseFluidRockTableIds();
     m_grids.clear();
     m_properties.clear();
+    m_fluidRockTables.clear();
+
+    for (const QString& tableId : fluidRockTableIds)
+    {
+        if (isReferencedByOtherCase(tableId))
+        {
+            continue;
+        }
+
+        IDOSDataObject* detachedObject = targetProject->take(tableId);
+        IDOSFluidRockTable* table = qobject_cast<IDOSFluidRockTable*>(detachedObject);
+        if (table != nullptr)
+        {
+            m_fluidRockTables.append(QPointer<IDOSFluidRockTable>(table));
+        }
+        else if (detachedObject != nullptr)
+        {
+            targetProject->add(detachedObject);
+        }
+    }
 
     for (const QString& gridId : gridIds)
     {
@@ -133,6 +158,13 @@ bool IDOSDeleteCaseCommand::apply(QString& error)
                 targetProject->add(property.data());
             }
         }
+        for (const QPointer<IDOSFluidRockTable>& table : m_fluidRockTables)
+        {
+            if (!table.isNull() && table->parent() == nullptr)
+            {
+                targetProject->add(table.data());
+            }
+        }
         error = QObject::tr("The target case is unavailable.");
         return false;
     }
@@ -170,6 +202,14 @@ bool IDOSDeleteCaseCommand::revert(QString& error)
         if (!property.isNull() && property->parent() == nullptr)
         {
             targetProject->add(property.data());
+        }
+    }
+
+    for (const QPointer<IDOSFluidRockTable>& table : m_fluidRockTables)
+    {
+        if (!table.isNull() && table->parent() == nullptr)
+        {
+            targetProject->add(table.data());
         }
     }
 
@@ -230,8 +270,95 @@ QStringList IDOSDeleteCaseCommand::collectGridPropertyIds(const QString& gridId)
     return propertyIds;
 }
 
+QStringList IDOSDeleteCaseCommand::collectCaseFluidRockTableIds() const
+{
+    QStringList tableIds;
+    IDOSProject* targetProject = project();
+    IDOSCaseObject* caseObject = targetProject != nullptr
+        ? qobject_cast<IDOSCaseObject*>(targetProject->object(m_caseId)) : nullptr;
+    if (caseObject == nullptr)
+    {
+        return tableIds;
+    }
+
+    IDOSSimulationCaseObject* simulationCase = qobject_cast<IDOSSimulationCaseObject*>(caseObject);
+    QString normalizedCaseSource;
+    if (simulationCase != nullptr && !simulationCase->sourceFile().trimmed().isEmpty())
+    {
+        normalizedCaseSource = QDir::cleanPath(QFileInfo(simulationCase->sourceFile()).absoluteFilePath());
+    }
+
+    for (const IDOSCaseItemRef& reference : caseObject->itemRefs())
+    {
+        if (reference.role() != QStringLiteral("case.fluidRockTable"))
+        {
+            continue;
+        }
+
+        IDOSFluidRockTable* table = qobject_cast<IDOSFluidRockTable*>(targetProject->object(reference.objectId()));
+        if (table == nullptr)
+        {
+            continue;
+        }
+
+        const QString originCaseId = table->tableData().value(QStringLiteral("originCaseId")).toString();
+        if (!originCaseId.isEmpty())
+        {
+            tableIds.append(table->objectId());
+            continue;
+        }
+
+        if (normalizedCaseSource.isEmpty() || table->sourceFile().trimmed().isEmpty())
+        {
+            continue;
+        }
+
+        const QString normalizedTableSource = QDir::cleanPath(QFileInfo(table->sourceFile()).absoluteFilePath());
+        if (QString::compare(normalizedCaseSource, normalizedTableSource, Qt::CaseInsensitive) == 0)
+        {
+            tableIds.append(table->objectId());
+        }
+    }
+    return tableIds;
+}
+
+bool IDOSDeleteCaseCommand::isReferencedByOtherCase(const QString& objectId) const
+{
+    IDOSProject* targetProject = project();
+    if (targetProject == nullptr || objectId.isEmpty())
+    {
+        return false;
+    }
+
+    for (IDOSDataObject* object : targetProject->objects())
+    {
+        IDOSCaseObject* caseObject = qobject_cast<IDOSCaseObject*>(object);
+        if (caseObject == nullptr || caseObject->objectId() == m_caseId)
+        {
+            continue;
+        }
+
+        for (const IDOSCaseItemRef& reference : caseObject->itemRefs())
+        {
+            if (reference.objectId() == objectId)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void IDOSDeleteCaseCommand::clearDetachedObjects()
 {
+    for (const QPointer<IDOSFluidRockTable>& table : m_fluidRockTables)
+    {
+        if (!table.isNull() && table->parent() == nullptr)
+        {
+            delete table.data();
+        }
+    }
+
     for (const QPointer<IDOSDataObject>& property : m_properties)
     {
         if (!property.isNull() && property->parent() == nullptr)
@@ -257,7 +384,7 @@ void IDOSDeleteCaseCommand::clearDetachedObjects()
 IDOSDeleteCaseCommandMetadata::IDOSDeleteCaseCommandMetadata()
     : IDOSCommandMetadata(QStringLiteral("case.delete"),
                           QObject::tr("Delete case"),
-                          QObject::tr("Delete a simulation case and its private grid data."),
+                          QObject::tr("Delete a simulation case, its private grid data and unshared fluid tables imported with it."),
                           IDOSCommand::Type::Action)
 {
 }

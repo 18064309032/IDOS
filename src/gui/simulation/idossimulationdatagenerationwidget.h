@@ -1,7 +1,7 @@
 #ifndef IDOS_SIMULATION_DATA_GENERATION_WIDGET_H
 #define IDOS_SIMULATION_DATA_GENERATION_WIDGET_H
 
-#include <QStringList>
+#include <QPointer>
 #include <QWidget>
 
 #include "idos_app.h"
@@ -30,7 +30,7 @@ class APP_EXPORT IDOSSimulationDataGenerationWidget : public QWidget
 
     QString m_caseName;
     QString m_sourceFile;
-    QStringList m_sourceFiles;
+    QPointer<IDOSSimulationCaseObject> m_simulationCase;
     QLineEdit* m_parentDirectoryEdit;
     QPlainTextEdit* m_dataEditor;
     QPlainTextEdit* m_outputEdit;

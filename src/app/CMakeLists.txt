@@ -125,6 +125,8 @@ add_library(idos_app SHARED
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpreflightwidget.h"
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpropertycurvewidget.cpp"
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpropertycurvewidget.h"
+    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationsummarycurveswidget.cpp"
+    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationsummarycurveswidget.h"
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultfileswidget.cpp"
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultfileswidget.h"
     "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultplaybackwidget.cpp"

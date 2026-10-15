@@ -5,6 +5,10 @@ add_library(idos_providers SHARED
     case/idossimulationcaseeclipsemetadata.h
     case/idossimulationcaseeclipseprovider.cpp
     case/idossimulationcaseeclipseprovider.h
+    case/idossimulationsummaryprovider.cpp
+    case/idossimulationsummaryprovider.h
+    case/idossimulationsummaryprovidermetadata.cpp
+    case/idossimulationsummaryprovidermetadata.h
     fluidrock/idosfluidrocktextprovider.cpp
     fluidrock/idosfluidrocktextprovider.h
     fracture/idosfracturematerialcatalogmetadata.cpp

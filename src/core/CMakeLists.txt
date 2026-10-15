@@ -9,6 +9,10 @@ add_library(idos_core SHARED
     data/case/idossimulationcasemetadata.h
     data/case/idossimulationcaseobject.cpp
     data/case/idossimulationcaseobject.h
+    data/case/idossimulationsummaryresults.cpp
+    data/case/idossimulationsummaryresults.h
+    data/case/idossimulationsummaryresultsmetadata.cpp
+    data/case/idossimulationsummaryresultsmetadata.h
     data/fluidrock/idosfluidrocktable.cpp
     data/fluidrock/idosfluidrocktable.h
     data/fluidrock/idosfluidrocktablemetadata.cpp

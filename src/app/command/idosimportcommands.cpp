@@ -13,6 +13,7 @@
 #include "data/case/idoscaseitemref.h"
 #include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
+#include "data/case/idossimulationsummaryresults.h"
 #include "data/fluidrock/idosfluidrocktable.h"
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
@@ -62,6 +63,10 @@ IDOSImportObjectsCommand::IDOSImportObjectsCommand(IDOSProject* project, const Q
     {
         m_mode = Mode::ProjectData;
     }
+    else if (name == QStringLiteral("case.summary.import"))
+    {
+        m_mode = Mode::Summary;
+    }
 }
 IDOSImportObjectsCommand::~IDOSImportObjectsCommand()
 {
@@ -99,7 +104,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if ((m_mode == Mode::Grid || m_mode == Mode::Property) &&
+    if ((m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::Summary) &&
         m_targetCaseId.isEmpty())
     {
         error = QObject::tr("The target case is unavailable.");
@@ -113,7 +118,7 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
     }
 
     IDOSProject* targetProject = project();
-    if (m_mode == Mode::Grid || m_mode == Mode::Property)
+    if (m_mode == Mode::Grid || m_mode == Mode::Property || m_mode == Mode::Summary)
     {
         IDOSCaseObject* targetCase =
             qobject_cast<IDOSCaseObject*>(targetProject->object(m_targetCaseId));
@@ -121,6 +126,22 @@ bool IDOSImportObjectsCommand::validateCommand(QString& error) const
         {
             error = QObject::tr("The target case is unavailable.");
             return false;
+        }
+        if (m_mode == Mode::Summary)
+        {
+            if (qobject_cast<IDOSSimulationCaseObject*>(targetCase) == nullptr)
+            {
+                error = QObject::tr("The target simulation case is unavailable.");
+                return false;
+            }
+            for (const IDOSCaseItemRef& ref : targetCase->itemRefs())
+            {
+                if (ref.role() == QStringLiteral("case.summaryResults"))
+                {
+                    error = QObject::tr("Summary results have already been imported for this case.");
+                    return false;
+                }
+            }
         }
         if (m_mode == Mode::Grid)
         {
@@ -529,6 +550,11 @@ bool IDOSImportObjectsCommand::acceptObject(IDOSDataObject* object) const
         return object != nullptr && object->typeId() == m_dataTypeId;
     }
 
+    if (m_mode == Mode::Summary)
+    {
+        return qobject_cast<IDOSSimulationSummaryResults*>(object) != nullptr;
+    }
+
     return false;
 }
 
@@ -571,6 +597,7 @@ void IDOSImportObjectsCommand::prepareObject(IDOSDataObject* object)
             tableIndices.insert(keyword, tableIndex);
             tableData.insert(QStringLiteral("keyword"), keyword);
             tableData.insert(QStringLiteral("tableIndex"), tableIndex);
+            tableData.insert(QStringLiteral("originCaseId"), simulationCase->objectId());
             const IDOSFluidRockTable::Category category = isFluidKeyword(keyword)
                 ? IDOSFluidRockTable::Category::Fluid : IDOSFluidRockTable::Category::RockPhysics;
             IDOSFluidRockTable* table = new IDOSFluidRockTable(category);
@@ -830,6 +857,11 @@ void IDOSImportObjectsCommand::appendTargetCaseReferences()
         else if (qobject_cast<IDOSFluidRockTable*>(object.data()) != nullptr)
         {
             role = QStringLiteral("case.fluidRockTable");
+        }
+        else if (m_mode == Mode::Summary &&
+                 qobject_cast<IDOSSimulationSummaryResults*>(object.data()) != nullptr)
+        {
+            role = QStringLiteral("case.summaryResults");
         }
 
         const QString key = role + QLatin1Char(':') + object->objectId();
@@ -1240,6 +1272,35 @@ QJsonObject IDOSImportProjectDataCommandMetadata::schema() const
 
 IDOSCommand* IDOSImportProjectDataCommandMetadata::create(const QJsonObject& arguments,
                                                            IDOSProject* project) const
+{
+    return new IDOSImportObjectsCommand(project, name(), arguments);
+}
+
+IDOSImportSummaryResultsCommandMetadata::IDOSImportSummaryResultsCommandMetadata()
+    : IDOSCommandMetadata(QStringLiteral("case.summary.import"),
+                          QObject::tr("Import summary results"),
+                          QObject::tr("Import ECLIPSE summary vectors into a simulation case."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSImportSummaryResultsCommandMetadata::~IDOSImportSummaryResultsCommandMetadata() = default;
+
+QJsonObject IDOSImportSummaryResultsCommandMetadata::schema() const
+{
+    QJsonObject properties;
+    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("targetCaseId"),
+                      IDOSImportObjectsCommand::stringPropertySchema(
+                          QObject::tr("Object ID of the target simulation case.")));
+    QJsonArray required;
+    required.append(QStringLiteral("filePath"));
+    required.append(QStringLiteral("targetCaseId"));
+    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+}
+
+IDOSCommand* IDOSImportSummaryResultsCommandMetadata::create(const QJsonObject& arguments,
+                                                               IDOSProject* project) const
 {
     return new IDOSImportObjectsCommand(project, name(), arguments);
 }

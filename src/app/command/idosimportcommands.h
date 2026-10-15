@@ -28,7 +28,8 @@ public:
         Property,
         WellData,
         FluidRock,
-        ProjectData
+        ProjectData,
+        Summary
     };
 
     IDOSImportObjectsCommand(IDOSProject* project, const QString& name,
@@ -49,6 +50,7 @@ private:
     friend class IDOSImportFluidRockTablesCommandMetadata;
     friend class IDOSAttachFluidRockTableCommandMetadata;
     friend class IDOSImportProjectDataCommandMetadata;
+    friend class IDOSImportSummaryResultsCommandMetadata;
     static QJsonObject filePathSchema();
     static QJsonObject stringPropertySchema(const QString& description);
     static QJsonObject schemaWithProperties(const QJsonObject& properties, const QJsonArray& required);
@@ -164,6 +166,17 @@ class APP_EXPORT IDOSImportProjectDataCommandMetadata : public IDOSCommandMetada
   public:
     IDOSImportProjectDataCommandMetadata();
     ~IDOSImportProjectDataCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
+};
+
+class APP_EXPORT IDOSImportSummaryResultsCommandMetadata : public IDOSCommandMetadata
+{
+  public:
+    IDOSImportSummaryResultsCommandMetadata();
+    ~IDOSImportSummaryResultsCommandMetadata() override;
 
     QJsonObject schema() const override;
     IDOSCommand* create(const QJsonObject& arguments,

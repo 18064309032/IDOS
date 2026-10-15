@@ -32,6 +32,12 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     bool restoreProjectData(const QVariantMap& data, QString& error) override;
 
     /** 属性类别（对应 tNavigator 模型树的"静态属性/动态属性"分组）。 */
+    enum class ValueUnits
+    {
+        SI,
+        Unknown
+    };
+
     enum class Kind
     {
         Static, // 静态属性：PERMX、PORO 等
@@ -59,6 +65,8 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     /** 属性类别。 */
     Kind kind() const;
     void setKind(Kind kind);
+    ValueUnits valueUnits() const;
+    void setValueUnits(ValueUnits valueUnits);
 
     /** 所属网格的 objectId（引用，不持有对象）。 */
     QString gridId() const;
@@ -113,6 +121,7 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
     int m_nx;
     int m_ny;
     int m_nz;
+    ValueUnits m_valueUnits;
     QVector<double> m_values; // nx*ny*nz，natural order
     QMap<int, QVector<double>> m_reportStepValues;
     int m_currentReportStep;
