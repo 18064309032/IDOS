@@ -1070,72 +1070,54 @@ bool IDOSSimulationCaseEclipseProvider::parseDeckFile(const QString& filePath,
         return false;
     }
 
-    Opm::Parser parser;
-    if (!configureParser(&parser, error))
-    {
-        return false;
-    }
-    Opm::ParseContext context;
-    context.setPreserveUnknownKeywords(true);
-    Opm::ErrorGuard errors;
-    std::unique_ptr<Opm::Deck> parsedDeck(new Opm::Deck(
-        parser.parseFile(filePath.toStdString(), context, errors)));
-    if (!errors)
-    {
-        *deck = std::move(parsedDeck);
-        if (parserFilePath != nullptr)
-        {
-            *parserFilePath = filePath;
-        }
-        return true;
-    }
-
-    const QString originalError = QString::fromStdString(errors.formattedErrors());
-    if (!originalError.contains(QStringLiteral("COORDSYS"), Qt::CaseInsensitive) ||
-        !originalError.contains(QStringLiteral("missing NUMRES"), Qt::CaseInsensitive))
-    {
-        *error = originalError;
-        return false;
-    }
-
     QString temporaryPath;
     QString compatibilityError;
     if (!createNumresCompatibilityFile(filePath, &temporaryPath, &compatibilityError))
     {
-        *error = compatibilityError.isEmpty() ? originalError : compatibilityError;
+        *error = compatibilityError;
         return false;
     }
 
-    Opm::Parser retryParser;
-    if (!configureParser(&retryParser, error))
+    const QString parserPath = temporaryPath.isEmpty() ? filePath : temporaryPath;
+    Opm::Parser parser;
+    if (!configureParser(&parser, error))
     {
+        removeTemporaryParserFile(temporaryPath);
         return false;
     }
-    Opm::ParseContext retryContext;
-    retryContext.setPreserveUnknownKeywords(true);
-    Opm::ErrorGuard retryErrors;
-    std::unique_ptr<Opm::Deck> retryDeck;
+
+    Opm::ParseContext context;
+    context.setPreserveUnknownKeywords(true);
+    Opm::ErrorGuard errors;
+    std::unique_ptr<Opm::Deck> parsedDeck;
     try
     {
-        retryDeck.reset(new Opm::Deck(
-            retryParser.parseFile(temporaryPath.toStdString(), retryContext, retryErrors)));
+        parsedDeck.reset(new Opm::Deck(parser.parseFile(parserPath.toStdString(), context, errors)));
+    }
+    catch (const std::exception& exception)
+    {
+        removeTemporaryParserFile(temporaryPath);
+        *error = QObject::tr("OPM failed to parse the DATA file: %1")
+                     .arg(QString::fromUtf8(exception.what()));
+        return false;
     }
     catch (...)
     {
         removeTemporaryParserFile(temporaryPath);
-        throw;
+        *error = QObject::tr("OPM failed to parse the DATA file due to an unknown error.");
+        return false;
     }
     removeTemporaryParserFile(temporaryPath);
-    if (retryErrors)
+    if (errors)
     {
-        *error = QString::fromStdString(retryErrors.formattedErrors());
+        *error = QString::fromStdString(errors.formattedErrors());
         return false;
     }
 
-    *deck = std::move(retryDeck);
+    *deck = std::move(parsedDeck);
     if (parserFilePath != nullptr)
     {
-        *parserFilePath = temporaryPath;
+        *parserFilePath = parserPath;
     }
     return true;
 }
@@ -1189,6 +1171,8 @@ bool IDOSSimulationCaseEclipseProvider::createNumresCompatibilityFile(const QStr
     int runSpecLine = -1;
     int specGridLine = -1;
     QStringList specGridInlineValues;
+    bool hasCoordSys = false;
+    bool hasNumRes = false;
     for (int lineIndex = 0; lineIndex < lines.size(); ++lineIndex)
     {
         const QString line = QString::fromLatin1(lines.at(lineIndex).trimmed());
@@ -1207,11 +1191,26 @@ bool IDOSSimulationCaseEclipseProvider::createNumresCompatibilityFile(const QStr
         {
             runSpecLine = lineIndex;
         }
+        else if (keyword == QStringLiteral("COORDSYS"))
+        {
+            hasCoordSys = true;
+        }
+        else if (keyword == QStringLiteral("NUMRES"))
+        {
+            hasNumRes = true;
+        }
         else if (keyword == QStringLiteral("SPECGRID"))
         {
             specGridLine = lineIndex;
             specGridInlineValues = tokens.mid(1);
         }
+    }
+
+    if (!hasCoordSys || hasNumRes)
+    {
+        temporaryPath->clear();
+        error->clear();
+        return true;
     }
 
     if (runSpecLine < 0 || specGridLine < 0)

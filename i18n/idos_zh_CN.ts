@@ -5501,6 +5501,14 @@ It will be removed from all cases that reference it.</source>
         <translation>OPM 解析 .DATA 文件失败：%1</translation>
     </message>
     <message>
+        <source>OPM failed to parse the DATA file: %1</source>
+        <translation>OPM 解析 DATA 文件失败：%1</translation>
+    </message>
+    <message>
+        <source>OPM failed to parse the DATA file due to an unknown error.</source>
+        <translation>OPM 解析 DATA 文件时发生未知错误。</translation>
+    </message>
+    <message>
         <source>The source DATA file cannot be opened for compatibility parsing.</source>
         <translation>无法打开源 DATA 文件以进行兼容性解析。</translation>
     </message>
