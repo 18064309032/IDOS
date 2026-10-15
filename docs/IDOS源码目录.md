@@ -1,6 +1,8 @@
 # IDOS 源码目录
 
-更新日期：2026-10-15。
+更新日期：2026-10-16。
+
+> 下节“目标目录草案”对应 2026-10-16 的新设计，尚未移动源码；其后的文件树记录实际布局。树体系迁移须与 TreeServer/RenderServer 连接方案一起最终确认。
 
 本文为用户确认并已实施的固定源码目录，以当前仓库的实际文件位置为准，已同步 2026-10-14 用户手工调整；保留实际源码、导出头、构建文件及资源。同名 `.h` 和 `.cpp` 必须同目录；后续改变目录划分须经用户确认。
 
@@ -14,6 +16,34 @@
 - 顶层 `providers` 只放具体数据格式实现，按业务分类；其他模块及示例插件保留。
 
 物理目录与链接目标分别管理：gui 根部及业务目录中的 20 组业务界面（模拟窗口、工况对话框、井/网格显示等）仍由 `src/app/CMakeLists.txt` 显式列入 `idos_app`，使用 APP_EXPORT；它们需要具体业务 Provider。通用界面由 `idos_gui` 编译，不依赖 app 或 render；core 不依赖 gui、render、app 或插件。边界检查按这份明确的 CMake 文件清单识别业务界面，禁止通用模块反向引用它们。此次不增加接口或包装层来拆分已有界面绑定。
+
+## 2026-10-16 目标目录草案（待迁移）
+
+最新职责和接口见 [架构设计定稿记录](IDOS架构设计.md#2026-10-16-框架设计定稿记录待实施)。本节不是已完成迁移清单；未执行移动、类重命名或 CMake 改造。同名 .h/.cpp 成对同目录。
+
+| 目标位置 | 目标内容与迁移说明 |
+|---|---|
+| `src/core` | Object/DataObject、Project、Command/CommandMetadata/CommandRegistry/CommandManager、领域基础设施；不依赖 gui/render/app/插件 |
+| `src/core/data/{grid,well,case,fracture,fluidrock,seismic,production}` | 平台业务实体统一 Object 后缀，保留所属类型 Metadata；值类型不机械加后缀 |
+| `src/core/providers` | 数据类型及格式读取的公共接口、Metadata、Registry；树契约拟随树整体迁出，不先零散搬文件 |
+| `src/providers` 各业务子目录 | 实际文件格式解析，继续依赖 core，不改工程或展示 |
+| `src/app/tree`（拟调整） | IDOSTree、Item、Model、View、Server、Provider、ProviderMetadata、ProviderRegistry；删除被替代的 TreeGuiProvider，不留两套菜单链。迁入前须确认服务的渲染依赖方案 |
+| `src/app/providers/data` | IDOSDataTreeRootProvider，以及本业务具体树/渲染实现 |
+| `src/app/providers/case` | IDOSCaseTreeRootProvider，以及工况具体树实现 |
+| `src/app/providers/{well,grid,fluidrock,seismic}` | 各业务的具体 TreeProvider/RenderProvider 及 Metadata，不搬到通用模块 |
+| `src/render` | RenderObject/Scene/View/Server、RenderProviderRegistry、Tool/ToolBar/ToolProviderRegistry；一个 RenderServer 同步多个视图 |
+| `src/render/providers` | RenderProvider/RenderProviderMetadata、ToolProvider/ToolProviderMetadata |
+| `src/app/providers/render` | 内置具体视图工具及其 Provider/Metadata |
+| `src/gui` | 通用界面和 IDOSInterface；业务窗口继续物理归档 well/grid/simulation 及根部并由 app 目标显式编译，不因整理树再整体搬动 |
+| `src/app/command` | 一个业务操作一组命令 .h/.cpp，对应 Metadata 可同文件对；拆除 idosimportcommands 中的大 Mode 命令 |
+| `src/app`、`src/app/plugin` | 应用、主窗口、插件 Registry/Metadata 和插件管理界面；MainWindow 装配公共服务 |
+| `src/plugins/<插件目录>` | 该插件的算法、非模态 Widget、命令、Metadata 和具体扩展；不把插件算法推入通用框架 |
+
+目标改名：IDOSTreeMetadata/IDOSTreeRegistry → IDOSTreeProviderMetadata/IDOSTreeProviderRegistry；IDOSRenderMetadata/IDOSRenderRegistry → IDOSRenderProviderMetadata/IDOSRenderProviderRegistry；IDOSToolMetadata/IDOSToolRegistry → IDOSToolProviderMetadata/IDOSToolProviderRegistry。命令保留 IDOSCommandMetadata/IDOSCommandRegistry，方法改为 registerMetadata/unregisterMetadata/metadata/createCommand。
+
+插件窗口目标名称：IDOSDfnGenerationWidget、IDOSFractureCheckWidget、IDOSCurveFitEvaluationWidget、IDOSFieldDifferenceWidget。统一 QWidget 非模态窗口，构造接收 IDOSInterface*；算法独立。当前文件名仍以实际文件树和工作进度为准。
+
+## 当前实际文件布局
 
 以下为迁移后的实际文件树（排除空目录），包括源码、CMake 与资源：
 
@@ -36,6 +66,8 @@ src/
 │   │   ├── idosdeletecasecommand.h
 │   │   ├── idosdeletegridcommand.cpp
 │   │   ├── idosdeletegridcommand.h
+│   │   ├── idosdeletedatacommand.cpp
+│   │   ├── idosdeletedatacommand.h
 │   │   ├── idosdeletepropertycommand.cpp
 │   │   ├── idosdeletepropertycommand.h
 │   │   ├── idosdeletewellcommand.cpp
@@ -62,12 +94,18 @@ src/
 │   │   │   ├── idossimulationcasetreeprovider.cpp
 │   │   │   └── idossimulationcasetreeprovider.h
 │   │   ├── data/
+│   │   │   ├── idosdatagrouptreeguiprovider.cpp
+│   │   │   ├── idosdatagrouptreeguiprovider.h
 │   │   │   ├── idosimporteddatatreeguiprovider.cpp
 │   │   │   ├── idosimporteddatatreeguiprovider.h
 │   │   │   ├── idosimporteddatatreemetadata.cpp
 │   │   │   ├── idosimporteddatatreemetadata.h
 │   │   │   ├── idosimporteddatatreeprovider.cpp
-│   │   │   └── idosimporteddatatreeprovider.h
+│   │   │   ├── idosimporteddatatreeprovider.h
+│   │   │   ├── idosnaturalfracturerendermetadata.cpp
+│   │   │   ├── idosnaturalfracturerendermetadata.h
+│   │   │   ├── idosnaturalfracturerenderprovider.cpp
+│   │   │   └── idosnaturalfracturerenderprovider.h
 │   │   ├── fluidrock/
 │   │   │   ├── idosfluidrocktabletreeguiprovider.cpp
 │   │   │   ├── idosfluidrocktabletreeguiprovider.h
@@ -401,6 +439,14 @@ src/
 │   │   │   ├── fracture-reconstruct.svg
 │   │   │   └── fracture-reserve.svg
 │   │   ├── CMakeLists.txt
+│   │   ├── idosdfngeneratecommand.cpp
+│   │   ├── idosdfngeneratecommand.h
+│   │   ├── idosdfngenerationwidget.cpp
+│   │   ├── idosdfngenerationwidget.h
+│   │   ├── idosdfngenerator.cpp
+│   │   ├── idosdfngenerator.h
+│   │   ├── idosfracturegeometryreportdialog.cpp
+│   │   ├── idosfracturegeometryreportdialog.h
 │   │   ├── idosfracturemodelingplugin.cpp
 │   │   ├── idosfracturemodelingplugin.h
 │   │   └── idosfracturemodelingplugin.qrc
@@ -552,3 +598,16 @@ src/
 ├── CMakeLists.txt
 └── main.cpp
 ```
+
+
+### 多尺度裂缝分析窗口（2026-10-16）
+
+以下同名 `.h/.cpp` 对均位于 `src/plugins/idosmultiscalefractureplugin`：
+
+- `idosfielddifferencewidget`：属性场和报告步选择、差异结果提示。
+- `idosfielddifferencecommand`：活动单元差异、输入校验、撤销与缓存重做，含命令 Metadata。
+- `idoscurveevaluationwidget`：曲线来源、评价指标、样本表格及报告 CSV 导出。
+- `idoscurveevaluation`：CSV/汇总曲线读取、时间对齐和误差评价。
+- `idoscurveevaluationcommand`：只读评价命令及 Metadata。
+
+`src/core/data/grid/idosgridproperty` 增加指定报告步的只读数值访问；不包含插件计算或界面逻辑。

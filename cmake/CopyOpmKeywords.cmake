@@ -1,3 +1,4 @@
+# Preserve locally edited keyword definitions when rebuilding the application.
 if(NOT DEFINED SOURCE_FILE OR NOT DEFINED DESTINATION_FILE)
     message(FATAL_ERROR "SOURCE_FILE and DESTINATION_FILE are required")
 endif()

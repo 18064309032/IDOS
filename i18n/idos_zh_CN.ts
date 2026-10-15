@@ -1233,6 +1233,30 @@ It will be removed from all cases that reference it.</source>
         <source>%1 (%2 boundary points)</source>
         <translation type="vanished">%1（%2 个边界点）</translation>
     </message>
+    <message>
+        <source>Failed to import %1:
+%2</source>
+        <translation>导入 %1 失败：
+%2</translation>
+    </message>
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Delete Data</source>
+        <translation>删除数据</translation>
+    </message>
+    <message>
+        <source>Delete %1 selected dataset(s)?
+Their case references will also be removed. You can undo this operation.
+
+%2</source>
+        <translation>删除选中的 %1 个数据集？
+同时移除其工况引用。此操作可以撤销。
+
+%2</translation>
+    </message>
 </context>
 <context>
     <name>IDOSLocalModelService</name>
@@ -1799,6 +1823,49 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Connection Check</source>
         <translation type="vanished">连接检查</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSNaturalFractureSet</name>
+    <message>
+        <source>At least three vertices are required.</source>
+        <translation>至少需要三个顶点。</translation>
+    </message>
+    <message>
+        <source>A vertex coordinate is missing or not finite.</source>
+        <translation>顶点坐标缺失或不是有限数值。</translation>
+    </message>
+    <message>
+        <source>The polygon contains repeated vertices.</source>
+        <translation>多边形包含重复顶点。</translation>
+    </message>
+    <message>
+        <source>The polygon has zero or negligible area.</source>
+        <translation>多边形面积为零或过小。</translation>
+    </message>
+    <message>
+        <source>The polygon vertices are not coplanar.</source>
+        <translation>多边形顶点不共面。</translation>
+    </message>
+    <message>
+        <source>The polygon edges intersect.</source>
+        <translation>多边形边存在自交。</translation>
+    </message>
+    <message>
+        <source>The supplied normal is missing, zero or not finite.</source>
+        <translation>记录的法向量缺失、为零或包含非有限数值。</translation>
+    </message>
+    <message>
+        <source>The supplied normal does not match the polygon plane.</source>
+        <translation>记录的法向量与裂缝面不一致。</translation>
+    </message>
+    <message>
+        <source>Property %1 has an invalid value.</source>
+        <translation>属性 %1 的数值无效。</translation>
+    </message>
+    <message>
+        <source>The fracture ID is missing, nonpositive or duplicated.</source>
+        <translation>裂缝 ID 缺失、不是正数或存在重复。</translation>
     </message>
 </context>
 <context>
@@ -5513,8 +5580,8 @@ It will be removed from all cases that reference it.</source>
         <translation>无法打开源 DATA 文件以进行兼容性解析。</translation>
     </message>
     <message>
-      <source>The OPM custom keyword file could not be loaded: %1</source>
-      <translation>无法加载 OPM 自定义关键字文件：%1</translation>
+        <source>The OPM custom keyword file could not be loaded: %1</source>
+        <translation>无法加载 OPM 自定义关键字文件：%1</translation>
     </message>
     <message>
         <source>NUMRES could not be inferred because RUNSPEC or SPECGRID is missing.</source>
@@ -6558,31 +6625,31 @@ It will be removed from all cases that reference it.</source>
     </message>
     <message>
         <source>Stored summary results have missing or invalid fields.</source>
-        <translation type="unfinished">已存储的汇总结果缺少字段或字段无效。</translation>
+        <translation>已存储的汇总结果缺少字段或字段无效。</translation>
     </message>
     <message>
         <source>Stored summary results contain an invalid time value.</source>
-        <translation type="unfinished">已存储的汇总结果包含无效时间值。</translation>
+        <translation>已存储的汇总结果包含无效时间值。</translation>
     </message>
     <message>
         <source>Stored summary results contain an invalid series.</source>
-        <translation type="unfinished">已存储的汇总结果包含无效序列。</translation>
+        <translation>已存储的汇总结果包含无效序列。</translation>
     </message>
     <message>
         <source>ECLIPSE Summary Results</source>
-        <translation type="unfinished">ECLIPSE 汇总结果</translation>
+        <translation>ECLIPSE 汇总结果</translation>
     </message>
     <message>
         <source>Summary results have already been imported for this case.</source>
-        <translation type="unfinished"></translation>
+        <translation>该工况已经导入汇总结果。</translation>
     </message>
     <message>
         <source>Import summary results</source>
-        <translation type="unfinished">导入汇总结果</translation>
+        <translation>导入汇总结果</translation>
     </message>
     <message>
         <source>Import ECLIPSE summary vectors into a simulation case.</source>
-        <translation type="unfinished">将 ECLIPSE 汇总向量导入模拟工况。</translation>
+        <translation>将 ECLIPSE 汇总向量导入模拟工况。</translation>
     </message>
     <message>
         <source>The source DATA file is missing or unreadable.</source>
@@ -6662,23 +6729,23 @@ It will be removed from all cases that reference it.</source>
     </message>
     <message>
         <source>Select an ECLIPSE summary specification file (.SMSPEC).</source>
-        <translation type="unfinished">请选择 ECLIPSE 汇总规格文件（.SMSPEC）。</translation>
+        <translation>请选择 ECLIPSE 汇总规格文件（.SMSPEC）。</translation>
     </message>
     <message>
         <source>The ECLIPSE summary results are incomplete.</source>
-        <translation type="unfinished">ECLIPSE 汇总结果不完整。</translation>
+        <translation>ECLIPSE 汇总结果不完整。</translation>
     </message>
     <message>
         <source>The ECLIPSE summary contains no time steps or variables.</source>
-        <translation type="unfinished">ECLIPSE 汇总文件不包含时间步或变量。</translation>
+        <translation>ECLIPSE 汇总文件不包含时间步或变量。</translation>
     </message>
     <message>
         <source>The ECLIPSE summary contains no readable variable series.</source>
-        <translation type="unfinished">ECLIPSE 汇总文件不包含可读取的变量序列。</translation>
+        <translation>ECLIPSE 汇总文件不包含可读取的变量序列。</translation>
     </message>
     <message>
         <source>Unable to read ECLIPSE summary results: %1</source>
-        <translation type="unfinished">无法读取 ECLIPSE 汇总结果：%1</translation>
+        <translation>无法读取 ECLIPSE 汇总结果：%1</translation>
     </message>
     <message>
         <source>A stored property unit state is invalid.</source>
@@ -6691,6 +6758,42 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>A property contains an invalid value or an out-of-range integer: %1</source>
         <translation>属性 %1 包含无效值或超出范围的整数。</translation>
+    </message>
+    <message>
+        <source>The companion INIT properties do not match the grid dimensions.</source>
+        <translation>配套 INIT 属性与网格维度不匹配。</translation>
+    </message>
+    <message>
+        <source>Unable to import companion file %1: %2</source>
+        <translation>无法导入配套文件 %1：%2</translation>
+    </message>
+    <message>
+        <source>The companion UNSMRY file requires a matching SMSPEC file.</source>
+        <translation>配套 UNSMRY 文件需要同名的 SMSPEC 文件。</translation>
+    </message>
+    <message>
+        <source>The restart property %1 does not match the grid dimensions.</source>
+        <translation>重启结果属性 %1 与网格维度不匹配。</translation>
+    </message>
+    <message>
+        <source>Delete data</source>
+        <translation>删除数据</translation>
+    </message>
+    <message>
+        <source>No data is selected for deletion.</source>
+        <translation>未选择要删除的数据。</translation>
+    </message>
+    <message>
+        <source>The selected data is unavailable or requires its own delete command.</source>
+        <translation>所选数据不可用，或需要使用其专用删除命令。</translation>
+    </message>
+    <message>
+        <source>The deleted data cannot be restored.</source>
+        <translation>无法恢复已删除的数据。</translation>
+    </message>
+    <message>
+        <source>Delete imported data and its case references.</source>
+        <translation>删除导入的数据及其工况引用。</translation>
     </message>
 </context>
 </TS>

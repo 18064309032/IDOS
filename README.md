@@ -44,20 +44,20 @@ IDOS 是面向油气储层建模与数值模拟的 Windows 桌面工程平台，
 
 ### 配置与构建
 
-在仓库根目录运行。当前工作约定使用唯一构建目录 `D:/CMakeCoder/IDOS-Build`，禁止源码内构建。
+在仓库根目录运行。当前工作约定使用唯一构建目录 `E:/CJW-Archive/IDOS-Build`，禁止源码内构建。
 
 ```powershell
-cmake -S . -B D:/CMakeCoder/IDOS-Build `
+cmake -S . -B E:/CJW-Archive/IDOS-Build `
     -G "Visual Studio 17 2022" -A x64 `
     -DIDOS_QT_DIR="D:/Qt/Qt5.15.2/5.15.2/msvc2019_64" `
     -DIDOS_ENABLE_RENDER=ON -DIDOS_BUILD_TESTS=ON
 
-cmake --build D:/CMakeCoder/IDOS-Build --config Debug --parallel 6
+cmake --build E:/CJW-Archive/IDOS-Build --config Debug --parallel 6
 ```
 
-Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B D:/CMakeCoder/IDOS-Build`；显式指定目录以确保配置、编译和测试使用同一位置。
+Qt 路径按本机安装位置调整，也可以通过 `QTDIR` 设置。已有本地预设时可使用 `cmake --preset win-x64-debug-local -B E:/CJW-Archive/IDOS-Build`；显式指定目录以确保配置、编译和测试使用同一位置。
 
-Debug 程序位于 `D:/CMakeCoder/IDOS-Build/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
+Debug 程序位于 `E:/CJW-Archive/IDOS-Build/bin/Debug/idosd.exe`。构建部署 Qt 与项目 DLL、第三方运行库、插件、翻译及助手资源，应从当前产物目录启动程序。
 
 `IDOS_BUILD_TESTS` 默认 `OFF`，开发验证应打开。`IDOS_ENABLE_RENDER` 默认 `ON`；当前源码仍使用 VTK 控件，不能将 `OFF` 视为已支持的无渲染构建模式。
 
@@ -95,7 +95,7 @@ Debug 程序位于 `D:/CMakeCoder/IDOS-Build/bin/Debug/idosd.exe`。构建部署
 ## 测试
 
 ```powershell
-ctest --test-dir D:/CMakeCoder/IDOS-Build -C Debug --output-on-failure
+ctest --test-dir E:/CJW-Archive/IDOS-Build -C Debug --output-on-failure
 ```
 
 测试包括 `command_registry`、`assistant_widget`、`project_dialog`、`well_import`、`well_path`、`seismic_import`、`case_workflow`、`tree_incremental`，以及两项 include 边界检查。`idos_render_header_checks` 构建目标验证公共头文件自包含。
@@ -103,8 +103,8 @@ ctest --test-dir D:/CMakeCoder/IDOS-Build -C Debug --output-on-failure
 实际 Flow 验证需准备可运行的 SPE1 输入包，并设置路径：
 
 ```powershell
-$env:IDOS_FLOW_SMOKE_DATA = 'D:/CMakeCoder/IDOS-Build/flow-smoke/SPE1CASE1.DATA'
-ctest --test-dir D:/CMakeCoder/IDOS-Build -C Debug -R '^case_workflow$' --output-on-failure
+$env:IDOS_FLOW_SMOKE_DATA = 'E:/CJW-Archive/IDOS-Build/flow-smoke/SPE1CASE1.DATA'
+ctest --test-dir E:/CJW-Archive/IDOS-Build -C Debug -R '^case_workflow$' --output-on-failure
 ```
 
 未设置该变量时，本机 Flow 用例跳过，不能将普通回归通过解释为求解器计算已验收。验证与翻译流程见 [开发指南](docs/开发指南.md)。

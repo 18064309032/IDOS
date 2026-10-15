@@ -147,6 +147,11 @@ QList<int> IDOSGridProperty::reportSteps() const
     return m_reportStepValues.keys();
 }
 
+QVector<double> IDOSGridProperty::reportStepValues(int reportStep) const
+{
+    return m_reportStepValues.value(reportStep);
+}
+
 int IDOSGridProperty::currentReportStep() const
 {
     return m_currentReportStep;

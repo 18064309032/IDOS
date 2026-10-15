@@ -20,6 +20,11 @@ bool IDOSTreeGuiProvider::isCheckable(const IDOSTreeItem* item) const
     return item != nullptr && item->isCheckable();
 }
 
+Qt::CheckState IDOSTreeGuiProvider::checkState(const IDOSTreeItem* item, const IDOSTreeView* view) const
+{
+    return isChecked(item, view) ? Qt::Checked : Qt::Unchecked;
+}
+
 bool IDOSTreeGuiProvider::isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const
 {
     Q_UNUSED(view);

@@ -30,6 +30,7 @@ class GUI_EXPORT IDOSTreeGuiProvider : public QObject
                        Qt::DropAction action, IDOSTreeView* view);
     virtual void populateSelectionMenu(QMenu* menu, IDOSTreeView* view);
     virtual bool isCheckable(const IDOSTreeItem* item) const;
+    virtual Qt::CheckState checkState(const IDOSTreeItem* item, const IDOSTreeView* view) const;
     virtual bool isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const;
     virtual bool setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view);
 

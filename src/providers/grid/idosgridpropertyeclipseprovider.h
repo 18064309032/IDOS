@@ -15,17 +15,22 @@ class DeckKeyword;
 }
 
 class IDOSDataObject;
+class IDOSGrid;
 
 class PROVIDERS_EXPORT IDOSGridPropertyEclipseProvider : public IDOSDataProvider
 {
   public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
+    QList<IDOSDataObject*> readRestart(const QString& filePath, const IDOSGrid* grid);
+    QList<int> restartReportSteps() const;
 
   private:
     QStringList propertyKeywords() const;
     QVector<double> values(const Opm::DeckKeyword& keyword) const;
     void appendProperty(QList<IDOSDataObject*>* result, const QString& keyword,
                         const QVector<double>& values) const;
+    bool isSupportedRestartKeyword(const QString& keyword) const;
+    QList<int> m_restartReportSteps;
 };
 
 #endif // IDOS_GRID_PROPERTY_ECLIPSE_PROVIDER_H

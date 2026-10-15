@@ -225,7 +225,12 @@ void IDOSTreeView::refreshChecks(IDOSTreeItem* item)
     if (responsible && !conflict)
     {
         item->setCheckable(responsible->isCheckable(item));
-        item->setChecked(responsible->isChecked(item, this));
+        item->setCheckState(responsible->checkState(item, this));
+    }
+    else
+    {
+        item->setCheckable(false);
+        item->setCheckState(Qt::Unchecked);
     }
     for (IDOSTreeItem* child : item->children())
     {

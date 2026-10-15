@@ -84,6 +84,11 @@ bool IDOSWellTreeGuiProvider::supports(const IDOSTreeItem* item) const
            qobject_cast<IDOSWell*>(item->tree()->project()->object(item->dataId())) != nullptr;
 }
 
+bool IDOSWellTreeGuiProvider::isCheckable(const IDOSTreeItem* item) const
+{
+    return item != nullptr && !item->isGroup() && item->isCheckable();
+}
+
 bool IDOSWellTreeGuiProvider::isChecked(const IDOSTreeItem* item,
                                        const IDOSTreeView* treeView) const
 {

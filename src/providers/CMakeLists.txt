@@ -85,6 +85,13 @@ target_link_libraries(idos_providers PUBLIC idos_core PRIVATE
     shapelib::shapelib
 )
 target_compile_definitions(idos_providers PRIVATE IDOS_PROVIDERS_LIB)
+add_custom_command(TARGET idos_providers POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:OPM::fmt>"
+        "$<TARGET_FILE_DIR:idos_providers>"
+    COMMENT "Deploying OPM fmt runtime..."
+    VERBATIM
+)
 if(MSVC)
     target_compile_definitions(idos_providers PRIVATE _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
 endif()

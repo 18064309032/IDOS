@@ -11,7 +11,7 @@ IDOSTreeItem::IDOSTreeItem()
     , m_group(false)
     , m_reference(false)
     , m_checkable(false)
-    , m_checked(false)
+    , m_checkState(Qt::Unchecked)
     , m_parent(nullptr)
     , m_tree(nullptr)
     , m_provider(nullptr)
@@ -179,19 +179,29 @@ void IDOSTreeItem::setCheckable(bool value)
     changed();
 }
 
+Qt::CheckState IDOSTreeItem::checkState() const
+{
+    return m_checkState;
+}
+
+void IDOSTreeItem::setCheckState(Qt::CheckState state)
+{
+    if (m_checkState == state)
+    {
+        return;
+    }
+    m_checkState = state;
+    changed();
+}
+
 bool IDOSTreeItem::isChecked() const
 {
-    return m_checked;
+    return m_checkState == Qt::Checked;
 }
 
 void IDOSTreeItem::setChecked(bool value)
 {
-    if (m_checked == value)
-    {
-        return;
-    }
-    m_checked = value;
-    changed();
+    setCheckState(value ? Qt::Checked : Qt::Unchecked);
 }
 
 IDOSTreeItem* IDOSTreeItem::parent() const

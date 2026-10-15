@@ -33,6 +33,7 @@
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 #include <opm/input/eclipse/Parser/ErrorGuard.hpp>
+#include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Units/Dimension.hpp>
@@ -1087,6 +1088,7 @@ bool IDOSSimulationCaseEclipseProvider::parseDeckFile(const QString& filePath,
     }
 
     Opm::ParseContext context;
+    context.update(Opm::ParseContext::PARSE_MISSING_INCLUDE, Opm::InputErrorAction::THROW_EXCEPTION);
     context.setPreserveUnknownKeywords(true);
     Opm::ErrorGuard errors;
     std::unique_ptr<Opm::Deck> parsedDeck;
@@ -1099,18 +1101,21 @@ bool IDOSSimulationCaseEclipseProvider::parseDeckFile(const QString& filePath,
         removeTemporaryParserFile(temporaryPath);
         *error = QObject::tr("OPM failed to parse the DATA file: %1")
                      .arg(QString::fromUtf8(exception.what()));
+        errors.clear();
         return false;
     }
     catch (...)
     {
         removeTemporaryParserFile(temporaryPath);
         *error = QObject::tr("OPM failed to parse the DATA file due to an unknown error.");
+        errors.clear();
         return false;
     }
     removeTemporaryParserFile(temporaryPath);
     if (errors)
     {
         *error = QString::fromStdString(errors.formattedErrors());
+        errors.clear();
         return false;
     }
 

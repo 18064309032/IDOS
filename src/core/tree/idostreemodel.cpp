@@ -87,7 +87,7 @@ QVariant IDOSTreeModel::data(const QModelIndex& index, int role) const
     }
     if (role == Qt::CheckStateRole && item->isCheckable())
     {
-        return item->isChecked() ? Qt::Checked : Qt::Unchecked;
+        return item->checkState();
     }
     return QVariant();
 }

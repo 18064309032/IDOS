@@ -26,6 +26,7 @@ class APP_EXPORT IDOSWellTreeGuiProvider : public IDOSTreeGuiProvider
     QString name() const override;
     bool supports(const IDOSTreeItem* item) const override;
     void populateMenu(QMenu* menu, IDOSTreeView* view) override;
+    bool isCheckable(const IDOSTreeItem* item) const override;
     bool isChecked(const IDOSTreeItem* item, const IDOSTreeView* view) const override;
     bool setChecked(IDOSTreeItem* item, bool checked, IDOSTreeView* view) override;
 

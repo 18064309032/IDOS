@@ -2,6 +2,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <vector>
 
 #include <QAbstractItemView>
 #include <QAction>
@@ -13,6 +14,7 @@
 #include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QDialog>
+#include <QDateTime>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QEvent>
@@ -22,6 +24,8 @@
 #include <QIcon>
 #include <QImage>
 #include <QInputDialog>
+#include <QItemSelectionModel>
+#include <QJsonArray>
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
@@ -62,18 +66,25 @@
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/NNC.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Units/UnitSystem.hpp>
+#include <opm/io/eclipse/EclOutput.hpp>
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
+#include "command/idosdeletedatacommand.h"
 #include "command/idosdeletegridcommand.h"
 #include "command/idosgridfiltercommand.h"
 #include "command/idosimportrestartresultscommand.h"
 #include "data/case/idoscaseitemref.h"
 #include "data/case/idossimulationcaseobject.h"
+#include "data/case/idossimulationsummaryresults.h"
 #include "data/fluidrock/idosfluidrocktable.h"
+#include "data/fracture/idosnaturalfractureset.h"
 #include "data/grid/idosgrid.h"
+#include "data/grid/idosgridboundary.h"
 #include "data/grid/idosgridfilter.h"
 #include "data/grid/idosgridproperty.h"
 #include "data/well/idoswell.h"
@@ -100,6 +111,9 @@
 #include "idostoolregistry.h"
 #include "logger/idoslogger.h"
 #include "providers/case/idossimulationcasetreeguiprovider.h"
+#include "providers/data/idosdatagrouptreeguiprovider.h"
+#include "providers/data/idosnaturalfracturerendermetadata.h"
+#include "providers/data/idosnaturalfracturerenderprovider.h"
 #include "providers/grid/idosgridrendermetadata.h"
 #include "providers/grid/idosgridrenderprovider.h"
 #include "providers/idosdatametadata.h"
@@ -113,6 +127,8 @@
 #include "simulation/idossimulationinitializewidget.h"
 #include "simulation/idossimulationresultplaybackwidget.h"
 #include "simulation/idossimulationrunstatuswidget.h"
+#include "tree/idostree.h"
+#include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
 
@@ -120,6 +136,1197 @@
 
 static_assert(!std::is_abstract<IDOSRenderObject>::value, "RenderObject must be concrete.");
 static_assert(std::is_abstract<IDOSRenderProvider>::value, "RenderProvider must remain abstract.");
+
+QVariantMap CaseWorkflowTest::fracture(const QVector<double>& coordinates, int id) const
+{
+    QVariantList vertices;
+    for (int index = 0; index + 2 < coordinates.size(); index += 3)
+    {
+        QVariantMap vertex;
+        vertex.insert(QStringLiteral("east"), coordinates.at(index));
+        vertex.insert(QStringLiteral("north"), coordinates.at(index + 1));
+        vertex.insert(QStringLiteral("down"), coordinates.at(index + 2));
+        vertices.append(vertex);
+    }
+    QVariantMap result;
+    result.insert(QStringLiteral("id"), id);
+    result.insert(QStringLiteral("setId"), 1);
+    result.insert(QStringLiteral("vertices"), vertices);
+    result.insert(QStringLiteral("normal"), QVariantList{0.0, 0.0, 1.0});
+    result.insert(QStringLiteral("properties"), QVariantMap{{QStringLiteral("Aperture"), 0.001},
+                                                          {QStringLiteral("Porosity"), 0.1}});
+    return result;
+}
+
+QStringList CaseWorkflowTest::fractureIssueCodes(const QVariantMap& report) const
+{
+    QStringList codes;
+    const QVariantList issues = report.value(QStringLiteral("issues")).toList();
+    for (const QVariant& issue : issues)
+    {
+        codes.append(issue.toMap().value(QStringLiteral("code")).toString());
+    }
+    return codes;
+}
+
+void CaseWorkflowTest::onFieldDifference()
+{
+    QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
+    const QString key = QStringLiteral("/plugins/idosmultiscalefractureplugin");
+    const QVariant previous = settings.value(key);
+    const bool existed = settings.contains(key);
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    IDOSPluginRegistry* plugins = IDOSPluginRegistry::instance();
+    const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosmultiscalefractureplugin.dll");
+    plugins->loadCppPlugin(path);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    IDOSGrid* grid = new IDOSGrid();
+    QVector<double> coord;
+    for (int j = 0; j <= 1; ++j)
+    {
+        for (int i = 0; i <= 2; ++i)
+        {
+            coord << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << 10.0;
+        }
+    }
+    grid->setName(QStringLiteral("Difference grid"));
+    grid->setCornerPointData(2, 1, 1, coord, {0, 0, 0, 0, 10, 10, 10, 10, 0, 0, 0, 0, 10, 10, 10, 10}, {1, 0});
+    project->add(grid);
+    IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
+    simulationCase->setName(QStringLiteral("Difference case"));
+    simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    project->add(simulationCase);
+    IDOSGridProperty* field = new IDOSGridProperty();
+    field->setName(QStringLiteral("Pressure"));
+    field->setKeyword(QStringLiteral("PRESSURE"));
+    field->setValueUnits(IDOSGridProperty::ValueUnits::SI);
+    field->setGridId(grid->objectId());
+    field->setDimensions(2, 1, 1);
+    field->setKind(IDOSGridProperty::Kind::Dynamic);
+    QVERIFY(field->setReportStepValues(1, {10.0, 20.0}));
+    QVERIFY(field->setReportStepValues(2, {14.0, std::numeric_limits<double>::quiet_NaN()}));
+    QVERIFY(field->setCurrentReportStep(1));
+    project->add(field);
+    QCOMPARE(field->reportStepValues(2).first(), 14.0);
+    QCOMPARE(field->currentReportStep(), 1);
+    QVERIFY(field->reportStepValues(99).isEmpty());
+    QJsonObject arguments{{QStringLiteral("gridId"), grid->objectId()},
+                          {QStringLiteral("beforeId"), field->objectId()},
+                          {QStringLiteral("afterId"), field->objectId()},
+                          {QStringLiteral("beforeStep"), 1}, {QStringLiteral("afterStep"), 2},
+                          {QStringLiteral("name"), QStringLiteral("Pressure change")}};
+    const QString command = QStringLiteral("analysis.field.difference");
+    QJsonObject response = project->commandManager()->execute(command, arguments);
+    QVERIFY2(response.value(QStringLiteral("success")).toBool(), qPrintable(project->commandManager()->error()));
+    const QString outputId = project->commandManager()->result().value(QStringLiteral("objectId")).toString();
+    IDOSGridProperty* output = qobject_cast<IDOSGridProperty*>(project->object(outputId));
+    QVERIFY(output != nullptr);
+    QCOMPARE(output->values().first(), 4.0);
+    QVERIFY(std::isnan(output->values().last()));
+    QCOMPARE(field->currentReportStep(), 1);
+    QVERIFY(window.caseTreeModel()->indexFromDataId(outputId).isValid());
+    project->commandManager()->undo();
+    QVERIFY(project->object(outputId) == nullptr);
+    QJsonObject invalid = arguments;
+    invalid.insert(QStringLiteral("afterStep"), 99);
+    QVERIFY(!project->commandManager()->execute(command, invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(project->commandManager()->canRedo());
+    QVERIFY(field->setReportStepValues(2, {50.0, 0.0}));
+    project->commandManager()->redo();
+    QCOMPARE(output->values().first(), 4.0);
+    field->setValueUnits(IDOSGridProperty::ValueUnits::Unknown);
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    invalid = arguments;
+    invalid.insert(QStringLiteral("confirmUnits"), true);
+    QVERIFY(project->commandManager()->execute(command, invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(field->setReportStepValues(2, {std::numeric_limits<double>::infinity(), 0.0}));
+    QVERIFY(!project->commandManager()->execute(command, invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(field->setReportStepValues(2, {14.0, 0.0}));
+    QAction* action = window.findChild<QAction*>(QStringLiteral("idosFieldDifferenceAction"));
+    QVERIFY(action != nullptr);
+    action->trigger();
+    QPointer<QWidget> widget = window.findChild<QWidget*>(QStringLiteral("idosFieldDifferenceWidget"));
+    QVERIFY(!widget.isNull());
+    QComboBox* afterStep = widget->findChild<QComboBox*>(QStringLiteral("differenceAfterStep"));
+    afterStep->setCurrentIndex(afterStep->findData(2));
+    widget->findChild<QCheckBox*>(QStringLiteral("differenceConfirmUnits"))->setChecked(true);
+    widget->findChild<QPushButton*>(QStringLiteral("differenceCalculate"))->click();
+    QVERIFY(!widget->findChild<QLabel*>(QStringLiteral("differenceResult"))->text().isEmpty());
+    QCOMPARE(field->currentReportStep(), 1);
+    const QString screenshots = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(widget->grab().save(QDir(screenshots).filePath(QStringLiteral("field-difference.png"))));
+    }
+    QTemporaryDir saved;
+    QString error;
+    QVERIFY2(project->save(saved.filePath(QStringLiteral("difference.idos")), window.dataRegistry(), error), qPrintable(error));
+    QScopedPointer<IDOSProject> restored(IDOSProject::load(saved.filePath(QStringLiteral("difference.idos")), window.dataRegistry(), error));
+    QVERIFY2(!restored.isNull(), qPrintable(error));
+    IDOSGridProperty* loaded = qobject_cast<IDOSGridProperty*>(restored->object(outputId));
+    QVERIFY(loaded != nullptr);
+    QCOMPARE(loaded->values().first(), 4.0);
+    QVERIFY(std::isnan(loaded->values().last()));
+    plugins->unloadCppPlugin(path);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    project->commandManager()->clear();
+    plugins->unloadCppPlugin(path);
+    QVERIFY(!plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    QVERIFY(widget.isNull());
+    QCOMPARE(output->values().first(), 4.0);
+    if (existed)
+    {
+        settings.setValue(key, previous);
+    }
+    else
+    {
+        settings.remove(key);
+    }
+}
+
+void CaseWorkflowTest::onCurveEvaluation()
+{
+    QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
+    const QString key = QStringLiteral("/plugins/idosmultiscalefractureplugin");
+    const QVariant previous = settings.value(key);
+    const bool existed = settings.contains(key);
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    IDOSPluginRegistry* plugins = IDOSPluginRegistry::instance();
+    const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosmultiscalefractureplugin.dll");
+    plugins->loadCppPlugin(path);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    QTemporaryDir directory;
+    QFile simulated(directory.filePath(QStringLiteral("simulated.csv")));
+    QVERIFY(simulated.open(QIODevice::WriteOnly));
+    simulated.write("days,value\n2,4\n0,0\n");
+    simulated.close();
+    QFile observed(directory.filePath(QStringLiteral("observed.csv")));
+    QVERIFY(observed.open(QIODevice::WriteOnly));
+    observed.write("days,value\n-1,99\n0,0\n1,1\n2,2\n3,99\n");
+    observed.close();
+    const QString command = QStringLiteral("analysis.curve.evaluate");
+    QJsonObject arguments{{QStringLiteral("simulatedFile"), simulated.fileName()},
+                          {QStringLiteral("observedFile"), observed.fileName()},
+                          {QStringLiteral("simulatedTimeColumn"), 1}, {QStringLiteral("simulatedValueColumn"), 2},
+                          {QStringLiteral("observedTimeColumn"), 1}, {QStringLiteral("observedValueColumn"), 2},
+                          {QStringLiteral("timeMode"), QStringLiteral("days")},
+                          {QStringLiteral("origin"), QStringLiteral("2020-01-01T00:00:00Z")},
+                          {QStringLiteral("unit"), QStringLiteral("SM3/DAY")}, {QStringLiteral("confirmUnits"), true}};
+    QJsonObject response = project->commandManager()->execute(command, arguments);
+    QVERIFY2(response.value(QStringLiteral("success")).toBool(), qPrintable(project->commandManager()->error()));
+    QJsonObject result = project->commandManager()->result();
+    QCOMPARE(result.value(QStringLiteral("samples")).toInt(), 3);
+    QCOMPARE(result.value(QStringLiteral("outsideOverlap")).toInt(), 2);
+    QVERIFY(std::abs(result.value(QStringLiteral("rmse")).toDouble() - std::sqrt(5.0 / 3.0)) < 1e-10);
+    QCOMPARE(result.value(QStringLiteral("mae")).toDouble(), 1.0);
+    QCOMPARE(result.value(QStringLiteral("mape")).toDouble(), 100.0);
+    QCOMPARE(result.value(QStringLiteral("mapeSamples")).toInt(), 2);
+    QVERIFY(std::abs(result.value(QStringLiteral("r2")).toDouble() + 1.5) < 1e-10);
+    QVERIFY(!project->commandManager()->canUndo());
+    QJsonObject invalid = arguments;
+    invalid.insert(QStringLiteral("confirmUnits"), false);
+    QVERIFY(!project->commandManager()->execute(command, invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("days,value\n10,1\n11,2\n");
+    observed.close();
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("days,value\n1,1\n1,2\n");
+    observed.close();
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("days,value\n0,0\n1,0\n");
+    observed.close();
+    QVERIFY(project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    result = project->commandManager()->result();
+    QVERIFY(result.value(QStringLiteral("r2")).isNull());
+    QVERIFY(result.value(QStringLiteral("mape")).isNull());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("0,0\n1,2\n");
+    observed.close();
+    arguments.insert(QStringLiteral("header"), false);
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(simulated.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    simulated.write("2,4\n0,0\n");
+    simulated.close();
+    QVERIFY(project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->commandManager()->result().value(QStringLiteral("rmse")).toDouble(), 0.0);
+    QVERIFY(simulated.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    simulated.write("days,value\n2,4\n0,0\n");
+    simulated.close();
+    arguments.insert(QStringLiteral("simulatedId"), QStringLiteral("missing"));
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    arguments.remove(QStringLiteral("simulatedId"));
+    arguments.insert(QStringLiteral("header"), true);
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("days,value\n0,\"unterminated\n");
+    observed.close();
+    QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("days,value\n0,0\n1,0\n");
+    observed.close();
+    IDOSSimulationSummaryResults* summary = new IDOSSimulationSummaryResults();
+    summary->setName(QStringLiteral("Simulation"));
+    const qint64 start = QDateTime::fromString(QStringLiteral("2020-01-01T00:00:00Z"), Qt::ISODate).toMSecsSinceEpoch();
+    summary->setTimeValues({start, start + 2 * 86400000LL});
+    summary->setSeries({QVariantMap{{QStringLiteral("key"), QStringLiteral("FOPR")},
+                                   {QStringLiteral("unit"), QStringLiteral("SM3/DAY")},
+                                   {QStringLiteral("values"), QVariant::fromValue(QVector<double>{0.0, 4.0})}}});
+    project->add(summary);
+    arguments.insert(QStringLiteral("simulatedId"), summary->objectId());
+    arguments.insert(QStringLiteral("simulatedSeries"), 0);
+    QVERIFY(project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    invalid = arguments;
+    invalid.insert(QStringLiteral("unit"), QStringLiteral("STB/DAY"));
+    QVERIFY(!project->commandManager()->execute(command, invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    observed.write("date,value\n2020-01-01T00:00:00Z,0\n2020-01-02T00:00:00Z,2\n");
+    observed.close();
+    arguments.insert(QStringLiteral("timeMode"), QStringLiteral("calendar"));
+    QVERIFY(project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->commandManager()->result().value(QStringLiteral("rmse")).toDouble(), 0.0);
+    QAction* action = window.findChild<QAction*>(QStringLiteral("idosCurveEvaluationAction"));
+    QVERIFY(action != nullptr);
+    action->trigger();
+    QPointer<QWidget> widget = window.findChild<QWidget*>(QStringLiteral("idosCurveEvaluationWidget"));
+    QVERIFY(!widget.isNull());
+    QComboBox* source = widget->findChild<QComboBox*>(QStringLiteral("simulatedSource"));
+    source->setCurrentIndex(source->findData(summary->objectId()));
+    widget->findChild<QLineEdit*>(QStringLiteral("observedFile"))->setText(observed.fileName());
+    QComboBox* mode = widget->findChild<QComboBox*>(QStringLiteral("curveTimeMode"));
+    mode->setCurrentIndex(mode->findData(QStringLiteral("calendar")));
+    widget->findChild<QCheckBox*>(QStringLiteral("curveConfirmUnits"))->setChecked(true);
+    widget->findChild<QPushButton*>(QStringLiteral("curveEvaluate"))->click();
+    QCOMPARE(widget->findChild<QTableWidget*>(QStringLiteral("curveSamples"))->rowCount(), 2);
+    const QString screenshots = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(widget->grab().save(QDir(screenshots).filePath(QStringLiteral("curve-evaluation.png"))));
+    }
+    m_name = directory.filePath(QStringLiteral("evaluation.csv"));
+    const bool nativeDisabled = QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, true);
+    m_cancel = false;
+    QTimer::singleShot(200, this, &CaseWorkflowTest::onExportCurveDialog);
+    QVERIFY(QMetaObject::invokeMethod(widget.data(), "onExport", Qt::DirectConnection));
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, nativeDisabled);
+    QFile report(m_name);
+    QVERIFY2(report.open(QIODevice::ReadOnly | QIODevice::Text), qPrintable(widget->findChild<QLabel*>(QStringLiteral("curveStatus"))->text()));
+    const QByteArray csv = report.readAll();
+    QVERIFY(csv.contains("metric,value\n"));
+    QVERIFY(csv.contains("time_utc,simulated,observed,error"));
+    QVERIFY(csv.contains("2020-01-02T00:00:00.000Z,2,2,0"));
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    widget->findChild<QLineEdit*>(QStringLiteral("curveUnit"))->setText(QStringLiteral("Changed"));
+    QCOMPARE(widget->findChild<QTableWidget*>(QStringLiteral("curveSamples"))->rowCount(), 0);
+    std::unique_ptr<IDOSCommand> pending = window.commandRegistry()->create(command, arguments, project);
+    plugins->unloadCppPlugin(path);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    pending.reset();
+    QVERIFY(!project->commandManager()->canUndo());
+    plugins->unloadCppPlugin(path);
+    QVERIFY(!plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    QVERIFY(widget.isNull());
+    if (existed)
+    {
+        settings.setValue(key, previous);
+    }
+    else
+    {
+        settings.remove(key);
+    }
+}
+
+void CaseWorkflowTest::onExportCurveDialog()
+{
+    QFileDialog* dialog = qobject_cast<QFileDialog*>(QApplication::activeModalWidget());
+    if (dialog == nullptr)
+    {
+        QTimer::singleShot(100, this, &CaseWorkflowTest::onExportCurveDialog);
+        return;
+    }
+    const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosmultiscalefractureplugin.dll");
+    IDOSPluginRegistry::instance()->unloadCppPlugin(path);
+    QVERIFY(IDOSPluginRegistry::instance()->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
+    if (!m_cancel)
+    {
+        m_cancel = true;
+        dialog->setDirectory(QFileInfo(m_name).absolutePath());
+        dialog->selectFile(QFileInfo(m_name).fileName());
+        QTimer::singleShot(300, this, &CaseWorkflowTest::onExportCurveDialog);
+        QTimer::singleShot(5000, dialog, &QDialog::reject);
+        return;
+    }
+    QLineEdit* fileName = dialog->findChild<QLineEdit*>(QStringLiteral("fileNameEdit"));
+    QVERIFY(fileName != nullptr);
+    fileName->setText(m_name);
+    QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+}
+
+void CaseWorkflowTest::onDfnGeneration()
+{
+    QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
+    const QString settingKey = QStringLiteral("/plugins/idosfracturemodelingplugin");
+    const bool hadSetting = settings.contains(settingKey);
+    const QVariant previousSetting = settings.value(settingKey);
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    const QString pluginPath = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosfracturemodelingplugin.dll");
+    IDOSPluginRegistry* plugins = IDOSPluginRegistry::instance();
+    plugins->loadCppPlugin(pluginPath);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    QAction* action = window.findChild<QAction*>(QStringLiteral("idosGenerateDfnAction"));
+    QVERIFY(action != nullptr);
+    QVERIFY(!action->isEnabled());
+    QVERIFY(window.commandRegistry()->find(QStringLiteral("fracture.dfn.generate")) != nullptr);
+    QVector<double> coord;
+    for (int j = 0; j <= 1; ++j)
+    {
+        for (int i = 0; i <= 2; ++i)
+        {
+            coord << 5000000.0 + i * 10.0 << 7000000.0 + j * 10.0 << 0.0
+                  << 5000000.0 + i * 10.0 << 7000000.0 + j * 10.0 << 20.0;
+        }
+    }
+    QVector<double> zcorn;
+    for (int k = 0; k < 2; ++k)
+    {
+        for (int cell = 0; cell < 2; ++cell)
+        {
+            for (int corner = 0; corner < 8; ++corner)
+            {
+                zcorn.append(k * 10.0 + (corner < 4 ? 0.0 : 10.0));
+            }
+        }
+    }
+    IDOSGrid* grid = new IDOSGrid();
+    grid->setName(QStringLiteral("DFN source grid"));
+    grid->setCornerPointData(2, 1, 2, coord, zcorn, {1, 0, 1, 1});
+    project->add(grid);
+    IDOSGridProperty* density = new IDOSGridProperty();
+    density->setName(QStringLiteral("Sampling weights"));
+    density->setGridId(grid->objectId());
+    density->setDimensions(2, 1, 2);
+    QVERIFY(density->setValues({0.0, 1000.0, 1.0, 0.0}));
+    project->add(density);
+    QVERIFY(action->isEnabled());
+    action->trigger();
+    QPointer<QWidget> widget = window.findChild<QWidget*>(QStringLiteral("idosDfnGenerationWidget"));
+    QVERIFY(!widget.isNull());
+    widget->findChild<QSpinBox*>(QStringLiteral("dfnCount"))->setValue(12);
+    widget->findChild<QSpinBox*>(QStringLiteral("dfnSeed"))->setValue(42);
+    QCOMPARE(widget->findChild<QSpinBox*>(QStringLiteral("dfnLastLayer"))->value(), 2);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("dfnMinimumLength"))->setValue(2.0);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("dfnMaximumLength"))->setValue(4.0);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("dfnStrikeSpread"))->setValue(0.0);
+    widget->findChild<QDoubleSpinBox*>(QStringLiteral("dfnDipSpread"))->setValue(0.0);
+    QComboBox* weights = widget->findChild<QComboBox*>(QStringLiteral("dfnDensity"));
+    weights->setCurrentIndex(weights->findData(density->objectId()));
+    QVERIFY(weights->currentIndex() > 0);
+    widget->findChild<QPushButton*>(QStringLiteral("dfnGenerate"))->click();
+    const QString outputId = project->commandManager()->result().value(QStringLiteral("objectId")).toString();
+    IDOSNaturalFractureSet* output = qobject_cast<IDOSNaturalFractureSet*>(project->object(outputId));
+    QVERIFY2(output != nullptr, qPrintable(project->commandManager()->error()));
+    QCOMPARE(output->fractures().size(), 12);
+    const QVariantList original = output->fractures();
+    const QJsonObject parameters = QJsonObject::fromVariantMap(original.first().toMap().value(QStringLiteral("generation")).toMap());
+    for (const QVariant& value : output->geometryReport())
+    {
+        const QVariantMap report = value.toMap();
+        QVERIFY(report.value(QStringLiteral("valid")).toBool());
+        QVERIFY(fractureIssueCodes(report).isEmpty());
+        const QVariantList center = report.value(QStringLiteral("center")).toList();
+        QVERIFY(center.at(0).toDouble() > 5000000.0 && center.at(0).toDouble() < 5000010.0);
+        QVERIFY(center.at(1).toDouble() > 7000000.0 && center.at(1).toDouble() < 7000010.0);
+        QVERIFY(center.at(2).toDouble() > 10.0 && center.at(2).toDouble() < 20.0);
+    }
+    const QVariantList normal = original.first().toMap().value(QStringLiteral("normal")).toList();
+    QVERIFY(std::abs(normal.at(0).toDouble() - std::sqrt(3.0) * 0.5) < 1.0e-10);
+    QVERIFY(std::abs(normal.at(1).toDouble()) < 1.0e-10);
+    QVERIFY(std::abs(normal.at(2).toDouble() - 0.5) < 1.0e-10);
+    const QString screenshotRoot = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshotRoot.isEmpty())
+    {
+        QVERIFY(widget->grab().save(QDir(screenshotRoot).filePath(QStringLiteral("dfn-generation.png"))));
+    }
+    const QModelIndex node = window.dataTreeModel()->indexFromDataId(outputId);
+    QVERIFY(node.isValid());
+    QVERIFY(window.dataTreeModel()->setData(node, Qt::Checked, Qt::CheckStateRole));
+    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId)->visible());
+    QTemporaryDir saved;
+    QString error;
+    QVERIFY2(project->save(saved.filePath(QStringLiteral("dfn.idos")), window.dataRegistry(), error), qPrintable(error));
+    QScopedPointer<IDOSProject> loaded(IDOSProject::load(saved.filePath(QStringLiteral("dfn.idos")), window.dataRegistry(), error));
+    QVERIFY2(!loaded.isNull(), qPrintable(error));
+    IDOSNaturalFractureSet* restored = qobject_cast<IDOSNaturalFractureSet*>(loaded->object(outputId));
+    QVERIFY(restored != nullptr);
+    QCOMPARE(restored->fractures(), original);
+    plugins->unloadCppPlugin(pluginPath);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    project->commandManager()->undo();
+    QVERIFY(project->object(outputId) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId) == nullptr);
+    QVERIFY(density->setValues({0.0, 0.0, 0.0, 0.0}));
+    QJsonObject failure = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), parameters);
+    QVERIFY(!failure.value(QStringLiteral("success")).toBool());
+    QVERIFY(project->commandManager()->canRedo());
+    project->commandManager()->redo();
+    QCOMPARE(project->object(outputId), static_cast<IDOSDataObject*>(output));
+    QCOMPARE(output->fractures(), original);
+    QVERIFY(density->setValues({0.0, 1000.0, 1.0, 0.0}));
+    QJsonObject response = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), parameters);
+    QVERIFY(response.value(QStringLiteral("success")).toBool());
+    IDOSNaturalFractureSet* repeated = qobject_cast<IDOSNaturalFractureSet*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
+    QVERIFY(repeated != nullptr);
+    QVERIFY(repeated->objectId() != outputId);
+    QCOMPARE(repeated->fractures(), original);
+    project->commandManager()->undo();
+    QJsonObject invalid = parameters;
+    invalid.insert(QStringLiteral("count"), 0);
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(project->commandManager()->canRedo());
+    invalid = parameters;
+    invalid.remove(QStringLiteral("seed"));
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    invalid = parameters;
+    invalid.insert(QStringLiteral("lastLayer"), 3);
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    invalid = parameters;
+    invalid.insert(QStringLiteral("densityId"), QStringLiteral("missing"));
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    QVERIFY(project->commandManager()->canRedo());
+    invalid = parameters;
+    invalid.insert(QStringLiteral("densityId"), 123);
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    invalid = parameters;
+    invalid.insert(QStringLiteral("minimumLength"), -1.0);
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), invalid).value(QStringLiteral("success")).toBool());
+    density->setGridId(QStringLiteral("unrelated"));
+    QVERIFY(!project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), parameters).value(QStringLiteral("success")).toBool());
+    density->setGridId(grid->objectId());
+    QVERIFY(project->commandManager()->canRedo());
+    QJsonObject changedSeed = parameters;
+    changedSeed.insert(QStringLiteral("seed"), 43);
+    response = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), changedSeed);
+    QVERIFY(response.value(QStringLiteral("success")).toBool());
+    IDOSNaturalFractureSet* different = qobject_cast<IDOSNaturalFractureSet*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
+    QVERIFY(different != nullptr);
+    QVERIFY(different->fractures().first().toMap().value(QStringLiteral("vertices"))
+        != original.first().toMap().value(QStringLiteral("vertices")));
+    const int objectCount = project->objects().size();
+    project->commandManager()->clear();
+    QCOMPARE(project->objects().size(), objectCount);
+    IDOSProject* otherProject = new IDOSProject(&window);
+    window.setProject(otherProject);
+    QVERIFY(widget.isNull());
+    window.setProject(project);
+    action->trigger();
+    widget = window.findChild<QWidget*>(QStringLiteral("idosDfnGenerationWidget"));
+    QVERIFY(!widget.isNull());
+    std::unique_ptr<IDOSCommand> pending = window.commandRegistry()->create(QStringLiteral("fracture.dfn.generate"), parameters, project);
+    plugins->unloadCppPlugin(pluginPath);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    pending.reset();
+    plugins->unloadCppPlugin(pluginPath);
+    QVERIFY(!plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    QVERIFY(widget.isNull());
+    QVERIFY(window.commandRegistry()->find(QStringLiteral("fracture.dfn.generate")) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId) != nullptr);
+    QCOMPARE(output->fractures(), original);
+    for (const QVariant& value : output->geometryReport())
+    {
+        QVERIFY(value.toMap().value(QStringLiteral("valid")).toBool());
+    }
+    QVERIFY2(project->save(saved.filePath(QStringLiteral("dfn-after-unload.idos")), window.dataRegistry(), error), qPrintable(error));
+    if (hadSetting)
+    {
+        settings.setValue(settingKey, previousSetting);
+    }
+    else
+    {
+        settings.remove(settingKey);
+    }
+}
+
+void CaseWorkflowTest::onFractureGeometry()
+{
+    IDOSNaturalFractureSet data;
+    QSignalSpy changes(&data, &IDOSDataObject::dataChanged);
+    const QVector<double> square = {5000000.0, 7000000.0, 3000.0,
+                                   5000002.0, 7000000.0, 3000.0,
+                                   5000002.0, 7000002.0, 3000.0,
+                                   5000000.0, 7000002.0, 3000.0};
+    data.setFractures({fracture(square, 1)});
+    changes.clear();
+    QVariantMap report = data.geometryReport().first().toMap();
+    QVERIFY(report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).isEmpty());
+    QCOMPARE(report.value(QStringLiteral("area")).toDouble(), 4.0);
+    QCOMPARE(report.value(QStringLiteral("coordinates")).value<QVector<double>>().first(), 5000000.0);
+    QCOMPARE(changes.count(), 0);
+
+    QVariantMap record = fracture(square, 1);
+    record.insert(QStringLiteral("normal"), QVariantList{0.0, 0.0, -1.0});
+    data.setFractures({record});
+    QVERIFY(fractureIssueCodes(data.geometryReport().first().toMap()).isEmpty());
+    record.insert(QStringLiteral("normal"), QVariantList{0.0, 1.0, 0.0});
+    data.setFractures({record});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).contains(QStringLiteral("normal_alignment")));
+    record.insert(QStringLiteral("normal"), QVariantList{0.0, 0.0, 0.0});
+    data.setFractures({record});
+    QVERIFY(fractureIssueCodes(data.geometryReport().first().toMap()).contains(QStringLiteral("normal")));
+
+    QVector<double> modified = square;
+    modified[9] = modified[0];
+    modified[10] = modified[1];
+    data.setFractures({fracture(modified, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(!report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).contains(QStringLiteral("duplicate_vertex")));
+    modified = square;
+    modified[11] += 0.1;
+    data.setFractures({fracture(modified, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(!report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).contains(QStringLiteral("nonplanar")));
+    // Millimetre-scale rounding at large map coordinates is not a warped face.
+    modified = square;
+    modified[11] += 0.0001;
+    data.setFractures({fracture(modified, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(!fractureIssueCodes(report).contains(QStringLiteral("nonplanar")));
+    QVERIFY(report.value(QStringLiteral("maximumPlaneDistance")).toDouble()
+        < report.value(QStringLiteral("planeTolerance")).toDouble());
+    const QVector<double> roundedHexagon = {
+        335755.539, 4262856.044, -579.9964502,
+        335661.1314, 4262871.899, -635.4221704,
+        335663.2144, 4262887.341, -744.9365137,
+        335759.705, 4262886.928, -799.0251367,
+        335854.1127, 4262871.073, -743.5994165,
+        335852.0297, 4262855.631, -634.0850733};
+    data.setFractures({fracture(roundedHexagon, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(!fractureIssueCodes(report).contains(QStringLiteral("nonplanar")));
+    modified = roundedHexagon;
+    modified[17] += 1.0;
+    data.setFractures({fracture(modified, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(!report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).contains(QStringLiteral("nonplanar")));
+    modified = square;
+    modified[0] = std::numeric_limits<double>::quiet_NaN();
+    data.setFractures({fracture(modified, 1)});
+    QVERIFY(fractureIssueCodes(data.geometryReport().first().toMap()).contains(QStringLiteral("coordinate")));
+    data.setFractures({fracture({0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0}, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(!report.value(QStringLiteral("valid")).toBool());
+    QVERIFY(fractureIssueCodes(report).contains(QStringLiteral("self_intersection")));
+    data.setFractures({fracture({0, 0, 0, 1, 0, 0, 2, 0, 0}, 1)});
+    QVERIFY(fractureIssueCodes(data.geometryReport().first().toMap()).contains(QStringLiteral("degenerate")));
+    data.setFractures({fracture({0, 0, 0, 1, 0, 0}, 1)});
+    QVERIFY(fractureIssueCodes(data.geometryReport().first().toMap()).contains(QStringLiteral("vertex_count")));
+    record = fracture(square, 1);
+    record.insert(QStringLiteral("properties"), QVariantMap{{QStringLiteral("Aperture"), -0.01},
+                                                           {QStringLiteral("Porosity"), 1.2}});
+    data.setFractures({record, fracture(square, 1)});
+    const QVariantList reports = data.geometryReport();
+    QCOMPARE(fractureIssueCodes(reports.first().toMap()).count(QStringLiteral("property")), 2);
+    QVERIFY(fractureIssueCodes(reports.last().toMap()).contains(QStringLiteral("fracture_id")));
+    data.setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 1, 0, 1, 1, 0, 1, 2, 0, 0, 2, 0}, 1)});
+    report = data.geometryReport().first().toMap();
+    QVERIFY(report.value(QStringLiteral("valid")).toBool());
+    QCOMPARE(report.value(QStringLiteral("area")).toDouble(), 3.0);
+    const QString fieldDirectory = qEnvironmentVariable("IDOS_FRACTURE_TEST_DIR");
+    if (!fieldDirectory.isEmpty())
+    {
+        const QDir directory(fieldDirectory);
+        const QStringList files = directory.entryList({QStringLiteral("*.fab")}, QDir::Files);
+        QVERIFY(!files.isEmpty());
+        int total = 0;
+        for (const QString& file : files)
+        {
+            std::unique_ptr<IDOSDataProvider> provider = IDOSDataProviderRegistry::instance().create(
+                QStringLiteral("idos.naturalFracture.ascii"));
+            QVERIFY(provider != nullptr);
+            const QList<IDOSDataObject*> objects = provider->read(directory.filePath(file));
+            QVERIFY2(objects.size() == 1, qPrintable(provider->lastError()));
+            QScopedPointer<IDOSDataObject> owner(objects.first());
+            IDOSNaturalFractureSet* field = qobject_cast<IDOSNaturalFractureSet*>(owner.data());
+            QVERIFY(field != nullptr);
+            const QVariantList fieldReports = field->geometryReport();
+            for (const QVariant& fieldValue : fieldReports)
+            {
+                const QVariantMap fieldReport = fieldValue.toMap();
+                QVERIFY2(fieldReport.value(QStringLiteral("valid")).toBool(),
+                    qPrintable(file + QStringLiteral(": ")
+                        + fieldReport.value(QStringLiteral("fractureId")).toString()));
+            }
+            total += fieldReports.size();
+        }
+        qInfo() << "Field fracture files:" << files.size() << "valid polygons:" << total;
+    }
+}
+
+void CaseWorkflowTest::onDataGroupChecks()
+{
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    QList<QString> firstIds;
+    QList<QString> secondIds;
+    const QStringList groups = {QStringLiteral("data.naturalFractures"),
+                                QStringLiteral("data.wells"), QStringLiteral("data.boundaries")};
+    for (int category = 0; category < groups.size(); ++category)
+    {
+        for (int index = 0; index < 2; ++index)
+        {
+            IDOSDataObject* data = nullptr;
+            if (category == 0)
+            {
+                IDOSNaturalFractureSet* fractures = new IDOSNaturalFractureSet();
+                fractures->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1)});
+                data = fractures;
+            }
+            else if (category == 1)
+            {
+                data = new IDOSWell();
+            }
+            else
+            {
+                IDOSGridBoundary* boundary = new IDOSGridBoundary();
+                boundary->setXCoordinates({0, 2, 2, 0});
+                boundary->setYCoordinates({0, 0, 2, 2});
+                boundary->setZCoordinates({0, 0, 0, 0});
+                boundary->setGroupIds({1, 1, 1, 1});
+                data = boundary;
+            }
+            data->setName(QStringLiteral("Group test %1 %2").arg(category).arg(index));
+            data->setVisible(false);
+            project->add(data);
+            if (index == 0)
+            {
+                firstIds.append(data->objectId());
+            }
+            else
+            {
+                secondIds.append(data->objectId());
+            }
+        }
+    }
+    IDOSRenderView* primary = window.renderServer()->currentView();
+    IDOSRenderView other;
+    window.renderServer()->addView(&other);
+    IDOSTreeView* view = window.dataTreeView();
+    view->setTargetView(primary);
+    IDOSTreeModel* model = window.dataTreeModel();
+    view->refreshCheckStates();
+    const QModelIndex wellParent = model->indexFromNode(model->tree()->find(QStringLiteral("data.wellGroup")));
+    for (int category = 0; category < groups.size(); ++category)
+    {
+        const QModelIndex group = model->indexFromNode(model->tree()->find(groups.at(category)));
+        QVERIFY(group.isValid());
+        QVERIFY(model->flags(group).testFlag(Qt::ItemIsUserCheckable));
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
+        const QModelIndex first = model->indexFromDataId(firstIds.at(category));
+        QVERIFY(model->setData(first, Qt::Checked, Qt::CheckStateRole));
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
+        if (category == 1)
+        {
+            QCOMPARE(model->data(wellParent, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
+        }
+        QSignalSpy changes(primary->scene(), &IDOSRenderScene::changed);
+        QVERIFY(model->setData(group, Qt::Checked, Qt::CheckStateRole));
+        QCOMPARE(changes.count(), 1);
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Checked));
+        QVERIFY(findRenderObject(primary, secondIds.at(category))->visible());
+        QVERIFY(!findRenderObject(&other, firstIds.at(category))->visible());
+        findRenderObject(primary, secondIds.at(category))->setVisible(false);
+        primary->scene()->notifyChanged(findRenderObject(primary, secondIds.at(category))->id());
+        view->refreshCheckStates();
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
+        view->setTargetView(&other);
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
+        view->setTargetView(primary);
+        QVERIFY(model->setData(group, Qt::Unchecked, Qt::CheckStateRole));
+        QVERIFY(!findRenderObject(primary, firstIds.at(category))->visible());
+        QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
+    }
+    QVERIFY(model->setData(wellParent, Qt::Checked, Qt::CheckStateRole));
+    QVERIFY(findRenderObject(primary, firstIds.at(1))->visible());
+    QVERIFY(findRenderObject(primary, secondIds.at(1))->visible());
+    QVERIFY(model->setData(wellParent, Qt::Unchecked, Qt::CheckStateRole));
+    IDOSDataGroupTreeGuiProvider provider(window.treeRegistry());
+    QVERIFY(!provider.supports(window.caseTreeModel()->tree()->root()));
+    IDOSTree caseTree;
+    caseTree.setName(QStringLiteral("case"));
+    IDOSTreeItem* foreignGroup = new IDOSTreeItem();
+    foreignGroup->setGroup(true);
+    foreignGroup->setKey(QStringLiteral("data.naturalFractures"));
+    QVERIFY(caseTree.insert(caseTree.root(), foreignGroup));
+    QVERIFY(!provider.supports(foreignGroup));
+    QVERIFY(!provider.setChecked(foreignGroup, true, window.caseTreeView()));
+    const QModelIndex fracturesGroup = model->indexFromNode(model->tree()->find(groups.first()));
+    QVERIFY(project->remove(firstIds.first()));
+    QVERIFY(project->remove(secondIds.first()));
+    view->refreshCheckStates();
+    QVERIFY(!model->flags(fracturesGroup).testFlag(Qt::ItemIsUserCheckable));
+    QVERIFY(!model->data(fracturesGroup, Qt::CheckStateRole).isValid());
+    view->setTargetView(nullptr);
+    QVERIFY(!model->setData(wellParent, Qt::Checked, Qt::CheckStateRole));
+    view->setTargetView(primary);
+}
+
+void CaseWorkflowTest::onConfirmDataDeletion()
+{
+    QMessageBox* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+    if (message != nullptr)
+    {
+        message->button(m_cancel ? QMessageBox::No : QMessageBox::Yes)->click();
+    }
+}
+
+void CaseWorkflowTest::onDeleteImportedData()
+{
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    IDOSNaturalFractureSet* first = new IDOSNaturalFractureSet();
+    first->setName(QStringLiteral("First fractures"));
+    first->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1)});
+    IDOSNaturalFractureSet* second = new IDOSNaturalFractureSet();
+    second->setName(QStringLiteral("Second fractures"));
+    second->setFractures(first->fractures());
+    IDOSGrid* grid = new IDOSGrid();
+    project->add(first);
+    project->add(second);
+    project->add(grid);
+    const QString firstId = first->objectId();
+    const QString secondId = second->objectId();
+    IDOSSimulationCaseObject* caseObject = new IDOSSimulationCaseObject();
+    caseObject->setItemRefs({IDOSCaseItemRef(QStringLiteral("case.fractures"), firstId),
+                            IDOSCaseItemRef(QStringLiteral("case.fractures"), secondId),
+                            IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId())});
+    project->add(caseObject);
+    const QString referenceId = caseObject->itemRefs().first().refId();
+    IDOSRenderView* primary = window.renderServer()->currentView();
+    IDOSRenderView additional;
+    window.renderServer()->addView(&additional);
+    QVERIFY(findRenderObject(primary, firstId) != nullptr);
+    QVERIFY(findRenderObject(&additional, secondId) != nullptr);
+    IDOSTreeView* view = window.dataTreeView();
+    const QModelIndex firstIndex = window.dataTreeModel()->indexFromDataId(firstId);
+    const QModelIndex secondIndex = window.dataTreeModel()->indexFromDataId(secondId);
+    QVERIFY(firstIndex.isValid() && secondIndex.isValid());
+    QScopedPointer<QMenu> single(view->createMenu(firstIndex));
+    QVERIFY(single->findChild<QAction*>(QStringLiteral("deleteDataAction")) != nullptr);
+    view->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+    QScopedPointer<QMenu> multiple(view->createMenu(firstIndex));
+    QAction* remove = multiple->findChild<QAction*>(QStringLiteral("deleteDataAction"));
+    QVERIFY(remove != nullptr);
+    QCOMPARE(remove->property("objectIds").toStringList().size(), 2);
+    QTimer timer;
+    connect(&timer, &QTimer::timeout, this, &CaseWorkflowTest::onConfirmDataDeletion);
+    timer.start(10);
+    m_cancel = true;
+    remove->trigger();
+    QCOMPARE(project->object(firstId), static_cast<IDOSDataObject*>(first));
+    QVERIFY(!project->commandManager()->canUndo());
+    m_cancel = false;
+    remove->trigger();
+    timer.stop();
+    QVERIFY(project->object(firstId) == nullptr);
+    QVERIFY(project->object(secondId) == nullptr);
+    QVERIFY(!window.dataTreeModel()->indexFromDataId(firstId).isValid());
+    QVERIFY(findRenderObject(primary, firstId) == nullptr);
+    QVERIFY(findRenderObject(&additional, secondId) == nullptr);
+    QCOMPARE(caseObject->itemRefs().size(), 1);
+    QCOMPARE(caseObject->itemRefs().first().objectId(), grid->objectId());
+    project->commandManager()->undo();
+    QCOMPARE(project->object(firstId), static_cast<IDOSDataObject*>(first));
+    QCOMPARE(project->object(secondId), static_cast<IDOSDataObject*>(second));
+    QCOMPARE(caseObject->itemRefs().size(), 3);
+    QCOMPARE(caseObject->itemRefs().first().refId(), referenceId);
+    QVERIFY(window.dataTreeModel()->indexFromDataId(firstId).isValid());
+    QVERIFY(findRenderObject(primary, firstId) != nullptr);
+    QVERIFY(findRenderObject(&additional, secondId) != nullptr);
+    QVERIFY(project->commandManager()->canRedo());
+    QVERIFY(!project->commandManager()->execute(new IDOSDeleteDataCommand(project, {firstId, grid->objectId()})));
+    QCOMPARE(project->object(firstId), static_cast<IDOSDataObject*>(first));
+    QCOMPARE(caseObject->itemRefs().size(), 3);
+    QVERIFY(project->commandManager()->canRedo());
+    QVERIFY(!project->commandManager()->execute(new IDOSDeleteDataCommand(project, {firstId, firstId})));
+    QVERIFY(project->commandManager()->canRedo());
+    project->commandManager()->redo();
+    QVERIFY(project->object(firstId) == nullptr);
+    QCOMPARE(caseObject->itemRefs().size(), 1);
+    QPointer<IDOSNaturalFractureSet> lifetime(first);
+    project->commandManager()->clear();
+    QVERIFY(lifetime.isNull());
+    QVERIFY(project->object(grid->objectId()) != nullptr);
+}
+
+void CaseWorkflowTest::onFractureDisplay()
+{
+    QTranslator translator;
+    QVERIFY(translator.load(QCoreApplication::applicationDirPath() + QStringLiteral("/i18n/idos_zh_CN.qm")));
+    QVERIFY(QApplication::installTranslator(&translator));
+    QSettings settings(QStringLiteral("pluginRegistry"), QStringLiteral("idos"));
+    const QString settingKey = QStringLiteral("/plugins/idosfracturemodelingplugin");
+    const bool hadSetting = settings.contains(settingKey);
+    const QVariant previousSetting = settings.value(settingKey);
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    const QString pluginPath = QCoreApplication::applicationDirPath()
+        + QStringLiteral("/plugins/idosfracturemodelingplugin.dll");
+    IDOSPluginRegistry* plugins = IDOSPluginRegistry::instance();
+    plugins->loadCppPlugin(pluginPath);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    QAction* check = window.findChild<QAction*>(QStringLiteral("idosCheckFracturesAction"));
+    QVERIFY(check != nullptr);
+    QVERIFY(!check->isEnabled());
+    IDOSNaturalFractureSet* data = new IDOSNaturalFractureSet();
+    data->setName(QStringLiteral("Sample fractures"));
+    data->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1),
+                        fracture({0, 0, 1, 1, 0, 1, 2, 0, 1}, 2)});
+    data->setVisible(false);
+    project->add(data);
+    project->setCurrentObject(data);
+    QVERIFY(check->isEnabled());
+    const QString dataId = data->objectId();
+    IDOSRenderServer* server = window.renderServer();
+    IDOSRenderView* firstView = server->currentView();
+    QVERIFY(firstView != nullptr);
+    IDOSRenderView secondView;
+    server->addView(&secondView);
+    IDOSRenderObject* first = findRenderObject(firstView, dataId);
+    IDOSRenderObject* second = findRenderObject(&secondView, dataId);
+    QVERIFY(first != nullptr && second != nullptr);
+    QVERIFY(first->provider() != second->provider());
+    QCOMPARE(first->provider()->actors().size(), 1);
+    vtkActor* actor = first->provider()->actors().first();
+    vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
+    QVERIFY(mapper != nullptr);
+    mapper->Update();
+    QCOMPARE(mapper->GetInput()->GetNumberOfCells(), vtkIdType(2));
+    QVERIFY(mapper->GetInput()->GetCellData()->GetArray("FractureId") != nullptr);
+    QCOMPARE(mapper->GetInput()->GetCellData()->GetArray("FractureId")->GetComponent(0, 0), 1.0);
+    const QModelIndex node = window.dataTreeModel()->indexFromDataId(dataId);
+    QVERIFY(node.isValid());
+    QVERIFY(window.dataTreeModel()->flags(node).testFlag(Qt::ItemIsUserCheckable));
+    QVERIFY(window.dataTreeModel()->setData(node, Qt::Checked, Qt::CheckStateRole));
+    QVERIFY(first->visible());
+    QVERIFY(!second->visible());
+    first->setOpacity(0.4);
+    firstView->setSelection({first->id()});
+    QVERIFY(first->highlighted());
+    QVERIFY(!second->highlighted());
+    QCOMPARE(second->opacity(), 1.0);
+    const QVariantMap appearance = first->provider()->presentationState();
+    first->setOpacity(0.9);
+    QVERIFY(first->provider()->restorePresentationState(appearance));
+    QCOMPARE(first->opacity(), 0.4);
+
+    window.resize(1100, 800);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    firstView->resetCamera();
+    firstView->render();
+    const QString screenshots = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(firstView->grab().save(QDir(screenshots).filePath(QStringLiteral("fracture-display.png"))));
+    }
+    check->trigger();
+    QPointer<QDialog> dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    QVERIFY(!dialog.isNull());
+    QTableWidget* table = dialog->findChild<QTableWidget*>(QStringLiteral("idosFractureGeometryIssues"));
+    QVERIFY(table != nullptr);
+    QVERIFY(table->rowCount() >= 2);
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(dialog->grab().save(QDir(screenshots).filePath(QStringLiteral("fracture-geometry-report.png"))));
+    }
+    QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                     Q_ARG(int, 0), Q_ARG(int, 0)));
+    QCOMPARE(firstView->selection().first(), first->id());
+    QVERIFY(!second->visible());
+    server->setCurrentView(&secondView);
+    QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                     Q_ARG(int, 0), Q_ARG(int, 0)));
+    QVERIFY(!second->visible());
+    data->setFractures({fracture({0, 0, 0, 3, 0, 0, 3, 3, 0, 0, 3, 0}, 3)});
+    QTRY_VERIFY(dialog.isNull());
+    QCOMPARE(first->opacity(), 0.4);
+    QVERIFY(first->visible());
+    QCOMPARE(first->provider()->actors().size(), 1);
+
+    QTemporaryDir saved;
+    QString error;
+    QVERIFY2(project->save(saved.filePath(QStringLiteral("fractures.idos")), window.dataRegistry(), error), qPrintable(error));
+    QScopedPointer<IDOSProject> loaded(IDOSProject::load(saved.filePath(QStringLiteral("fractures.idos")),
+                                                       window.dataRegistry(), error));
+    QVERIFY2(!loaded.isNull(), qPrintable(error));
+    IDOSNaturalFractureSet* restored = qobject_cast<IDOSNaturalFractureSet*>(loaded->object(dataId));
+    QVERIFY(restored != nullptr);
+    IDOSNaturalFractureRenderProvider restoredProvider(restored);
+    QCOMPARE(restoredProvider.actors().size(), 1);
+
+    check->trigger();
+    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    QVERIFY(!dialog.isNull());
+    IDOSDataObject* detached = project->take(dataId);
+    QCOMPARE(detached, static_cast<IDOSDataObject*>(data));
+    QTRY_VERIFY(dialog.isNull());
+    QVERIFY(findRenderObject(firstView, dataId) == nullptr);
+    QVERIFY(!check->isEnabled());
+    project->add(detached);
+    project->setCurrentObject(data);
+    QVERIFY(findRenderObject(firstView, dataId) != nullptr);
+    QVERIFY(check->isEnabled());
+
+    server->setCurrentView(firstView);
+    check->trigger();
+    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    QVERIFY(!dialog.isNull());
+    IDOSProject* nextProject = new IDOSProject(&window);
+    window.setProject(nextProject);
+    QTRY_VERIFY(dialog.isNull());
+    QVERIFY(!check->isEnabled());
+    window.setProject(project);
+    project->setCurrentObject(data);
+    check->trigger();
+    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    QVERIFY(!dialog.isNull());
+    plugins->unloadCppPlugin(pluginPath);
+    QVERIFY(dialog.isNull());
+    QVERIFY(!plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
+    QVERIFY(findRenderObject(firstView, dataId) != nullptr);
+    if (hadSetting)
+    {
+        settings.setValue(settingKey, previousSetting);
+    }
+    else
+    {
+        settings.remove(settingKey);
+    }
+    QApplication::removeTranslator(&translator);
+}
+
+void CaseWorkflowTest::onGridCompanionFiles()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString base = directory.filePath(QStringLiteral("Bundle"));
+    const QString gridPath = base + QStringLiteral(".EGRID");
+    Opm::EclipseGrid sourceGrid(2, 1, 1);
+    sourceGrid.resetACTNUM(std::vector<int>{1, 0});
+    sourceGrid.save(gridPath.toStdString(), false, {}, Opm::UnitSystem::newMETRIC());
+    std::vector<int> header(100, 0);
+    header[8] = 2;
+    header[9] = 1;
+    header[10] = 1;
+    header[11] = 1;
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".INIT")).toStdString(), false);
+        output.write("INTEHEAD", header);
+        output.write("PORO", std::vector<float>{0.25f});
+    }
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".UNRST")).toStdString(), false);
+        output.write("SEQNUM", std::vector<int>{1});
+        output.write("INTEHEAD", header);
+        output.write("PRESSURE", std::vector<float>{100.0f});
+        output.write("SEQNUM", std::vector<int>{2});
+        output.write("INTEHEAD", header);
+        output.write("PRESSURE", std::vector<float>{200.0f});
+    }
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".SMSPEC")).toStdString(), false);
+        output.write("DIMENS", std::vector<int>{1, 2, 1, 1, 0, 0});
+        output.write("RESTART", std::vector<std::string>{""}, 8);
+        output.write("KEYWORDS", std::vector<std::string>{"TIME"}, 8);
+        output.write("WGNAMES", std::vector<std::string>{""}, 8);
+        output.write("NUMS", std::vector<int>{0});
+        output.write("UNITS", std::vector<std::string>{"DAYS"}, 8);
+        output.write("STARTDAT", std::vector<int>{1, 1, 2020});
+    }
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".UNSMRY")).toStdString(), false);
+        output.write("SEQHDR", std::vector<int>{1});
+        output.write("MINISTEP", std::vector<int>{0});
+        output.write("PARAMS", std::vector<float>{1.0f});
+    }
+    QFile unrelated(directory.filePath(QStringLiteral("BundleOther.INIT")));
+    QVERIFY(unrelated.open(QIODevice::WriteOnly));
+    unrelated.write("invalid unrelated file");
+    unrelated.close();
+    QFile log(base + QStringLiteral(".PRT"));
+    QVERIFY(log.open(QIODevice::WriteOnly));
+    log.write("simulator log");
+    log.close();
+
+    IDOSMainWindow window;
+    IDOSProject* project = new IDOSProject(&window);
+    window.setProject(project);
+    IDOSSimulationCaseObject* caseObject = new IDOSSimulationCaseObject();
+    project->add(caseObject);
+    IDOSCommandManager* manager = project->commandManager();
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), gridPath);
+    arguments.insert(QStringLiteral("targetCaseId"), caseObject->objectId());
+    QVERIFY2(manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool(), qPrintable(manager->error()));
+    QCOMPARE(project->objects().size(), 5);
+    QCOMPARE(caseObject->itemRefs().size(), 4);
+    QStringList importedIds;
+    QString gridId;
+    for (IDOSDataObject* object : project->objects())
+    {
+        if (qobject_cast<IDOSGrid*>(object) != nullptr)
+        {
+            gridId = object->objectId();
+        }
+        if (object != caseObject)
+        {
+            importedIds.append(object->objectId());
+        }
+    }
+    QVERIFY(!gridId.isEmpty());
+    int properties = 0;
+    int summaries = 0;
+    for (IDOSDataObject* object : project->objects())
+    {
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        if (property != nullptr)
+        {
+            ++properties;
+            QCOMPARE(property->gridId(), gridId);
+            QCOMPARE(property->totalCellCount(), 2);
+            QCOMPARE(property->values().at(1), 0.0);
+            if (property->kind() == IDOSGridProperty::Kind::Dynamic)
+            {
+                QCOMPARE(property->reportSteps().size(), 2);
+                QVERIFY(property->setCurrentReportStep(2));
+                QCOMPARE(property->values().at(0), 200.0);
+            }
+            else
+            {
+                QCOMPARE(property->values().at(0), 0.25);
+            }
+        }
+        IDOSSimulationSummaryResults* summary = qobject_cast<IDOSSimulationSummaryResults*>(object);
+        if (summary != nullptr)
+        {
+            ++summaries;
+            QCOMPARE(summary->timeValues().size(), 1);
+        }
+    }
+    QCOMPARE(properties, 2);
+    QCOMPARE(summaries, 1);
+    manager->undo();
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(caseObject->itemRefs().isEmpty());
+    QVERIFY(QFile::remove(base + QStringLiteral(".INIT")));
+    QVERIFY(QFile::remove(base + QStringLiteral(".UNRST")));
+    QVERIFY(QFile::remove(base + QStringLiteral(".SMSPEC")));
+    QVERIFY(QFile::remove(base + QStringLiteral(".UNSMRY")));
+    manager->redo();
+    QCOMPARE(project->objects().size(), 5);
+    for (const QString& id : importedIds)
+    {
+        QVERIFY(project->object(id) != nullptr);
+    }
+    manager->undo();
+    QFile broken(base + QStringLiteral(".INIT"));
+    QVERIFY(broken.open(QIODevice::WriteOnly));
+    broken.write("invalid companion");
+    broken.close();
+    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(caseObject->itemRefs().isEmpty());
+    QVERIFY(manager->canRedo());
+    QVERIFY(QFile::remove(broken.fileName()));
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".INIT")).toStdString(), false);
+        std::vector<int> wrongHeader = header;
+        wrongHeader[8] = 1;
+        wrongHeader[9] = 2;
+        output.write("INTEHEAD", wrongHeader);
+        output.write("PORO", std::vector<float>{0.25f});
+    }
+    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(manager->canRedo());
+    QVERIFY(QFile::remove(base + QStringLiteral(".INIT")));
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".INIT")).toStdString(), false);
+        output.write("INTEHEAD", header);
+        output.write("PORO", std::vector<float>{0.25f});
+    }
+    QFile brokenRestart(base + QStringLiteral(".UNRST"));
+    QVERIFY(brokenRestart.open(QIODevice::WriteOnly));
+    brokenRestart.write("invalid restart after valid INIT");
+    brokenRestart.close();
+    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(caseObject->itemRefs().isEmpty());
+    QVERIFY(manager->canRedo());
+    QVERIFY(QFile::remove(base + QStringLiteral(".INIT")));
+    QVERIFY(QFile::remove(base + QStringLiteral(".UNRST")));
+    QFile brokenSummary(base + QStringLiteral(".UNSMRY"));
+    QVERIFY(brokenSummary.open(QIODevice::WriteOnly));
+    brokenSummary.write("missing specification");
+    brokenSummary.close();
+    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 1);
+    QVERIFY(manager->canRedo());
+    QVERIFY(QFile::remove(brokenSummary.fileName()));
+    QVERIFY2(manager->execute(QStringLiteral("grid.import"), arguments)
+                 .value(QStringLiteral("success")).toBool(), qPrintable(manager->error()));
+    QCOMPARE(project->objects().size(), 2);
+    for (IDOSDataObject* object : project->objects())
+    {
+        if (qobject_cast<IDOSGrid*>(object) != nullptr)
+        {
+            gridId = object->objectId();
+        }
+    }
+    {
+        Opm::EclIO::EclOutput output((base + QStringLiteral(".UNRST")).toStdString(), false);
+        output.write("SEQNUM", std::vector<int>{3});
+        output.write("INTEHEAD", header);
+        output.write("PRESSURE", std::vector<float>{300.0f});
+    }
+    QJsonObject restartArguments;
+    restartArguments.insert(QStringLiteral("gridId"), gridId);
+    restartArguments.insert(QStringLiteral("filePath"), base + QStringLiteral(".UNRST"));
+    QVERIFY2(manager->execute(QStringLiteral("simulation.results.import"), restartArguments)
+                 .value(QStringLiteral("success")).toBool(), qPrintable(manager->error()));
+    QCOMPARE(project->objects().size(), 3);
+    QCOMPARE(manager->result().value(QStringLiteral("reportStepCount")).toInt(), 1);
+    QVERIFY(!manager->execute(QStringLiteral("simulation.results.import"), restartArguments)
+                 .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 3);
+    manager->undo();
+    QCOMPARE(project->objects().size(), 2);
+    QVERIFY(QFile::remove(base + QStringLiteral(".UNRST")));
+    manager->redo();
+    QCOMPARE(project->objects().size(), 3);
+}
 
 void CaseWorkflowTest::onFlowExecution()
 {
@@ -1921,8 +3128,27 @@ IDOSRenderObject* CaseWorkflowTest::findRenderObject(IDOSRenderView* view, const
 QTEST_MAIN(CaseWorkflowTest)
 
 CaseWorkflowTest::CaseWorkflowTest()
+    :
+    m_cancel(false)
+    , m_expectDisabled(false)
+    , m_settingsDirectory(new QTemporaryDir())
+    , m_previousSettingsFormat(QSettings::defaultFormat())
 {
+    const QSettings previousSettings(QSettings::IniFormat, QSettings::UserScope,
+                                      QStringLiteral("IDOS-Codex-Isolation"), QStringLiteral("Probe"));
+    QDir previousRoot = QFileInfo(previousSettings.fileName()).dir();
+    previousRoot.cdUp();
+    m_previousSettingsRoot = previousRoot.absolutePath();
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, m_settingsDirectory->path());
+    QSettings::setDefaultFormat(QSettings::IniFormat);
     IDOSApplication::initProviders();
+}
+
+CaseWorkflowTest::~CaseWorkflowTest()
+{
+    QSettings::setDefaultFormat(m_previousSettingsFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, m_previousSettingsRoot);
+    delete m_settingsDirectory;
 }
 
 void CaseWorkflowTest::onGridFilters()

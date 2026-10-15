@@ -28,7 +28,7 @@ add_custom_command(TARGET idos POST_BUILD
     COMMAND ${CMAKE_COMMAND}
         "-DSOURCE_FILE=${PROJECT_SOURCE_DIR}/resources/opm/extra-keywords.json"
         "-DDESTINATION_FILE=$<TARGET_FILE_DIR:idos>/opm/extra-keywords.json"
-        -P "${PROJECT_SOURCE_DIR}/cmake/CopyFileIfAbsent.cmake"
+        -P "${PROJECT_SOURCE_DIR}/cmake/CopyOpmKeywords.cmake"
     COMMENT "Deploying OPM custom keyword definitions..."
     VERBATIM
 )

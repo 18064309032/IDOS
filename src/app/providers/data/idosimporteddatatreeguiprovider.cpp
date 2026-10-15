@@ -1,6 +1,7 @@
 #include <QAction>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QMenu>
 #include <QMessageBox>
@@ -8,6 +9,7 @@
 #include <QStringList>
 #include <QVariant>
 
+#include "command/idosdeletedatacommand.h"
 #include "data/fracture/idosfracturematerialcatalog.h"
 #include "data/fracture/idosfractureschedule.h"
 #include "data/fracture/idosnaturalfractureset.h"
@@ -73,6 +75,7 @@ bool IDOSImportedDataTreeGuiProvider::isCheckable(const IDOSTreeItem* item) cons
     IDOSDataObject* object = item->tree()->project()->object(item->dataId());
     return qobject_cast<IDOSGridSurface*>(object) != nullptr ||
            qobject_cast<IDOSGridBoundary*>(object) != nullptr ||
+           qobject_cast<IDOSNaturalFractureSet*>(object) != nullptr ||
            qobject_cast<IDOSSeismicVolume*>(object) != nullptr;
 }
 
@@ -302,20 +305,102 @@ void IDOSImportedDataTreeGuiProvider::onImportDataset()
     const QString providerId = action->property("providerId").toString();
     const QString dataTypeId = action->property("dataTypeId").toString();
     const QString title = action->text();
-    const QString file = QFileDialog::getOpenFileName(
+    const QStringList files = QFileDialog::getOpenFileNames(
         view, title, QString(), action->property("fileFilter").toString());
-    if (file.isEmpty() || project.isNull() || project->commandManager() == nullptr)
+    if (files.isEmpty() || project.isNull() || project->commandManager() == nullptr)
+    {
+        return;
+    }
+    QStringList failures;
+    for (const QString& file : files)
+    {
+        QJsonObject arguments;
+        arguments.insert(QStringLiteral("filePath"), file);
+        arguments.insert(QStringLiteral("providerId"), providerId);
+        arguments.insert(QStringLiteral("dataTypeId"), dataTypeId);
+        const QJsonObject response = project->commandManager()->execute(
+            QStringLiteral("data.import"), arguments);
+        if (!response.value(QStringLiteral("success")).toBool())
+        {
+            failures.append(tr("Failed to import %1:\n%2")
+                .arg(file, response.value(QStringLiteral("error")).toString()));
+        }
+    }
+    if (!failures.isEmpty())
+    {
+        QMessageBox::warning(view, title, failures.join(QStringLiteral("\n\n")));
+    }
+}
+
+void IDOSImportedDataTreeGuiProvider::populateSelectionMenu(QMenu* menu, IDOSTreeView* view)
+{
+    if (menu == nullptr || view == nullptr || view->project() == nullptr)
+    {
+        return;
+    }
+    const QList<IDOSTreeItem*> items = view->selectedItems();
+    QStringList ids;
+    for (IDOSTreeItem* item : items)
+    {
+        IDOSDataObject* object = view->project()->object(item->dataId());
+        if (!IDOSDeleteDataCommand::supportsObject(object))
+        {
+            return;
+        }
+        if (!ids.contains(object->objectId()))
+        {
+            ids.append(object->objectId());
+        }
+    }
+    if (ids.isEmpty())
+    {
+        return;
+    }
+    QAction* action = menu->addAction(tr("Delete Data..."));
+    action->setObjectName(QStringLiteral("deleteDataAction"));
+    action->setProperty("project", QVariant::fromValue<QObject*>(view->project()));
+    action->setProperty("objectIds", ids);
+    connect(action, &QAction::triggered, this, &IDOSImportedDataTreeGuiProvider::onDeleteDatasets);
+}
+
+void IDOSImportedDataTreeGuiProvider::onDeleteDatasets()
+{
+    QPointer<IDOSTreeView> view(actionView());
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (view.isNull() || action == nullptr)
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(view->project());
+    const QStringList ids = action->property("objectIds").toStringList();
+    QStringList names;
+    for (const QString& id : ids)
+    {
+        IDOSDataObject* object = project->object(id);
+        if (!IDOSDeleteDataCommand::supportsObject(object))
+        {
+            return;
+        }
+        names.append(object->name());
+    }
+    if (ids.isEmpty())
+    {
+        return;
+    }
+    const QMessageBox::StandardButton answer = QMessageBox::question(view.data(), tr("Delete Data"),
+        tr("Delete %1 selected dataset(s)?\nTheir case references will also be removed. You can undo this operation.\n\n%2")
+            .arg(ids.size()).arg(names.join(QStringLiteral("\n"))),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (answer != QMessageBox::Yes || view.isNull() || project.isNull()
+        || view->project() != project.data() || project->commandManager() == nullptr)
     {
         return;
     }
     QJsonObject arguments;
-    arguments.insert(QStringLiteral("filePath"), file);
-    arguments.insert(QStringLiteral("providerId"), providerId);
-    arguments.insert(QStringLiteral("dataTypeId"), dataTypeId);
-    const QJsonObject response = project->commandManager()->execute(
-        QStringLiteral("data.import"), arguments);
+    arguments.insert(QStringLiteral("objectIds"), QJsonArray::fromStringList(ids));
+    const QJsonObject response = project->commandManager()->execute(QStringLiteral("data.delete"), arguments);
     if (!response.value(QStringLiteral("success")).toBool())
     {
-        QMessageBox::warning(view, title, response.value(QStringLiteral("error")).toString());
+        QMessageBox::warning(view.data(), tr("Delete Data"), response.value(QStringLiteral("error")).toString());
     }
 }

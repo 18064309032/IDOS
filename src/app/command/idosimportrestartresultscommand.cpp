@@ -1,27 +1,13 @@
-#include <cstddef>
-#include <exception>
-#include <string>
-#include <tuple>
 #include <utility>
-#include <vector>
 
-#include <QByteArray>
-#include <QDir>
-#include <QFile>
 #include <QFileInfo>
-#include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
-#include <QSet>
-#include <QStringList>
-#include <QVector>
-
-#include <opm/io/eclipse/EclFile.hpp>
-#include <opm/io/eclipse/ERst.hpp>
 
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridproperty.h"
+#include "grid/idosgridpropertyeclipseprovider.h"
 #include "idosproject.h"
 
 #include "idosimportrestartresultscommand.h"
@@ -104,7 +90,7 @@ bool IDOSImportRestartResultsCommand::validateCommand(QString& error) const
     }
 
     const QFileInfo fileInfo(m_filePath);
-    if (!fileInfo.isFile() || !fileInfo.isReadable())
+    if (!m_loaded && (!fileInfo.isFile() || !fileInfo.isReadable()))
     {
         error = QObject::tr("The restart file is unavailable or unreadable.");
         return false;
@@ -217,168 +203,44 @@ bool IDOSImportRestartResultsCommand::revert(QString& error)
 bool IDOSImportRestartResultsCommand::loadProperties(QString& error)
 {
     IDOSProject* targetProject = project();
-    IDOSGrid* grid = targetProject != nullptr
-        ? qobject_cast<IDOSGrid*>(targetProject->object(m_gridId))
-        : nullptr;
-    if (grid == nullptr || grid->totalCellCount() <= 0)
+    const IDOSGrid* grid = targetProject != nullptr
+        ? qobject_cast<IDOSGrid*>(targetProject->object(m_gridId)) : nullptr;
+    IDOSGridPropertyEclipseProvider provider;
+    QList<IDOSDataObject*> objects = provider.readRestart(m_filePath, grid);
+    if (objects.isEmpty() || !provider.lastError().isEmpty())
     {
-        error = QObject::tr("The target grid has no valid dimensions.");
+        error = provider.lastError();
+        qDeleteAll(objects);
         return false;
     }
-
-    try
+    for (IDOSDataObject* object : objects)
     {
-        const QByteArray encodedFilePath = QFile::encodeName(QDir::toNativeSeparators(m_filePath));
-        const std::string opmFilePath(encodedFilePath.constData(),
-                                       static_cast<std::size_t>(encodedFilePath.size()));
-        Opm::EclIO::ERst restartFile(opmFilePath);
-        const std::vector<int>& reportSteps = restartFile.listOfReportStepNumbers();
-        if (reportSteps.empty())
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        for (IDOSDataObject* existingObject : targetProject->objects())
         {
-            error = QObject::tr("The restart file contains no report steps.");
-            return false;
-        }
-        m_firstReportStep = reportSteps.front();
-        m_lastReportStep = reportSteps.back();
-        m_reportStepCount = static_cast<int>(reportSteps.size());
-        QHash<QString, IDOSGridProperty*> propertiesByKeyword;
-        const QVector<int>& activeCells = grid->actnum();
-        const int totalCellCount = grid->totalCellCount();
-
-        for (const int reportStep : reportSteps)
-        {
-            restartFile.loadReportStepNumber(reportStep);
-            const std::vector<Opm::EclIO::EclFile::EclEntry> arrays =
-                restartFile.listOfRstArrays(reportStep);
-            QSet<QString> importedAtReportStep;
-            for (const Opm::EclIO::EclFile::EclEntry& entry : arrays)
+            const IDOSGridProperty* existing = qobject_cast<IDOSGridProperty*>(existingObject);
+            if (existing != nullptr && existing->gridId() == m_gridId
+                && existing->kind() == IDOSGridProperty::Kind::Dynamic
+                && (existing->keyword().compare(property->keyword(), Qt::CaseInsensitive) == 0
+                    || existing->name() == property->name()))
             {
-                const QString keyword = QString::fromStdString(std::get<0>(entry)).trimmed().toUpper();
-                if (!isSupportedKeyword(keyword) || importedAtReportStep.contains(keyword))
-                {
-                    continue;
-                }
-
-                QVector<double> rawValues;
-                const Opm::EclIO::eclArrType arrayType = std::get<1>(entry);
-                if (arrayType == Opm::EclIO::REAL)
-                {
-                    const std::vector<float>& sourceValues =
-                        restartFile.getRestartData<float>(keyword.toStdString(), reportStep);
-                    rawValues.reserve(static_cast<int>(sourceValues.size()));
-                    for (float value : sourceValues)
-                    {
-                        rawValues.append(static_cast<double>(value));
-                    }
-                }
-                else if (arrayType == Opm::EclIO::DOUB)
-                {
-                    const std::vector<double>& sourceValues =
-                        restartFile.getRestartData<double>(keyword.toStdString(), reportStep);
-                    rawValues.reserve(static_cast<int>(sourceValues.size()));
-                    for (double value : sourceValues)
-                    {
-                        rawValues.append(value);
-                    }
-                }
-                else
-                {
-                    continue;
-                }
-
-                if (rawValues.isEmpty())
-                {
-                    continue;
-                }
-
-                QVector<double> values(totalCellCount, 0.0);
-                if (rawValues.size() == totalCellCount)
-                {
-                    values = rawValues;
-                }
-                else if (rawValues.size() == grid->activeCellCount())
-                {
-                    int activeIndex = 0;
-                    for (int cellIndex = 0; cellIndex < totalCellCount; ++cellIndex)
-                    {
-                        if (activeCells.isEmpty() || activeCells.at(cellIndex) != 0)
-                        {
-                            values[cellIndex] = rawValues.at(activeIndex);
-                            ++activeIndex;
-                        }
-                    }
-                }
-                else
-                {
-                    continue;
-                }
-
-                IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
-                if (property == nullptr)
-                {
-                    const QString propertyName = keyword;
-                    for (IDOSDataObject* object : targetProject->objects())
-                    {
-                        IDOSGridProperty* existingProperty = qobject_cast<IDOSGridProperty*>(object);
-                        if (existingProperty != nullptr && existingProperty->gridId() == m_gridId
-                            && existingProperty->kind() == IDOSGridProperty::Kind::Dynamic
-                            && (existingProperty->keyword().compare(keyword, Qt::CaseInsensitive) == 0
-                                || existingProperty->name() == propertyName))
-                        {
-                            error = QObject::tr("Result property %1 already exists. Remove it before importing again.")
-                                .arg(keyword);
-                            return false;
-                        }
-                    }
-
-                    property = new IDOSGridProperty();
-                    property->setGridId(m_gridId);
-                    property->setKind(IDOSGridProperty::Kind::Dynamic);
-                    property->setKeyword(keyword);
-                    property->setDimensions(grid->nx(), grid->ny(), grid->nz());
-                    property->setName(propertyName);
-                    m_properties.append(QPointer<IDOSGridProperty>(property));
-                    propertiesByKeyword.insert(keyword, property);
-                }
-
-                if (!property->setReportStepValues(reportStep, values))
-                {
-                    error = QObject::tr("Unable to store report step %1 for property %2.")
-                        .arg(reportStep)
-                        .arg(keyword);
-                    return false;
-                }
-                importedAtReportStep.insert(keyword);
+                error = QObject::tr("Result property %1 already exists. Remove it before importing again.")
+                    .arg(property->keyword());
+                qDeleteAll(objects);
+                return false;
             }
         }
-
-        if (m_properties.isEmpty())
-        {
-            error = QObject::tr("No supported cell properties were found in the restart file.");
-            return false;
-        }
     }
-    catch (const std::exception& exception)
+    for (IDOSDataObject* object : objects)
     {
-        deleteDetachedProperties();
-        error = QObject::tr("Unable to read the restart file: %1")
-            .arg(QString::fromUtf8(exception.what()));
-        return false;
+        m_properties.append(QPointer<IDOSGridProperty>(qobject_cast<IDOSGridProperty*>(object)));
     }
-
+    const QList<int> reportSteps = provider.restartReportSteps();
+    m_firstReportStep = reportSteps.first();
+    m_lastReportStep = reportSteps.last();
+    m_reportStepCount = reportSteps.size();
     m_loaded = true;
     return true;
-}
-
-bool IDOSImportRestartResultsCommand::isSupportedKeyword(const QString& keyword) const
-{
-    const QStringList keywords = QStringList()
-        << QStringLiteral("PRESSURE") << QStringLiteral("SWAT") << QStringLiteral("SGAS")
-        << QStringLiteral("SOIL") << QStringLiteral("RS") << QStringLiteral("RV")
-        << QStringLiteral("PBUB") << QStringLiteral("PDEW") << QStringLiteral("BO")
-        << QStringLiteral("BG") << QStringLiteral("BW") << QStringLiteral("KRO")
-        << QStringLiteral("KRW") << QStringLiteral("KRG");
-    return keywords.contains(keyword);
 }
 
 void IDOSImportRestartResultsCommand::deleteDetachedProperties()

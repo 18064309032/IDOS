@@ -88,6 +88,7 @@ class CORE_EXPORT IDOSGridProperty : public IDOSDataObject
 
     /** Report steps stored for a dynamic result property. */
     QList<int> reportSteps() const;
+    QVector<double> reportStepValues(int reportStep) const;
     int currentReportStep() const;
     bool setReportStepValues(int reportStep, const QVector<double>& values);
     bool setCurrentReportStep(int reportStep);

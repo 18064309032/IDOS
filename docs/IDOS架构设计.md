@@ -1,10 +1,230 @@
 # IDOS 架构设计
 
-更新日期：2026-10-14。
+更新日期：2026-10-16。
 
-> 本文记录已确认架构与当前主要接口，后续目标不等于全部完成。签名以源码头文件为准，实施及验收状态见工作进度；直接改造现有框架，不保留两套调用链。工具框架已实现，具体内置工具待接入。
+> 本文同时保存目标设计和现有实现说明。以本次新增的“2026-10-16 框架设计定稿记录”作为最新目标；旧章节中与其冲突的 GuiProvider、构造参数、Registry 命名及多视图装配描述属于待替换方案，不继续作为新实现依据。当前可调用签名仍以源码头文件为准，不能把文档接口当作已经实现。直接改造现有框架，不保留两套调用链。
 
 阅读入口：[项目概览](../README.md)、[开发指南](开发指南.md)、[源码目录](IDOS源码目录.md)、[工作进度](工作进度-CJW.md)。
+
+## 2026-10-16 框架设计定稿记录（待实施）
+
+本节整理用户逐项确认的设计。此次只更新文档，不改源码、构建或文件位置。当前目录、现有 API 和已通过测试的行为继续作为迁移起点；完成改造后同步删除旧接口、旧类、构建项和测试调用，不并存两套实现。接口省略导出宏和普通成员，签名为目标约定。
+
+### 1. 名称与职责
+
+业务数据实体统一使用 `Object` 后缀，例如 `IDOSGridObject`、`IDOSWellObject`、`IDOSGridPropertyObject`、`IDOSNaturalFractureSetObject`。领域值类型不因这一规则机械追加 Object。通用基类保留 `IDOSObject`、`IDOSDataObject`；通用渲染对象保留 `IDOSRenderObject`，不增加只为装配 Provider 的 GridRenderObject/WellRenderObject 子类。
+
+三组扩展能力统一如下：
+
+| 范围 | 实例 | 描述及工厂 | 注册表 |
+|---|---|---|---|
+| 树 | IDOSTreeProvider | IDOSTreeProviderMetadata | IDOSTreeProviderRegistry |
+| 渲染 | IDOSRenderProvider | IDOSRenderProviderMetadata | IDOSRenderProviderRegistry |
+| 工具 | IDOSToolProvider | IDOSToolProviderMetadata | IDOSToolProviderRegistry |
+| 命令 | IDOSCommand | IDOSCommandMetadata | IDOSCommandRegistry |
+
+注册接口统一为 `registerMetadata(metadata)`、`unregisterMetadata(metadataId)`、`metadata(metadataId)`；创建接口为 `createProvider(...)` 或 `createCommand(...)`。不使用 C++ 关键字 register 作为方法名。
+
+所有 Registry 的 QObject 信号统一为：
+
+```cpp
+void metadataRegistered(const QString& metadataId);
+void metadataUnregistering(const QString& metadataId);
+void metadataUnregistered(const QString& metadataId);
+```
+
+注册成功转移 Metadata 所有权并发 registered；注册失败不转移、不发成功信号。注销先发 unregistering，让相关实例与回调清理完成，再销毁 Metadata，最后发 unregistered。异步任务未完成时须拒绝/延后注销，不能仅凭信号已发出认定安全。Metadata 的 ID 是能力定义 ID，不等同于源数据 ID 或展示实例 ID。
+
+Metadata 负责能力描述、匹配和具体实例创建；Registry 负责注册、查找及转调工厂，不持有创建出的 Provider/Command。注册项匹配规则与排序必须明确，不靠哈希顺序决定。
+
+### 2. 树：每个节点都有自己的 Provider
+
+根节点、固定分类、对象节点、内部节点、引用节点均拥有自己的 Provider 实例。节点属于同一业务也不共用有状态 Provider。
+
+```text
+Tree → 根 Item → 子 Item → 各自的 Provider
+                         ↑ Provider 非拥有地回指所属 Item
+```
+
+TreeItem 管父子结构与 Provider 所有权。Provider 提供 id、dataId、name、displayName、icon、勾选状态等基本属性；Item 对外查询可以委托 Provider，不再保存另一套可独立修改的同义属性。name 为内部名称，displayName 为用户可见名称。固定分类没有源数据时 dataId 为空。节点/展示 ID 与源数据 ID 分开。
+
+```cpp
+explicit IDOSTreeProvider(IDOSTreeItem* item);
+IDOSTreeItem* item() const;
+QString id() const;
+QString dataId() const;
+QString name() const;
+QString displayName() const;
+QIcon icon() const;
+virtual Qt::CheckState checkState() const;
+virtual void setChecked(Qt::CheckState state);
+virtual void refresh();
+virtual QMenu* createContextMenu();
+```
+
+基础属性的存储、委托入口和构造次序在实现前统一，不能出现 Item::id 调 Provider::id 又反向调用造成递归。Provider 关联 Item 的指针此前示例称 m_node，正式命名统一为 m_item。Provider 不删除 Item。
+
+取消并存的 populate()/update()，统一为 refresh()：首次准备缺少内容，后续更新已有内容、复用未变化节点，不默认 clearChildren 重建整支。TreeServer 负责结构装配及工程同步；Provider 说明具体节点内容/需要的子项，已挂接结构的增删改必须经过 Tree 的受控接口。具体子项工厂及 refresh 的结构修改边界仍需在实现前细化。
+
+根节点的具体实现为：
+
+```cpp
+explicit IDOSDataTreeRootProvider(IDOSTreeItem* item);
+explicit IDOSCaseTreeRootProvider(IDOSTreeItem* item);
+```
+
+不再给根 Provider 重复传 Project、Registry、TreeView 等；通过所属 Item、Tree 取得已有关系。根节点和固定分类可注册扩展，不能把插件可扩展分类写死。
+
+Tree 构造绑定 Registry，保存非拥有 Project 关联；setProject 断开旧工程、连接新工程，清理旧展示并触发初始化。Server 每棵 Tree 一个实例，构造只绑定 Tree；从 Tree 取 Project/Registry，不重复保存关联，不保留多树 addTree/removeTree/setProject 调用链。
+
+```cpp
+explicit IDOSTree(IDOSTreeProviderRegistry* registry,
+                  QObject* parent = nullptr);
+void setProject(IDOSProject* project);
+IDOSProject* project() const;
+IDOSTreeProviderRegistry* registry() const;
+
+bool insertItem(IDOSTreeItem* parent, IDOSTreeItem* item,
+                int row = -1);
+bool removeItem(IDOSTreeItem* item);
+void setChecked(const QString& itemId, Qt::CheckState state);
+
+explicit IDOSTreeServer(IDOSTree* tree,
+                        QObject* parent = nullptr);
+```
+
+Tree 统一使用节点事件名称：
+
+```cpp
+void projectChanged();
+void itemAdded(const QString& itemId);
+void itemChanged(const QString& itemId);
+void itemRemoving(const QString& itemId);
+void itemRemoved(const QString& itemId);
+void itemChecked(const QString& itemId, Qt::CheckState state);
+```
+
+itemRemoving 发出时节点仍有效。这里 itemId 是节点 ID，不写成 dataId；Project 的源数据事件保持两者概念区分。项目事件到 TreeServer 的具体转接信号、批量形式另外确定，不能把源数据新增直接冒充节点已经新增。
+
+Qt Model 的 beginInsertRows/endInsertRows、beginRemoveRows/endRemoveRows 仍须在实际结构变更前后成对执行；完成事件不能取代前置通知。insertItem 必须先校验并完成可能失败的准备，再进入不可失败的结构提交和成对通知；row=-1 表示追加。
+
+树数据新增流程：命令加入 Project → 工程事件经 Tree 交给 TreeServer → 查询匹配 Metadata 及父节点 → 创建 Item → Registry::createProvider(metadataId, item) → Item 接管 Provider → refresh/完成装配 → Tree::insertItem → Model 通知 View。Metadata 注册变化时为已有数据补建缺少展示；未注册的类型暂不生成节点。分类注销只移除展示，不删除源数据。
+
+### 3. 勾选与实际显隐
+
+选择、当前项与勾选分开；勾选针对 RenderServer 的当前视图。节点 Provider 的 setChecked 只传 Qt::CheckState，不反复传 item、TreeView、RenderView，也不保存 RenderServer。
+
+```text
+TreeModel::setData(index, value, CheckStateRole)
+→ Item 对应 Provider::setChecked(state)
+→ 所属 Tree::setChecked(itemId, state)
+→ Tree::itemChecked(itemId, state)
+→ TreeServer 接收并解释具体节点关联/请求
+→ RenderServer::setVisible(dataId, visible)
+→ 当前视图的 Scene 查找或创建展示，设置显隐
+→ 实际结果通知树刷新勾选状态
+```
+
+TreeServer 若直接调用 RenderServer，需要位于 app；不允许在 core 中引用 render。该连接方案及相应目录迁移须在实施前最终确认，不暗中给 Provider 重新增加 Server 指针。分类批量、属性切换等专属语义由具体节点 Provider 明确提供，通用 Server 不判断井/网格等子类型。
+
+itemChecked 在这条请求链中的含义必须与状态刷新区分：程序恢复状态/聚合三态不再次发出业务请求；PartialChecked 不能简单转换成 true。失败以后按实际显隐恢复，不能把发出请求或 void 返回视为操作成功。一次请求进入 RenderServer 时确定当前视图，操作中途不改用另一个视图。
+
+### 4. 菜单：Provider 创建，View 扩展和显示
+
+不再保留独立 IDOSTreeGuiProvider。先迁移其菜单、勾选、拖放等尚在使用的能力，再删除原类和调用链；不能仅删菜单接口而丢失其他行为。
+
+```cpp
+// 每个节点 Provider 已绑定自己的 Item。
+virtual QMenu* createContextMenu();
+
+// TreeView
+IDOSTreeItem* contextItem() const;
+QList<IDOSTreeItem*> selectedItems() const;
+void contextMenuAboutToShow(QMenu* menu);
+```
+
+右键点击节点 → 该节点 Provider 创建基础菜单 → TreeView 发 contextMenuAboutToShow(menu) → 已连接插件检查 contextItem/selectedItems 并追加动作 → View 弹出并在关闭后销毁菜单。没有基础菜单时 View 可创建空菜单；空白处是否允许菜单由树的配置决定，不复用上次节点。
+
+信号由 TreeView 发出，每次菜单创建后、弹出前发一次；插件连接建立一次，不逐节点连接 Provider。追加必须同步完成；动作、子菜单归本次 QMenu。Metadata 不增加 supportsContextMenu/populateContextMenu 一类菜单扩展职责。
+
+动作捕获发起时工程、稳定数据/节点 ID 和必要目标，执行时重新校验，不长期保存 Item 裸指针。卸载前断开插件连接并清理尚存的插件 QAction，避免菜单继续调用 DLL。多选基础菜单组合规则尚需明确，不能直接套用单节点动作。
+
+这是借鉴 QGIS 图层树菜单扩展的设计，不宣称 QGIS 浏览器采用每节点 Provider；QGIS 浏览器另有独立 DataItemGuiProvider。参考：[图层树菜单工厂](https://api.qgis.org/api/classQgsLayerTreeViewMenuProvider.html)、[图层树 View](https://api.qgis.org/api/classQgsLayerTreeView.html)。
+
+### 5. 渲染：一个 Server 管理多个视图
+
+```cpp
+explicit IDOSRenderServer(IDOSRenderProviderRegistry* registry,
+                          QObject* parent = nullptr);
+void setProject(IDOSProject* project);
+void addView(IDOSRenderView* view);
+void removeView(IDOSRenderView* view);
+IDOSRenderView* currentView() const;
+bool setCurrentView(IDOSRenderView* view);
+bool setVisible(const QString& dataId, bool visible);
+```
+
+不采用 RenderServer(scene) 每场景一个服务的方案。Server 非拥有地关联 Registry、Project 和多个 View；工程事件连接一次。每个 View 拥有独立 Scene，每个 Scene 拥有自己的 RenderObject，每个 RenderObject 拥有自己的 RenderProvider。Provider 只引用源数据，Project 持有源数据。
+
+新建 View：创建空 Scene，登记到 Server，尚未勾选不创建全部 RenderObject/Provider。工程新增数据仅表示数据可用，不自动在所有视图创建或显示它。恢复已保存的视图状态时按该视图的显示需求装配。
+
+首次显示：Server 在当前 Scene 按 dataId 查找 → 未找到则从 Project 取数据 → Registry 查 Metadata → Metadata::createProvider(data) → Server 创建通用 RenderObject 接管 Provider → Scene::addObject(object) → 准备必要几何、设显隐并通知 View。已存在则复用；请求隐藏且对象不存在时不创建。Registry/Metadata 不复制源数据，不把工程数据“转换掉”。
+
+取消勾选隐藏并保留对象、几何及显示设置；再次勾选复用。源数据修改时更新或标脏，隐藏时可延迟重建；删除前清理对应对象及其他 Provider 的非拥有引用。Scene 使用 addObject/removeObject，按源数据 ID 查询展示实例；源数据 ID 与渲染 ID 区分。RenderObject 与 Provider 不重复维护同义属性，具体唯一存储/委托方式在实现前统一。
+
+RenderProvider 不含 icon，保留 dataSource、显隐、不透明度、高亮、几何 actors/legends 和必要数据依赖接口，刷新统一称 refresh。Metadata 只描述能力及创建 Provider。完整 Renderer/拾取/依赖协议沿用未被替代能力，不因此次命名清理而丢失。
+
+### 6. 工具：每个工具在每个视图中有自己的 Provider
+
+保留 IDOSTool、IDOSToolBar；IDOSToolMetadata/IDOSToolRegistry 分别更名为 IDOSToolProviderMetadata/IDOSToolProviderRegistry。Registry 持有 Metadata；ToolBar 按所属 View 创建并持有各工具的 Provider；每个 Provider 管一个工具能力的 QAction 和交互实例，不用一个大 Provider 根据 Mode 分派全部工具。
+
+不同 View 的工具 Provider 和交互状态独立，不共享有状态实例。工具 Provider 绑定所属视图以操作画布，不机械套用树 Provider 的 Item 参数；准确构造签名在工具调用链审查后确定。工具拥有动作、交互实例及 View 引用的既有生命周期保护继续保留。工具本身不是源数据，不要求无意义的 dataId。
+
+### 7. Interface、插件算法及非模态 Widget
+
+平台通过 IDOSInterface 公开 Project、MainWindow、RenderServer 等必要服务；TreeServer 访问能力在树归属和实例关系确认后提供。公共 Registry 归属统一由 MainWindow 装配的方向保留，不再让公共命令能力依赖 AssistantWidget；多窗口注册隔离的细节待确定。
+
+插件算法功能窗口统一使用 QWidget 派生、Qt::Window、show() 非模态窗口，不使用 QDialog::exec。窗口构造接收 IDOSInterface*，由它取得主窗口父对象和实际平台服务，不重复传 Project、MainWindow、RenderServer、TreeServer 等参数。不得以 parent 替代业务上下文或强制转换主窗口内部实现。
+
+名称保留功能和角色，不刻意使用 Diff/Eval 等缩写，目标名称为：
+
+```cpp
+IDOSDfnGenerationWidget
+IDOSFractureCheckWidget
+IDOSCurveFitEvaluationWidget
+IDOSFieldDifferenceWidget
+
+explicit IDOSDfnGenerationWidget(IDOSInterface* interface);
+```
+
+Widget 负责输入和结果展示；命令准备数据、校验和提交；纯算法只接收计算输入，不依赖 IDOSInterface、Project、Widget 或 Server。报告显示与视图定位/工程修改职责分开。窗口打开、提交任务时绑定当时工程和稳定目标 ID，不能操作中途重新读取 Interface 当前工程而误操作新工程。工程切换、源数据失效、视图销毁、模态文件选择和插件卸载保护不能因缩短构造函数而删除。
+
+### 8. 命令：一个类负责一个业务操作，保留 Metadata
+
+保留 IDOSCommand、IDOSCommandMetadata、IDOSCommandRegistry、IDOSCommandManager。命令按操作拆分，禁止不同 Metadata 最后全部创建一个带 Mode 的大命令；不采用注册静态工厂函数替代 Metadata 的提议。
+
+```cpp
+bool registerMetadata(IDOSCommandMetadata* metadata);
+bool unregisterMetadata(const QString& metadataId);
+const IDOSCommandMetadata* metadata(const QString& metadataId) const;
+IDOSCommand* createCommand(const QString& metadataId,
+                           IDOSProject* project,
+                           const QJsonObject& arguments) const;
+```
+
+CommandMetadata 提供名称、说明、参数规范，工厂统一称 createCommand。注册时 new Metadata，执行时才创建独立 Command；Manager 持有进入历史的命令，查询不入历史。命令绑定明确 Project，不把 GUI 的当前工程动态查找带入执行中途。
+
+导入命令目标拆分：IDOSImportCaseCommand、IDOSImportGridCommand、IDOSImportGridPropertyCommand、IDOSImportWellDataCommand、IDOSImportFluidRockTablesCommand、IDOSImportDataCommand、IDOSImportSummaryResultsCommand；现有独立 IDOSImportRestartResultsCommand 保留。每个命令对应一个 Metadata，放在该命令同名 .h/.cpp 文件对中，删除 IDOSImportObjectsCommand 的 Mode 分派和旧总文件引用。井数据和通用数据的最终拆分粒度按业务提交规则继续核对。
+
+一个业务操作可以包含必要的关联修改，例如网格及配套结果整体导入、删除时清理引用；仍应原子成功、整体撤销/回滚。不同格式由 DataProvider 负责，不按扩展名复制命令；批量是否共用一次历史、失败回滚边界须明确。保留失败不进入历史、不破坏 redo，以及重做复用缓存的约定。
+
+### 9. 目标目录与待收口事项
+
+目录草案见 [源码目录中的目标布局](IDOS源码目录.md#2026-10-16-目标目录草案待迁移)。core/data 保留业务源数据及其类型 Metadata；顶层 providers 保留具体格式解析；render 保留通用场景、服务、视图、对象和工具框架，Provider/Metadata 在 render/providers；具体内置展示在 app/providers 各业务目录，具体工具在 app/providers/render；插件自有算法、Widget、命令及扩展均在所属插件目录。
+
+树体系拟集中到 app/tree，以允许 TreeServer 协调渲染；具体根 Provider 分别在 app/providers/data 和 app/providers/case。该项是目录草案，尚未实施；直接依赖方案与目录迁移须一起最后确认。固定旧目录不能在实现途中随意变更。gui 业务窗口物理存放与 app 链接目标的既有划分不机械搬动。
+
+实施前还需收口：树服务与渲染服务的最终连接；三态请求与实际状态通知细节；多选/批量和空白菜单；Provider/展示对象基本属性唯一归属和构造顺序；固定/业务子节点扩展匹配规则；注册失败所有权与活动实例注销；多窗口 Registry 隔离。数据类型工厂与格式工厂暂不合并，HDF5 编码职责迁移另行确认，不删除现有无源文件恢复能力。
 
 ## 1. 目标与实施边界
 
@@ -59,6 +279,8 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 
 数据、树节点、渲染对象分别管理 ID。同一数据可有多个引用节点和各视图独立的渲染对象。
 
+天然裂缝集的只读几何检查由现有 IDOSNaturalFractureSet 提供领域报告；具体 IDOSNaturalFractureRenderProvider/Metadata 位于 app/providers/data，由平台注册，在各视图构建独立的有效裂缝面及属性标识。裂缝建模插件的独立 IDOSFractureGeometryReportDialog 位于现有插件目录，负责报告布局、填充及行激活信号；插件入口负责检查动作、源对象选中与目标视图定位，复用上述检查，绑定发起时工程、数据 ID 与目标视图；卸载插件先清理报告及动作，不移除平台渲染能力。不向通用 TreeModel、RenderServer、Scene 或 View 添加裂缝类型判断。
+
 ## 4. 数据读写
 
 | 类 | 职责与主要接口 |
@@ -72,6 +294,8 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 类型工厂回答“创建什么数据”，格式工厂回答“如何读取数据”。一个类型可有多个格式，一个格式可产生多种数据。手工或算法产生的数据不必经过 DataProvider。
 
 每次解析创建独立实例，结果由调用方接管；解析器不修改工程、不创建树或渲染对象。导入命令负责校验、合并、替换、引用建立和提交。候选格式按明确规则选择，不依赖哈希遍历顺序。导出能力按实际需求在这些类内补充。
+
+独立 ECLIPSE 网格导入由具体 GridEclipseProvider 按同目录、同完整主文件名收集 INIT、UNRST 及 SMSPEC/UNSMRY，返回网格、静态/动态属性与汇总数据。UNRST 的报告步解析位于既有 GridPropertyEclipseProvider，手动结果导入命令复用该接口。Provider 只绑定解析结果之间的数据 ID，不访问工程；grid.import 一次提交整组对象及工况引用，整组撤销与重做。配套文件错误或维度不匹配时释放未提交对象，缺失可选文件则只导入已存在的数据；不把日志或其他未支持文件当作业务数据。
 
 ```text
 文件 / 外部数据源
@@ -574,3 +798,16 @@ IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何�
 - 本机 ui.ini 位于 QStandardPaths::AppConfigLocation；保存主窗口几何、主窗口工具条状态、按视图集合区分的 ADS 停靠布局，以及最多 10 个最近工程。恢复窗口时检查屏幕可见范围；最近工程显示在启动页。IDOS_UI_SETTINGS_PATH 可指定隔离设置文件，IDOS_DISABLE_UI_SETTINGS 可禁用本机设置，供测试使用。
 - IDOSProjectStartWidget 是 gui 根部的独立通用 QWidget，由 idos_gui 编译；无工程时在主窗口中央展示新建、打开和最近工程入口，工程打开后由 app 主窗口切换为渲染视图。该类只展示最近路径并通过信号请求操作，不读取本机设置或依赖 app。
 - 本阶段不保存业务撤销历史、运行中的计算任务或临时业务对话框；读写仍同步执行，后台任务与崩溃恢复另行实施。
+
+共享导入数据的删除由 app/command 中 IDOSDeleteDataCommand 及 Metadata 提供 data.delete 命令；具体 IDOSImportedDataTreeGuiProvider 提供单选、多选菜单和确认，捕获目标工程与数据 ID。命令预校验全部目标、保存并清理受影响工况引用，持有脱离工程的数据以支持整批撤销/重做；失败回滚，不增加历史。TreeServer、RenderServer 继续根据工程信号独立清理和重建展示，通用 Model/View 不判断具体数据类型。井、网格和属性保留其专用删除命令。
+
+数据树分类的批量显示由 app/providers/data 中 IDOSDataGroupTreeGuiProvider 提供，只支持 data 树的分类组。它按其他具体 GuiProvider 的可勾选节点收集后代数据 ID，并在目标视图批量设置现有 RenderObject 显隐、聚合三态；遇到可显示对象时不继续操作其内部属性节点。通用 TreeItem 保存 Qt::CheckState，TreeModel 透传，TreeView 从 GuiProvider::checkState 获取状态，默认接口保持已有布尔行为；不在通用框架判断数据类型或树分类，也不对工况树增加分类勾选。
+
+DFN 生成的 IDOSDfnGenerationWidget、IDOSDfnGenerator、IDOSDfnGenerateCommand 及 Metadata 全部位于裂缝建模插件原目录。Widget 管理参数输入与结果提示，Generator 仅计算 double 坐标的矩形裂缝记录，命令负责预校验、生成后几何验证、工程提交及缓存结果的撤销/重做。通过 fracture.dfn.generate 向平台提交已有 IDOSNaturalFractureSet，不增加平台专属数据、算法或渲染包装层；参数随裂缝记录持久化，发布到平台前复制嵌套字符串存储以脱离插件静态字面量生命周期。插件维护窗口生命周期，注册/注销命令；命令实例计数覆盖撤销、重做及外部持有的未执行命令，实例存活时禁止常规卸载 DLL，平台裂缝数据本身不阻止卸载。
+
+
+### 多尺度裂缝插件分析功能的当前实现（2026-10-16）
+
+用户确认的三场差异、生产曲线拟合评价分别使用插件内独立 Widget，菜单动作仅负责打开窗口。差异计算通过 `analysis.field.difference` Action 命令修改工程，生成平台普通网格属性，按命令历史撤销/重做；评价通过 `analysis.curve.evaluate` Query 命令返回指标及配对样本，不修改工程、不进入撤销历史。曲线读取和数值评价属于插件算法类。Core 只提供报告步的只读访问，不依赖插件。
+
+插件持有窗口弱引用，工程切换和卸载时清理窗口，卸载前注销命令 Metadata；仍存活的命令（含撤销/重做历史）或文件对话框阻止 DLL 卸载，避免悬空调用。差异结果通过平台 `IDOSGridPropertyMetadata::create()` 创建，避免 MSVC 在插件内直接构造导入类时生成指向插件的局部虚函数表。结果为平台数据类型，清空历史并卸载插件后可继续显示、保存及关闭工程。

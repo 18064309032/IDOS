@@ -144,7 +144,7 @@ class ProjectDialogTest : public QObject
         IDOSProject* original = window.dataTreeModel()->project();
         QVERIFY(original);
         QCOMPARE(window.caseTreeModel()->project(), original);
-        QCOMPARE(window.windowTitle(), QStringLiteral("IDOS - Project One[*]"));
+        QCOMPARE(window.windowTitle(), QStringLiteral("Project One*"));
         QVERIFY(window.isWindowModified());
         QCOMPARE(original->metadata().name(), QStringLiteral("Project One"));
         QVERIFY(original->objects().isEmpty());
@@ -165,7 +165,7 @@ class ProjectDialogTest : public QObject
         IDOSProjectMetadata renamed = original->metadata();
         renamed.setName(QStringLiteral("Renamed Project"));
         QVERIFY(original->setMetadata(renamed));
-        QCOMPARE(window.windowTitle(), QStringLiteral("IDOS - Renamed Project[*]"));
+        QCOMPARE(window.windowTitle(), QStringLiteral("Renamed Project*"));
         QTimer::singleShot(0, this, &ProjectDialogTest::onAcceptReplacementDialog);
         window.onNewProject();
         QCOMPARE(window.dataTreeModel()->project(), original);
@@ -176,7 +176,7 @@ class ProjectDialogTest : public QObject
         QCOMPARE(model->rowCount(QModelIndex()), 0);
         QVERIFY(!window.dataTreeModel()->project());
         QVERIFY(!window.caseTreeModel()->project());
-        QCOMPARE(window.windowTitle(), QStringLiteral("IDOS[*]"));
+        QCOMPARE(window.windowTitle(), QStringLiteral("IDOS"));
         QVERIFY(!window.isWindowModified());
     }
 

@@ -79,15 +79,28 @@ set_target_properties(ADS::ADS PROPERTIES
 
 # ---------------------------------------------------------------------
 # OPM (opm-common) 静态库：ECLIPSE 输入文件解析
-# 三段式布局：include + lib（静态库，无 DLL）。Debug/Release 自动切换。
+# OPM 为静态库，依赖配套 fmt 动态库。Debug/Release 自动切换。
 # 链入 idos_providers 提供 .DATA 解析能力（Parser → Deck → EclipseState）。
 # ---------------------------------------------------------------------
+add_library(OPM::fmt SHARED IMPORTED)
+set_target_properties(OPM::fmt PROPERTIES
+    IMPORTED_IMPLIB_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/fmtd.lib"
+    IMPORTED_IMPLIB_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/fmt.lib"
+    IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/fmt.lib"
+    IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/opm/bin/fmtd.dll"
+    IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/opm/bin/fmt.dll"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/thirdparty/opm/bin/fmt.dll"
+    MAP_IMPORTED_CONFIG_MINSIZEREL Release
+    MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+)
+
 add_library(OPM::opmcommon STATIC IMPORTED)
 set_target_properties(OPM::opmcommon PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/opm/include"
     IMPORTED_LOCATION_DEBUG   "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommond.lib"
     IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
     IMPORTED_LOCATION         "${CMAKE_SOURCE_DIR}/thirdparty/opm/lib/opmcommon.lib"
+    INTERFACE_LINK_LIBRARIES OPM::fmt
 )
 
 # QXlsx: prebuilt static library for reading and writing OOXML spreadsheets.

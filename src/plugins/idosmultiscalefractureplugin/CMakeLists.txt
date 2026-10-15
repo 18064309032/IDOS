@@ -1,4 +1,14 @@
 add_library(idosmultiscalefractureplugin SHARED
+    idosfielddifferencecommand.h
+    idosfielddifferencecommand.cpp
+    idosfielddifferencewidget.h
+    idosfielddifferencewidget.cpp
+    idoscurveevaluation.h
+    idoscurveevaluation.cpp
+    idoscurveevaluationcommand.h
+    idoscurveevaluationcommand.cpp
+    idoscurveevaluationwidget.h
+    idoscurveevaluationwidget.cpp
     idosmultiscalefractureplugin.qrc
     idosmultiscalefractureplugin.h
     idosmultiscalefractureplugin.cpp

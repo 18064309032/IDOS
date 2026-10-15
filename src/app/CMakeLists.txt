@@ -1,5 +1,11 @@
 # idos_app: application composition
 add_library(idos_app SHARED
+    providers/data/idosdatagrouptreeguiprovider.cpp
+    providers/data/idosdatagrouptreeguiprovider.h
+    providers/data/idosnaturalfracturerendermetadata.cpp
+    providers/data/idosnaturalfracturerendermetadata.h
+    providers/data/idosnaturalfracturerenderprovider.cpp
+    providers/data/idosnaturalfracturerenderprovider.h
     command/idostransferobjectscommand.cpp
     command/idostransferobjectscommand.h
     command/idoscasereferencecommand.cpp
@@ -12,6 +18,8 @@ add_library(idos_app SHARED
     command/idosdeletecasecommand.h
     command/idosdeletegridcommand.cpp
     command/idosdeletegridcommand.h
+    command/idosdeletedatacommand.cpp
+    command/idosdeletedatacommand.h
     command/idosdeletepropertycommand.cpp
     command/idosdeletepropertycommand.h
     command/idosdeletewellcommand.cpp

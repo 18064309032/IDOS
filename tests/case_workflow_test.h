@@ -2,11 +2,15 @@
 #define CASE_WORKFLOW_TEST_H
 
 #include <QObject>
+#include <QSettings>
 #include <QString>
+#include <QStringList>
+#include <QVariantMap>
 #include <QVector>
 
 class IDOSRenderObject;
 class IDOSRenderView;
+class QTemporaryDir;
 
 class CaseWorkflowTest : public QObject
 {
@@ -14,9 +18,19 @@ class CaseWorkflowTest : public QObject
 
   public:
     CaseWorkflowTest();
+    ~CaseWorkflowTest() override;
   private slots:
     void onProvider();
     void onProviderDimensions();
+    void onGridCompanionFiles();
+    void onFractureGeometry();
+    void onDfnGeneration();
+    void onFieldDifference();
+    void onCurveEvaluation();
+    void onFractureDisplay();
+    void onDeleteImportedData();
+    void onDataGroupChecks();
+    void onConfirmDataDeletion();
     void onViewDecorations();
     void onPlatformSimulation();
     void onGridSettings();
@@ -36,11 +50,17 @@ class CaseWorkflowTest : public QObject
     void onFlowOutputFraming();
 
   private:
+    QVariantMap fracture(const QVector<double>& coordinates, int id) const;
+    QStringList fractureIssueCodes(const QVariantMap& report) const;
     bool sameSelection(const QVector<quint8>& first, const QVector<quint8>& second) const;
     void onCloseContextMenu();
+    void onExportCurveDialog();
     IDOSRenderObject* findRenderObject(IDOSRenderView* view, const QString& dataId) const;
     QString m_name;
     bool m_cancel;
     bool m_expectDisabled;
+    QTemporaryDir* m_settingsDirectory;
+    QSettings::Format m_previousSettingsFormat;
+    QString m_previousSettingsRoot;
 };
 #endif

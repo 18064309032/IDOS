@@ -38,6 +38,8 @@ class CORE_EXPORT IDOSTreeItem
     void setReference(bool reference);
     bool isCheckable() const;
     void setCheckable(bool checkable);
+    Qt::CheckState checkState() const;
+    void setCheckState(Qt::CheckState state);
     bool isChecked() const;
     void setChecked(bool checked);
     IDOSTreeItem* parent() const;
@@ -67,7 +69,7 @@ class CORE_EXPORT IDOSTreeItem
     bool m_group;
     bool m_reference;
     bool m_checkable;
-    bool m_checked;
+    Qt::CheckState m_checkState;
     IDOSTreeItem* m_parent;
     IDOSTree* m_tree;
     IDOSTreeProvider* m_provider;

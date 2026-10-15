@@ -2,6 +2,13 @@ find_package(Qt5 COMPONENTS Test REQUIRED)
 
 # Compile platform and example extension headers independently.
 set(_idos_render_headers
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idosfielddifferencecommand.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idosfielddifferencewidget.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idoscurveevaluation.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idoscurveevaluationcommand.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idoscurveevaluationwidget.h"
+    "${CMAKE_SOURCE_DIR}/src/app/providers/data/idosnaturalfracturerendermetadata.h"
+    "${CMAKE_SOURCE_DIR}/src/app/providers/data/idosnaturalfracturerenderprovider.h"
     "${CMAKE_SOURCE_DIR}/src/app/command/idoscasereferencecommand.h"
     "${CMAKE_SOURCE_DIR}/src/app/command/idoscreatecasecommand.h"
     "${CMAKE_SOURCE_DIR}/src/app/command/idoscreatewellcommand.h"
@@ -218,6 +225,13 @@ set(_idos_render_headers
     "${CMAKE_SOURCE_DIR}/src/render/providers/idostoolmetadata.h"
     "${CMAKE_SOURCE_DIR}/src/render/providers/idostoolprovider.h"
 )
+list(APPEND _idos_render_headers
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngeneratecommand.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngenerationwidget.h"
+    "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngenerator.h"
+    "${CMAKE_SOURCE_DIR}/src/app/command/idosdeletedatacommand.h"
+    "${CMAKE_SOURCE_DIR}/src/app/providers/data/idosdatagrouptreeguiprovider.h"
+)
 set(_idos_render_header_sources)
 foreach(_idos_header IN LISTS _idos_render_headers)
     get_filename_component(_idos_header_name "${_idos_header}" NAME)
@@ -288,6 +302,7 @@ target_link_libraries(idos_case_tests PRIVATE idos_app Qt5::Test OPM::opmcommon)
 target_link_libraries(idos_case_tests PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::RenderingCore)
 add_dependencies(idos_case_tests idos_project_tests)
 add_dependencies(idos_case_tests idosexampleplugin)
+add_dependencies(idos_case_tests idosfracturemodelingplugin idosmultiscalefractureplugin)
 add_test(NAME case_workflow COMMAND idos_case_tests
     -o "${CMAKE_CURRENT_BINARY_DIR}/case_workflow.txt,txt" -o -,txt)
 set_tests_properties(case_workflow PROPERTIES

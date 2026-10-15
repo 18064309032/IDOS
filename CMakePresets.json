@@ -10,6 +10,7 @@
             "name": "win-x64-debug",
             "displayName": "Windows x64 Debug",
             "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/../IDOS-Build",
             "architecture": {
                 "value": "x64",
                 "strategy": "set"

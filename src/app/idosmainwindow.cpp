@@ -53,6 +53,7 @@
 #include "command/idoscreatewellcommand.h"
 #include "command/idosdeletecasecommand.h"
 #include "command/idosdeletegridcommand.h"
+#include "command/idosdeletedatacommand.h"
 #include "command/idosdeletepropertycommand.h"
 #include "command/idosdeletewellcommand.h"
 #include "command/idosgridfiltercommand.h"
@@ -91,10 +92,12 @@
 #include "plugin/idospluginmanagerwidget.h"
 #include "providers/case/idossimulationcasetreeguiprovider.h"
 #include "providers/case/idossimulationcasetreemetadata.h"
+#include "providers/data/idosdatagrouptreeguiprovider.h"
 #include "providers/data/idosimporteddatatreeguiprovider.h"
 #include "providers/data/idosimporteddatatreemetadata.h"
 #include "providers/fluidrock/idosfluidrocktabletreeguiprovider.h"
 #include "providers/fluidrock/idosfluidrocktabletreemetadata.h"
+#include "providers/data/idosnaturalfracturerendermetadata.h"
 #include "providers/grid/idosgridboundaryrendermetadata.h"
 #include "providers/grid/idosgridfilterrendermetadata.h"
 #include "providers/grid/idosgridrendermetadata.h"
@@ -251,6 +254,7 @@ void IDOSMainWindow::initProviders()
     m_treeRegistry->addGuiProvider(caseGuiProvider);
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSFluidRockTableTreeGuiProvider>());
     m_treeRegistry->addGuiProvider(std::make_shared<IDOSImportedDataTreeGuiProvider>());
+    m_treeRegistry->addGuiProvider(std::make_shared<IDOSDataGroupTreeGuiProvider>(m_treeRegistry));
     IDOSTreeItem* wellGroup = nullptr;
     IDOSTreeItem* group0 = new IDOSTreeItem();
     group0->setKey(QStringLiteral("data.wellGroup"));
@@ -374,6 +378,7 @@ void IDOSMainWindow::initProviders()
     m_renderRegistry->add(new IDOSGridFilterRenderMetadata());
     m_renderRegistry->add(new IDOSGridSurfaceRenderMetadata());
     m_renderRegistry->add(new IDOSGridBoundaryRenderMetadata());
+    m_renderRegistry->add(new IDOSNaturalFractureRenderMetadata());
     m_renderRegistry->add(new IDOSSeismicVolumeRenderMetadata());
     m_renderRegistry->add(new IDOSWellRenderMetadata());
     connect(m_renderServer, &IDOSRenderServer::objectsChanged, this, &IDOSMainWindow::onRenderObjectsChanged);
@@ -527,6 +532,7 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSGridFilterCommandMetadata(QStringLiteral("create"))));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSGridFilterCommandMetadata(QStringLiteral("update"))));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSGridFilterCommandMetadata(QStringLiteral("delete"))));
+        commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteDataCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePropertyCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteWellCommandMetadata()));
         commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSTransferObjectsCommandMetadata(QStringLiteral("copy"))));

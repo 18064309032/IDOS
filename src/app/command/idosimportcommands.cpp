@@ -495,6 +495,32 @@ bool IDOSImportObjectsCommand::loadObjects(QString& error)
         }
     }
 
+    if (m_mode == Mode::Grid)
+    {
+        bool importsSummary = false;
+        for (IDOSDataObject* object : objects)
+        {
+            if (qobject_cast<IDOSSimulationSummaryResults*>(object) != nullptr)
+            {
+                importsSummary = true;
+            }
+        }
+        const IDOSCaseObject* targetCase =
+            qobject_cast<IDOSCaseObject*>(project()->object(m_targetCaseId));
+        if (importsSummary && targetCase != nullptr)
+        {
+            for (const IDOSCaseItemRef& ref : targetCase->itemRefs())
+            {
+                if (ref.role() == QStringLiteral("case.summaryResults"))
+                {
+                    error = QObject::tr("Summary results have already been imported for this case.");
+                    qDeleteAll(objects);
+                    return false;
+                }
+            }
+        }
+    }
+
     for (IDOSDataObject* object : objects)
     {
         if (object == nullptr)
@@ -532,7 +558,8 @@ bool IDOSImportObjectsCommand::acceptObject(IDOSDataObject* object) const
     if (m_mode == Mode::Grid)
     {
         return qobject_cast<IDOSGrid*>(object) != nullptr
-            || qobject_cast<IDOSGridProperty*>(object) != nullptr;
+            || qobject_cast<IDOSGridProperty*>(object) != nullptr
+            || qobject_cast<IDOSSimulationSummaryResults*>(object) != nullptr;
     }
 
     if (m_mode == Mode::Property)
@@ -858,7 +885,7 @@ void IDOSImportObjectsCommand::appendTargetCaseReferences()
         {
             role = QStringLiteral("case.fluidRockTable");
         }
-        else if (m_mode == Mode::Summary &&
+        else if ((m_mode == Mode::Summary || m_mode == Mode::Grid) &&
                  qobject_cast<IDOSSimulationSummaryResults*>(object.data()) != nullptr)
         {
             role = QStringLiteral("case.summaryResults");

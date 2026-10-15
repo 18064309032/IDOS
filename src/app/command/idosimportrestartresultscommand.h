@@ -27,7 +27,6 @@ protected:
 
 private:
     bool loadProperties(QString& error);
-    bool isSupportedKeyword(const QString& keyword) const;
     void deleteDetachedProperties();
 
     QString m_gridId;

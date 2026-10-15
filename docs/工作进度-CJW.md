@@ -1,5 +1,80 @@
 # IDOS 工作进度（CJW）
 
+## 框架设计讨论归档（2026-10-16，待实施）
+
+- 已将本次确认的树、渲染、工具、命令命名及接口写入 [架构设计定稿记录](IDOS架构设计.md#2026-10-16-框架设计定稿记录待实施)，并在文首注明优先关系。旧章节和本文件此前审查记录保留为迁移基线；与新设计冲突的提议（每场景一个 RenderServer、Metadata 追加菜单、静态函数工厂替代命令 Metadata 等）不再作为目标。
+- 已确认：每节点独立 Provider；基本属性由 Provider 提供，Item 管结构；根 Provider 只绑定所属 Item；Tree 的 insertItem/removeItem、itemRemoving 等命名；刷新统一 refresh；移除独立 TreeGuiProvider，节点 Provider 创建菜单、View 发 contextMenuAboutToShow 供插件追加；一个 RenderServer(registry) 绑定工程并管理多个视图；勾选当前视图，首次显示创建，隐藏后复用；工具每视图每工具独立 Provider。
+- 三组能力统一 Provider/ProviderMetadata/ProviderRegistry；方法 registerMetadata、unregisterMetadata、metadata、createProvider；信号 metadataRegistered、metadataUnregistering、metadataUnregistered。命令保留 Metadata，工厂 createCommand，一个命令一个业务操作，拆分多模式导入大类。Object 后缀用于业务数据实体，通用渲染对象保留 RenderObject。
+- 插件算法窗口统一 QWidget 非模态和完整功能名，通过 IDOSInterface 取得平台能力，避免重复构造参数；算法不依赖 Interface/界面，命令管理校验、提交和历史。保留工程/视图目标绑定、窗口失效及 DLL 卸载保护。
+- [源码目录](IDOS源码目录.md#2026-10-16-目标目录草案待迁移) 增加实际/目标布局区分；树体系集中 app/tree 仍须与 TreeServer 协调渲染的最终连接方式一起确认，不执行未经最后确认的搬迁。工具构造签名、多选菜单、批量回滚、请求/实际状态通知和属性存储次序继续收口。数据工厂合并与 HDF5 职责迁移仍未决定。
+- 后续顺序：先收口上述接口与所有权，再统一 Registry/Interface 装配和命令归属；按批次迁移树、渲染、工具、插件窗口和独立导入命令，接通新链后删除旧链，逐批验证工程切换、多视图、插件注销、菜单、保存恢复及撤销重做。
+- 本轮仅更新文档，未改 C++、CMake 或目录，未执行构建和功能测试。完成文档内容及 diff 空白检查，不作为架构实施验收。
+
+
+## 当前框架对照审查与改造清单（2026-10-16）
+
+### 审查边界与结论
+
+本轮按用户要求对照 `IDOS架构设计.md` 核对当前源码，只整理框架，不修改 C++、CMake、目录或运行行为。以下是静态审查结果，不代表全部运行场景均已复测。2026-10-15“架构讨论暂存”仍是待决方案；取消单例、根 Provider 装配、每节点 Provider、存储职责迁移和工厂合并不得当作已经实施或已经定案。
+
+已符合并应保留的骨架：Project 持有业务数据；Tree/TreeItem 管节点及分支 Provider；RenderView/Scene/RenderObject 管每视图独立 Provider；树与渲染分别由 Server 接收工程事件；通用 Model/View/Scene/Server 本轮抽查未发现井、网格或裂缝子类型分支；菜单修改数据主要走命令；动作、查询和显示状态已有区分。`idos_gui` 实际链接 core 与 Qt Widgets，业务窗口由 app 目标显式编译，不能因文件放在 gui 就判定反向依赖。现有日志、应用、插件及领域基础设施继续保留。
+
+### A. 可在现有目录和类内推进的改造
+
+| 编号／顺序 | 当前代码及证据 | 需要改的地方 | 验收要点 |
+|---|---|---|---|
+| A1／先做 | `assistant/idosassistantservice.cpp:15` 构造公共 CommandRegistry；`app/idosmainwindow.cpp:522,1919` 经 AssistantWidget/Service 注册并取得命令表 | 公共命令注册表改由应用装配层明确持有，助手只借用。给现有 Service 绑定接口，不新增服务包装类。所有菜单、插件、工程历史及助手使用同一实例；明确它晚于历史命令和插件注册销毁 | 不启动本地模型时菜单和插件命令照常工作；工程切换保留注册；助手调用相同命令；销毁时无悬空 Registry |
+| A2／先做 | `app/providers/case/idossimulationcasetreeprovider.cpp:32,46` 的 dependsOn 总为真并 clearChildren；`app/providers/grid/idosgridtreeprovider.cpp:40,89` 对任意非空 ID 变化重建子树；`core/idostreeserver.cpp:194` 遍历分支并更新 | 收窄业务 Provider 的依赖判断；先复用未变化的节点和 Provider，再用 Tree 受控接口增删改真实变化项。依赖删除前后的关系都要覆盖，不能只看删除后的 Project。Server 继续统一同步，不由根 Provider 再监听一套工程增删改 | 改一口井不重建无关工况网格；改名保持展开/选中及节点 ID；删除共享属性后所有引用正确清理；撤销恢复正确。大工程测量改前/改后耗时，当前不宣称已有性能回归实测 |
+| A3／随后 | `render/idosrenderserver.cpp:187` 的新对象创建路径设为不可见后，仍立即 bindDataReferences、update；具体 Provider 在 update 中准备几何 | 在现有 Provider/View/Server 内明确轻量实例与昂贵几何的初始化时机；隐藏对象保留依赖及脏状态，首次实际显示再生成几何。不要增加包装 Provider 或让 Server 判断业务类型 | 打开多数据、多视图工程时测量耗时/内存；首次勾选正确显示；隐藏期间更新后显示的是新数据；显示状态恢复、拾取及图例正确 |
+| A4／随后 | `core/idoscommandmanager.cpp:60,150,174` 手工置 m_running，随后执行可扩展的命令；`core/idoscommand.cpp:94` 无异常转换边界 | 明确插件/业务命令异常契约；至少保证运行标志和未入历史的命令在异常路径得到清理。异常转换不能伪称通用回滚，已发生的业务修改仍由具体命令恢复 | 注入失败/异常后能继续执行命令；原重做记录不丢；撤销失败不移动历史；部分提交不残留。此项是异常路径风险，未复现当前正常操作失败 |
+| A5／随后 | `core/providers/idosdataproviderregistry.h:39` 是无通知的全局格式表；Tree/Render/DataRegistry 已有注册变更信号；`core/idoscommandregistry.cpp:10` 使用 unique_ptr 按值接收，而其他表使用成功才接管的裸指针 | 明确各注册接口失败时的所有权，并使文档与签名一致，不机械统一成裸指针。补格式注销与存活解析器的生命周期约束；审查平台注册调用失败后的释放/回滚，拒绝重复能力时给出可诊断结果 | 重复注册无泄漏；插件部分注册失败能撤回自己已成功注册的项；注销不销毁仍被解析操作依赖的 DLL；现有类型恢复不依赖格式是否启用 |
+| A6／随后 | `app/idospluginregistry.cpp:352-426` 常规卸载检查 canUnload；关闭程序时跳过该检查并有意保留库映射。裂缝/多尺度插件已有命令存活计数和窗口清理 | 明确常规卸载与进程退出两套顺序，以及退出时保留 DLL 的归属和理由；平台类型统一从所属 Metadata 工厂创建，排查其他插件生成对象的 MSVC 局部虚表、静态字符串和存活菜单回调。保留现有保护，不能直接删除保留映射逻辑 | 历史、外部持有命令、模态框、任务存活时拒绝常规卸载；清理后可卸载；平台结果在卸载后仍能保存、展示及销毁；退出顺序覆盖插件命令尚存的工程 |
+| A7／低优先级 | `app/idosmainwindow.cpp:1616,1644` 解释测井节点 key、识别 Well 并管理专属窗口；`:2102,2221` 汇集通用和测井展示状态 | 将节点激活的业务判断逐步归还现有井 GuiProvider/业务窗口；MainWindow 保留 Dock 装配、工程/视图协调及通用状态收集。先定现有接口的调用边界，不新增菜单管理器、Context 或通用业务窗口包装层 | 测井激活、浮动窗口、重复打开、工程切换和 UI 保存重开行为不变。该代码在 app 层是合法依赖，此项是职责细化，不是模块越界 |
+| A8／贯穿实施 | 架构第 10 节概括“失败不转移所有权”，与 unique_ptr 命令注册接口不完全一致；接口表未列出当前 RenderProvider 的 dependencyIds/setDataReference；文档混有已实现与昨晚待决方向 | 按项更新“目标／当前实现／待决”及真实接口，不把暂存讨论直接改成已完成；更新头文件内过时用法，例如格式 Provider 仍示例 read(path, project)，实际解析不接管工程 | 文档与头文件相符；固定目录不变；移除旧接口时一并清理引用、构建和测试，不保留两套调用链 |
+
+### B. 昨晚讨论过、必须先定案的架构调整
+
+| 待决事项 | 当前真实实现 | 建议定案方式 |
+|---|---|---|
+| Registry 统一归属、取消单例 | DataProviderRegistry 和 PluginRegistry 是单例；DataRegistry 通常由 IDOSApplication 拥有，QApplication 测试环境由 MainWindow 新建；Tree/Render/ToolRegistry 由 MainWindow 拥有；CommandRegistry 由 AssistantService 拥有 | 建议公共能力统一由 MainWindow 创建持有、IDOSInterface 借用；明确多窗口是否隔离注册。实施时改完所有调用方及测试，再删除 instance 路径。A1 可先解决助手持有公共命令的问题 |
+| 树目录和根 Provider | Tree/Model 在 core，TreeView/GuiProvider 在 gui，具体 Provider 在 app；MainWindow::initProviders 从 216 行开始创建固定分类，再经 Registry.addGroup 装配 | 保持当前固定目录，直到确认整套树迁移方案。若采用根 Provider，应先确定根节点所有权、setRootProvider 装配和 Server 同步边界；当前没有设计确认的具体根 Provider 类，不擅自新建 |
+| Provider 是否每节点独占、是否合并 GUI | 当前对象分支根和独立引用分支拥有 Provider；内部属性叶子可以没有 Provider；多个 GuiProvider 共同贡献菜单，TreeView 检查勾选负责人冲突 | 先决定内部节点是否确实需要独立实例。即使合并也保留插件追加菜单能力、明确勾选唯一负责人；不能为了对称新增尚未批准的 TreeGuiMetadata |
+| 数据工厂和格式工厂是否合并 | DataMetadata/DataRegistry 用于类型创建和无源文件恢复；DataProviderMetadata/Registry 用于格式匹配和解析，多格式可以产生同类型 | 建议当前保留两者：类型与格式分开。若合并必须先解决同类型唯一工厂、插件禁用格式后仍能恢复工程的问题，不能直接删除 DataRegistry |
+| HDF5 编码职责 | `core/idosproject.cpp:475,641` 组织对象读写并调用 DataMetadata；`core/providers/idosdatametadata.cpp` 承载通用压缩编码和 HDF5 读写 | 若确认瘦身 Metadata，把通用编解码迁入现有 Project，领域字段仍由对象 projectData/restoreProjectData 提供；不新增 ProjectStorage。须保留 v1/v2 兼容、紧凑数组、中文路径及原子提交能力 |
+
+### 建议实施批次与保留项
+
+1. 先明确 B 中 Registry 归属，再做 A1；同时补齐注册失败语义和销毁顺序的文档，验证独立助手、插件加载和工程切换。
+2. 做 A2 的依赖与增量更新，再做 A3 的延迟几何；分别建立大工程基线，不把性能修改与目录搬迁混在一起。
+3. 做 A4/A5/A6 的异常、注册注销和插件生命周期验证；保留普通卸载保护及退出保留映射，直到替代方案通过销毁测试。
+4. 最后按确认方案收拢 MainWindow 的具体业务；树目录、根 Provider、工厂和存储迁移只有定案后再实施，不新增方案外类。
+
+保留已经完成的 DataObject/TreeItem/RenderObject 独立 ID、每视图 Scene 和显示状态、Server 工程同步、GuiProvider 组合菜单、Action/Query 命令区分、工程存储与显示状态持久化。普通模型的角色透传、Qt 对象转换及 app 中的具体业务转换不作为违规类型判断。物理 gui 目录中由 app 编译的业务窗口不误判为通用 gui 依赖 app。
+
+本轮验证：只读核对上述调用链；依赖检查 `tools/check_includes.ps1` 通过（473 个源文件）。未修改运行代码，不运行构建或功能测试；先前测试记录不能作为本轮重构验收。下一步建议先定 Registry 统一归属，再开始 A1。
+
+
+## 裂缝导入入口统一（2026-10-16）
+
+- 按用户确认，移除裂缝建模插件中禁用的“裂缝导入”占位按钮及对应翻译。天然裂缝导入统一使用数据树右键入口；数据 Provider、导入命令和格式支持保持原有实现。
+- 唯一构建目录 `D:\CMakeCoder\IDOS-Build` 的 Debug 裂缝建模插件编译通过。本轮仅清理界面入口，不新增测试。
+
+
+## DFN 生成入口去重（2026-10-16）
+
+- 按用户确认，移除多尺度裂缝插件中禁用的“DFN 生成”占位按钮及其空的“网络生成”面板；DFN 生成功能入口保留在裂缝建模插件。生成的天然裂缝集仍为工程数据，可供后续分析使用。
+- 本轮仅调整菜单入口并清理对应的无用翻译；唯一构建目录 `D:\CMakeCoder\IDOS-Build` 的 Debug 多尺度裂缝插件编译通过。未新增测试。
+
+
+## 多尺度裂缝插件：三场差异与生产曲线拟合评价（2026-10-16）
+
+- 本轮按用户确认先完成这两项功能，各自使用独立 Widget；界面、算法及命令归属 `src/plugins/idosmultiscalefractureplugin`，不增加插件。三场差异是属性场的前后比较，不包含耦合求解；曲线拟合评价计算误差指标，不包含参数自动历史拟合。
+- `analysis.field.difference` 对同一网格的两个属性或动态报告步计算“后 - 前”，仅计算活动单元，非活动单元存 NaN；结果作为普通网格属性加入工程，支持保存、撤销及缓存重做。动态报告步读取不改变当前显示步。输入量纲/单位必须一致，未知元数据需要手工确认，不执行单位换算。
+- `analysis.curve.evaluate` 为只读查询，不进入历史。支持工程汇总曲线和 UTF-8 CSV；时间统一为 UTC 毫秒，在重叠范围内插值到观测时刻，不外推或按序号匹配。提供 RMSE、MAE、MAPE、R²、配对数及范围外观测点数；MAPE 排除零观测，常数观测的 R² 未定义。界面最多显示 1000 点，CSV 导出包含全部评价样本、指标和输入配置。
+- 两个窗口随工程切换关闭；命令仍在历史或外部持有时阻止 DLL 卸载，文件对话框打开时同样阻止卸载。中文翻译已完成（109 条有效文本，无未完成翻译）。差异属性通过平台 Metadata 工厂构造，修正 MSVC 局部虚函数表导致卸载插件后关闭工程崩溃的问题。
+- 验证：唯一构建目录 `D:\CMakeCoder\IDOS-Build` 的 Debug `idos_case_tests`（含主程序及插件依赖）与 `idos_render_header_checks` 编译通过；`case_workflow` 为 28 通过、0 失败、2 跳过（WSL Flow 实样环境未配置）。覆盖差异动态步/活动单元/保存重载/缓存重做/卸载后销毁，以及曲线指标/插值/时间边界/重复时间/无重叠/单位/CSV 引号与无表头/UTC 汇总时间/界面失效/导出/卸载保护。依赖边界检查通过（473 个源文件），差异和曲线窗口中文截图已检查。未运行 Release 构建或真实生产数据验收。
+
+
 ## OPM 未知及自定义关键字支持（2026-10-15）
 
 - OPM Parser 新增从外置 JSON 批量注册关键字定义的接口；定义名或别名与现有关键字冲突时会明确报错，不覆盖 OPM 内置定义。IDOS 工况 DATA 解析会加载程序目录 `opm/extra-keywords.json` 中的定义。
@@ -817,3 +892,83 @@ OPM 解析库负责输入和结果读取；Flow 是通过 WSL2 调用的独立�
 - 唯一构建目录 D:/CMakeCoder/IDOS-Build 中 `idos_app` Debug 编译通过。并行编译一次遇到 MSVC 编译器堆内存不足，改为单线程构建后通过。未运行测试或实际生成界面验收。
 - 单位安全：属性对象持久化值单位状态；旧工程缺少该字段时按既有 SI 内存约定兼容。通过 OPM DATA/文本导入的值按 SI 解释；单独 `.INIT` 二进制导入标记为单位未知，生成器拒绝将其错误转换。
 - 修复 DIMENS 运行时构造错误：DIMENS 属于结构关键字，改用 NX/NY/NZ 三个 DeckItem 组装记录，不再调用仅适用于 data keyword 的数值数组构造函数。`idos_app` Debug 重编译通过；本次未运行实际生成验收。
+
+## OPM Debug 库部署（2026-10-15）
+
+- 按用户指定，将 E:/CJW-Archive/Builder/opm-cmake/build/lib/Debug 的 opmcommond.lib 和配套 PDB 部署至 thirdparty/opm/lib；本轮仅更新 Debug 二进制。
+- 从源静态库提取 Tables.cpp.obj 检查，仍含 fmt v12 的 dllimport 未解析引用（assert_fail、report_error、vformat），不能宣称该库不依赖 fmt。未额外部署 fmt，尚未进行 IDOS 链接或 GRDECL 运行验收。
+
+## OPM fmt 运行依赖部署（2026-10-15）
+
+- 将 vcpkg 的 Debug/Release fmt 导入库、DLL 及许可证归档到 thirdparty/opm。OPM::opmcommon 通过 OPM::fmt 传递链接依赖，idos_providers 构建后按配置部署对应 DLL，工程不依赖本机 vcpkg 绝对路径。仅接入 fmt 依赖，不改变 OPM 解析逻辑。
+- 验证：D:/CMakeCoder/IDOS-Build 配置生成及 idos_providers Debug 构建通过，fmtd.dll 已自动部署，原 fmt 未解析符号错误消失。保留第三方 QXlsx 缺失 PDB 警告；未执行 Release 编译及 GRDECL 运行回归。日志为 opm-fmt-configure.log、opm-fmt-build.log。
+
+## VS 构建目录统一（2026-10-15）
+
+- 用户重新明确唯一构建目录为 E:/CJW-Archive/IDOS-Build，替代此前 D:/CMakeCoder/IDOS-Build 约定；历史构建记录保留原实际路径。公共预设显式设置 binaryDir 为源码旁的 IDOS-Build，所有继承预设共用该目录，防止 VS 回退到源码内 out/build。AGENTS、README、开发及使用指南同步。未删除旧构建目录，未重建工程。
+
+## OPM 关键词部署脚本命名（2026-10-15）
+
+- 将 cmake/CopyFileIfAbsent.cmake 更名为 DeployOpmKeywords.cmake，同步主程序 POST_BUILD 引用；保留目标不存在才复制、已有扩展定义不被覆盖的行为。本轮仅更名及说明注释，未重新构建。
+- 用户最终指定脚本名称为 cmake/CopyOpmKeywords.cmake，已同步 POST_BUILD 调用，替代上述临时命名。
+
+## 网格同名配套文件导入（2026-10-15）
+
+- 按用户确认，以同目录、完整主文件名相同且扩展名不同匹配配套文件。IDOSGridEclipseProvider 一次解析网格、INIT 静态属性、UNRST 动态属性和 SMSPEC/UNSMRY 汇总结果；属性绑定本次网格，汇总结果通过既有 grid.import 命令关联目标工况。日志和会话文件不作为业务数据导入，不使用名称前缀匹配。
+- UNRST 解析移至现有 IDOSGridPropertyEclipseProvider，手动 simulation.results.import 复用同一实现；命令保留工程重复校验、提交和历史职责。配套文件解析或维度校验失败时释放全部临时对象，不部分写入工程；整组撤销、重做复用已解析数据，不重读源文件。已存在工况汇总结果时拒绝重复导入。
+- 新增 onGridCompanionFiles 合成回归，覆盖静态活跃单元展开、多个动态报告步、汇总关联、精确文件名筛选、日志忽略、整组撤销/重做、损坏或维度不匹配失败保护、失败保留 redo，以及手动动态结果导入复用。使用指南、架构及中文翻译同步。
+- 回归同时修复手动 UNRST 导入重做时仍检查原文件存在的问题。新部署 OPM 的缺失 INCLUDE 默认策略为直接退出进程，现于 DATA/属性解析入口明确设为 THROW_EXCEPTION，并清理已处理的 ErrorGuard 错误，失败仍正常报告且不提交。
+- 验证：E:/CJW-Archive/IDOS-Build 的 Debug 主程序/应用/Provider/工况测试构建及全部公共头文件独立编译通过；新增专项 3 passed/0 failed/0 skipped（grid-companions-focused.txt）。工况 CTest 最终通过，17.94 秒；QtTest 20 passed/0 failed/2 skipped，两个实际 WSL Flow 用例因未设置 IDOS_FLOW_SMOKE_DATA 跳过（grid-companions-case-verified.log）。447 个源码边界检查、48 个检查器回归通过；平台 1446 条中文翻译全部完成，git diff --check 通过。首轮工况缺失 INCLUDE 导致退出的失败日志保留，不宣称首轮通过；既有 QXlsx 缺失 PDB 和 Qt 窗口标题提示保留。本轮未运行其余完整 CTest、Release 或真实大文件性能验收。
+
+## 裂缝三维显示与几何检查（2026-10-15）
+
+- 自然裂缝集接入平台 RenderMetadata/RenderProvider，使用双精度坐标绘制有效多边形，支持树勾选、显示模式、透明度、选中高亮及各视图独立显示状态；工程保存和重开恢复显示。渲染由平台持有，卸载裂缝插件仍可显示已有数据。
+- 核心数据提供只读几何报告，检查顶点数量、缺失或非有限坐标、重复顶点、退化面积、共面性、自交、法向量及其方向、属性范围和裂缝 ID。无效几何不进入绘制；属性问题保留有效几何，不自动修改源数据。
+- 裂缝建模插件启用“裂缝检查”，优先检查当前裂缝集，否则检查工程中的全部裂缝集。非模态报告列出问题，双击选中源对象并在打开报告时的目标视图定位；数据变化、删除、切换工程、关闭目标视图或卸载插件时关闭相关报告。
+- 本轮不改裂缝导入，不启用方位角计算、裂缝重构和储量算法；不包含裂缝间连通性分析或自动修复。源码目录、架构、使用指南及中文翻译已同步。
+- 验证：用户保存并关闭占用 DLL 的程序后，E:/CJW-Archive/IDOS-Build 的 Debug 构建及公共头文件独立编译通过。裂缝专项 4 passed/0 failed/0 skipped；工况 CTest 通过（19.84 秒），QtTest 22 passed/0 failed/2 skipped，两个实际 WSL Flow 用例因缺少测试配置跳过。451 个源码边界检查和 48 个检查器回归通过；中文显示与报告截图已检查，git diff --check 通过。日志为 fracture-display-focused.txt、fracture-display-ctest.log、fracture-display-verified-build.log 和 fracture-display-boundaries.log。未运行其他完整 CTest、Release 或真实现场裂缝数据验收。
+
+## 裂缝检查报告窗口拆分（2026-10-15）
+
+- 按用户要求，将插件入口中的报告窗口布局、表格填充和行激活处理抽到现有插件目录内的独立 IDOSFractureGeometryReportDialog，头源文件配对。插件保留检查入口、工程切换与卸载清理、源对象选中和视图定位。
+- 对话框用 QPointer 显式保存工程及目标视图，删除表格 project/view 动态属性；通过 issueActivated 信号传递源数据 ID 与定位中心。沿用数据变化、删除及视图关闭时关闭报告的行为。CMake、目录、架构说明及中文翻译上下文同步。
+- 验证：E:/CJW-Archive/IDOS-Build 的 Debug 工况测试目标（含插件）构建通过；case_workflow CTest 通过（18.60 秒），22 passed/0 failed/2 skipped。453 个源码边界检查及 git diff --check 通过。构建和测试日志为 fracture-dialog-build.log、fracture-dialog-ctest.log。
+
+## 裂缝共面检查容差修复（2026-10-15）
+
+- 用户导入 Utah FORGE Filtered_800m_19 后，4814 条裂缝中 4787 条因非共面被排除。核查原始 ASCII 文件可重现该数量：毫米级文本舍入造成最大约 0.000834 米离面偏差，原跨度乘 1e-9 的数值容差不适合作为工程共面容差。
+- 共面检查独立采用最大坐标跨度乘 1e-4（0.01%）；重复顶点、退化和自交仍使用原严格容差。报告附带 planeTolerance 和 maximumPlaneDistance，原始坐标不作投影、修复或改写，已有工程直接使用新检查。该标准是工程容差，不表示任意精度要求下严格共面。使用指南同步。
+- 回归覆盖大坐标微扰、实际六边形的舍入坐标及明显翘曲反例；可通过 IDOS_FRACTURE_TEST_DIR 指定现场 FAB 目录，经注册读取器逐文件检查，不把本机路径写入测试或 CMake。
+- 用户关闭运行程序后，E:/CJW-Archive/IDOS-Build Debug 构建通过；本次设置上述环境变量，对下载的 30 个 FAB 文件共 146238 条裂缝全部通过几何有效性检查。case_workflow CTest 通过（38.46 秒），22 passed/0 failed/2 skipped。453 个源码边界检查及 git diff --check 通过。日志为 fracture-planarity-build.log、fracture-planarity-ctest.log，现场计数见 tests/case_workflow.txt。本轮未逐面人工验收或执行 Release 构建。
+
+## 数据导入文件多选（2026-10-15）
+
+- 按用户要求，将 IDOSImportedDataTreeGuiProvider 的共享数据导入入口改为文件多选，天然裂缝等使用该入口的格式均可通过 Ctrl/Shift 选择多个文件。各文件依次调用既有 data.import 命令，单独提交、单独撤销重做；失败继续后续文件，最后按路径汇总失败原因，成功项保留。本轮不改其他专用导入窗口。
+- 同步使用指南及中文错误提示。E:/CJW-Archive/IDOS-Build Debug 构建通过；case_workflow CTest 通过（18.20 秒），453 个源码边界检查及 git diff --check 通过。日志为 data-multiselect-build.log、data-multiselect-ctest.log。未进行原生文件选择窗口的手动多选验收。
+
+## 共享导入数据删除（2026-10-15）
+
+- 修复天然裂缝等数据只有导入和显示、缺少删除入口的问题。IDOSImportedDataTreeGuiProvider 提供“删除数据”确认菜单，支持单个及多个受支持的数据集；捕获目标工程和数据 ID，组目录和包含专用删除类型的混合选择不提供该入口。井、网格和属性沿用已有专用删除命令。
+- 新增 app/command 中配对 IDOSDeleteDataCommand/Metadata，注册 data.delete。适用于天然裂缝、微地震、地震体、压裂施工、材料目录、生产历史、层面、边界及流体/岩石表。预校验全部目标，保存并移除受影响工况引用，整批分离数据；失败回滚，失败命令不进历史。命令持有分离对象，支持整批撤销/重做，清理历史时释放仍分离的数据；树和多视图根据工程信号清理和重建。
+- 新增回归覆盖单选和多选菜单、取消删除、批量删除、工况引用及 refId 恢复、多视图清理和重建、重复 ID 和不支持类型失败时保留 redo、清空历史释放对象。CMake、目录、架构、使用指南及中文翻译同步。
+- E:/CJW-Archive/IDOS-Build Debug 工况测试目标构建通过；case_workflow CTest 通过（19.67 秒），24 passed/0 failed/2 skipped。455 个源码边界检查及 git diff --check 通过。日志为 data-delete-build.log、data-delete-ctest.log；两个实际 WSL Flow 测试仍因缺少测试配置跳过。
+- 公共头文件独立编译目标 idos_render_header_checks 完成通过，包含新增删除命令头文件。
+
+## 数据树分类总节点勾选（2026-10-15）
+
+- 按用户澄清只处理数据树，不向工况树分类增加勾选。新增 app/providers/data 中配对 IDOSDataGroupTreeGuiProvider，在包含可显示后代的数据分类上提供总勾选；支持嵌套井组、按数据 ID 去重、全部显示/全部隐藏及半选状态。空分类或没有可显示数据的分类不显示勾选框。
+- 分类 Provider 通过现有具体 GuiProvider 的可勾选节点确定作用范围，并仅修改目标视图中现有 RenderObject 的显示状态；遇到可显示父对象便不继续激活其内部属性节点。复用 Scene 批量通知，显示后仅适配一次相机，不修改源数据可见性或其他视图。
+- TreeItem 改为存储 Qt::CheckState，保留 bool 接口；Model 直接返回三态，View 读取 GuiProvider::checkState，默认实现委托原 isChecked。View 清理没有负责 Provider 的陈旧勾选状态，井 GuiProvider 明确不领取分类组的勾选职责。通用框架无数据类型、树名称或分类规则判断；数据树分类规则只在新具体 Provider。源码目录、架构及使用指南同步，无新增界面文本。
+- 新增 onDataGroupChecks 回归覆盖天然裂缝、井和边界三类、嵌套井组、半选及全选/取消、批量场景通知、视图切换独立状态、直接显隐后的状态刷新、空分类、无目标视图，以及同名组位于工况树时拒绝处理。E:/CJW-Archive/IDOS-Build Debug 主程序与工况测试构建通过；case_workflow 通过（21.33 秒），25 passed/0 failed/2 skipped；457 个源码边界检查通过。
+- 补充构建首次与运行中的测试并行，部署 Debug CRT 时复制冲突失败；保留 data-group-check-extra-build.log，随后在测试退出后顺序重跑，不宣称首轮补充构建通过。主构建和工况回归日志为 data-group-check-build.log、data-group-check-ctest.log。
+- 顺序补充构建通过，包含新增分类 GuiProvider 和全部公共头文件独立编译（data-group-check-extra-verified-build.log）；tree_incremental 通过（7.96 秒）。额外 project_dialog 首轮失败为此前标题格式修改遗留的旧断言（仍期待 IDOS - Project One[*]，实际为 Project One*），仅同步三处标题预期后重建重跑通过（4.12 秒，data-group-check-project-ctest.log），未改标题功能。git diff --check 通过。未执行其他完整 CTest 或 Release 构建。
+
+## 裂缝建模插件 DFN 生成首版（2026-10-15）
+
+- 按用户确认将功能代码留在现有裂缝建模插件目录：新增配对 IDOSDfnGenerationWidget（参数与结果提示）、IDOSDfnGenerator（纯几何计算）、IDOSDfnGenerateCommand/Metadata（fracture.dfn.generate）。插件入口仅注册动作/命令及管理窗口，未新增插件、平台算法类或裂缝数据类型。
+- 独立窗口选择角点网格、可选静态密度权重、数量、种子、首末层、均匀长度范围、长宽比、走向/倾角均值及正态标准差。生成 1 至 10000 条矩形裂缝；仅从所选层的活跃、有限正权重单元抽样，按双精度角点插值随机生成中心，保持旧矩形生成的 +X 朝 +Y 走向和朝 +Z 倾斜约定；长度沿用网格坐标单位。
+- 期望尺寸可能按比例缩短以适应所选单元整体包围盒，实际 Length/Width、Strike/Dip 和生成参数随裂缝记录保存。不是反演重构，不实现物理 P32/P21 标定，不对不规则网格边界、断层和非活跃孔洞裁剪；不计算面间连通性。生成同步执行，无外部 Workflow_2 依赖；方位角拟合、反演重构和缝控储量仍禁用。
+- 命令校验参数和源数据，生成后复用平台几何检查，成功才提交独立 IDOSNaturalFractureSet；失败不进历史。整组撤销，重做复用缓存，不依赖源属性继续保持原值。结果初始隐藏，可在数据树勾选显示，复用既有渲染、检查、删除和工程持久化。
+- 注册命令实例计数，覆盖撤销/重做和外部持有的未执行命令；实例存在时禁止常规卸载，窗口在切换工程和卸载时同步清理。发布到平台前经 QJsonArray 转换复制嵌套字符串，避免平台数据引用插件 DLL 的静态文字存储；清空相关命令历史后可卸载插件，已有裂缝仍可检查和保存。
+- 新增 onDfnGeneration 集成回归：按钮状态、Widget 参数、活跃单元/密度过滤、大坐标有效几何和方向、同种子逐值复现、不同种子实际顶点变化、输入错误/零权重失败保留 redo、缓存重做、树和渲染、工程保存重开、工程切换关闭窗口、历史和外部命令卸载保护、卸载后几何检查及保存。新增头文件均独立包含编译；源码目录、架构和使用指南同步。
+- 验证：E:/CJW-Archive/IDOS-Build Debug 主程序/插件/工况测试与公共头文件检查构建通过。最终 case_workflow 通过（20.76 秒），26 passed/0 failed/2 skipped，两个实际 WSL Flow 用例因缺少测试配置跳过。463 个源码边界检查、68 条插件中文翻译无 unfinished、git diff --check 通过；中文参数窗口截图 dfn-generation.png 已复查。日志为 dfn-final-build.log、dfn-final-ctest.log，QtTest 明细见 tests/case_workflow.txt。未运行 Release、全部 CTest 或真实大网格性能/物理标定验收。

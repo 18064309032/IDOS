@@ -3,6 +3,7 @@
 
 #include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 
 #include "idosdataobject.h"
 
@@ -27,8 +28,16 @@ class CORE_EXPORT IDOSNaturalFractureSet : public IDOSDataObject
     void setCoordinateScale(double coordinateScale);
     QVariantList fractures() const;
     void setFractures(const QVariantList& fractures);
+    QVariantList geometryReport() const;
 
   private:
+    QVariantMap inspectFracture(int index) const;
+    void appendGeometryIssue(QVariantList* issues, const QString& code,
+                             const QString& message, bool error) const;
+    double projectedOrientation(const QVector<double>& coordinates, int first,
+                                int second, int third, int xAxis, int yAxis) const;
+    bool edgesIntersect(const QVector<double>& coordinates, int first, int second,
+                        int xAxis, int yAxis, double lengthTolerance, double areaTolerance) const;
     QString m_sourceFile;
     QString m_lengthUnit;
     double m_coordinateScale;
