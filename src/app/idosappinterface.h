@@ -20,7 +20,7 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     QMainWindow* mainWindow() const override;
     IDOSProject* project() const override;
     IDOSDataRegistry* dataRegistry() const override;
-    IDOSTreeRegistry* treeRegistry() const override;
+    IDOSTreeItemProviderRegistry* treeRegistry() const override;
     IDOSRenderRegistry* renderRegistry() const override;
     IDOSRenderServer* renderServer() const override;
     IDOSToolRegistry* toolRegistry() const override;

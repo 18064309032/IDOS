@@ -11,7 +11,7 @@ class PROVIDERS_EXPORT IDOSWellCheckshotMetadata : public IDOSDataProviderMetada
     QString displayName() const override;
     QStringList fileExtensions() const override;
     bool canHandle(const QString& filePath) const override;
-    std::unique_ptr<IDOSDataProvider> create() const override;
+    std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };
 
 #endif

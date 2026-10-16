@@ -241,7 +241,7 @@ IDOSDataRegistry* IDOSAppInterface::dataRegistry() const
     return m_mainWindow->dataRegistry();
 }
 
-IDOSTreeRegistry* IDOSAppInterface::treeRegistry() const
+IDOSTreeItemProviderRegistry* IDOSAppInterface::treeRegistry() const
 {
     return m_mainWindow->treeRegistry();
 }

@@ -1,6 +1,7 @@
 #ifndef IDOS_COMMAND_METADATA_H
 #define IDOS_COMMAND_METADATA_H
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 
@@ -30,6 +31,10 @@ public:
     virtual QJsonObject schema() const = 0;
     virtual IDOSCommand* create(const QJsonObject& arguments,
                                 IDOSProject* project) const = 0;
+
+protected:
+    static QJsonObject stringPropertySchema(const QString& description);
+    static QJsonObject schemaWithProperties(const QJsonObject& properties, const QJsonArray& required);
 
 private:
     QString m_name;

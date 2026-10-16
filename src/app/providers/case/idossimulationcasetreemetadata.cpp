@@ -3,13 +3,13 @@
 
 #include "idossimulationcasetreemetadata.h"
 
-IDOSSimulationCaseTreeMetadata::IDOSSimulationCaseTreeMetadata(IDOSTreeRegistry* registry)
+IDOSSimulationCaseTreeMetadata::IDOSSimulationCaseTreeMetadata(IDOSTreeItemProviderRegistry* registry)
     :
     m_registry(registry)
 {
 }
 
-QString IDOSSimulationCaseTreeMetadata::typeId() const
+QString IDOSSimulationCaseTreeMetadata::id() const
 {
     return QStringLiteral("idos.case.simulation");
 }
@@ -24,7 +24,7 @@ QString IDOSSimulationCaseTreeMetadata::groupKey() const
     return QStringLiteral("");
 }
 
-IDOSTreeProvider* IDOSSimulationCaseTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSSimulationCaseTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSSimulationCaseTreeProvider(data, m_registry);
 }

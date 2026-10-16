@@ -19,18 +19,17 @@ class CORE_EXPORT IDOSWellGeometryResolution
     };
 
     IDOSWellGeometryResolution();
+    IDOSWellGeometryResolution(StartPointType type, const QVector3D& point);
 
     StartPointType startPointType() const;
     bool hasStartPoint() const;
     QVector3D startPoint() const;
 
   private:
-    void setStartPoint(StartPointType type, const QVector3D& point);
 
     StartPointType m_startPointType;
     QVector3D m_startPoint;
 
-    friend class IDOSWellGeometryResolver;
 };
 
 class CORE_EXPORT IDOSWellGeometryResolver

@@ -2,9 +2,511 @@
 
 更新日期：2026-10-16。
 
-> 本文同时保存目标设计和现有实现说明。以本次新增的“2026-10-16 框架设计定稿记录”作为最新目标；旧章节中与其冲突的 GuiProvider、构造参数、Registry 命名及多视图装配描述属于待替换方案，不继续作为新实现依据。当前可调用签名仍以源码头文件为准，不能把文档接口当作已经实现。直接改造现有框架，不保留两套调用链。
+> 本文同时保存目标设计和现有实现说明。树框架以本次新增的“2026-10-16 树框架与调用逻辑（讨论定稿）”为准；前文及后续章节中关于 TreeServer、TreeGuiProvider、树与渲染同步边界的内容属于先前方案或现状记录，不作为树新框架目标。树迁移正在实施中；本节接口记录目标，具体进度以工作进度文档为准。直接改造现有框架，不保留两套调用链。
 
 阅读入口：[项目概览](../README.md)、[开发指南](开发指南.md)、[源码目录](IDOS源码目录.md)、[工作进度](工作进度-CJW.md)。
+
+## 2026-10-16 数据解析 Provider 接口命名收口
+
+本轮只统一名称：Registry 使用 registerMetadata(metadata)、unregisterMetadata(id)、metadata(id)、metadata()、createProvider(id)、metadataForFile(filePath) 和 fileFilters(prefix)。Metadata 工厂统一 createProvider()，各具体文件解析 Metadata 重写同名函数。metadataForFile 返回候选 Metadata，不返回 Provider 实例。单例、参数、返回类型和匹配策略沿用现有实现，本轮不新增 QObject 或生命周期信号。
+
+## 2026-10-16 树框架与调用逻辑（讨论定稿）
+
+### 本轮确认：Access 作为模块之间的中间人
+
+IDOSTreeModel 管理根 Item、节点结构、Registry、Qt 索引及模型通知，不保存 Project、Access、RenderServer，也不监听工程。IDOSTreeItemProvider 提供节点数据、局部状态和具体节点结构，不保存 Access/RenderServer，不提供 model()/project()/access() 或直接发送 Model 信号的 changed()。具体业务刷新可以从源数据的领域关联读取相关对象，不通过模型获取工程上下文。
+
+core 的 IDOSTreeAccess 继承 QObject；应用层 IDOSAppTreeAccess 只继承 IDOSTreeAccess。AppTreeAccess(project, parent) 非拥有地关联工程，通过 setDataTreeModel/setCaseTreeModel/setRenderServer 装配两个 Model 和一个 RenderServer。一个工程共用一个 Access；Setter 解除旧连接并同步新对象，重复设置不重复连接，切换工程时销毁旧 Access 并装配新实例。Model、Item、Provider 都不反向保存 Access。
+
+### 数据与模型读写
+
+- Model::data(index, role) → Item::provider()->data(role)。属性及勾选状态存于 Provider，组状态按子项聚合。
+- Model::setData(index, value, role) → Provider::setData(value, role)。普通角色由 Model 发 Qt dataChanged；名称覆盖 DisplayRole/EditRole/ToolTipRole。
+- 勾选写入只改变节点状态；Model 发 checkStateChanged(item, state)，Access 接收后固定当前渲染视图，对整次组操作开启一次 Scene 批量更新并调用渲染接口。setData 返回节点是否接受写入，不表示异步渲染一定成功。
+- RenderServer 的 stateChanged/currentViewChanged → Access 读取当前视图实际状态 → Model::setCheckState 写回节点并 refreshCheckStates → Qt dataChanged。回写不经过用户写入接口，不再次发送 checkStateChanged，不形成循环。失败、无渲染服务、无当前视图时按实际状态回写；不使用 Project::isVisible 替代视图状态。
+- Provider 的 setCheckable 表示节点具备的勾选能力，setCheckEnabled 表示 Access 同步的当前可操作条件，两者同时满足才允许用户勾选。非勾选业务节点不会因源数据可渲染而获得勾选框。
+
+### 结构与生命周期
+
+Project 的增删/数据变化信号 → AppTreeAccess → 根据 Provider::dependsOn 确定受影响数据 → 调用 Model::addObject/removeItem。Model 用 Registry::createProvider(data) 创建 Provider 并由 Item 独占，数据源使用非拥有 QPointer；通用 Model 不判断具体数据类型。
+
+Model::insertItem/removeItem 配对执行 Qt 行通知。Item 的已挂接结构操作回到 Model；只有当前授权的 parent/item/row 可局部提交，不使用友元。Model::refreshItem 记录旧子项，由具体 Provider 按 key 通过 Item::findChild 复用并保留节点，刷新结束由 Model 清理未保留节点及发送属性通知；删除节点时同步清理刷新记录。Provider 不再包含 beginRefresh/findChild/trackChildren/endRefresh 事务助手。
+
+Model 构造只接收 Registry 和 QObject parent，初始提供空根。setRootProvider 接管未绑定 Provider，在模型重置通知中替换根及旧子树；空指针、已绑定 Provider、结构修改期间的请求不接管所有权。根替换/完整 refresh 后 Access 根据 modelReset 信号重新填充当前工程数据。Metadata 注销先清理相应节点，Registry 变化信号经 Access 补齐当前数据。
+
+### 菜单与渲染
+
+TreeMenuProvider 继承 QObject，只绑定唯一 TreeView，通过 View 获取 Model。Data/Case 菜单不保存或访问 Project、MainWindow、RenderView、RenderServer，不创建业务设置窗口；仅通过 Model 查询节点数据、创建菜单并调用 Model 操作接口。节点专属菜单继续由 ItemProvider::createContextMenu 创建，仅描述操作与数据 ID，不再执行工程命令或访问渲染。TreeView 在 contextMenuAboutToShow 返回后统一绑定菜单动作，插件追加的描述式操作也经过同一 Model 信号链。
+
+调用链：MenuProvider 创建 QAction 操作描述 → TreeView 处理界面触发并调用 Model::triggerAction → Model::actionTriggered → AppTreeAccess::onActionTriggered → MainWindow::executeTreeAction。Access 校验工程及目标 Model，并在动作触发时获取当前 RenderView；应用层接口负责已有导入/删除/命名/工况操作及设置窗口，业务修改继续使用现有命令。Data 菜单构造只接收 View，删除 MainWindow 参数及工程/渲染视图关联表。Case 菜单不再直接向 Simulation 发信号，统一走 Model 信号和 Access。
+
+Model 的 sessionId 是 Access 设置的工程上下文标识，仅用于剪贴板和旧菜单有效性校验；Model 不据此获取工程。动作保存节点 ID 与 sessionId，提交前检查节点仍在模型且上下文未切换。dataObjects/dataObject 仅查询现有节点的非拥有数据源。RenderAvailableRole 由 Access 根据当前 Scene 回写，菜单通过 Model 查询显示设置是否可用。
+
+剪贴板调用链：MenuProvider::canPaste/paste → Model::transferItems → Model::transferRequested → Access → MainWindow::transferTreeItems。专用传输信号在 GUI 线程直连，通过 bool 引用同步返回校验/执行结果，满足 Qt 拖放和粘贴接口的布尔返回语义；操作失败不清空剪切剪贴板。预览校验只运行现有命令 validate，实际执行由 CommandManager 完成。TreeView 不保存 Project 或目标 RenderView，也不提供 project/setProject/targetView/setTargetView；拖放通过两边 Model 的非空 sessionId 判断上下文一致性。节点菜单、普通菜单、插件菜单共用 TreeView 的 QAction 界面事件处理；对外业务操作信号只由 Model 发出。
+
+RenderServer 不依赖树节点或分组。组项状态在 Provider 聚合，Access 将组操作展开为数据操作，按当前视图回写实际状态。网格属性选择、过滤器预览及状态查询由 IDOSGridRenderProvider 的业务接口实现。AppTreeAccess 调用 supportsData/renderDataId/requiredDataIds 确定路由及需装配的数据，再调用 setDataChecked/dataCheckState 并回写模型；Access 不实现过滤规则、不转换具体数据或 Provider 子类，不直接设置对象显隐或网格属性。业务 Provider 接收当前 View 与非拥有数据对象列表，不保存工程或 Server。首次显示创建 RenderObject，隐藏后保留复用。Provider 不再查询或操作渲染视图。
+
+### 完整类声明
+
+以下为当前源码对应声明；后面的较早记录保留作迁移历史，与本节冲突时不作为当前树框架依据。
+
+#### `IDOSTreeItem`
+
+```cpp
+class CORE_EXPORT IDOSTreeItem
+{
+  public:
+    explicit IDOSTreeItem(IDOSTreeItemProvider* provider);
+    ~IDOSTreeItem();
+    IDOSTreeItem(const IDOSTreeItem&) = delete;
+    IDOSTreeItem& operator=(const IDOSTreeItem&) = delete;
+    IDOSTreeItem* parent() const;
+    QList<IDOSTreeItem*> children() const;
+    IDOSTreeItem* child(int row) const;
+    int childCount() const;
+    IDOSTreeItem* findChild(const QString& key);
+    int row() const;
+    IDOSTreeModel* model() const;
+    IDOSTreeItemProvider* provider() const;
+    bool appendChild(IDOSTreeItem* item);
+    bool insertChild(int row, IDOSTreeItem* item);
+    bool removeChild(IDOSTreeItem* item);
+    bool setModel(IDOSTreeModel* model);
+    void clearChildren();
+
+  private:
+    void attach(IDOSTreeModel* model);
+    IDOSTreeItem* m_parent;
+    IDOSTreeModel* m_model;
+    IDOSTreeItemProvider* m_provider;
+
+    QList<IDOSTreeItem*> m_children;
+    bool m_changing;
+};
+```
+
+#### `IDOSTreeItemProvider`
+
+```cpp
+class CORE_EXPORT IDOSTreeItemProvider
+{
+  public:
+    explicit IDOSTreeItemProvider(IDOSDataObject* data = nullptr);
+    virtual ~IDOSTreeItemProvider();
+    IDOSTreeItem* item() const;
+    bool bindItem(IDOSTreeItem* item);
+    QString metadataId() const;
+    bool setMetadataId(const QString& id);
+    IDOSDataObject* dataSource() const;
+    virtual QString id() const;
+    virtual QString key() const;
+    void setKey(const QString& value);
+    virtual QString name() const;
+    void setName(const QString& value);
+    virtual QIcon icon() const;
+    void setIcon(const QIcon& value);
+    virtual QString dataId() const;
+    void setDataId(const QString& value);
+    virtual QString caseId() const;
+    void setCaseId(const QString& value);
+    virtual QString partKey() const;
+    void setPartKey(const QString& value);
+    virtual QString itemKey() const;
+    void setItemKey(const QString& value);
+    virtual bool isGroup() const;
+    void setGroup(bool value);
+    virtual bool isReference() const;
+    void setReference(bool value);
+    virtual bool isCheckable() const;
+    void setCheckable(bool value);
+    void setCheckEnabled(bool enabled);
+    virtual Qt::CheckState checkState() const;
+    virtual QString displayName() const;
+    bool isChecked() const;
+    virtual void setChecked(Qt::CheckState state);
+    virtual QVariant data(int role) const;
+    virtual bool setData(const QVariant& value, int role);
+    virtual Qt::ItemFlags flags() const;
+    virtual QMenu* createContextMenu();
+    virtual void refresh();
+    virtual bool dependsOn(const QStringList& dataIds) const;
+
+  private:
+    QString m_id;
+    QString m_metadataId;
+    QString m_key;
+    QString m_name;
+    QIcon m_icon;
+    QString m_dataId;
+    QString m_caseId;
+    QString m_partKey;
+    QString m_itemKey;
+    bool m_group;
+    bool m_reference;
+    bool m_checkable;
+    bool m_checkEnabled;
+    Qt::CheckState m_checkState;
+    QHash<int, QVariant> m_roles;
+    IDOSTreeItem* m_item;
+    QPointer<IDOSDataObject> m_data;
+};
+```
+
+#### `IDOSTreeItemProviderMetadata`
+
+```cpp
+class CORE_EXPORT IDOSTreeItemProviderMetadata
+{
+  public:
+    IDOSTreeItemProviderMetadata();
+    virtual ~IDOSTreeItemProviderMetadata();
+    virtual QString id() const = 0;
+    virtual QString treeName() const = 0;
+    virtual QString groupKey() const;
+    virtual bool supports(const IDOSDataObject* data) const;
+    virtual IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const = 0;
+};
+```
+
+#### `IDOSTreeItemProviderRegistry`
+
+```cpp
+class CORE_EXPORT IDOSTreeItemProviderRegistry : public QObject
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSTreeItemProviderRegistry(QObject* parent = nullptr);
+    ~IDOSTreeItemProviderRegistry() override;
+    bool registerMetadata(IDOSTreeItemProviderMetadata* metadata);
+    bool unregisterMetadata(const QString& metadataId);
+    const IDOSTreeItemProviderMetadata* metadata(const QString& metadataId) const;
+    QList<const IDOSTreeItemProviderMetadata*> metadata() const;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const;
+
+  signals:
+    void metadataRegistered(const QString& metadataId);
+    void metadataUnregistering(const QString& metadataId);
+    void metadataUnregistered(const QString& metadataId);
+
+  private:
+    QList<IDOSTreeItemProviderMetadata*> m_metadata;
+    bool m_changing;
+    QString m_unregisteringId;
+};
+```
+
+#### `IDOSTreeModel`
+
+```cpp
+class CORE_EXPORT IDOSTreeModel : public QAbstractItemModel
+{
+    Q_OBJECT
+public:
+    enum Role
+    {
+        RenderAvailableRole = Qt::UserRole + 1
+    };
+
+    explicit IDOSTreeModel(IDOSTreeItemProviderRegistry* registry,
+                          QObject* parent = nullptr);
+    ~IDOSTreeModel() override;
+    IDOSTreeItem* root() const;
+    // Takes ownership of an unbound provider; rejected requests retain caller ownership.
+    void setRootProvider(IDOSTreeItemProvider* provider);
+    IDOSTreeItemProviderRegistry* registry() const;
+    bool transferItems(const QVariantMap& arguments, bool validateOnly = false);
+    QString sessionId() const;
+    void setSessionId(const QString& sessionId);
+    QList<IDOSDataObject*> dataObjects() const;
+    IDOSDataObject* dataObject(const QString& dataId) const;
+    bool triggerAction(const QString& operation, const QStringList& itemIds,
+                       const QVariantMap& arguments);
+    QString name() const;
+    void setName(const QString& name);
+    IDOSTreeItem* item(const QString& id) const;
+    IDOSTreeItem* find(const QString& key) const;
+    bool insertItem(IDOSTreeItem* parent, IDOSTreeItem* item, int row = -1);
+    bool removeItem(IDOSTreeItem* item);
+    void clear();
+    void refresh();
+    void refreshItem(IDOSTreeItem* item);
+    void retainItem(IDOSTreeItem* item);
+    void addObject(IDOSDataObject* data);
+    void updateItem(IDOSTreeItem* item, const QList<int>& roles = QList<int>());
+    void setCheckState(IDOSTreeItem* item, Qt::CheckState state, bool checkable);
+    void refreshCheckStates();
+    bool setChecked(IDOSTreeItem* item, Qt::CheckState state);
+    bool isInserting(const IDOSTreeItem* parent, const IDOSTreeItem* item, int row) const;
+    bool isRemoving(const IDOSTreeItem* parent, const IDOSTreeItem* item) const;
+    IDOSTreeItem* itemFromIndex(const QModelIndex& index) const;
+    QModelIndex indexFromItem(const IDOSTreeItem* item) const;
+    QModelIndex indexFromDataId(const QString& id) const;
+    IDOSDataObject* objectFromIndex(const QModelIndex& index) const;
+    static QString itemPath(const IDOSTreeItem* item);
+    static IDOSTreeItem* itemFromPath(IDOSTreeModel* model, const QString& path);
+    QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex& child) const override;
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
+    Qt::ItemFlags flags(const QModelIndex& index) const override;
+signals:
+    void checkStateChanged(IDOSTreeItem* item, Qt::CheckState state);
+    void registryChanged();
+    void transferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted);
+    void actionTriggered(const QString& operation, const QStringList& itemIds,
+                         const QVariantMap& arguments);
+private slots:
+    void onMetadataAdded(const QString& metadataId);
+    void onMetadataRemoving(const QString& metadataId);
+private:
+    void refreshCheckStates(IDOSTreeItem* item);
+    IDOSTreeItem* lookup(IDOSTreeItem* branch, const QString& value, bool byId) const;
+    IDOSTreeItem* findData(IDOSTreeItem* branch, const QString& id) const;
+    void forgetRefreshItems(IDOSTreeItem* item);
+    void collectRefreshItems(IDOSTreeItem* item, QList<IDOSTreeItem*>& items);
+    void removeMetadataItems(const QString& metadataId);
+    IDOSTreeItem* m_root;
+    QPointer<IDOSTreeItemProviderRegistry> m_registry;
+    QString m_name;
+    QString m_sessionId;
+    QSet<IDOSTreeItem*> m_refreshItems;
+    bool m_changing;
+    bool m_committing;
+    bool m_resetting;
+    bool m_refreshing;
+    bool m_inserting;
+    IDOSTreeItem* m_changeParent;
+    IDOSTreeItem* m_changeItem;
+    int m_changeRow;
+};
+```
+
+#### `IDOSTreeAccess`
+
+```cpp
+class CORE_EXPORT IDOSTreeAccess : public QObject
+{
+    Q_OBJECT
+public:
+    explicit IDOSTreeAccess(QObject* parent = nullptr);
+    ~IDOSTreeAccess() override;
+};
+```
+
+#### `IDOSAppTreeAccess`
+
+```cpp
+class APP_EXPORT IDOSAppTreeAccess : public IDOSTreeAccess
+{
+    Q_OBJECT
+public:
+    explicit IDOSAppTreeAccess(IDOSProject* project, QObject* parent = nullptr);
+    ~IDOSAppTreeAccess() override;
+    void setDataTreeModel(IDOSTreeModel* model);
+    void setCaseTreeModel(IDOSTreeModel* model);
+    void setRenderServer(IDOSRenderServer* server);
+private slots:
+    void onProjectChanged(const QString& id);
+    void onProjectChanged(const QStringList& ids);
+    void onProjectDestroyed();
+    void onRegistryChanged();
+    void onTransferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted);
+    void onActionTriggered(const QString& operation, const QStringList& itemIds,
+                           const QVariantMap& arguments);
+    void onCheckStateChanged(IDOSTreeItem* item, Qt::CheckState state);
+    void onRenderStateChanged();
+private:
+    void connectModel(IDOSTreeModel* model);
+    void initializeModel(IDOSTreeModel* model);
+    void updateModel(IDOSTreeModel* model, const QStringList& ids);
+    void updateCheckStates(IDOSTreeModel* model, IDOSTreeItem* item);
+    void applyChecked(IDOSTreeItem* item, Qt::CheckState state);
+    void applyDataChecked(IDOSDataObject* data, Qt::CheckState state);
+    Qt::CheckState checkState(IDOSDataObject* data) const;
+    bool isCheckable(IDOSDataObject* data) const;
+    IDOSRenderView* targetView() const;
+    QPointer<IDOSProject> m_project;
+    QPointer<IDOSTreeModel> m_dataTreeModel;
+    QPointer<IDOSTreeModel> m_caseTreeModel;
+    QPointer<IDOSRenderServer> m_renderServer;
+    QPointer<IDOSRenderView> m_targetView;
+    bool m_applying;
+};
+```
+
+#### `IDOSTreeMenuProvider`
+
+```cpp
+class GUI_EXPORT IDOSTreeMenuProvider : public QObject
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSTreeMenuProvider(IDOSTreeView* view);
+    ~IDOSTreeMenuProvider() override;
+    virtual QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems,
+                                     IDOSTreeItem* contextItem) = 0;
+    virtual QMimeData* createMimeData(const QList<IDOSTreeItem*>& items) const;
+    virtual bool canCut(const QMimeData* data) const;
+    virtual bool canPaste(const QMimeData* data, const IDOSTreeItem* target,
+                          Qt::DropAction action) const;
+    virtual bool paste(const QMimeData* data, IDOSTreeItem* target,
+                       Qt::DropAction action);
+    IDOSTreeView* view() const;
+
+private:
+    QPointer<IDOSTreeView> m_view;
+};
+```
+
+#### `IDOSTreeView`
+
+```cpp
+class GUI_EXPORT IDOSTreeView : public QTreeView
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSTreeView(QWidget* parent = nullptr);
+    ~IDOSTreeView() override;
+    void setModel(QAbstractItemModel* model) override;
+    void setTreeModel(IDOSTreeModel* model);
+    IDOSTreeModel* treeModel() const;
+    void setMenuProvider(IDOSTreeMenuProvider* provider);
+    IDOSTreeMenuProvider* menuProvider() const;
+    QList<IDOSTreeItem*> selectedItems() const;
+    IDOSTreeItem* contextItem() const;
+    void setBlankMenuEnabled(bool enabled);
+    QMenu* createContextMenu(const QModelIndex& target);
+    QVariantMap presentationState() const;
+    void restorePresentationState(const QVariantMap& state);
+    bool pasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action);
+
+  signals:
+    void contextMenuAboutToShow(QMenu* menu);
+
+  protected:
+    void contextMenuEvent(QContextMenuEvent* event) override;
+    void startDrag(Qt::DropActions supportedActions) override;
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dragLeaveEvent(QDragLeaveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
+
+  private slots:
+    void onActionTriggered();
+    void onCopy();
+    void onCut();
+    void onPaste();
+    void onRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
+    void onRowsInserted(const QModelIndex& parent, int first, int last);
+    void onModelAboutToBeReset();
+
+  private:
+    void bindMenu(QMenu* menu);
+    bool acceptsSource(const IDOSTreeView* source) const;
+    void collectPresentationState(const QModelIndex& parent, QStringList& expanded) const;
+    QMimeData* selectedMimeData() const;
+    QMimeData* actionMimeData() const;
+    QMimeData* cloneMimeData(const QMimeData* data) const;
+    bool canCutMimeData(const QMimeData* data) const;
+    bool canPasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action) const;
+    void populateTransferMenu(QMenu* menu, const QModelIndex& target);
+    Qt::DropAction dragAction(Qt::KeyboardModifiers modifiers) const;
+    QString nodePath(const QModelIndex& index) const;
+    void collectExpandedPaths(const QModelIndex& index);
+    void restoreExpandedPaths(const QModelIndex& index);
+    QPointer<IDOSTreeMenuProvider> m_menuProvider;
+    QPersistentModelIndex m_menuIndex;
+    QPersistentModelIndex m_dropIndex;
+    QSet<QString> m_pendingExpandedPaths;
+    bool m_blankMenuEnabled;
+};
+```
+
+#### `IDOSDataTreeRootProvider`
+
+```cpp
+class APP_EXPORT IDOSDataTreeRootProvider : public QObject, public IDOSTreeItemProvider
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSDataTreeRootProvider();
+    void refresh() override;
+};
+```
+
+#### `IDOSCaseTreeRootProvider`
+
+```cpp
+class APP_EXPORT IDOSCaseTreeRootProvider : public IDOSTreeItemProvider
+{
+  public:
+    explicit IDOSCaseTreeRootProvider();
+    void refresh() override;
+};
+```
+
+#### `IDOSDataTreeMenuProvider`
+
+```cpp
+class APP_EXPORT IDOSDataTreeMenuProvider : public IDOSTreeMenuProvider
+{
+    Q_OBJECT
+public:
+    explicit IDOSDataTreeMenuProvider(IDOSTreeView* view);
+    ~IDOSDataTreeMenuProvider() override;
+    QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems,
+                             IDOSTreeItem* contextItem) override;
+    QMimeData* createMimeData(const QList<IDOSTreeItem*>& items) const override;
+    bool canCut(const QMimeData* data) const override;
+    bool canPaste(const QMimeData* data, const IDOSTreeItem* target, Qt::DropAction action) const override;
+    bool paste(const QMimeData* data, IDOSTreeItem* target, Qt::DropAction action) override;
+private:
+    void addDeleteActions(QMenu* menu, IDOSTreeView* view, const QList<IDOSTreeItem*>& selectedItems);
+    void addTransferActions(QMenu* menu);
+    QAction* addTransferAction(QMenu* menu, const QString& text);
+    QAction* addGridAction(QMenu* menu, IDOSTreeView* view, const QString& text);
+    void addGridActions(QMenu* menu, IDOSTreeView* view);
+    void addGridDisplayActions(QMenu* menu, IDOSTreeView* view);
+    QAction* addGridDisplayAction(QMenu* menu, IDOSTreeView* view, const QString& text, const QString& gridId, const QString& propertyId);
+    void addWellActions(QMenu* menu, IDOSTreeView* view);
+    bool supportsWellDisplayItem(const IDOSTreeItem* item) const;
+    void addWellDisplayActions(QMenu* menu, IDOSTreeView* view);
+    QJsonObject readTransfer(const QMimeData* data) const;
+    QJsonObject transferArguments(const QMimeData* data, const IDOSTreeItem* target) const;
+    bool supportsDelete(const IDOSDataObject* data) const;
+};
+```
+
+#### `IDOSCaseTreeMenuProvider`
+
+```cpp
+class APP_EXPORT IDOSCaseTreeMenuProvider : public IDOSTreeMenuProvider
+{
+    Q_OBJECT
+public:
+    explicit IDOSCaseTreeMenuProvider(IDOSTreeView* view);
+    ~IDOSCaseTreeMenuProvider() override;
+    QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems,
+                             IDOSTreeItem* contextItem) override;
+    QMimeData* createMimeData(const QList<IDOSTreeItem*>& items) const override;
+    bool canCut(const QMimeData* data) const override;
+    bool canPaste(const QMimeData* data, const IDOSTreeItem* target, Qt::DropAction action) const override;
+    bool paste(const QMimeData* data, IDOSTreeItem* target, Qt::DropAction action) override;
+private:
+    QAction* addAction(QMenu* menu, IDOSTreeView* view, const QString& text);
+    void addCaseActions(QMenu* menu, IDOSTreeView* view);
+    void addTransferActions(QMenu* menu);
+    QJsonObject readTransfer(const QMimeData* data) const;
+    QJsonObject transferArguments(const QMimeData* data, const IDOSTreeItem* target) const;
+};
+```
 
 ## 2026-10-16 框架设计定稿记录（待实施）
 
@@ -287,7 +789,7 @@ providers、gui、render、assistant 面向 core。core 不依赖界面、渲染
 |---|---|
 | IDOSDataProvider | 一次解析；read(filePath)、lastError() |
 | IDOSDataProviderMetadata | 格式描述、匹配和工厂；id()、displayName()、fileExtensions()、canHandle(filePath)、create() |
-| IDOSDataProviderRegistry | 格式注册和匹配；instance()、add()、remove()、metadata()、create(id)、providers(filePath) |
+| IDOSDataProviderRegistry | 格式注册和匹配；instance()、registerMetadata()、unregisterMetadata()、metadata()、createProvider(id)、metadataForFile(filePath) |
 
 通用 DataProvider、DataProviderMetadata、DataProviderRegistry 与 DataMetadata、DataRegistry 位于 core/providers；具体格式实现位于顶层 providers 的业务目录，依赖 core。
 

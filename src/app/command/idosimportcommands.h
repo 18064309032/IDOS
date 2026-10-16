@@ -43,17 +43,6 @@ protected:
     bool revert(QString& error) override;
 
 private:
-    friend class IDOSImportCaseCommandMetadata;
-    friend class IDOSImportGridCommandMetadata;
-    friend class IDOSImportPropertyCommandMetadata;
-    friend class IDOSImportWellDataCommandMetadata;
-    friend class IDOSImportFluidRockTablesCommandMetadata;
-    friend class IDOSAttachFluidRockTableCommandMetadata;
-    friend class IDOSImportProjectDataCommandMetadata;
-    friend class IDOSImportSummaryResultsCommandMetadata;
-    static QJsonObject filePathSchema();
-    static QJsonObject stringPropertySchema(const QString& description);
-    static QJsonObject schemaWithProperties(const QJsonObject& properties, const QJsonArray& required);
     bool ensureLoaded(QString& error);
     bool loadObjects(QString& error);
     bool acceptObject(IDOSDataObject* object) const;

@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QByteArray>
 #include <QClipboard>
 #include <QContextMenuEvent>
 #include <QDrag>
@@ -19,12 +20,9 @@
 #include <QScrollBar>
 #include <QStringList>
 #include <QVariant>
+#include <QVariantMap>
 
-#include "idosproject.h"
-#include "idostreeguiprovider.h"
-#include "idostreeserver.h"
-#include "providers/idostreeregistry.h"
-#include "tree/idostree.h"
+#include "idostreemenuprovider.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 
@@ -33,6 +31,7 @@
 IDOSTreeView::IDOSTreeView(QWidget* parent)
     :
     QTreeView(parent)
+    , m_menuProvider(nullptr)
     , m_blankMenuEnabled(false)
 {
     setExpandsOnDoubleClick(true);
@@ -70,6 +69,16 @@ IDOSTreeView::~IDOSTreeView()
 {
 }
 
+void IDOSTreeView::setTreeModel(IDOSTreeModel* model)
+{
+    setModel(model);
+}
+
+IDOSTreeModel* IDOSTreeView::treeModel() const
+{
+    return qobject_cast<IDOSTreeModel*>(model());
+}
+
 void IDOSTreeView::setModel(QAbstractItemModel* model)
 {
     if (this->model() != nullptr)
@@ -92,8 +101,6 @@ void IDOSTreeView::setModel(QAbstractItemModel* model)
     IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model);
     if (treeModel != nullptr)
     {
-        connect(treeModel, &IDOSTreeModel::checkRequested, this, &IDOSTreeView::onCheckRequested, Qt::DirectConnection);
-        connect(treeModel, &QAbstractItemModel::dataChanged, this, &IDOSTreeView::onDataChanged);
         connect(model, &QAbstractItemModel::rowsAboutToBeRemoved, this,
                 &IDOSTreeView::onRowsAboutToBeRemoved);
         connect(model, &QAbstractItemModel::rowsInserted, this, &IDOSTreeView::onRowsInserted);
@@ -110,7 +117,7 @@ QString IDOSTreeView::nodePath(const QModelIndex& index) const
         const IDOSTreeItem* node = static_cast<const IDOSTreeItem*>(current.internalPointer());
         if (node != nullptr)
         {
-            const QString key = node->key();
+            const QString key = node->provider()->key();
             if (!key.isEmpty())
             {
                 keys.prepend(key);
@@ -171,13 +178,8 @@ void IDOSTreeView::onRowsAboutToBeRemoved(const QModelIndex& parent, int first, 
 
 void IDOSTreeView::onRowsInserted(const QModelIndex& parent, int first, int last)
 {
-    IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
     for (int row = first; row <= last; ++row)
     {
-        if (treeModel != nullptr)
-        {
-            refreshChecks(treeModel->nodeFromIndex(model()->index(row, 0, parent)));
-        }
         restoreExpandedPaths(model()->index(row, 0, parent));
     }
 }
@@ -188,116 +190,55 @@ void IDOSTreeView::onModelAboutToBeReset()
     m_pendingExpandedPaths.clear();
 }
 
-void IDOSTreeView::setRegistry(IDOSTreeRegistry* registry)
+
+
+
+
+void IDOSTreeView::bindMenu(QMenu* menu)
 {
-    if (m_registry != nullptr)
+    for (QAction* action : menu->actions())
     {
-        disconnect(m_registry, nullptr, this, nullptr);
+        const QString operation = action->property("operation").toString();
+        if (!operation.isEmpty() && treeModel() != nullptr)
+        {
+            QStringList ids;
+            for (IDOSTreeItem* item : selectedItems())
+            {
+                ids.append(item->provider()->id());
+            }
+            IDOSTreeItem* context = contextItem();
+            if (context != nullptr && !ids.contains(context->provider()->id()))
+            {
+                ids.append(context->provider()->id());
+            }
+            action->setProperty("treeSession", treeModel()->sessionId());
+            action->setProperty("treeItemIds", ids);
+            connect(action, &QAction::triggered, this, &IDOSTreeView::onActionTriggered, Qt::UniqueConnection);
+        }
+        if (action->menu() != nullptr)
+        {
+            bindMenu(action->menu());
+        }
     }
-    m_registry = registry;
-    if (registry != nullptr)
-    {
-        connect(registry, &IDOSTreeRegistry::guiProvidersChanged, this, &IDOSTreeView::onGuiProvidersChanged);
-    }
-    onGuiProvidersChanged();
 }
 
-void IDOSTreeView::refreshChecks(IDOSTreeItem* item)
+
+
+
+
+void IDOSTreeView::setMenuProvider(IDOSTreeMenuProvider* provider)
 {
-    if (item == nullptr || m_registry == nullptr)
+    if (provider == m_menuProvider || (provider != nullptr && provider->view() != this))
     {
         return;
     }
-    std::shared_ptr<IDOSTreeGuiProvider> responsible;
-    bool conflict = false;
-    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-    {
-        if (provider->supports(item) && provider->isCheckable(item))
-        {
-            if (responsible)
-            {
-                conflict = true;
-                break;
-            }
-            responsible = provider;
-        }
-    }
-    if (responsible && !conflict)
-    {
-        item->setCheckable(responsible->isCheckable(item));
-        item->setCheckState(responsible->checkState(item, this));
-    }
-    else
-    {
-        item->setCheckable(false);
-        item->setCheckState(Qt::Unchecked);
-    }
-    for (IDOSTreeItem* child : item->children())
-    {
-        refreshChecks(child);
-    }
+    delete m_menuProvider.data();
+    m_menuProvider = provider;
 }
 
-void IDOSTreeView::onGuiProvidersChanged()
+IDOSTreeMenuProvider* IDOSTreeView::menuProvider() const
 {
-    if (m_registry != nullptr)
-    {
-        const QList<std::shared_ptr<IDOSTreeGuiProvider>> providers = m_registry->guiProviders();
-        for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : providers)
-        {
-            disconnect(provider.get(), nullptr, this, nullptr);
-            connect(provider.get(),
-                    &IDOSTreeGuiProvider::checkStateChanged,
-                    this,
-                    &IDOSTreeView::onCheckStateChanged);
-        }
-    }
-    refreshCheckStates();
-}
-
-void IDOSTreeView::refreshCheckStates()
-{
-    if (tree() != nullptr)
-    {
-        refreshChecks(tree()->root());
-    }
-}
-
-void IDOSTreeView::onCheckStateChanged()
-{
-    refreshCheckStates();
-}
-
-void IDOSTreeView::onDataChanged(const QModelIndex& first, const QModelIndex& last)
-{
-    Q_UNUSED(last);
-    IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    if (treeModel != nullptr)
-    {
-        refreshChecks(treeModel->nodeFromIndex(first));
-    }
-}
-
-IDOSTree* IDOSTreeView::tree() const
-{
-    IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    return treeModel != nullptr ? treeModel->tree() : nullptr;
-}
-
-IDOSProject* IDOSTreeView::project() const
-{
-    return tree() != nullptr ? tree()->project() : nullptr;
-}
-
-QObject* IDOSTreeView::targetView() const
-{
-    return m_targetView.data();
-}
-
-void IDOSTreeView::setTargetView(QObject* view)
-{
-    m_targetView = view;
-    refreshCheckStates();
+    return m_menuProvider.data();
 }
 
 QList<IDOSTreeItem*> IDOSTreeView::selectedItems() const
@@ -308,16 +249,16 @@ QList<IDOSTreeItem*> IDOSTreeView::selectedItems() const
     {
         for (const QModelIndex& index : selectionModel()->selectedRows())
         {
-            result.append(treeModel->nodeFromIndex(index));
+            result.append(treeModel->itemFromIndex(index));
         }
     }
     return result;
 }
 
-IDOSTreeItem* IDOSTreeView::menuItem() const
+IDOSTreeItem* IDOSTreeView::contextItem() const
 {
     IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    return treeModel != nullptr ? treeModel->nodeFromIndex(m_menuIndex) : nullptr;
+    return treeModel != nullptr ? treeModel->itemFromIndex(m_menuIndex) : nullptr;
 }
 
 void IDOSTreeView::setBlankMenuEnabled(bool enabled)
@@ -325,7 +266,7 @@ void IDOSTreeView::setBlankMenuEnabled(bool enabled)
     m_blankMenuEnabled = enabled;
 }
 
-QMenu* IDOSTreeView::createMenu(const QModelIndex& target)
+QMenu* IDOSTreeView::createContextMenu(const QModelIndex& target)
 {
     if (target.isValid() && selectionModel() != nullptr)
     {
@@ -339,56 +280,39 @@ QMenu* IDOSTreeView::createMenu(const QModelIndex& target)
         }
     }
     m_menuIndex = target;
-    QMenu* menu = new QMenu(this);
-    if (menuItem() == nullptr && !m_blankMenuEnabled)
+    if (m_menuProvider != nullptr)
+    {
+        QMenu* providedMenu = m_menuProvider->createContextMenu(selectedItems(), contextItem());
+        if (providedMenu != nullptr)
+        {
+            if (providedMenu->parent() == nullptr)
+            {
+                providedMenu->setParent(this);
+            }
+            populateTransferMenu(providedMenu, target);
+            emit contextMenuAboutToShow(providedMenu);
+            bindMenu(providedMenu);
+        }
+        return providedMenu;
+    }
+    QMenu* menu = contextItem() != nullptr && contextItem()->provider() != nullptr
+        ? contextItem()->provider()->createContextMenu() : nullptr;
+    if (menu == nullptr)
+    {
+        menu = new QMenu(this);
+    }
+    else if (menu->parent() == nullptr)
+    {
+        menu->setParent(this);
+    }
+    if (contextItem() == nullptr && !m_blankMenuEnabled)
     {
         return menu;
     }
-    if (m_registry != nullptr && (!target.isValid() || selectedItems().size() <= 1))
-    {
-        const QList<std::shared_ptr<IDOSTreeGuiProvider>> providers = m_registry->guiProviders();
-        for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : providers)
-        {
-            if (provider->supports(menuItem()))
-            {
-                provider->populateMenu(menu, this);
-            }
-        }
-    }
-    if (m_registry != nullptr)
-    {
-        for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-        {
-            provider->populateSelectionMenu(menu, this);
-        }
-    }
     populateTransferMenu(menu, target);
+    emit contextMenuAboutToShow(menu);
+    bindMenu(menu);
     return menu;
-}
-
-void IDOSTreeView::onCheckRequested(IDOSTreeItem* item, bool checked, bool* accepted)
-{
-    if (m_registry == nullptr || item == nullptr || accepted == nullptr)
-    {
-        return;
-    }
-    std::shared_ptr<IDOSTreeGuiProvider> responsible;
-    const QList<std::shared_ptr<IDOSTreeGuiProvider>> providers = m_registry->guiProviders();
-    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : providers)
-    {
-        if (provider->supports(item) && provider->isCheckable(item))
-        {
-            if (responsible)
-            {
-                return;
-            }
-            responsible = provider;
-        }
-    }
-    if (responsible)
-    {
-        *accepted = responsible->setChecked(item, checked, this);
-    }
 }
 
 void IDOSTreeView::contextMenuEvent(QContextMenuEvent* event)
@@ -401,8 +325,8 @@ void IDOSTreeView::contextMenuEvent(QContextMenuEvent* event)
         event->accept();
         return;
     }
-    QMenu* menu = createMenu(target);
-    if (!menu->actions().isEmpty())
+    QMenu* menu = createContextMenu(target);
+    if (menu != nullptr && !menu->actions().isEmpty())
     {
         const QPoint position = event->reason() == QContextMenuEvent::Keyboard
                                     ? viewport()->mapToGlobal(visualRect(currentIndex()).center())
@@ -430,7 +354,7 @@ QMimeData* IDOSTreeView::cloneMimeData(const QMimeData* data) const
 
 QMimeData* IDOSTreeView::selectedMimeData() const
 {
-    if (m_registry == nullptr)
+    if (m_menuProvider == nullptr)
     {
         return nullptr;
     }
@@ -452,22 +376,7 @@ QMimeData* IDOSTreeView::selectedMimeData() const
             roots.append(item);
         }
     }
-    QMimeData* result = nullptr;
-    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-    {
-        QMimeData* candidate = provider->createMimeData(roots, this);
-        if (candidate != nullptr)
-        {
-            if (result != nullptr)
-            {
-                delete result;
-                delete candidate;
-                return nullptr;
-            }
-            result = candidate;
-        }
-    }
-    return result;
+    return m_menuProvider->createMimeData(roots);
 }
 
 QMimeData* IDOSTreeView::actionMimeData() const
@@ -483,60 +392,29 @@ QMimeData* IDOSTreeView::actionMimeData() const
 
 bool IDOSTreeView::canCutMimeData(const QMimeData* data) const
 {
-    int count = 0;
-    if (m_registry != nullptr)
-    {
-        for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-        {
-            if (provider->canCut(data, this))
-            {
-                ++count;
-            }
-        }
-    }
-    return count == 1;
+    return m_menuProvider != nullptr && m_menuProvider->canCut(data);
 }
 
 bool IDOSTreeView::canPasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action) const
 {
     IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    if (m_registry == nullptr || treeModel == nullptr)
+    if (treeModel == nullptr)
     {
         return false;
     }
-    IDOSTreeItem* item = treeModel->nodeFromIndex(target);
-    int count = 0;
-    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-    {
-        if (provider->canPaste(data, item, action, this))
-        {
-            ++count;
-        }
-    }
-    return count == 1;
+    IDOSTreeItem* item = treeModel->itemFromIndex(target);
+    return m_menuProvider != nullptr && m_menuProvider->canPaste(data, item, action);
 }
 
 bool IDOSTreeView::pasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action)
 {
     IDOSTreeModel* treeModel = qobject_cast<IDOSTreeModel*>(model());
-    if (m_registry == nullptr || treeModel == nullptr)
+    if (treeModel == nullptr)
     {
         return false;
     }
-    IDOSTreeItem* item = treeModel->nodeFromIndex(target);
-    std::shared_ptr<IDOSTreeGuiProvider> responsible;
-    for (const std::shared_ptr<IDOSTreeGuiProvider>& provider : m_registry->guiProviders())
-    {
-        if (provider->canPaste(data, item, action, this))
-        {
-            if (responsible)
-            {
-                return false;
-            }
-            responsible = provider;
-        }
-    }
-    return responsible && responsible->paste(data, item, action, this);
+    IDOSTreeItem* item = treeModel->itemFromIndex(target);
+    return m_menuProvider != nullptr && m_menuProvider->paste(data, item, action);
 }
 
 void IDOSTreeView::populateTransferMenu(QMenu* menu, const QModelIndex& target)
@@ -639,7 +517,7 @@ void IDOSTreeView::startDrag(Qt::DropActions supportedActions)
 void IDOSTreeView::dragEnterEvent(QDragEnterEvent* event)
 {
     IDOSTreeView* source = qobject_cast<IDOSTreeView*>(event->source());
-    if (source != nullptr && source->project() != nullptr && source->project() == project())
+    if (acceptsSource(source))
     {
         event->setDropAction(dragAction(event->keyboardModifiers()));
         event->accept();
@@ -682,7 +560,7 @@ void IDOSTreeView::dropEvent(QDropEvent* event)
     m_dropIndex = QPersistentModelIndex();
     viewport()->update();
     IDOSTreeView* source = qobject_cast<IDOSTreeView*>(event->source());
-    if (source != nullptr && source->project() == project() && event->possibleActions().testFlag(action) &&
+    if (acceptsSource(source) && event->possibleActions().testFlag(action) &&
         pasteMimeData(event->mimeData(), target, action))
     {
         event->setDropAction(action);
@@ -719,7 +597,7 @@ void IDOSTreeView::collectPresentationState(const QModelIndex& parent, QStringLi
         const QModelIndex index = model()->index(row, 0, parent);
         if (isExpanded(index))
         {
-            expanded.append(IDOSTreeServer::itemPath(static_cast<const IDOSTreeItem*>(index.internalPointer())));
+            expanded.append(IDOSTreeModel::itemPath(static_cast<const IDOSTreeItem*>(index.internalPointer())));
         }
         collectPresentationState(index, expanded);
     }
@@ -737,13 +615,13 @@ QVariantMap IDOSTreeView::presentationState() const
     QStringList selected;
     for (const QModelIndex& index : selectionModel()->selectedRows())
     {
-        selected.append(IDOSTreeServer::itemPath(static_cast<const IDOSTreeItem*>(index.internalPointer())));
+        selected.append(IDOSTreeModel::itemPath(static_cast<const IDOSTreeItem*>(index.internalPointer())));
     }
     expanded.sort();
     selected.sort();
     state.insert(QStringLiteral("expanded"), expanded);
     state.insert(QStringLiteral("selected"), selected);
-    state.insert(QStringLiteral("current"), IDOSTreeServer::itemPath(static_cast<const IDOSTreeItem*>(currentIndex().internalPointer())));
+    state.insert(QStringLiteral("current"), IDOSTreeModel::itemPath(static_cast<const IDOSTreeItem*>(currentIndex().internalPointer())));
     state.insert(QStringLiteral("scroll"), verticalScrollBar()->value());
     state.insert(QStringLiteral("horizontalScroll"), horizontalScrollBar()->value());
     return state;
@@ -759,7 +637,7 @@ void IDOSTreeView::restorePresentationState(const QVariantMap& state)
     collapseAll();
     for (const QString& path : state.value(QStringLiteral("expanded")).toStringList())
     {
-        const QModelIndex index = treeModel->indexFromNode(IDOSTreeServer::itemFromPath(tree(), path));
+        const QModelIndex index = treeModel->indexFromItem(IDOSTreeModel::itemFromPath(treeModel, path));
         if (index.isValid())
         {
             setExpanded(index, true);
@@ -768,15 +646,43 @@ void IDOSTreeView::restorePresentationState(const QVariantMap& state)
     selectionModel()->clearSelection();
     for (const QString& path : state.value(QStringLiteral("selected")).toStringList())
     {
-        const QModelIndex index = treeModel->indexFromNode(IDOSTreeServer::itemFromPath(tree(), path));
+        const QModelIndex index = treeModel->indexFromItem(IDOSTreeModel::itemFromPath(treeModel, path));
         if (index.isValid())
         {
             selectionModel()->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
         }
     }
-    const QModelIndex current = treeModel->indexFromNode(IDOSTreeServer::itemFromPath(tree(), state.value(QStringLiteral("current")).toString()));
+    const QModelIndex current = treeModel->indexFromItem(IDOSTreeModel::itemFromPath(treeModel, state.value(QStringLiteral("current")).toString()));
     selectionModel()->setCurrentIndex(current, QItemSelectionModel::NoUpdate);
     doItemsLayout();
     verticalScrollBar()->setValue(state.value(QStringLiteral("scroll")).toInt());
     horizontalScrollBar()->setValue(state.value(QStringLiteral("horizontalScroll")).toInt());
+}
+
+void IDOSTreeView::onActionTriggered()
+{
+    QAction* action = qobject_cast<QAction*>(sender());
+    IDOSTreeModel* model = treeModel();
+    if (action == nullptr || model == nullptr ||
+        action->property("treeSession").toString() != model->sessionId())
+    {
+        return;
+    }
+    QVariantMap arguments;
+    for (const QByteArray& name : action->dynamicPropertyNames())
+    {
+        arguments.insert(QString::fromUtf8(name), action->property(name.constData()));
+    }
+    arguments.insert(QStringLiteral("objectName"), action->objectName());
+    arguments.insert(QStringLiteral("text"), action->text());
+    model->triggerAction(action->property("operation").toString(),
+                         action->property("treeItemIds").toStringList(), arguments);
+}
+
+bool IDOSTreeView::acceptsSource(const IDOSTreeView* source) const
+{
+    IDOSTreeModel* model = treeModel();
+    IDOSTreeModel* sourceModel = source != nullptr ? source->treeModel() : nullptr;
+    return model != nullptr && sourceModel != nullptr && !model->sessionId().isEmpty() &&
+        model->sessionId() == sourceModel->sessionId();
 }

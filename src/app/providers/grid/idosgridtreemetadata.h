@@ -2,18 +2,18 @@
 #define IDOS_GRID_TREE_METADATA_H
 
 #include "idos_app.h"
-#include "providers/idostreemetadata.h"
+#include "providers/idostreeitemprovidermetadata.h"
 
 class IDOSGridTreeProvider;
 
-class APP_EXPORT IDOSGridTreeMetadata : public IDOSTreeMetadata
+class APP_EXPORT IDOSGridTreeMetadata : public IDOSTreeItemProviderMetadata
 {
   public:
-    QString typeId() const override;
+    QString id() const override;
     QString treeName() const override;
     QString groupKey() const override;
     bool supports(const IDOSDataObject* data) const override;
-    IDOSTreeProvider* create(IDOSDataObject* data) const override;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const override;
 };
 
 #endif

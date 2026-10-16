@@ -10,7 +10,7 @@ IDOSImportedDataTreeMetadata::IDOSImportedDataTreeMetadata(const QString& dataTy
 {
 }
 
-QString IDOSImportedDataTreeMetadata::typeId() const
+QString IDOSImportedDataTreeMetadata::id() const
 {
     return m_dataTypeId;
 }
@@ -25,7 +25,7 @@ QString IDOSImportedDataTreeMetadata::groupKey() const
     return m_parentKey;
 }
 
-IDOSTreeProvider* IDOSImportedDataTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSImportedDataTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSImportedDataTreeProvider(data);
 }

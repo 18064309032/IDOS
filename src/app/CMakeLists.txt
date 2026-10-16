@@ -1,7 +1,5 @@
 # idos_app: application composition
 add_library(idos_app SHARED
-    providers/data/idosdatagrouptreeguiprovider.cpp
-    providers/data/idosdatagrouptreeguiprovider.h
     providers/data/idosnaturalfracturerendermetadata.cpp
     providers/data/idosnaturalfracturerendermetadata.h
     providers/data/idosnaturalfracturerenderprovider.cpp
@@ -33,12 +31,18 @@ add_library(idos_app SHARED
     command/idosrenameobjectcommand.cpp
     command/idosrenameobjectcommand.h
     idos_app.h
+    idosapptreeaccess.cpp
+    idosapptreeaccess.h
     idosappinterface.cpp
     idosappinterface.h
     idosapplication.cpp
     idosapplication.h
     idosmainwindow.cpp
     idosmainwindow.h
+    providers/case/idoscasetreerootprovider.cpp
+    providers/case/idoscasetreerootprovider.h
+    providers/data/idosdatatreerootprovider.cpp
+    providers/data/idosdatatreerootprovider.h
     idospluginmetadata.cpp
     idospluginmetadata.h
     idospluginregistry.cpp
@@ -49,8 +53,6 @@ add_library(idos_app SHARED
     plugin/idospluginlistmodel.h
     plugin/idospluginmanagerwidget.cpp
     plugin/idospluginmanagerwidget.h
-    providers/fluidrock/idosfluidrocktabletreeguiprovider.cpp
-    providers/fluidrock/idosfluidrocktabletreeguiprovider.h
     providers/fluidrock/idosfluidrocktabletreemetadata.cpp
     providers/fluidrock/idosfluidrocktabletreemetadata.h
     providers/fluidrock/idosfluidrocktabletreeprovider.cpp
@@ -71,36 +73,30 @@ add_library(idos_app SHARED
     providers/grid/idosgridsurfacerendermetadata.h
     providers/grid/idosgridsurfacerenderprovider.cpp
     providers/grid/idosgridsurfacerenderprovider.h
-    providers/grid/idosgridtreeguiprovider.cpp
-    providers/grid/idosgridtreeguiprovider.h
     providers/grid/idosgridtreemetadata.cpp
     providers/grid/idosgridtreemetadata.h
     providers/grid/idosgridtreeprovider.cpp
     providers/grid/idosgridtreeprovider.h
-    providers/data/idosimporteddatatreeguiprovider.cpp
-    providers/data/idosimporteddatatreeguiprovider.h
     providers/data/idosimporteddatatreemetadata.cpp
     providers/data/idosimporteddatatreemetadata.h
     providers/data/idosimporteddatatreeprovider.cpp
     providers/data/idosimporteddatatreeprovider.h
+    providers/data/idosdatatreemenuprovider.cpp
+    providers/data/idosdatatreemenuprovider.h
     providers/seismic/idosseismicvolumerendermetadata.cpp
     providers/seismic/idosseismicvolumerendermetadata.h
     providers/seismic/idosseismicvolumerenderprovider.cpp
     providers/seismic/idosseismicvolumerenderprovider.h
-    providers/case/idossimulationcasetreeguiprovider.cpp
-    providers/case/idossimulationcasetreeguiprovider.h
+    providers/case/idoscasetreemenuprovider.cpp
+    providers/case/idoscasetreemenuprovider.h
     providers/case/idossimulationcasetreemetadata.cpp
     providers/case/idossimulationcasetreemetadata.h
     providers/case/idossimulationcasetreeprovider.cpp
     providers/case/idossimulationcasetreeprovider.h
-    providers/well/idoswelldisplaytreeguiprovider.cpp
-    providers/well/idoswelldisplaytreeguiprovider.h
     providers/well/idoswellrendermetadata.cpp
     providers/well/idoswellrendermetadata.h
     providers/well/idoswellrenderprovider.cpp
     providers/well/idoswellrenderprovider.h
-    providers/well/idoswelltreeguiprovider.cpp
-    providers/well/idoswelltreeguiprovider.h
     providers/well/idoswelltreemetadata.cpp
     providers/well/idoswelltreemetadata.h
     providers/well/idoswelltreeprovider.cpp

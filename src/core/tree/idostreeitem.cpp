@@ -1,21 +1,20 @@
-#include <QUuid>
+#include <QScopedValueRollback>
 
-#include "idostree.h"
-#include "providers/idostreeprovider.h"
+#include "idostreemodel.h"
+#include "providers/idostreeitemprovider.h"
 
 #include "idostreeitem.h"
 
-IDOSTreeItem::IDOSTreeItem()
+IDOSTreeItem::IDOSTreeItem(IDOSTreeItemProvider* provider)
     :
-    m_id(QUuid::createUuid().toString(QUuid::WithoutBraces))
-    , m_group(false)
-    , m_reference(false)
-    , m_checkable(false)
-    , m_checkState(Qt::Unchecked)
-    , m_parent(nullptr)
-    , m_tree(nullptr)
-    , m_provider(nullptr)
+    m_parent(nullptr)
+    , m_model(nullptr)
+    , m_provider(provider)
+    , m_changing(false)
 {
+    const bool bound = provider != nullptr && provider->bindItem(this);
+    Q_ASSERT(bound);
+    Q_UNUSED(bound)
 }
 
 IDOSTreeItem::~IDOSTreeItem()
@@ -24,192 +23,12 @@ IDOSTreeItem::~IDOSTreeItem()
     delete m_provider;
 }
 
-QString IDOSTreeItem::id() const
-{
-    return m_id;
-}
-
-QString IDOSTreeItem::key() const
-{
-    return m_key;
-}
-
-void IDOSTreeItem::setKey(const QString& value)
-{
-    if (m_key == value)
-    {
-        return;
-    }
-    m_key = value;
-    changed();
-}
-
-QString IDOSTreeItem::name() const
-{
-    return m_name;
-}
-
-void IDOSTreeItem::setName(const QString& value)
-{
-    if (m_name == value)
-    {
-        return;
-    }
-    m_name = value;
-    changed();
-}
-
-QIcon IDOSTreeItem::icon() const
-{
-    return m_icon;
-}
-
-void IDOSTreeItem::setIcon(const QIcon& value)
-{
-    if (m_icon.cacheKey() == value.cacheKey())
-    {
-        return;
-    }
-    m_icon = value;
-    changed();
-}
-
-QString IDOSTreeItem::dataId() const
-{
-    return m_dataId;
-}
-
-void IDOSTreeItem::setDataId(const QString& value)
-{
-    if (m_dataId == value)
-    {
-        return;
-    }
-    m_dataId = value;
-    changed();
-}
-
-QString IDOSTreeItem::caseId() const
-{
-    return m_caseId;
-}
-
-void IDOSTreeItem::setCaseId(const QString& value)
-{
-    if (m_caseId == value)
-    {
-        return;
-    }
-    m_caseId = value;
-    changed();
-}
-
-QString IDOSTreeItem::partKey() const
-{
-    return m_partKey;
-}
-
-void IDOSTreeItem::setPartKey(const QString& value)
-{
-    if (m_partKey == value)
-    {
-        return;
-    }
-    m_partKey = value;
-    changed();
-}
-
-QString IDOSTreeItem::itemKey() const
-{
-    return m_itemKey;
-}
-
-void IDOSTreeItem::setItemKey(const QString& value)
-{
-    if (m_itemKey == value)
-    {
-        return;
-    }
-    m_itemKey = value;
-    changed();
-}
-
-bool IDOSTreeItem::isGroup() const
-{
-    return m_group;
-}
-
-void IDOSTreeItem::setGroup(bool value)
-{
-    if (m_group == value)
-    {
-        return;
-    }
-    m_group = value;
-    changed();
-}
-
-bool IDOSTreeItem::isReference() const
-{
-    return m_reference;
-}
-
-void IDOSTreeItem::setReference(bool value)
-{
-    if (m_reference == value)
-    {
-        return;
-    }
-    m_reference = value;
-    changed();
-}
-
-bool IDOSTreeItem::isCheckable() const
-{
-    return m_checkable;
-}
-
-void IDOSTreeItem::setCheckable(bool value)
-{
-    if (m_checkable == value)
-    {
-        return;
-    }
-    m_checkable = value;
-    changed();
-}
-
-Qt::CheckState IDOSTreeItem::checkState() const
-{
-    return m_checkState;
-}
-
-void IDOSTreeItem::setCheckState(Qt::CheckState state)
-{
-    if (m_checkState == state)
-    {
-        return;
-    }
-    m_checkState = state;
-    changed();
-}
-
-bool IDOSTreeItem::isChecked() const
-{
-    return m_checkState == Qt::Checked;
-}
-
-void IDOSTreeItem::setChecked(bool value)
-{
-    setCheckState(value ? Qt::Checked : Qt::Unchecked);
-}
-
 IDOSTreeItem* IDOSTreeItem::parent() const
 {
     return m_parent;
 }
 
-QVector<IDOSTreeItem*> IDOSTreeItem::children() const
+QList<IDOSTreeItem*> IDOSTreeItem::children() const
 {
     return m_children;
 }
@@ -229,33 +48,36 @@ int IDOSTreeItem::row() const
     return m_parent == nullptr ? 0 : m_parent->m_children.indexOf(const_cast<IDOSTreeItem*>(this));
 }
 
-IDOSTree* IDOSTreeItem::tree() const
+IDOSTreeModel* IDOSTreeItem::model() const
 {
-    return m_tree;
+    return m_model;
 }
 
-IDOSTreeProvider* IDOSTreeItem::provider() const
+IDOSTreeItemProvider* IDOSTreeItem::provider() const
 {
-    return m_provider != nullptr ? m_provider : m_parent != nullptr ? m_parent->provider() : nullptr;
+    return m_provider;
 }
 
-bool IDOSTreeItem::setProvider(IDOSTreeProvider* provider)
-{
-    if (m_provider != nullptr || provider == nullptr)
-    {
-        return false;
-    }
-    m_provider = provider;
-    return true;
-}
+
 
 bool IDOSTreeItem::appendChild(IDOSTreeItem* item)
 {
-    if (m_tree != nullptr)
+    if (m_model != nullptr)
     {
-        return m_tree->insert(this, item);
+        return m_model->insertItem(this, item);
     }
-    if (item == nullptr || item->m_parent != nullptr || item->m_tree != nullptr)
+    return insertChild(childCount(), item);
+}
+
+bool IDOSTreeItem::insertChild(int row, IDOSTreeItem* item)
+{
+    if (m_model != nullptr && !m_model->isInserting(this, item, row))
+    {
+        return m_model->insertItem(this, item, row);
+    }
+    IDOSTreeItem* root = m_model != nullptr ? m_model->root() : this;
+    if (root->m_changing || item == nullptr || item->parent() != nullptr || item->model() != nullptr ||
+        row < 0 || row > childCount())
     {
         return false;
     }
@@ -266,18 +88,54 @@ bool IDOSTreeItem::appendChild(IDOSTreeItem* item)
             return false;
         }
     }
+    QScopedValueRollback<bool> changing(root->m_changing, true);
     item->m_parent = this;
-    m_children.append(item);
+    m_children.insert(row, item);
+    item->attach(m_model);
+    return true;
+}
+
+bool IDOSTreeItem::removeChild(IDOSTreeItem* item)
+{
+    if (m_model != nullptr && !m_model->isRemoving(this, item))
+    {
+        return m_model->removeItem(item);
+    }
+    IDOSTreeItem* root = m_model != nullptr ? m_model->root() : this;
+    if (root->m_changing || item == nullptr || item->parent() != this)
+    {
+        return false;
+    }
+    const int row = m_children.indexOf(item);
+    if (row < 0)
+    {
+        return false;
+    }
+    QScopedValueRollback<bool> changing(root->m_changing, true);
+    m_children.removeAt(row);
+    item->m_parent = nullptr;
+    item->attach(nullptr);
+    delete item;
+    return true;
+}
+
+bool IDOSTreeItem::setModel(IDOSTreeModel* model)
+{
+    if (model == nullptr || m_parent != nullptr || m_model != nullptr || model->root() != this)
+    {
+        return false;
+    }
+    attach(model);
     return true;
 }
 
 void IDOSTreeItem::clearChildren()
 {
-    if (m_tree != nullptr)
+    if (m_model != nullptr)
     {
         while (!m_children.isEmpty())
         {
-            if (!m_tree->remove(m_children.last()))
+            if (!m_model->removeItem(m_children.last()))
             {
                 break;
             }
@@ -288,19 +146,27 @@ void IDOSTreeItem::clearChildren()
     m_children.clear();
 }
 
-void IDOSTreeItem::attach(IDOSTree* tree)
+void IDOSTreeItem::attach(IDOSTreeModel* model)
 {
-    m_tree = tree;
+    m_model = model;
     for (IDOSTreeItem* child : m_children)
     {
-        child->attach(tree);
+        child->attach(model);
     }
 }
 
-void IDOSTreeItem::changed()
+IDOSTreeItem* IDOSTreeItem::findChild(const QString& key)
 {
-    if (m_tree != nullptr)
+    for (IDOSTreeItem* child : m_children)
     {
-        m_tree->changed(this);
+        if (child->provider()->key() == key)
+        {
+            if (m_model != nullptr)
+            {
+                m_model->retainItem(child);
+            }
+            return child;
+        }
     }
+    return nullptr;
 }

@@ -1,18 +1,24 @@
 #ifndef IDOS_GRID_TREE_PROVIDER_H
 #define IDOS_GRID_TREE_PROVIDER_H
 
-#include "idos_app.h"
-#include "providers/idostreeprovider.h"
+#include <QtCore/qnamespace.h>
 
-class APP_EXPORT IDOSGridTreeProvider : public IDOSTreeProvider
+#include "idos_app.h"
+#include "providers/idostreeitemprovider.h"
+
+class IDOSGridFilter;
+class IDOSGridProperty;
+
+class APP_EXPORT IDOSGridTreeProvider : public IDOSTreeItemProvider
 {
   public:
-    explicit IDOSGridTreeProvider(IDOSDataObject* data);
+    IDOSGridTreeProvider(IDOSDataObject* data);
     bool dependsOn(const QStringList& dataIds) const override;
-    void populate(IDOSTreeItem* item) override;
+    void refresh() override;
 
   private:
-    IDOSTreeItem* addItem(IDOSTreeItem* parent, const QString& key, const QString& title);
+    IDOSTreeItem* addItem(IDOSTreeItem* parent, const QString& key, const QString& title,
+                          IDOSDataObject* data = nullptr);
 };
 
 #endif

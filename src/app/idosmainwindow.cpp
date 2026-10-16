@@ -17,15 +17,24 @@
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QImage>
+#include <QInputDialog>
 #include <QItemSelectionModel>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QKeySequence>
 #include <QLabel>
+#include <QLineEdit>
 #include <QList>
+#include <QMainWindow>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMimeData>
+#include <QPointer>
 #include <QScopedValueRollback>
 #include <QScreen>
 #include <QScrollBar>
+#include <QSet>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
@@ -33,9 +42,14 @@
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringList>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QTimer>
 #include <QToolButton>
 #include <QTreeView>
+#include <QUuid>
+#include <QVBoxLayout>
+#include <QVariant>
 #include <QWidget>
 
 #include <DockAreaWidget.h>
@@ -52,8 +66,8 @@
 #include "command/idoscreatecasecommand.h"
 #include "command/idoscreatewellcommand.h"
 #include "command/idosdeletecasecommand.h"
-#include "command/idosdeletegridcommand.h"
 #include "command/idosdeletedatacommand.h"
+#include "command/idosdeletegridcommand.h"
 #include "command/idosdeletepropertycommand.h"
 #include "command/idosdeletewellcommand.h"
 #include "command/idosgridfiltercommand.h"
@@ -62,14 +76,26 @@
 #include "command/idosrenameobjectcommand.h"
 #include "command/idostransferobjectscommand.h"
 #include "data/case/idoscaseobject.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/case/idossimulationsummaryresults.h"
+#include "data/fluidrock/idosfluidrocktable.h"
+#include "data/grid/idosgrid.h"
+#include "data/grid/idosgridfilter.h"
+#include "data/grid/idosgridproperty.h"
+#include "data/seismic/idosseismicvolume.h"
 #include "data/well/idoswell.h"
+#include "grid/idosgridfilterwidget.h"
+#include "grid/idosgridsettingwidget.h"
 #include "idosappinterface.h"
 #include "idosapplication.h"
+#include "idosapptreeaccess.h"
 #include "idosassistantservice.h"
 #include "idosassistantwidget.h"
+#include "idoscasedialog.h"
 #include "idoscommandmanager.h"
 #include "idoscommandmetadata.h"
 #include "idoscommandregistry.h"
+#include "idosdataobject.h"
 #include "idosdebuginfowidget.h"
 #include "idosnewprojectdialog.h"
 #include "idospluginregistry.h"
@@ -87,36 +113,39 @@
 #include "idossimulation.h"
 #include "idostoolbar.h"
 #include "idostoolregistry.h"
-#include "idostreeserver.h"
 #include "logger/idoslogger.h"
 #include "plugin/idospluginmanagerwidget.h"
-#include "providers/case/idossimulationcasetreeguiprovider.h"
+#include "providers/case/idoscasetreemenuprovider.h"
+#include "providers/case/idoscasetreerootprovider.h"
 #include "providers/case/idossimulationcasetreemetadata.h"
-#include "providers/data/idosdatagrouptreeguiprovider.h"
-#include "providers/data/idosimporteddatatreeguiprovider.h"
+#include "providers/data/idosdatatreemenuprovider.h"
+#include "providers/data/idosdatatreerootprovider.h"
 #include "providers/data/idosimporteddatatreemetadata.h"
-#include "providers/fluidrock/idosfluidrocktabletreeguiprovider.h"
-#include "providers/fluidrock/idosfluidrocktabletreemetadata.h"
 #include "providers/data/idosnaturalfracturerendermetadata.h"
+#include "providers/fluidrock/idosfluidrocktabletreemetadata.h"
 #include "providers/grid/idosgridboundaryrendermetadata.h"
 #include "providers/grid/idosgridfilterrendermetadata.h"
 #include "providers/grid/idosgridrendermetadata.h"
+#include "providers/grid/idosgridrenderprovider.h"
 #include "providers/grid/idosgridsurfacerendermetadata.h"
-#include "providers/grid/idosgridtreeguiprovider.h"
 #include "providers/grid/idosgridtreemetadata.h"
+#include "providers/idosdataprovider.h"
+#include "providers/idosdataproviderregistry.h"
 #include "providers/idosdataregistry.h"
 #include "providers/idosrenderprovider.h"
-#include "providers/idostreeregistry.h"
+#include "providers/idostreeitemprovider.h"
+#include "providers/idostreeitemproviderregistry.h"
 #include "providers/render/idosrendertoolmetadata.h"
 #include "providers/seismic/idosseismicvolumerendermetadata.h"
-#include "providers/well/idoswelldisplaytreeguiprovider.h"
+#include "providers/seismic/idosseismicvolumerenderprovider.h"
 #include "providers/well/idoswellrendermetadata.h"
-#include "providers/well/idoswelltreeguiprovider.h"
+#include "providers/well/idoswellrenderprovider.h"
 #include "providers/well/idoswelltreemetadata.h"
-#include "tree/idostree.h"
+#include "simulation/idossimulationsummarycurveswidget.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
+#include "well/idoswelldisplaywidget.h"
 #include "well/idoswelllogtrackview.h"
 
 #include "idosmainwindow.h"
@@ -143,14 +172,17 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_project(nullptr)
     , m_dataRegistry(nullptr)
     , m_commandManager(nullptr)
-    , m_dataTree(new IDOSTree(this))
-    , m_caseTree(new IDOSTree(this))
-    , m_dataTreeModel(new IDOSTreeModel(m_dataTree, this))
-    , m_caseTreeModel(new IDOSTreeModel(m_caseTree, this))
+    , m_treeRegistry(new IDOSTreeItemProviderRegistry(this))
+    , m_gridWidget(nullptr)
+    , m_filterWidget(nullptr)
+    , m_wellWidget(nullptr)
+    , m_treeAccess(nullptr)
+    , m_dataTreeModel(new IDOSTreeModel(m_treeRegistry, this))
+    , m_caseTreeModel(new IDOSTreeModel(m_treeRegistry, this))
     , m_dataTreeView(nullptr)
+    , m_dataTreeMenuProvider(nullptr)
     , m_caseTreeView(nullptr)
-    , m_treeRegistry(new IDOSTreeRegistry(this))
-    , m_treeServer(new IDOSTreeServer(m_treeRegistry, this))
+    , m_caseTreeMenuProvider(nullptr)
     , m_renderRegistry(new IDOSRenderRegistry(this))
     , m_toolRegistry(new IDOSToolRegistry(this))
     , m_renderServer(new IDOSRenderServer(m_renderRegistry, this))
@@ -216,163 +248,36 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
 void IDOSMainWindow::initProviders()
 {
     IDOSApplication::initProviders();
-    m_dataTree->setName(QStringLiteral("data"));
-    m_caseTree->setName(QStringLiteral("case"));
-    m_treeRegistry->add(new IDOSWellTreeMetadata());
-    m_treeRegistry->add(new IDOSGridTreeMetadata());
-    m_treeRegistry->add(new IDOSSimulationCaseTreeMetadata(m_treeRegistry));
-    m_treeRegistry->add(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::Fluid));
-    m_treeRegistry->add(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::RockPhysics));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_dataTreeModel->setName(QStringLiteral("data"));
+    m_caseTreeModel->setName(QStringLiteral("case"));
+    m_dataTreeModel->setRootProvider(new IDOSDataTreeRootProvider());
+    m_caseTreeModel->setRootProvider(new IDOSCaseTreeRootProvider());
+    m_treeRegistry->registerMetadata(new IDOSWellTreeMetadata());
+    m_treeRegistry->registerMetadata(new IDOSGridTreeMetadata());
+    m_treeRegistry->registerMetadata(new IDOSSimulationCaseTreeMetadata(m_treeRegistry));
+    m_treeRegistry->registerMetadata(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::Fluid));
+    m_treeRegistry->registerMetadata(new IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category::RockPhysics));
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.microseismic.set"), QStringLiteral("data.microseismic")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.seismic.volume"), QStringLiteral("data.seismic")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.fracture.schedule"), QStringLiteral("data.hydraulicFractures")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.naturalFracture.set"), QStringLiteral("data.naturalFractures")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.production.history"), QStringLiteral("data.production")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.fracture.fluidCatalog"), QStringLiteral("data.fluids")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.fracture.proppantCatalog"), QStringLiteral("data.hydraulicFractures")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.grid.surface"), QStringLiteral("data.surfaceProperties")));
-    m_treeRegistry->add(new IDOSImportedDataTreeMetadata(
+    m_treeRegistry->registerMetadata(new IDOSImportedDataTreeMetadata(
         QStringLiteral("idos.grid.boundary"), QStringLiteral("data.boundaries")));
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellTreeGuiProvider>());
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSWellDisplayTreeGuiProvider>(this));
     m_toolRegistry->add(new IDOSRenderToolMetadata());
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSGridTreeGuiProvider>());
-    const std::shared_ptr<IDOSSimulationCaseTreeGuiProvider> caseGuiProvider =
-        std::make_shared<IDOSSimulationCaseTreeGuiProvider>();
-    connect(caseGuiProvider.get(), &IDOSSimulationCaseTreeGuiProvider::generateInputRequested,
-            m_simulation, &IDOSSimulation::onGenerateInputRequested);
-    connect(caseGuiProvider.get(), &IDOSSimulationCaseTreeGuiProvider::propertyCurvesRequested,
-            m_simulation, &IDOSSimulation::onPropertyCurvesRequested);
-    m_treeRegistry->addGuiProvider(caseGuiProvider);
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSFluidRockTableTreeGuiProvider>());
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSImportedDataTreeGuiProvider>());
-    m_treeRegistry->addGuiProvider(std::make_shared<IDOSDataGroupTreeGuiProvider>(m_treeRegistry));
-    IDOSTreeItem* wellGroup = nullptr;
-    IDOSTreeItem* group0 = new IDOSTreeItem();
-    group0->setKey(QStringLiteral("data.wellGroup"));
-    group0->setName(tr("Well Group"));
-    group0->setIcon(QIcon(QStringLiteral(":/images/gui-well-group.svg")));
-    group0->setGroup(true);
-    wellGroup = group0;
-    IDOSTreeItem* group1 = new IDOSTreeItem();
-    group1->setKey(QStringLiteral("data.globalLogs"));
-    group1->setName(tr("Global Well Logs"));
-    group1->setIcon(QIcon(QStringLiteral(":/images/gui-global-logs.svg")));
-    group1->setGroup(true);
-    wellGroup->appendChild(group1);
-    IDOSTreeItem* group2 = new IDOSTreeItem();
-    group2->setKey(QStringLiteral("data.globalCompletions"));
-    group2->setName(tr("Global Completions"));
-    group2->setIcon(QIcon(QStringLiteral(":/images/gui-global-completions.svg")));
-    group2->setGroup(true);
-    wellGroup->appendChild(group2);
-    IDOSTreeItem* group3 = new IDOSTreeItem();
-    group3->setKey(QStringLiteral("data.globalObservations"));
-    group3->setName(tr("Global Observations"));
-    group3->setIcon(QIcon(QStringLiteral(":/images/gui-global-observations.svg")));
-    group3->setGroup(true);
-    wellGroup->appendChild(group3);
-    IDOSTreeItem* group4 = new IDOSTreeItem();
-    group4->setKey(QStringLiteral("data.wellProperties"));
-    group4->setName(tr("Well Properties"));
-    group4->setIcon(QIcon(QStringLiteral(":/images/gui-well-properties.svg")));
-    group4->setGroup(true);
-    wellGroup->appendChild(group4);
-    IDOSTreeItem* group5 = new IDOSTreeItem();
-    group5->setKey(QStringLiteral("data.wells"));
-    group5->setName(tr("Wells"));
-    group5->setIcon(QIcon(QStringLiteral(":/images/gui-wells.svg")));
-    group5->setGroup(true);
-    wellGroup->appendChild(group5);
-    m_treeRegistry->addGroup(QStringLiteral("data"), wellGroup);
-    IDOSTreeItem* group6 = new IDOSTreeItem();
-    group6->setKey(QStringLiteral("data.seismic"));
-    group6->setName(tr("Seismic"));
-    group6->setIcon(QIcon(QStringLiteral(":/images/gui-seismic.svg")));
-    group6->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group6);
-    IDOSTreeItem* group7 = new IDOSTreeItem();
-    group7->setKey(QStringLiteral("data.surfaceProperties"));
-    group7->setName(tr("Surface Properties"));
-    group7->setIcon(QIcon(QStringLiteral(":/images/gui-surface-properties.svg")));
-    group7->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group7);
-    IDOSTreeItem* group8 = new IDOSTreeItem();
-    group8->setKey(QStringLiteral("data.faults"));
-    group8->setName(tr("Faults"));
-    group8->setIcon(QIcon(QStringLiteral(":/images/gui-faults.svg")));
-    group8->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group8);
-    IDOSTreeItem* group9 = new IDOSTreeItem();
-    group9->setKey(QStringLiteral("data.boundaries"));
-    group9->setName(tr("Polygons / Boundaries"));
-    group9->setIcon(QIcon(QStringLiteral(":/images/gui-boundaries.svg")));
-    group9->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group9);
-    IDOSTreeItem* group10 = new IDOSTreeItem();
-    group10->setKey(QStringLiteral("data.naturalFractures"));
-    group10->setName(tr("Natural Fractures"));
-    group10->setIcon(QIcon(QStringLiteral(":/images/gui-natural-fractures.svg")));
-    group10->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group10);
-    IDOSTreeItem* group11 = new IDOSTreeItem();
-    group11->setKey(QStringLiteral("data.hydraulicFractures"));
-    group11->setName(tr("Hydraulic Fracturing"));
-    group11->setIcon(QIcon(QStringLiteral(":/images/gui-hydraulic-fractures.svg")));
-    group11->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group11);
-    IDOSTreeItem* group12 = new IDOSTreeItem();
-    group12->setKey(QStringLiteral("data.fluids"));
-    group12->setName(tr("Fluids"));
-    group12->setIcon(QIcon(QStringLiteral(":/images/gui-fluids.svg")));
-    group12->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group12);
-    IDOSTreeItem* group13 = new IDOSTreeItem();
-    group13->setKey(QStringLiteral("data.rockPhysics"));
-    group13->setName(tr("Rock Physics Functions"));
-    group13->setIcon(QIcon(QStringLiteral(":/images/gui-rock-physics.svg")));
-    group13->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group13);
-    IDOSTreeItem* group14 = new IDOSTreeItem();
-    group14->setKey(QStringLiteral("data.initialConditions"));
-    group14->setName(tr("Initial Conditions"));
-    group14->setIcon(QIcon(QStringLiteral(":/images/gui-initial-conditions.svg")));
-    group14->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group14);
-    IDOSTreeItem* group15 = new IDOSTreeItem();
-    group15->setKey(QStringLiteral("data.microseismic"));
-    group15->setName(tr("Microseismic"));
-    group15->setIcon(QIcon(QStringLiteral(":/images/gui-microseismic.svg")));
-    group15->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group15);
-    IDOSTreeItem* group16 = new IDOSTreeItem();
-    group16->setKey(QStringLiteral("data.production"));
-    group16->setName(tr("Production Summary"));
-    group16->setIcon(QIcon(QStringLiteral(":/images/gui-production.svg")));
-    group16->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group16);
-    IDOSTreeItem* group17 = new IDOSTreeItem();
-    group17->setKey(QStringLiteral("data.streamlines"));
-    group17->setName(tr("Flow Diagnostics"));
-    group17->setIcon(QIcon(QStringLiteral(":/images/gui-flow-diagnostics.svg")));
-    group17->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group17);
-    IDOSTreeItem* group18 = new IDOSTreeItem();
-    group18->setKey(QStringLiteral("data.management"));
-    group18->setName(tr("Field Management Strategies"));
-    group18->setIcon(QIcon(QStringLiteral(":/images/gui-field-management.svg")));
-    group18->setGroup(true);
-    m_treeRegistry->addGroup(QStringLiteral("data"), group18);
-    m_treeServer->addTree(m_dataTree);
-    m_treeServer->addTree(m_caseTree);
+    m_caseTreeView = new IDOSTreeView(this);
+    m_caseTreeMenuProvider = new IDOSCaseTreeMenuProvider(m_caseTreeView);
 
     m_renderRegistry->add(new IDOSGridRenderMetadata());
     m_renderRegistry->add(new IDOSGridFilterRenderMetadata());
@@ -482,7 +387,8 @@ void IDOSMainWindow::initDockWidgets()
     connect(m_dataTreeView, &QTreeView::clicked, this, &IDOSMainWindow::onDataTreeItemClicked);
     connect(m_dataTreeView->selectionModel(), &QItemSelectionModel::currentChanged,this, &IDOSMainWindow::onDataTreeCurrentChanged);
 
-    m_dataTreeView->setRegistry(m_treeRegistry);
+    m_dataTreeMenuProvider = new IDOSDataTreeMenuProvider(m_dataTreeView);
+    m_dataTreeView->setMenuProvider(m_dataTreeMenuProvider);
     ads::CDockWidget* dataDock = new ads::CDockWidget(m_dockManager, tr("Data"));
     dataDock->setObjectName(QStringLiteral("dataTreeDock"));
     dataDock->setIcon(QIcon(QStringLiteral(":/images/gui-data-tree.svg")));
@@ -557,15 +463,12 @@ void IDOSMainWindow::initDockWidgets()
     m_dockManager->addDockWidgetTabToArea(m_assistantDock, outputArea);
 
     // ---- 工况树 ----
-    m_caseTreeView = new IDOSTreeView(this);
     m_caseTreeView->setBlankMenuEnabled(true);
     m_caseTreeView->setModel(m_caseTreeModel);
     connect(m_caseTreeView, &QTreeView::clicked, this, &IDOSMainWindow::onCaseTreeItemClicked);
     connect(m_caseTreeView->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &IDOSMainWindow::onCaseTreeCurrentChanged);
-    m_caseTreeView->setRegistry(m_treeRegistry);
-    m_dataTreeView->setTargetView(activeView());
-    m_caseTreeView->setTargetView(activeView());
+    m_caseTreeView->setMenuProvider(m_caseTreeMenuProvider);
     ads::CDockWidget* caseDock = new ads::CDockWidget(m_dockManager, tr("Case"));
     caseDock->setObjectName(QStringLiteral("caseTreeDock"));
     caseDock->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
@@ -574,8 +477,6 @@ void IDOSMainWindow::initDockWidgets()
     m_dockManager->addDockWidget(ads::BottomDockWidgetArea, caseDock, dataArea);
 
     updateTreeSelection(activeViewId());
-    m_dataTreeView->refreshCheckStates();
-    m_caseTreeView->refreshCheckStates();
     outputArea->setCurrentDockWidget(m_outputDock);
 }
 
@@ -793,6 +694,7 @@ void IDOSMainWindow::initRibbonAction()
 
 IDOSMainWindow::~IDOSMainWindow()
 {
+    clearTreeDialogs();
     delete m_simulation;
     m_simulation = nullptr;
     SARibbonBar* applicationRibbonBar = ribbonBar();
@@ -838,7 +740,10 @@ IDOSMainWindow::~IDOSMainWindow()
     m_pluginRegistry = nullptr;
     delete m_appInterface;
     m_appInterface = nullptr;
-    m_treeServer->setProject(nullptr);
+    delete m_treeAccess;
+    m_treeAccess = nullptr;
+    m_dataTreeModel->clear();
+    m_caseTreeModel->clear();
     if (m_project)
     {
         disconnect(m_project, nullptr, this, nullptr);
@@ -847,7 +752,6 @@ IDOSMainWindow::~IDOSMainWindow()
     {
         disconnect(m_commandManager.data(), nullptr, this, nullptr);
     }
-    delete m_treeServer;
     delete m_treeRegistry;
     disconnect(m_renderServer, nullptr, this, nullptr);
     delete m_renderServer;
@@ -894,6 +798,9 @@ void IDOSMainWindow::setProject(IDOSProject* project)
         disconnect(m_commandManager.data(), nullptr, this, nullptr);
     }
     QScopedValueRollback<bool> presentationGuard(m_restoringPresentation, true);
+    clearTreeDialogs();
+    delete m_treeAccess;
+    m_treeAccess = nullptr;
     m_project = nullptr;
     m_renderServer->setProject(nullptr);
     const QVariantMap presentation = project != nullptr ? project->presentationState() : QVariantMap();
@@ -904,9 +811,10 @@ void IDOSMainWindow::setProject(IDOSProject* project)
     m_commandManager = project != nullptr ? project->commandManager() : nullptr;
     m_renderServer->setProject(project);
     m_assistantWidget->setProject(project);
-    m_treeServer->setProject(project);
-    m_dataTreeView->refreshCheckStates();
-    m_caseTreeView->refreshCheckStates();
+    m_treeAccess = new IDOSAppTreeAccess(project, this);
+    m_treeAccess->setDataTreeModel(m_dataTreeModel);
+    m_treeAccess->setCaseTreeModel(m_caseTreeModel);
+    m_treeAccess->setRenderServer(m_renderServer);
     updateTreeSelection(activeViewId());
     restoreProjectPresentation(presentation);
     if (project)
@@ -1387,8 +1295,8 @@ void IDOSMainWindow::onDataTreeCurrentChanged(const QModelIndex& current, const 
     IDOSDataObject* currentObject = nullptr;
     if (m_project != nullptr && current.isValid())
     {
-        IDOSTreeItem* item = m_dataTreeModel->nodeFromIndex(current);
-        objectId = item != nullptr ? item->dataId() : QString();
+        IDOSTreeItem* item = m_dataTreeModel->itemFromIndex(current);
+        objectId = item != nullptr ? item->provider()->dataId() : QString();
         currentObject = m_dataTreeModel->objectFromIndex(current);
     }
     if (m_project != nullptr)
@@ -1587,8 +1495,8 @@ QModelIndex IDOSMainWindow::findCaseReferenceIndex(const QModelIndex& parentInde
     for (int row = 0; row < m_caseTreeModel->rowCount(parentIndex); ++row)
     {
         const QModelIndex childIndex = m_caseTreeModel->index(row, 0, parentIndex);
-        IDOSTreeItem* referenceNode = m_caseTreeModel->nodeFromIndex(childIndex);
-        if (referenceNode != nullptr && referenceNode->isReference() && referenceNode->dataId() == objectId)
+        IDOSTreeItem* referenceNode = m_caseTreeModel->itemFromIndex(childIndex);
+        if (referenceNode != nullptr && referenceNode->provider()->isReference() && referenceNode->provider()->dataId() == objectId)
         {
             return childIndex;
         }
@@ -1604,14 +1512,14 @@ QModelIndex IDOSMainWindow::findCaseReferenceIndex(const QModelIndex& parentInde
 
 QString IDOSMainWindow::objectIdFromCaseTreeIndex(const QModelIndex& index) const
 {
-    IDOSTreeItem* item = m_caseTreeModel->nodeFromIndex(index);
-    return item != nullptr && item->dataId() != item->caseId() ? item->dataId() : QString();
+    IDOSTreeItem* item = m_caseTreeModel->itemFromIndex(index);
+    return item != nullptr && item->provider()->dataId() != item->provider()->caseId() ? item->provider()->dataId() : QString();
 }
 
 QString IDOSMainWindow::caseIdFromCaseTreeIndex(const QModelIndex& index) const
 {
-    IDOSTreeItem* item = m_caseTreeModel->nodeFromIndex(index);
-    return item != nullptr ? item->caseId() : QString();
+    IDOSTreeItem* item = m_caseTreeModel->itemFromIndex(index);
+    return item != nullptr ? item->provider()->caseId() : QString();
 }
 void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)
 {
@@ -1620,13 +1528,13 @@ void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)
         return;
     }
 
-    IDOSTreeItem* partNode = m_dataTreeModel->nodeFromIndex(index);
-    if (partNode == nullptr || partNode->partKey() != QStringLiteral("idos.well.logs"))
+    IDOSTreeItem* partNode = m_dataTreeModel->itemFromIndex(index);
+    if (partNode == nullptr || partNode->provider()->partKey() != QStringLiteral("idos.well.logs"))
     {
         return;
     }
 
-    IDOSWell* well = qobject_cast<IDOSWell*>(m_project->object(partNode->dataId()));
+    IDOSWell* well = qobject_cast<IDOSWell*>(m_project->object(partNode->provider()->dataId()));
     if (well == nullptr)
     {
         return;
@@ -1638,7 +1546,7 @@ void IDOSMainWindow::onDataTreeItemActivated(const QModelIndex& index)
         return;
     }
 
-    view->setSelectedChannelName(partNode->itemKey());
+    view->setSelectedChannelName(partNode->provider()->itemKey());
 }
 
 IDOSWellLogTrackView* IDOSMainWindow::findOrCreateWellLogTrackView(IDOSWell* well)
@@ -1690,11 +1598,15 @@ void IDOSMainWindow::closeEvent(QCloseEvent* event)
 void IDOSMainWindow::onProjectDestroyed()
 {
     IDOS_WARN(tr("Active project was destroyed before the main window."));
+    clearTreeDialogs();
     m_project = nullptr;
     m_commandManager = nullptr;
     m_viewCaseIds.clear();
     m_viewContextIds.clear();
-    m_treeServer->setProject(nullptr);
+    delete m_treeAccess;
+    m_treeAccess = nullptr;
+    m_dataTreeModel->clear();
+    m_caseTreeModel->clear();
     m_renderServer->setProject(nullptr);
     m_assistantWidget->setProject(nullptr);
     onProjectModified();
@@ -1726,7 +1638,6 @@ IDOSRenderView* IDOSMainWindow::createView(const QString& id, bool twoDimensiona
     view->setProperty("viewId", id);
     m_views.insert(id, view);
     connect(view, &IDOSRenderView::focused, this, &IDOSMainWindow::onRenderViewFocused);
-    connect(view, &IDOSRenderView::decorationsChanged, this, &IDOSMainWindow::onRenderViewDecorations);
     connect(view, &IDOSRenderView::activated, this, &IDOSMainWindow::onRenderViewActivated);
     connect(view, &IDOSRenderView::viewStateChanged, this, &IDOSMainWindow::onPresentationChanged);
     connect(view->scene(), &IDOSRenderScene::changed, this, &IDOSMainWindow::onPresentationChanged);
@@ -1780,14 +1691,6 @@ void IDOSMainWindow::onRenderCurrentViewChanged(IDOSRenderView* view)
         }
         m_project->setCurrentObject(m_project->object(m_viewContextIds.value(viewId)));
     }
-    if (m_dataTreeView != nullptr)
-    {
-        m_dataTreeView->setTargetView(view);
-    }
-    if (m_caseTreeView != nullptr)
-    {
-        m_caseTreeView->setTargetView(view);
-    }
     if (m_actionCaptureScreenshot != nullptr)
     {
         onCurrentViewChanged(activeViewId());
@@ -1815,21 +1718,6 @@ void IDOSMainWindow::onRenderViewFocused()
     if (view != nullptr)
     {
         setActiveView(view->property("viewId").toString());
-    }
-}
-
-void IDOSMainWindow::onRenderViewDecorations()
-{
-    if (sender() == activeView())
-    {
-        if (m_dataTreeView != nullptr)
-        {
-            m_dataTreeView->refreshCheckStates();
-        }
-        if (m_caseTreeView != nullptr)
-        {
-            m_caseTreeView->refreshCheckStates();
-        }
     }
 }
 
@@ -1896,7 +1784,7 @@ IDOSDataRegistry* IDOSMainWindow::dataRegistry() const
     return m_dataRegistry;
 }
 
-IDOSTreeRegistry* IDOSMainWindow::treeRegistry() const
+IDOSTreeItemProviderRegistry* IDOSMainWindow::treeRegistry() const
 {
     return m_treeRegistry;
 }
@@ -2299,8 +2187,6 @@ void IDOSMainWindow::restoreProjectPresentation(const QVariantMap& state)
         applyWindowLayout(m_currentWindowLayout);
         restoreWindowPreferences(false);
     }
-    m_dataTreeView->refreshCheckStates();
-    m_caseTreeView->refreshCheckStates();
 }
 
 QString IDOSMainWindow::windowSettingsPath()
@@ -2470,4 +2356,1819 @@ QList<IDOSWellLogTrackView*> IDOSMainWindow::logTrackViews() const
         }
     }
     return views;
+}
+
+void IDOSMainWindow::onDataDeleteDatasets(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    QPointer<IDOSTreeView> view(sourceView);
+    if (view.isNull())
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(m_project);
+    const QStringList ids = action.value(QStringLiteral("objectIds")).toStringList();
+    QStringList names;
+    for (const QString& id : ids)
+    {
+        IDOSDataObject* object = project->object(id);
+        if (!IDOSDeleteDataCommand::supportsObject(object))
+        {
+            return;
+        }
+        names.append(object->name());
+    }
+    if (ids.isEmpty())
+    {
+        return;
+    }
+    const QMessageBox::StandardButton answer = QMessageBox::question(
+        view.data(), tr("Delete Data"),
+        tr("Delete %1 selected dataset(s)?\nTheir case references will also be removed. You can undo this operation.\n\n%2")
+            .arg(ids.size()).arg(names.join(QStringLiteral("\n"))),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (answer != QMessageBox::Yes || view.isNull() || project.isNull() ||
+        m_project != project.data() || project->commandManager() == nullptr)
+    {
+        return;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("objectIds"), QJsonArray::fromStringList(ids));
+    const QJsonObject response = project->commandManager()->execute(QStringLiteral("data.delete"), arguments);
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view.data(), tr("Delete Data"), response.value(QStringLiteral("error")).toString());
+    }
+}
+
+void IDOSMainWindow::onDataAddToCase(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(m_project);
+    const QJsonArray records = action.value(QStringLiteral("items")).value<QJsonArray>();
+    QStringList labels;
+    QStringList ids;
+    for (IDOSDataObject* object : project->objects())
+    {
+        if (qobject_cast<IDOSSimulationCaseObject*>(object) != nullptr)
+        {
+            labels.append(tr("%1 [%2]").arg(object->name(), object->objectId().left(8)));
+            ids.append(object->objectId());
+        }
+    }
+    if (ids.isEmpty())
+    {
+        QMessageBox::information(view, tr("Add to Case"), tr("Create a case before adding data."));
+        return;
+    }
+    bool accepted = false;
+    const QString label = QInputDialog::getItem(view, tr("Add to Case"), tr("Destination case:"), labels, 0, false, &accepted);
+    if (!accepted || project == nullptr || project.data() != m_project)
+    {
+        return;
+    }
+    QJsonArray items;
+    for (const QJsonValue& value : records)
+    {
+        QJsonObject record = value.toObject();
+        record.remove(QStringLiteral("sourceCaseId"));
+        items.append(record);
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("items"), items);
+    arguments.insert(QStringLiteral("targetCaseId"), ids.value(labels.indexOf(label)));
+    if (!project->commandManager()->execute(new IDOSCaseReferenceCommand(project.data(), QStringLiteral("copy"), arguments)))
+    {
+        QMessageBox::warning(view, tr("Add to Case"), project->commandManager()->error());
+    }
+}
+
+void IDOSMainWindow::onDataRenameObject(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(m_project);
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    IDOSDataObject* object = project->object(id);
+    if (object == nullptr)
+    {
+        return;
+    }
+    bool accepted = false;
+    const QString name = QInputDialog::getText(view, tr("Rename Object"), tr("Name:"), QLineEdit::Normal, object->name(), &accepted);
+    if (accepted && project != nullptr && project.data() == m_project &&
+        !project->commandManager()->execute(new IDOSRenameObjectCommand(project.data(), id, name)))
+    {
+        QMessageBox::warning(view, tr("Rename Object"), project->commandManager()->error());
+    }
+}
+
+void IDOSMainWindow::onDataGridImportProperty(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString gridId = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSGrid*>(m_project->object(gridId)) != nullptr)
+    {
+        dataImportProperty(view, gridId, action.value(QStringLiteral("caseId")).toString());
+    }
+}
+
+void IDOSMainWindow::onDataGridImportDynamicProperties(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString gridId = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSGrid*>(m_project->object(gridId)) != nullptr)
+    {
+        dataImportDynamicProperties(view, gridId);
+    }
+}
+
+void IDOSMainWindow::onDataGridDeleteProperty(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSGridProperty*>(m_project->object(id)) != nullptr)
+    {
+        dataDeleteProperty(view, id);
+    }
+}
+
+void IDOSMainWindow::onDataGridDelete(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSGrid*>(m_project->object(id)) != nullptr)
+    {
+        dataDeleteGrid(view, id);
+    }
+}
+
+IDOSRenderObject* IDOSMainWindow::dataGridRenderObject(const QString& gridId,
+                                                            IDOSRenderView* view) const
+{
+    if (view == nullptr)
+    {
+        return nullptr;
+    }
+    for (IDOSRenderObject* object : view->scene()->objects())
+    {
+        IDOSDataObject* source = object->provider()->dataSource();
+        if (source != nullptr && source->objectId() == gridId &&
+            dynamic_cast<IDOSGridRenderProvider*>(object->provider()) != nullptr)
+        {
+            return object;
+        }
+    }
+    return nullptr;
+}
+
+int IDOSMainWindow::dataGridPropertyCount(const IDOSTreeView* view, const QString& gridId) const
+{
+    if (view == nullptr || m_project == nullptr || gridId.isEmpty())
+    {
+        return 0;
+    }
+    int count = 0;
+    for (IDOSDataObject* object : m_project->objects())
+    {
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        if (property != nullptr && property->gridId() == gridId)
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+bool IDOSMainWindow::dataDeleteGrid(IDOSTreeView* view, const QString& gridId)
+{
+    if (view == nullptr || m_project == nullptr || gridId.isEmpty())
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    IDOSDataObject* obj = target->object(gridId);
+    IDOSGrid* grid = qobject_cast<IDOSGrid*>(obj);
+    if (grid == nullptr)
+    {
+        return false;
+    }
+    const int propertyCount = dataGridPropertyCount(view, gridId);
+    const QMessageBox::StandardButton btn =
+        QMessageBox::question(view, tr("Delete Grid"),
+                               tr("Are you sure you want to delete grid \"%1\"?\n"
+                                  "It will also delete %2 propert(ies) under this grid "
+                                  "and all saved filters, and remove it from all cases that reference it.")
+                                   .arg(grid->name())
+                                   .arg(propertyCount),
+                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (btn != QMessageBox::Yes || target.isNull())
+    {
+        return false;
+    }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSDeleteGridCommand(target, gridId));
+}
+
+bool IDOSMainWindow::dataDeleteProperty(IDOSTreeView* view, const QString& propertyId)
+{
+    if (view == nullptr || m_project == nullptr || propertyId.isEmpty())
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    IDOSDataObject* obj = target->object(propertyId);
+    if (qobject_cast<IDOSGridProperty*>(obj) == nullptr)
+    {
+        return false;
+    }
+    const QMessageBox::StandardButton btn =
+        QMessageBox::question(view, tr("Delete Property"),
+                               tr("Are you sure you want to delete property \"%1\"?\n"
+                                  "It will be removed from all cases that reference it.")
+                                   .arg(obj->name()),
+                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (btn != QMessageBox::Yes || target.isNull())
+    {
+        return false;
+    }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSDeletePropertyCommand(target, propertyId));
+}
+
+bool IDOSMainWindow::dataImportProperty(IDOSTreeView* view, const QString& targetGridId,
+                                            const QString& targetCaseId)
+{
+    if (view == nullptr || m_project == nullptr)
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    // .DATA imports properties together with the parsed simulation deck.
+    const QString file = QFileDialog::getOpenFileName(
+        view, tr("Import Grid Property"), QString(),
+        tr("ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;"
+           "ECLIPSE Data Files (*.DATA *.data);;All Files (*)"));
+    if (file.isEmpty() || target.isNull())
+    {
+        return false;
+    }
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), file);
+    arguments.insert(QStringLiteral("targetGridId"), targetGridId);
+    arguments.insert(QStringLiteral("targetCaseId"), targetCaseId);
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target, QStringLiteral("property.import"), arguments);
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(view, tr("Import Grid Property"), commandManager->error());
+        return false;
+    }
+
+    const int importedCount = commandManager->result().value(QStringLiteral("objectCount")).toInt();
+    dataReportGridImportSuccess(view, tr("Imported %1 properties.").arg(importedCount));
+    return true;
+}
+
+bool IDOSMainWindow::dataImportDynamicProperties(IDOSTreeView* view, const QString& targetGridId)
+{
+    if (view == nullptr || m_project == nullptr)
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    const QString file = QFileDialog::getOpenFileName(
+        view, tr("Import Dynamic Properties"), QString(),
+        tr("Unified Eclipse restart files (*.UNRST *.unrst)"));
+    if (file.isEmpty() || target.isNull())
+    {
+        return false;
+    }
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    const bool success = commandManager->execute(
+        new IDOSImportRestartResultsCommand(target, targetGridId, file));
+    if (!success)
+    {
+        QMessageBox::warning(view, tr("Import Dynamic Properties"), commandManager->error());
+        return false;
+    }
+
+    const QJsonObject result = commandManager->result();
+    const QString message = tr("Imported %1 dynamic properties across %2 report steps (%3–%4).")
+        .arg(result.value(QStringLiteral("propertyCount")).toInt())
+        .arg(result.value(QStringLiteral("reportStepCount")).toInt())
+        .arg(result.value(QStringLiteral("firstReportStep")).toInt())
+        .arg(result.value(QStringLiteral("lastReportStep")).toInt());
+    dataReportGridImportSuccess(view, message);
+    return true;
+}
+
+void IDOSMainWindow::dataReportGridImportSuccess(IDOSTreeView* view, const QString& message)
+{
+    IDOS_MESSAGE(message, IDOSLogLevel::Info);
+    QMainWindow* mainWindow = view != nullptr ? qobject_cast<QMainWindow*>(view->window()) : nullptr;
+    if (mainWindow != nullptr && mainWindow->statusBar() != nullptr)
+    {
+        mainWindow->statusBar()->showMessage(message, 5000);
+    }
+}
+
+void IDOSMainWindow::onDataGridDeleteFilter(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(m_project);
+    const QString filterId = action.value(QStringLiteral("dataId")).toString();
+    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(project->object(filterId));
+    if (filter == nullptr)
+    {
+        return;
+    }
+    const QMessageBox::StandardButton answer = QMessageBox::question(view, tr("Delete Filter"),
+        tr("Delete filter \"%1\"?").arg(filter->name()), QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (answer == QMessageBox::Yes && project != nullptr && project->commandManager() != nullptr)
+    {
+        QJsonObject arguments;
+        arguments.insert(QStringLiteral("filterId"), filterId);
+        if (!project->commandManager()->execute(new IDOSGridFilterCommand(project.data(), QStringLiteral("delete"), arguments)))
+        {
+            QMessageBox::warning(view, tr("Delete Filter"), project->commandManager()->error());
+        }
+    }
+}
+
+void IDOSMainWindow::onDataGridRenameFilter(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(m_project->object(action.value(QStringLiteral("dataId")).toString()));
+    if (filter == nullptr)
+    {
+        return;
+    }
+    QInputDialog* dialog = new QInputDialog(view);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(tr("Rename Filter"));
+    dialog->setLabelText(tr("Filter name:"));
+    dialog->setTextValue(filter->name());
+    dialog->setProperty("filterId", filter->objectId());
+    dialog->setProperty("project", QVariant::fromValue<QObject*>(m_project));
+    connect(dialog, &QDialog::accepted, this, &IDOSMainWindow::onDataGridFilterRenameAccepted);
+    connect(m_project, &QObject::destroyed, dialog, &QObject::deleteLater);
+    dialog->open();
+}
+
+void IDOSMainWindow::onDataGridFilterRenameAccepted()
+{
+    QInputDialog* dialog = qobject_cast<QInputDialog*>(sender());
+    IDOSTreeView* view = dialog != nullptr ? qobject_cast<IDOSTreeView*>(dialog->parentWidget()) : nullptr;
+    if (view == nullptr || m_project == nullptr || dialog->property("project").value<QObject*>() != m_project)
+    {
+        return;
+    }
+    const QString filterId = dialog->property("filterId").toString();
+    if (qobject_cast<IDOSGridFilter*>(m_project->object(filterId)) == nullptr)
+    {
+        return;
+    }
+    m_project->commandManager()->execute(new IDOSRenameObjectCommand(m_project, filterId, dialog->textValue()));
+}
+
+void IDOSMainWindow::onDataViewWellData(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    IDOSWell* well = view != nullptr && m_project != nullptr
+        ? qobject_cast<IDOSWell*>(m_project->object(action.value(QStringLiteral("dataId")).toString())) : nullptr;
+    if (well == nullptr)
+    {
+        return;
+    }
+    QDialog* dialog = new QDialog(view);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setObjectName(QStringLiteral("wellInputDataWindow"));
+    dialog->setWindowTitle(tr("Well Data - %1").arg(well->name()));
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    QTableWidget* table = new QTableWidget(dialog);
+    table->setEditTriggers(QTableWidget::NoEditTriggers);
+    const QString part = action.value(QStringLiteral("part")).toString();
+    if (part == QStringLiteral("idos.well.summary"))
+    {
+        table->setColumnCount(2);
+        table->setHorizontalHeaderLabels({tr("Data"), tr("Count")});
+        QStringList labels;
+        QList<int> counts;
+        if (well->hasPath())
+        {
+            labels.append(tr("Trajectory points"));
+            counts.append(well->path().pointCount());
+        }
+        if (well->hasLogs())
+        {
+            labels.append(tr("Log curves"));
+            counts.append(well->logs().channelCount());
+        }
+        if (well->hasMarkers())
+        {
+            labels.append(tr("Markers"));
+            counts.append(well->markers().markerCount());
+        }
+        if (well->hasCompletions())
+        {
+            labels.append(tr("Completions"));
+            counts.append(well->completions().size());
+        }
+        if (well->hasCheckshot())
+        {
+            labels.append(tr("Checkshot samples"));
+            counts.append(well->checkshot().depths().size());
+        }
+        table->setRowCount(labels.size());
+        for (int row = 0; row < labels.size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(labels.at(row)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(counts.at(row))));
+        }
+    }
+    else if (part == QStringLiteral("idos.well.trajectory"))
+    {
+        const QVector<IDOSWellPathPoint> points = well->path().points();
+        QStringList attributeHeaders;
+        for (const IDOSWellPathPoint& point : points)
+        {
+            const QStringList keys = point.attributes().keys();
+            for (const QString& key : keys)
+            {
+                if (!attributeHeaders.contains(key))
+                {
+                    attributeHeaders.append(key);
+                }
+            }
+        }
+        table->setColumnCount(5 + attributeHeaders.size());
+        QStringList headers = {tr("Measured Depth"), tr("X"), tr("Y"), tr("Z"), tr("True Vertical Depth")};
+        headers.append(attributeHeaders);
+        table->setHorizontalHeaderLabels(headers);
+        table->setRowCount(points.size());
+        for (int row = 0; row < points.size(); ++row)
+        {
+            const IDOSWellPathPoint& point = points.at(row);
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(point.md(), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(point.x(), 'g', 15)));
+            table->setItem(row, 2, new QTableWidgetItem(QString::number(point.y(), 'g', 15)));
+            table->setItem(row, 3, new QTableWidgetItem(QString::number(point.z(), 'g', 15)));
+            table->setItem(row, 4, new QTableWidgetItem(QString::number(point.tvd(), 'g', 15)));
+            const QVariantMap attributes = point.attributes();
+            for (int column = 0; column < attributeHeaders.size(); ++column)
+            {
+                table->setItem(row, 5 + column,
+                               new QTableWidgetItem(attributes.value(attributeHeaders.at(column)).toString()));
+            }
+        }
+    }
+    else if (part == QStringLiteral("idos.well.zones"))
+    {
+        table->setColumnCount(2);
+        table->setHorizontalHeaderLabels({tr("Horizon"), tr("Measured depth (m)")});
+        QList<IDOSWellMarker> markers = well->markers().markers();
+        const QString markerName = action.value(QStringLiteral("itemKey")).toString();
+        if (!markerName.isEmpty())
+        {
+            for (int index = markers.size() - 1; index >= 0; --index)
+            {
+                if (markers.at(index).name() != markerName)
+                {
+                    markers.removeAt(index);
+                }
+            }
+        }
+        table->setRowCount(markers.size());
+        for (int row = 0; row < markers.size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(markers.at(row).name()));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(markers.at(row).depth(), 'g', 15)));
+        }
+    }
+    else if (part == QStringLiteral("idos.well.completions"))
+    {
+        const QList<IDOSWellCompletion> completions = well->completions();
+        QStringList attributeHeaders;
+        for (const IDOSWellCompletion& completion : completions)
+        {
+            const QStringList keys = completion.attributes().keys();
+            for (const QString& key : keys)
+            {
+                if (!attributeHeaders.contains(key))
+                {
+                    attributeHeaders.append(key);
+                }
+            }
+        }
+        table->setColumnCount(5 + attributeHeaders.size());
+        QStringList headers = {tr("Top depth (m)"), tr("Bottom depth (m)"), tr("Grid layer"), tr("Status"), tr("Event date")};
+        headers.append(attributeHeaders);
+        table->setHorizontalHeaderLabels(headers);
+        table->setRowCount(completions.size());
+        for (int row = 0; row < completions.size(); ++row)
+        {
+            const IDOSWellCompletion& completion = completions.at(row);
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(completion.top(), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(completion.bottom(), 'g', 15)));
+            table->setItem(row, 2, new QTableWidgetItem(completion.k() > 0 ? QString::number(completion.k()) : tr("Not mapped")));
+            table->setItem(row, 3, new QTableWidgetItem(completion.isOpen() ? tr("Open") : tr("Shut")));
+            table->setItem(row, 4, new QTableWidgetItem(completion.eventDate()));
+            const QVariantMap attributes = completion.attributes();
+            for (int column = 0; column < attributeHeaders.size(); ++column)
+            {
+                const QVariant value = attributes.value(attributeHeaders.at(column));
+                table->setItem(row, 5 + column, new QTableWidgetItem(value.toString()));
+            }
+        }
+    }
+    else if (part == QStringLiteral("idos.well.logs"))
+    {
+        const QString channelName = action.value(QStringLiteral("itemKey")).toString();
+        QList<IDOSWellLogChannel> channels;
+        for (const IDOSWellLogChannel& channel : well->logs().channels())
+        {
+            if (channelName.isEmpty() || channel.name() == channelName)
+            {
+                channels.append(channel);
+            }
+        }
+        table->setColumnCount(channels.size() + 1);
+        QStringList headers = {tr("Depth (m)")};
+        for (const IDOSWellLogChannel& channel : channels)
+        {
+            const QString unit = channel.unit().isEmpty() ? QString() : QStringLiteral(" (") + channel.unit() + QLatin1Char(')');
+            headers.append(channel.name() + unit);
+        }
+        table->setHorizontalHeaderLabels(headers);
+        table->setRowCount(channels.isEmpty() ? 0 : channels.first().sampleCount());
+        for (int row = 0; row < table->rowCount(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(channels.first().depths().at(row), 'g', 15)));
+            for (int column = 0; column < channels.size(); ++column)
+            {
+                const double value = channels.at(column).values().at(row);
+                table->setItem(row, column + 1, new QTableWidgetItem(qIsNaN(value) ? QString() : QString::number(value, 'g', 15)));
+            }
+        }
+    }
+    else
+    {
+        const IDOSWellCheckshot& checkshot = well->checkshot();
+        table->setColumnCount(2);
+        const QString depthUnit = checkshot.depthUnit().isEmpty() ? tr("Unspecified unit") : checkshot.depthUnit();
+        const QString timeUnit = checkshot.timeUnit().isEmpty() ? tr("Unspecified unit") : checkshot.timeUnit();
+        const QString timeName = checkshot.timeType() == QStringLiteral("TWT") ? tr("Two-way time")
+            : checkshot.timeType() == QStringLiteral("OWT") ? tr("One-way time") : tr("Time (type unspecified)");
+        const QString depthName = checkshot.depthType() == QStringLiteral("TVD")
+            ? tr("True vertical depth (%1)").arg(depthUnit) : tr("Depth (%1)").arg(depthUnit);
+        table->setHorizontalHeaderLabels({depthName, tr("%1 (%2)").arg(timeName, timeUnit)});
+        table->setRowCount(checkshot.depths().size());
+        for (int row = 0; row < checkshot.depths().size(); ++row)
+        {
+            table->setItem(row, 0, new QTableWidgetItem(QString::number(checkshot.depths().at(row), 'g', 15)));
+            table->setItem(row, 1, new QTableWidgetItem(QString::number(checkshot.times().at(row), 'g', 15)));
+        }
+    }
+    table->resizeColumnsToContents();
+    layout->addWidget(table);
+    dialog->resize(620, 400);
+    dialog->show();
+}
+
+void IDOSMainWindow::onDataNewWell(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    Q_UNUSED(action);
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    IDOSMainWindow::dataNewWell(m_project, view);
+}
+
+void IDOSMainWindow::onDataImportWell(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    if (id.isEmpty())
+    {
+        IDOSMainWindow::dataImportWellData(m_project, view);
+    }
+    else if (qobject_cast<IDOSWell*>(m_project->object(id)) != nullptr &&
+             (action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellHeaderAction") ||
+              action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellPathAction") ||
+              action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellCurvesAction") ||
+              action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellPartAction")))
+    {
+        QPointer<IDOSProject> project(m_project);
+        QString providerPrefix = action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellHeaderAction")
+            ? QStringLiteral("idos.well.header") : QStringLiteral("idos.well.path");
+        if (action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellCurvesAction"))
+        {
+            providerPrefix = QStringLiteral("idos.well.las");
+        }
+        else if (action.value(QStringLiteral("objectName")).toString() == QStringLiteral("importWellPartAction"))
+        {
+            const QString part = action.value(QStringLiteral("part")).toString();
+            if (part == QStringLiteral("idos.well.zones"))
+            {
+                providerPrefix = QStringLiteral("idos.well.tops");
+            }
+            else if (part == QStringLiteral("idos.well.completions"))
+            {
+                providerPrefix = QStringLiteral("idos.well.completion");
+            }
+            else if (part == QStringLiteral("idos.well.checkshots"))
+            {
+                providerPrefix = QStringLiteral("idos.well.checkshot");
+            }
+        }
+        const QString importTitle = providerPrefix == QStringLiteral("idos.well.path")
+            ? tr("Import Well Trajectory")
+            : providerPrefix == QStringLiteral("idos.well.header") ? tr("Import Well Header")
+            : providerPrefix == QStringLiteral("idos.well.las") ? tr("Import Well Curves")
+            : providerPrefix == QStringLiteral("idos.well.tops") ? tr("Import Well Markers")
+            : providerPrefix == QStringLiteral("idos.well.completion") ? tr("Import Well Completions")
+            : tr("Import Well Checkshots");
+        const QString file = QFileDialog::getOpenFileName(
+            view, importTitle, QString(),
+            IDOSDataProviderRegistry::instance().fileFilters(providerPrefix));
+        if (file.isEmpty() || project.isNull())
+        {
+            return;
+        }
+        QJsonObject arguments;
+        arguments.insert(QStringLiteral("filePath"), file);
+        arguments.insert(QStringLiteral("targetWellId"), id);
+        IDOSImportWellDataCommandMetadata metadata;
+        IDOSCommandManager* manager = project->commandManager();
+        if (manager == nullptr || !manager->execute(metadata.create(arguments, project.data())))
+        {
+            if (manager != nullptr)
+            {
+                QMessageBox::warning(view, importTitle, manager->error());
+            }
+        }
+    }
+    else if (qobject_cast<IDOSWell*>(m_project->object(id)) != nullptr)
+    {
+        IDOSMainWindow::dataImportWellData(m_project, id, view);
+    }
+}
+
+void IDOSMainWindow::onDataDeleteWell(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSWell*>(m_project->object(id)) != nullptr)
+    {
+        IDOSMainWindow::dataDeleteWell(m_project, id, view);
+    }
+}
+
+int IDOSMainWindow::dataImportWellData(IDOSProject* project, QWidget* parent)
+{
+    QPointer<IDOSProject> target(project);
+    if (target.isNull())
+    {
+        return 0;
+    }
+    const QStringList files = QFileDialog::getOpenFileNames(
+        parent, tr("Import Well Data"), QString(),
+        IDOSDataProviderRegistry::instance().fileFilters(QStringLiteral("idos.well.")));
+    int imported = 0;
+    QStringList errors;
+    for (const QString& file : files)
+    {
+        if (target.isNull())
+        {
+            break;
+        }
+        QJsonObject arguments;
+        arguments.insert(QStringLiteral("filePath"), file);
+        IDOSImportWellDataCommandMetadata metadata;
+        IDOSCommandManager* manager = target->commandManager();
+        if (manager->execute(metadata.create(arguments, target.data())))
+        {
+            ++imported;
+        }
+        else
+        {
+            errors.append(manager->error());
+        }
+    }
+    if (!errors.isEmpty())
+    {
+        QMessageBox::warning(parent, tr("Import Well Data"), errors.join(QStringLiteral("\n")));
+    }
+    return imported;
+}
+
+int IDOSMainWindow::dataImportWellData(IDOSProject* project, const QString& targetWellId, QWidget* parent)
+{
+    QPointer<IDOSProject> target(project);
+    if (target.isNull() || qobject_cast<IDOSWell*>(target->object(targetWellId)) == nullptr)
+    {
+        return 0;
+    }
+    const QString file = QFileDialog::getOpenFileName(
+        parent, tr("Import Well Data"), QString(),
+        IDOSDataProviderRegistry::instance().fileFilters(QStringLiteral("idos.well.")));
+    if (file.isEmpty() || target.isNull())
+    {
+        return 0;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), file);
+    arguments.insert(QStringLiteral("targetWellId"), targetWellId);
+    IDOSImportWellDataCommandMetadata metadata;
+    IDOSCommandManager* manager = target->commandManager();
+    if (!manager->execute(metadata.create(arguments, target.data())))
+    {
+        QMessageBox::warning(parent, tr("Import Well Data"), manager->error());
+        return 0;
+    }
+    return 1;
+}
+
+bool IDOSMainWindow::dataNewWell(IDOSProject* project, QWidget* parent)
+{
+    QPointer<IDOSProject> targetProject(project);
+    if (targetProject.isNull())
+    {
+        return false;
+    }
+    QInputDialog dialog(parent);
+    dialog.setObjectName(QStringLiteral("newWellDialog"));
+    dialog.setWindowTitle(tr("New Well"));
+    dialog.setWindowIcon(QIcon(QStringLiteral(":/images/gui-well-new.svg")));
+    dialog.setLabelText(tr("Well name:"));
+    dialog.setInputMode(QInputDialog::TextInput);
+    dialog.setOkButtonText(tr("Create"));
+    dialog.setCancelButtonText(tr("Cancel"));
+    while (dialog.exec() == QDialog::Accepted)
+    {
+        if (targetProject.isNull())
+        {
+            return false;
+        }
+        const QString name = dialog.textValue().trimmed();
+        if (name.isEmpty())
+        {
+            dialog.setLabelText(tr("Please enter a well name."));
+            continue;
+        }
+        bool exists = false;
+        for (IDOSDataObject* object : targetProject->objects())
+        {
+            IDOSWell* existing = qobject_cast<IDOSWell*>(object);
+            if (existing != nullptr && existing->name().compare(name, Qt::CaseInsensitive) == 0)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (exists)
+        {
+            dialog.setLabelText(tr("A well named \"%1\" already exists. Please enter a different name.").arg(name));
+            continue;
+        }
+        IDOSCommandManager* commandManager = targetProject->commandManager();
+        if (commandManager == nullptr)
+        {
+            return false;
+        }
+
+        return commandManager->execute(new IDOSCreateWellCommand(targetProject, name));
+    }
+    return false;
+}
+
+bool IDOSMainWindow::dataDeleteWell(IDOSProject* project, const QString& wellId, QWidget* parent)
+{
+    QPointer<IDOSProject> target(project);
+    if (target.isNull() || wellId.isEmpty())
+    {
+        return false;
+    }
+    IDOSDataObject* obj = target->object(wellId);
+    IDOSWell* well = qobject_cast<IDOSWell*>(obj);
+    if (well == nullptr)
+    {
+        return false;
+    }
+    const QMessageBox::StandardButton btn =
+        QMessageBox::question(parent, tr("Delete Well"),
+                               tr("Are you sure you want to delete well \"%1\"?\n"
+                                  "It will be removed from all cases that reference it.")
+                                   .arg(well->name()),
+                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (btn != QMessageBox::Yes || target.isNull())
+    {
+        return false;
+    }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSDeleteWellCommand(target, wellId));
+}
+
+void IDOSMainWindow::onCaseGenerateInput(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSCaseObject*>(m_project->object(caseId)) != nullptr)
+    {
+        m_simulation->onGenerateInputRequested(m_project, caseId);
+    }
+}
+
+void IDOSMainWindow::onCaseViewPropertyCurves(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action.value(QStringLiteral("caseId")).toString();
+    IDOSSimulationCaseObject* simulationCase =
+        qobject_cast<IDOSSimulationCaseObject*>(m_project->object(caseId));
+    if (simulationCase != nullptr && !simulationCase->curveTables().isEmpty())
+    {
+        m_simulation->onPropertyCurvesRequested(m_project, caseId);
+    }
+}
+
+void IDOSMainWindow::onCaseImportSummaryResults(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSSimulationCaseObject*>(m_project->object(caseId)) == nullptr)
+    {
+        return;
+    }
+    const QString filePath = QFileDialog::getOpenFileName(
+        view, tr("Import Summary Results"), QString(),
+        tr("ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)"));
+    if (filePath.isEmpty())
+    {
+        return;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), filePath);
+    arguments.insert(QStringLiteral("targetCaseId"), caseId);
+    IDOSCommandManager* manager = m_project->commandManager();
+    const QJsonObject response = manager != nullptr
+        ? manager->execute(QStringLiteral("case.summary.import"), arguments) : QJsonObject();
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view, tr("Import Summary Results"),
+                             manager != nullptr ? response.value(QStringLiteral("error")).toString()
+                                                : tr("The command manager is unavailable."));
+    }
+}
+
+void IDOSMainWindow::onCaseViewSummaryResults(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString summaryId = action.value(QStringLiteral("dataId")).toString();
+    IDOSSimulationSummaryResults* results =
+        qobject_cast<IDOSSimulationSummaryResults*>(m_project->object(summaryId));
+    if (results != nullptr)
+    {
+        IDOSSimulationSummaryCurvesWidget* widget =
+            new IDOSSimulationSummaryCurvesWidget(results, view);
+        widget->show();
+    }
+}
+
+void IDOSMainWindow::onCaseRenameCase(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action.value(QStringLiteral("dataId")).toString();
+    IDOSCaseObject* caseObject = qobject_cast<IDOSCaseObject*>(m_project->object(caseId));
+    if (caseObject == nullptr)
+    {
+        return;
+    }
+    QInputDialog dialog(view);
+    dialog.setObjectName(QStringLiteral("renameCaseDialog"));
+    dialog.setWindowTitle(tr("Rename Case"));
+    dialog.setLabelText(tr("Case name:"));
+    dialog.setTextValue(caseObject->name());
+    dialog.setInputMode(QInputDialog::TextInput);
+    QPointer<IDOSProject> targetProject(m_project);
+    if (dialog.exec() != QDialog::Accepted || m_project == nullptr)
+    {
+        return;
+    }
+    const QString newName = dialog.textValue().trimmed();
+    if (newName.isEmpty())
+    {
+        QMessageBox::warning(view, tr("Rename Case"), tr("Please enter a case name."));
+        return;
+    }
+    caseObject = targetProject != nullptr
+        ? qobject_cast<IDOSCaseObject*>(targetProject->object(caseId)) : nullptr;
+    if (caseObject == nullptr)
+    {
+        return;
+    }
+    if (newName.compare(caseObject->name(), Qt::CaseInsensitive) != 0 && caseNameExists(view, newName))
+    {
+        QMessageBox::warning(view, tr("Rename Case"), tr("A case with this name already exists."));
+        return;
+    }
+    IDOSCommandManager* manager = targetProject != nullptr ? targetProject->commandManager() : nullptr;
+    if (manager != nullptr && !manager->execute(new IDOSRenameObjectCommand(targetProject.data(), caseId, newName)))
+    {
+        QMessageBox::warning(view, tr("Rename Case"), manager->error());
+    }
+}
+
+void IDOSMainWindow::onCaseNewCase(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    Q_UNUSED(action);
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    caseNewCase(view);
+}
+
+void IDOSMainWindow::onCaseImportCase(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    Q_UNUSED(action);
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    caseImportCase(view);
+}
+
+void IDOSMainWindow::onCaseImportGrid(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString caseId = action.value(QStringLiteral("caseId")).toString();
+    if (qobject_cast<IDOSCaseObject*>(m_project->object(caseId)) != nullptr)
+    {
+        caseImportGrid(view, caseId);
+    }
+}
+
+void IDOSMainWindow::onCaseDeleteCase(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSCaseObject*>(m_project->object(id)) != nullptr)
+    {
+        caseDeleteCase(view, id);
+    }
+}
+
+int IDOSMainWindow::caseGridPropertyCount(const IDOSTreeView* view, const QString& gridId) const
+{
+    if (view == nullptr || m_project == nullptr || gridId.isEmpty())
+    {
+        return 0;
+    }
+    int count = 0;
+    for (IDOSDataObject* object : m_project->objects())
+    {
+        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        if (property != nullptr && property->gridId() == gridId)
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+QString IDOSMainWindow::caseReferencedGridId(const IDOSCaseObject* caseObj)
+{
+    if (caseObj == nullptr)
+    {
+        return QString();
+    }
+    const QList<IDOSCaseItemRef> refs = caseObj->itemRefs();
+    for (const IDOSCaseItemRef& ref : refs)
+    {
+        if (ref.role() == QStringLiteral("case.grid"))
+        {
+            return ref.objectId();
+        }
+    }
+    return QString();
+}
+
+bool IDOSMainWindow::caseNameExists(const IDOSTreeView* view, const QString& name) const
+{
+    if (view == nullptr || m_project == nullptr)
+    {
+        return false;
+    }
+    for (IDOSDataObject* object : m_project->objects())
+    {
+        if (qobject_cast<IDOSCaseObject*>(object) != nullptr &&
+            object->name().trimmed().compare(name, Qt::CaseInsensitive) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IDOSMainWindow::caseNewCase(IDOSTreeView* view)
+{
+    if (view == nullptr || m_project == nullptr)
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    IDOSCaseDialog dialog(QString(), QString(), {}, target, view);
+    if (dialog.exec() != QDialog::Accepted || target.isNull())
+    {
+        return false;
+    }
+    if (caseNameExists(view, dialog.caseName()))
+    {
+        QMessageBox::warning(view, tr("New Case"), tr("A case with this name already exists."));
+        return false;
+    }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSCreateCaseCommand(target, dialog.caseName()));
+}
+
+bool IDOSMainWindow::caseImportCase(IDOSTreeView* view)
+{
+    if (view == nullptr || m_project == nullptr)
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    const QString file = QFileDialog::getOpenFileName(view, tr("Select ECLIPSE Case"), QString(),
+                                                      tr("ECLIPSE Cases (*.DATA *.data);;All Files (*)"));
+    if (file.isEmpty() || target.isNull())
+    {
+        return false;
+    }
+    std::unique_ptr<IDOSDataProvider> reader =
+        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
+    if (!reader)
+    {
+        IDOS_ERROR(tr("The simulation case reader is unavailable."));
+        QMessageBox::warning(view, tr("Import Case"), tr("The simulation case reader is unavailable."));
+        return false;
+    }
+    QList<IDOSDataObject*> objects = reader->read(file);
+    IDOSSimulationCaseObject* simulationCase = nullptr;
+    for (IDOSDataObject* object : objects)
+    {
+        IDOSSimulationCaseObject* candidate = qobject_cast<IDOSSimulationCaseObject*>(object);
+        if (candidate != nullptr)
+        {
+            simulationCase = candidate;
+            break;
+        }
+    }
+    if (simulationCase == nullptr)
+    {
+        IDOS_ERROR(tr("Simulation case parsing failed for %1: %2")
+                       .arg(file, reader->lastError()));
+        qDeleteAll(objects);
+        QMessageBox::warning(view, tr("Import Case"), reader->lastError());
+        return false;
+    }
+    IDOSCaseDialog dialog(simulationCase->name(), simulationCase->sourceFile(), simulationCase->pendingWellNames(),
+                          target, view);
+    if (dialog.exec() != QDialog::Accepted || target.isNull())
+    {
+        qDeleteAll(objects);
+        return false;
+    }
+    if (caseNameExists(view, dialog.caseName()))
+    {
+        IDOS_WARN(tr("Case import rejected because the name already exists: %1")
+                      .arg(dialog.caseName()));
+        qDeleteAll(objects);
+        QMessageBox::warning(view, tr("Import Case"), tr("A case with this name already exists."));
+        return false;
+    }
+    qDeleteAll(objects);
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), file);
+    arguments.insert(QStringLiteral("caseName"), dialog.caseName());
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target, QStringLiteral("case.import"), arguments);
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(view, tr("Import Case"), commandManager->error());
+    }
+    return success;
+}
+
+bool IDOSMainWindow::caseDeleteCase(IDOSTreeView* view, const QString& caseId)
+{
+    if (view == nullptr || m_project == nullptr || caseId.isEmpty())
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    IDOSDataObject* obj = target->object(caseId);
+    IDOSCaseObject* caseObj = qobject_cast<IDOSCaseObject*>(obj);
+    if (caseObj == nullptr)
+    {
+        return false;
+    }
+    // 网格归工况私有：收集该工况引用的网格及其属性数量用于确认提示
+    QStringList gridIds;
+    int propertyTotal = 0;
+    const QList<IDOSCaseItemRef> refs = caseObj->itemRefs();
+    for (const IDOSCaseItemRef& ref : refs)
+    {
+        if (ref.role() == QStringLiteral("case.grid"))
+        {
+            gridIds.append(ref.objectId());
+            propertyTotal += caseGridPropertyCount(view, ref.objectId());
+        }
+    }
+    const QMessageBox::StandardButton btn =
+        QMessageBox::question(view, tr("Delete Case"),
+                               tr("Are you sure you want to delete case \"%1\"?\n"
+                                  "Its %2 grid(s) and %3 propert(ies) will also be deleted. "
+                                  "Unshared fluid tables imported with this case will also be deleted. "
+                                  "Shared tables and referenced wells are kept.")
+                                   .arg(caseObj->name())
+                                   .arg(gridIds.size())
+                                   .arg(propertyTotal),
+                               QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (btn != QMessageBox::Yes || target.isNull())
+    {
+        return false;
+    }
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    return commandManager->execute(new IDOSDeleteCaseCommand(target, caseId));
+}
+
+bool IDOSMainWindow::caseImportGrid(IDOSTreeView* view, const QString& targetCaseId)
+{
+    if (view == nullptr || m_project == nullptr || targetCaseId.isEmpty())
+    {
+        return false;
+    }
+    QPointer<IDOSProject> target(m_project);
+    IDOSCaseObject* caseObj = qobject_cast<IDOSCaseObject*>(target->object(targetCaseId));
+    if (caseObj == nullptr)
+    {
+        return false;
+    }
+    // 一个工况仅持有一个网格：已有网格时确认替换
+    const QString existingGridId = caseReferencedGridId(caseObj);
+    bool replacing = false;
+    if (!existingGridId.isEmpty())
+    {
+        IDOSGrid* existingGrid = qobject_cast<IDOSGrid*>(target->object(existingGridId));
+        const QString gridName = existingGrid != nullptr ? existingGrid->name() : existingGridId;
+        const int propertyCount = caseGridPropertyCount(view, existingGridId);
+        const QMessageBox::StandardButton btn = QMessageBox::question(
+            view, tr("Import Grid"),
+            tr("Case \"%1\" already has grid \"%2\".\n"
+               "Importing a new grid will delete it along with %3 propert(ies). Continue?")
+                .arg(caseObj->name())
+                .arg(gridName)
+                .arg(propertyCount),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (btn != QMessageBox::Yes || target.isNull())
+        {
+            return false;
+        }
+        replacing = true;
+    }
+    const QString file = QFileDialog::getOpenFileName(
+        view, tr("Import Grid"), QString(),
+        tr("ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)"));
+    if (file.isEmpty() || target.isNull())
+    {
+        return false;
+    }
+
+    IDOSCommandManager* commandManager = target->commandManager();
+    if (commandManager == nullptr)
+    {
+        return false;
+    }
+
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filePath"), file);
+    arguments.insert(QStringLiteral("targetCaseId"), targetCaseId);
+    arguments.insert(QStringLiteral("replaceExistingGrid"), replacing);
+    IDOSImportObjectsCommand* command =
+        new IDOSImportObjectsCommand(target, QStringLiteral("grid.import"), arguments);
+    const bool success = commandManager->execute(command);
+    if (!success)
+    {
+        QMessageBox::warning(view, tr("Import Grid"), commandManager->error());
+    }
+    return success;
+}
+
+void IDOSMainWindow::onCaseRenameObject(IDOSTreeView* sourceView, const QVariantMap& action)
+{
+    IDOSTreeView* view = sourceView;
+    if (view == nullptr)
+    {
+        return;
+    }
+    QPointer<IDOSProject> project(m_project);
+    const QString id = action.value(QStringLiteral("dataId")).toString();
+    IDOSDataObject* object = project->object(id);
+    if (object == nullptr)
+    {
+        return;
+    }
+    bool accepted = false;
+    const QString name = QInputDialog::getText(view, tr("Rename Object"), tr("Name:"), QLineEdit::Normal, object->name(), &accepted);
+    if (accepted && project != nullptr && project.data() == m_project &&
+        !project->commandManager()->execute(new IDOSRenameObjectCommand(project.data(), id, name)))
+    {
+        QMessageBox::warning(view, tr("Rename Object"), project->commandManager()->error());
+    }
+}
+
+void IDOSMainWindow::clearTreeDialogs()
+{
+    delete m_gridWidget.data();
+    delete m_filterWidget.data();
+    delete m_wellWidget.data();
+}
+
+void IDOSMainWindow::executeTreeAction(IDOSTreeModel* model, const QString& operation,
+                                       const QVariantMap& arguments, IDOSRenderView* targetView)
+{
+    IDOSTreeView* view = model == m_dataTreeModel ? m_dataTreeView
+        : model == m_caseTreeModel ? m_caseTreeView : nullptr;
+    if (view == nullptr || m_project == nullptr)
+    {
+        return;
+    }
+    if (operation == QStringLiteral("node.importDataset"))
+    {
+        onNodeImportDataset(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("node.selectSeismicInline"))
+    {
+        onNodeSelectSeismicInline(view, arguments, targetView);
+        return;
+    }
+    if (operation == QStringLiteral("node.importFluidRockTables"))
+    {
+        onNodeImportFluidRockTables(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("node.addFluidRockTableToCase"))
+    {
+        onNodeAddFluidRockTableToCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("command.execute"))
+    {
+        IDOSCommandManager* manager = m_project->commandManager();
+        if (manager == nullptr)
+        {
+            return;
+        }
+        const QJsonObject response = manager->execute(arguments.value(QStringLiteral("commandId")).toString(),
+            arguments.value(QStringLiteral("commandArguments")).value<QJsonObject>());
+        if (!response.value(QStringLiteral("success")).toBool())
+        {
+            QMessageBox::warning(view, arguments.value(QStringLiteral("text")).toString(),
+                response.value(QStringLiteral("error")).toString());
+        }
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridSettingsTriggered"))
+    {
+        onDataGridSettingsTriggered(view, arguments, targetView);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridDisplayTriggered"))
+    {
+        onDataGridDisplayTriggered(view, arguments, targetView);
+        return;
+    }
+    if (operation == QStringLiteral("data.onWellSettingsTriggered"))
+    {
+        onDataWellSettingsTriggered(view, arguments, targetView);
+        return;
+    }
+    if (operation == QStringLiteral("data.onDeleteDatasets"))
+    {
+        onDataDeleteDatasets(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onAddToCase"))
+    {
+        onDataAddToCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onRenameObject"))
+    {
+        onDataRenameObject(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridImportProperty"))
+    {
+        onDataGridImportProperty(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridImportDynamicProperties"))
+    {
+        onDataGridImportDynamicProperties(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridDeleteProperty"))
+    {
+        onDataGridDeleteProperty(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridDelete"))
+    {
+        onDataGridDelete(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridDeleteFilter"))
+    {
+        onDataGridDeleteFilter(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onGridRenameFilter"))
+    {
+        onDataGridRenameFilter(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onViewWellData"))
+    {
+        onDataViewWellData(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onNewWell"))
+    {
+        onDataNewWell(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onImportWell"))
+    {
+        onDataImportWell(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("data.onDeleteWell"))
+    {
+        onDataDeleteWell(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onGenerateInput"))
+    {
+        onCaseGenerateInput(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onViewPropertyCurves"))
+    {
+        onCaseViewPropertyCurves(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onImportSummaryResults"))
+    {
+        onCaseImportSummaryResults(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onViewSummaryResults"))
+    {
+        onCaseViewSummaryResults(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onRenameCase"))
+    {
+        onCaseRenameCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onNewCase"))
+    {
+        onCaseNewCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onImportCase"))
+    {
+        onCaseImportCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onImportGrid"))
+    {
+        onCaseImportGrid(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onDeleteCase"))
+    {
+        onCaseDeleteCase(view, arguments);
+        return;
+    }
+    if (operation == QStringLiteral("case.onRenameObject"))
+    {
+        onCaseRenameObject(view, arguments);
+        return;
+    }
+}
+
+void IDOSMainWindow::onDataGridSettingsTriggered(IDOSTreeView* view, const QVariantMap& arguments,
+                                                IDOSRenderView* targetView)
+{
+    const QString gridId = arguments.value(QStringLiteral("gridId")).toString();
+    const QString filterId = arguments.value(QStringLiteral("filterId")).toString();
+    IDOSGrid* grid = qobject_cast<IDOSGrid*>(m_project->object(gridId));
+    IDOSRenderObject* object = dataGridRenderObject(filterId.isEmpty() ? gridId : filterId, targetView);
+    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(m_project->object(filterId));
+    const QString propertyId = arguments.value(QStringLiteral("propertyId")).toString();
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(m_project->object(propertyId));
+    if (grid == nullptr || object == nullptr ||
+        (!filterId.isEmpty() && (filter == nullptr || filter->gridId() != gridId)) ||
+        (!propertyId.isEmpty() && (property == nullptr || property->gridId() != gridId)))
+    {
+        return;
+    }
+    if (arguments.value(QStringLiteral("openFilter")).toBool())
+    {
+        delete m_filterWidget.data();
+        m_filterWidget = new IDOSGridFilterWidget(view->window());
+        m_filterWidget->setProject(m_project);
+        m_filterWidget->setGrid(grid);
+        m_filterWidget->setView(targetView);
+        m_filterWidget->setFilter(filterId);
+        m_filterWidget->show();
+    }
+    else
+    {
+        delete m_gridWidget.data();
+        m_gridWidget = new IDOSGridSettingWidget(view->window());
+        m_gridWidget->setProject(m_project);
+        m_gridWidget->setGrid(grid);
+        m_gridWidget->setView(targetView);
+        m_gridWidget->setPropertyId(arguments.value(QStringLiteral("propertyId")).toString());
+        if (!filterId.isEmpty())
+        {
+            m_gridWidget->setRenderTarget(filterId);
+        }
+        m_gridWidget->show();
+    }
+}
+
+void IDOSMainWindow::onDataGridDisplayTriggered(IDOSTreeView* view, const QVariantMap& arguments,
+                                               IDOSRenderView* targetView)
+{
+    Q_UNUSED(view);
+    IDOSRenderObject* object = dataGridRenderObject(arguments.value(QStringLiteral("gridId")).toString(), targetView);
+    IDOSGridRenderProvider* provider = object != nullptr ? dynamic_cast<IDOSGridRenderProvider*>(object->provider()) : nullptr;
+    if (provider == nullptr)
+    {
+        return;
+    }
+    const QString propertyId = arguments.value(QStringLiteral("propertyId")).toString();
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(m_project->object(propertyId));
+    if (!propertyId.isEmpty() && (property == nullptr || property->gridId() != arguments.value(QStringLiteral("gridId")).toString()))
+    {
+        return;
+    }
+    provider->setProperty(property);
+    object->setVisible(true);
+    targetView->scene()->notifyChanged(object->id());
+}
+
+void IDOSMainWindow::onDataWellSettingsTriggered(IDOSTreeView* view, const QVariantMap& arguments,
+                                                IDOSRenderView* targetView)
+{
+    Q_UNUSED(view);
+    IDOSWell* well = qobject_cast<IDOSWell*>(m_project->object(arguments.value(QStringLiteral("wellId")).toString()));
+    if (well == nullptr || targetView == nullptr)
+    {
+        return;
+    }
+    bool available = false;
+    for (IDOSRenderObject* object : targetView->scene()->objects())
+    {
+        if (object->provider()->dataSource() == well && dynamic_cast<IDOSWellRenderProvider*>(object->provider()) != nullptr)
+        {
+            available = true;
+            break;
+        }
+    }
+    if (!available)
+    {
+        return;
+    }
+    delete m_wellWidget.data();
+    m_wellWidget = new IDOSWellDisplayWidget(this);
+    m_wellWidget->setProject(m_project);
+    m_wellWidget->setWell(well);
+    m_wellWidget->setView(targetView);
+    m_wellWidget->setTrajectory(arguments.value(QStringLiteral("trajectory")).toBool());
+    m_wellWidget->show();
+}
+
+bool IDOSMainWindow::transferTreeItems(IDOSTreeModel* model, const QVariantMap& arguments, bool validateOnly)
+{
+    IDOSTreeView* view = model == m_dataTreeModel ? m_dataTreeView
+        : model == m_caseTreeModel ? m_caseTreeView : nullptr;
+    if (view == nullptr || m_project == nullptr || m_project->commandManager() == nullptr)
+    {
+        return false;
+    }
+    QJsonObject commandArguments;
+    commandArguments.insert(QStringLiteral("items"), QJsonArray::fromVariantList(arguments.value(QStringLiteral("items")).toList()));
+    commandArguments.insert(QStringLiteral("targetCaseId"), arguments.value(QStringLiteral("targetCaseId")).toString());
+    commandArguments.insert(QStringLiteral("targetGridId"), arguments.value(QStringLiteral("targetGridId")).toString());
+    const bool move = arguments.value(QStringLiteral("move")).toBool();
+    IDOSTransferObjectsCommand command(m_project, move ? QStringLiteral("move") : QStringLiteral("copy"), commandArguments);
+    QString error;
+    if (!command.validate(error))
+    {
+        return false;
+    }
+    if (validateOnly)
+    {
+        return true;
+    }
+    const QJsonObject response = m_project->commandManager()->execute(
+        move ? QStringLiteral("objects.move") : QStringLiteral("objects.copy"), commandArguments);
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view, tr("Transfer Objects"), response.value(QStringLiteral("error")).toString());
+        return false;
+    }
+    return true;
+}
+
+void IDOSMainWindow::onNodeImportDataset(IDOSTreeView* view, const QVariantMap& arguments)
+{
+    QPointer<IDOSProject> project(m_project);
+    const QString title = arguments.value(QStringLiteral("text")).toString();
+    const QStringList files = QFileDialog::getOpenFileNames(view, title, QString(),
+        arguments.value(QStringLiteral("fileFilter")).toString());
+    if (files.isEmpty() || project == nullptr || project != m_project || project->commandManager() == nullptr)
+    {
+        return;
+    }
+    QStringList failures;
+    for (const QString& file : files)
+    {
+        if (project == nullptr || project != m_project)
+        {
+            return;
+        }
+        QJsonObject commandArguments;
+        commandArguments.insert(QStringLiteral("filePath"), file);
+        commandArguments.insert(QStringLiteral("providerId"), arguments.value(QStringLiteral("providerId")).toString());
+        commandArguments.insert(QStringLiteral("dataTypeId"), arguments.value(QStringLiteral("dataTypeId")).toString());
+        const QJsonObject response = project->commandManager()->execute(QStringLiteral("data.import"), commandArguments);
+        if (!response.value(QStringLiteral("success")).toBool())
+        {
+            failures.append(tr("Failed to import %1:\n%2").arg(file, response.value(QStringLiteral("error")).toString()));
+        }
+    }
+    if (!failures.isEmpty())
+    {
+        QMessageBox::warning(view, title, failures.join(QStringLiteral("\n\n")));
+    }
+}
+
+void IDOSMainWindow::onNodeSelectSeismicInline(IDOSTreeView* view, const QVariantMap& arguments,
+                                               IDOSRenderView* targetView)
+{
+    QPointer<IDOSSeismicVolume> volume(qobject_cast<IDOSSeismicVolume*>(
+        m_project->object(arguments.value(QStringLiteral("dataId")).toString())));
+    QPointer<IDOSRenderView> renderView(targetView);
+    if (volume == nullptr || renderView == nullptr)
+    {
+        return;
+    }
+    IDOSRenderObject* object = nullptr;
+    IDOSSeismicVolumeRenderProvider* provider = nullptr;
+    for (IDOSRenderObject* candidate : renderView->scene()->objects())
+    {
+        IDOSSeismicVolumeRenderProvider* candidateProvider = dynamic_cast<IDOSSeismicVolumeRenderProvider*>(candidate->provider());
+        if (candidateProvider != nullptr && candidateProvider->dataSource() == volume)
+        {
+            object = candidate;
+            provider = candidateProvider;
+            break;
+        }
+    }
+    if (object == nullptr || provider == nullptr)
+    {
+        return;
+    }
+    const QString renderId = object->id();
+    QStringList options;
+    for (int number : provider->inlineNumbers())
+    {
+        options.append(QString::number(number));
+    }
+    if (options.isEmpty())
+    {
+        return;
+    }
+    bool accepted = false;
+    const QString selected = QInputDialog::getItem(view, tr("Select Inline Section"), tr("Inline number:"), options,
+        options.indexOf(QString::number(provider->inlineNumber())), false, &accepted);
+    if (!accepted || volume == nullptr || renderView == nullptr || m_project == nullptr ||
+        m_project->object(volume->objectId()) != volume)
+    {
+        return;
+    }
+    object = renderView->scene()->object(renderId);
+    provider = object != nullptr ? dynamic_cast<IDOSSeismicVolumeRenderProvider*>(object->provider()) : nullptr;
+    bool valid = false;
+    const int number = selected.toInt(&valid);
+    if (valid && provider != nullptr && provider->dataSource() == volume && provider->setInlineNumber(number))
+    {
+        renderView->scene()->notifyChanged(renderId);
+        renderView->resetCamera();
+    }
+}
+
+void IDOSMainWindow::onNodeImportFluidRockTables(IDOSTreeView* view, const QVariantMap& arguments)
+{
+    QPointer<IDOSProject> project(m_project);
+    const QString category = arguments.value(QStringLiteral("category")).toString();
+    const bool fluid = category == QStringLiteral("fluid");
+    const QString title = fluid ? tr("Import Fluid Tables") : tr("Import Rock Physics Functions");
+    const QString filter = fluid
+        ? tr("ECLIPSE Fluid Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)")
+        : tr("ECLIPSE Rock Physics Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)");
+    const QString file = QFileDialog::getOpenFileName(view, title, QString(), filter);
+    if (file.isEmpty() || project == nullptr || project != m_project || project->commandManager() == nullptr)
+    {
+        return;
+    }
+    QJsonObject commandArguments;
+    commandArguments.insert(QStringLiteral("filePath"), file);
+    commandArguments.insert(QStringLiteral("category"), category);
+    const QJsonObject response = project->commandManager()->execute(QStringLiteral("data.fluidRock.import"), commandArguments);
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view, title, response.value(QStringLiteral("error")).toString());
+    }
+}
+
+void IDOSMainWindow::onNodeAddFluidRockTableToCase(IDOSTreeView* view, const QVariantMap& arguments)
+{
+    QPointer<IDOSProject> project(m_project);
+    const QString tableId = arguments.value(QStringLiteral("dataId")).toString();
+    if (qobject_cast<IDOSFluidRockTable*>(project->object(tableId)) == nullptr)
+    {
+        return;
+    }
+    QStringList names;
+    QStringList ids;
+    for (IDOSDataObject* data : project->objects())
+    {
+        if (qobject_cast<IDOSSimulationCaseObject*>(data) != nullptr)
+        {
+            names.append(data->name());
+            ids.append(data->objectId());
+        }
+    }
+    if (names.isEmpty())
+    {
+        QMessageBox::information(view, tr("Add Table to Simulation Case"), tr("Create or import a simulation case first."));
+        return;
+    }
+    bool accepted = false;
+    const QString name = QInputDialog::getItem(view, tr("Add Table to Simulation Case"), tr("Simulation case:"),
+        names, 0, false, &accepted);
+    if (!accepted || project == nullptr || project != m_project || project->commandManager() == nullptr)
+    {
+        return;
+    }
+    const int index = names.indexOf(name);
+    if (index < 0)
+    {
+        return;
+    }
+    QJsonObject commandArguments;
+    commandArguments.insert(QStringLiteral("targetCaseId"), ids.at(index));
+    commandArguments.insert(QStringLiteral("tableId"), tableId);
+    const QJsonObject response = project->commandManager()->execute(QStringLiteral("case.fluidRock.attach"), commandArguments);
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(view, tr("Add Table to Simulation Case"), response.value(QStringLiteral("error")).toString());
+    }
 }

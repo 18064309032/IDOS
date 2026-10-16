@@ -7,6 +7,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
+#include <QtCore/qnamespace.h>
 
 #include "idos_render.h"
 
@@ -30,6 +31,9 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     QList<IDOSRenderView*> views() const;
     IDOSRenderView* currentView() const;
     bool setCurrentView(IDOSRenderView* view);
+    bool isCheckable(const QString& dataId) const;
+    Qt::CheckState checkState(const QString& dataId, IDOSRenderView* view) const;
+    void setChecked(const QString& dataId, Qt::CheckState state, IDOSRenderView* view);
     QList<QString> objectIds(IDOSRenderView* view, const QString& dataId) const;
     IDOSDataObject* dataSource(IDOSRenderView* view, const QString& objectId) const;
     QVariantMap presentationState() const;
@@ -38,6 +42,7 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     void objectsChanged(IDOSRenderView* view, const QStringList& dataIds, bool dataChanged);
     void dataAboutToBeRemoved(const QString& dataId);
     void currentViewChanged(IDOSRenderView* view);
+    void stateChanged();
   private slots:
     void onMetadataAdded(const QString& typeId);
     void onMetadataAboutToBeRemoved(const QString& typeId);
@@ -50,13 +55,14 @@ class RENDER_EXPORT IDOSRenderServer : public QObject
     void onObjectsRemoved(const QStringList& ids);
     void onObjectsChanged(const QStringList& ids);
     void onObjectAboutToBeRemoved(const QString& id);
+    void onSceneChanged();
 
   private:
     void bindDataReferences(IDOSRenderProvider* provider);
     void reload();
     void populate(IDOSRenderView* view);
     void update(const QStringList& ids, bool dataChanged);
-    bool update(IDOSRenderView* view, IDOSDataObject* data, bool dataChanged);
+    bool update(IDOSRenderView* view, IDOSDataObject* data, bool dataChanged, bool create = false);
     QPointer<IDOSProject> m_project;
     QPointer<IDOSRenderRegistry> m_registry;
     QList<IDOSRenderView*> m_views;

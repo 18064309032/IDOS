@@ -19,7 +19,7 @@ QStringList IDOSGridBoundaryMetadata::fileExtensions() const
     return {QStringLiteral("*"), QStringLiteral("*.txt"), QStringLiteral("*.dat")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSGridBoundaryMetadata::create() const
+std::unique_ptr<IDOSDataProvider> IDOSGridBoundaryMetadata::createProvider() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSGridBoundaryProvider());
 }

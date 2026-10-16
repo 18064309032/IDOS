@@ -1,14 +1,14 @@
 #ifndef IDOS_POINT_SET_TREE_METADATA_H
 #define IDOS_POINT_SET_TREE_METADATA_H
 
-#include "providers/idostreemetadata.h"
+#include "providers/idostreeitemprovidermetadata.h"
 
-class IDOSPointSetTreeMetadata : public IDOSTreeMetadata
+class IDOSPointSetTreeMetadata : public IDOSTreeItemProviderMetadata
 {
   public:
-    QString typeId() const override;
+    QString id() const override;
     QString treeName() const override;
-    IDOSTreeProvider* create(IDOSDataObject* data) const override;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const override;
 };
 
 #endif

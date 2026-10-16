@@ -5,7 +5,6 @@ add_library(idosexampleplugin SHARED
     idospointsetcommands.h idospointsetcommands.cpp
     idospointsettreeprovider.h idospointsettreeprovider.cpp
     idospointsettreemetadata.h idospointsettreemetadata.cpp
-    idospointsettreeguiprovider.h idospointsettreeguiprovider.cpp
     idospointsetrenderprovider.h idospointsetrenderprovider.cpp
     idospointsetrendermetadata.h idospointsetrendermetadata.cpp
 )

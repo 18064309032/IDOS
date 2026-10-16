@@ -8,6 +8,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
+#include <QtCore/qnamespace.h>
 
 #include <vtkSmartPointer.h>
 
@@ -21,6 +22,8 @@
 
 class IDOSGrid;
 class IDOSGridProperty;
+class IDOSRenderObject;
+class IDOSRenderView;
 #ifndef IDOS_ENABLE_RENDER
 class vtkActor;
 #endif
@@ -30,6 +33,12 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
   public:
     explicit IDOSGridRenderProvider(IDOSGrid* dataObject);
     ~IDOSGridRenderProvider() override;
+    static bool supportsData(const IDOSDataObject* data);
+    static QString renderDataId(const IDOSDataObject* data);
+    static QStringList requiredDataIds(const IDOSDataObject* data, Qt::CheckState state);
+    static void setDataChecked(IDOSDataObject* data, Qt::CheckState state, IDOSRenderView* view,
+                               const QList<IDOSDataObject*>& dataObjects);
+    static Qt::CheckState dataCheckState(IDOSDataObject* data, IDOSRenderView* view);
     IDOSDataObject* dataSource() const override;
     void update() override;
     QVariantMap presentationState() const override;
@@ -70,6 +79,7 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     void setPropertySource(IDOSGridProperty* property);
 
   private:
+    static IDOSRenderObject* renderObject(const QString& dataId, IDOSRenderView* view);
     static QList<QColor> colorRampStops(const QString& key);
     void applyActorProperties();
     QPointer<IDOSGrid> m_dataObject;

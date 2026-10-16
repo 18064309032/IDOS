@@ -48,3 +48,21 @@ QJsonObject IDOSCommandMetadata::toJson() const
     json.insert(QStringLiteral("schema"), schema());
     return json;
 }
+
+QJsonObject IDOSCommandMetadata::stringPropertySchema(const QString& description)
+{
+    QJsonObject property;
+    property.insert(QStringLiteral("type"), QStringLiteral("string"));
+    property.insert(QStringLiteral("description"), description);
+    return property;
+}
+
+QJsonObject IDOSCommandMetadata::schemaWithProperties(const QJsonObject& properties,
+                                                               const QJsonArray& required)
+{
+    QJsonObject schemaObject;
+    schemaObject.insert(QStringLiteral("type"), QStringLiteral("object"));
+    schemaObject.insert(QStringLiteral("properties"), properties);
+    schemaObject.insert(QStringLiteral("required"), required);
+    return schemaObject;
+}

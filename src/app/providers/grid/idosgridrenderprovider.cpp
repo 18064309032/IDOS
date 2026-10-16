@@ -28,6 +28,10 @@
 #include "data/grid/idosgrid.h"
 #include "data/grid/idosgridfilter.h"
 #include "data/grid/idosgridproperty.h"
+#include "idosdataobject.h"
+#include "idosrenderobject.h"
+#include "idosrenderscene.h"
+#include "idosrenderview.h"
 
 #include "idosgridrenderprovider.h"
 
@@ -835,4 +839,162 @@ bool IDOSGridRenderProvider::restorePresentationState(const QVariantMap& state)
     m_property = nullptr;
     m_previewFilterId = state.value(QStringLiteral("previewFilterId")).toString();
     return IDOSRenderProvider::restorePresentationState(state);
+}
+
+bool IDOSGridRenderProvider::supportsData(const IDOSDataObject* data)
+{
+    return qobject_cast<const IDOSGrid*>(data) != nullptr || qobject_cast<const IDOSGridProperty*>(data) != nullptr ||
+        qobject_cast<const IDOSGridFilter*>(data) != nullptr;
+}
+
+QString IDOSGridRenderProvider::renderDataId(const IDOSDataObject* data)
+{
+    const IDOSGridProperty* property = qobject_cast<const IDOSGridProperty*>(data);
+    return property != nullptr ? property->gridId() : data != nullptr ? data->objectId() : QString();
+}
+
+QStringList IDOSGridRenderProvider::requiredDataIds(const IDOSDataObject* data, Qt::CheckState state)
+{
+    QStringList ids;
+    if (data == nullptr || state != Qt::Checked)
+    {
+        return ids;
+    }
+    const IDOSGridFilter* filter = qobject_cast<const IDOSGridFilter*>(data);
+    if (filter != nullptr)
+    {
+        ids.append(filter->gridId());
+    }
+    ids.append(renderDataId(data));
+    ids.removeDuplicates();
+    return ids;
+}
+
+void IDOSGridRenderProvider::setDataChecked(IDOSDataObject* data, Qt::CheckState state, IDOSRenderView* view,
+                                            const QList<IDOSDataObject*>& dataObjects)
+{
+    if (!supportsData(data) || view == nullptr || (state != Qt::Unchecked && state != Qt::Checked))
+    {
+        return;
+    }
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(data);
+    IDOSGrid* grid = qobject_cast<IDOSGrid*>(data);
+    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(data);
+    const bool checked = state == Qt::Checked;
+
+    if (filter != nullptr)
+    {
+        IDOSRenderObject* filterObject = renderObject(filter->objectId(), view);
+        if (filterObject == nullptr)
+        {
+            return;
+        }
+        filterObject->setVisible(checked);
+        IDOSRenderObject* source = renderObject(filter->gridId(), view);
+        IDOSGridRenderProvider* sourceProvider = source != nullptr
+                                                     ? dynamic_cast<IDOSGridRenderProvider*>(source->provider())
+                                                     : nullptr;
+        if (checked && sourceProvider != nullptr && sourceProvider->setFilterCriteria(filter->criteria()))
+        {
+            for (const QString& propertyId : IDOSGridFilter::propertyIds(filter->criteria()))
+            {
+                for (IDOSDataObject* candidate : dataObjects)
+                {
+                    if (candidate != nullptr && candidate->objectId() == propertyId)
+                    {
+                        sourceProvider->setDataReference(candidate);
+                        break;
+                    }
+                }
+            }
+            sourceProvider->setPreviewFilterId(filter->objectId());
+            sourceProvider->update();
+            view->scene()->notifyChanged(source->id());
+        }
+        else if (!checked && sourceProvider != nullptr &&
+                 sourceProvider->previewFilterId() == filter->objectId())
+        {
+            sourceProvider->setFilterCriteria(QVariantMap());
+            sourceProvider->update();
+            view->scene()->notifyChanged(source->id());
+        }
+        view->scene()->notifyChanged(filterObject->id());
+        return;
+    }
+    if (property == nullptr && grid == nullptr)
+    {
+        return;
+    }
+    IDOSRenderObject* object = renderObject(property != nullptr ? property->gridId() : grid->objectId(), view);
+    IDOSGridRenderProvider* provider = object != nullptr
+                                           ? dynamic_cast<IDOSGridRenderProvider*>(object->provider())
+                                           : nullptr;
+    if (provider == nullptr)
+    {
+        return;
+    }
+    if (grid != nullptr)
+    {
+        object->setVisible(checked);
+        if (!checked)
+        {
+            provider->setProperty(nullptr);
+        }
+    }
+    else if (checked)
+    {
+        provider->setProperty(property);
+        object->setVisible(true);
+    }
+    else if (provider->property() == property)
+    {
+        provider->setProperty(nullptr);
+    }
+    view->scene()->notifyChanged(object->id());
+    return;
+}
+
+Qt::CheckState IDOSGridRenderProvider::dataCheckState(IDOSDataObject* data, IDOSRenderView* view)
+{
+    if (!supportsData(data) || view == nullptr)
+    {
+        return Qt::Unchecked;
+    }
+    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(data);
+    IDOSRenderObject* object = renderObject(renderDataId(data), view);
+    if (property != nullptr)
+    {
+        IDOSGridRenderProvider* provider = object != nullptr ? dynamic_cast<IDOSGridRenderProvider*>(object->provider()) : nullptr;
+        return object != nullptr && object->visible() && provider != nullptr && provider->property() == property
+            ? Qt::Checked : Qt::Unchecked;
+    }
+    bool checked = false;
+    bool unchecked = false;
+    for (IDOSRenderObject* candidate : view->scene()->objects())
+    {
+        IDOSDataObject* source = candidate->provider()->dataSource();
+        if (source != nullptr && source->objectId() == data->objectId())
+        {
+            checked = checked || candidate->visible();
+            unchecked = unchecked || !candidate->visible();
+        }
+    }
+    return checked ? (unchecked ? Qt::PartiallyChecked : Qt::Checked) : Qt::Unchecked;
+}
+
+IDOSRenderObject* IDOSGridRenderProvider::renderObject(const QString& dataId, IDOSRenderView* view)
+{
+    if (view == nullptr)
+    {
+        return nullptr;
+    }
+    for (IDOSRenderObject* object : view->scene()->objects())
+    {
+        IDOSDataObject* source = object->provider()->dataSource();
+        if (source != nullptr && source->objectId() == dataId)
+        {
+            return object;
+        }
+    }
+    return nullptr;
 }

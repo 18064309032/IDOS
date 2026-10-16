@@ -2,13 +2,13 @@
 #define IDOS_WELL_TREE_PROVIDER_H
 
 #include "idos_app.h"
-#include "providers/idostreeprovider.h"
+#include "providers/idostreeitemprovider.h"
 
-class APP_EXPORT IDOSWellTreeProvider : public IDOSTreeProvider
+class APP_EXPORT IDOSWellTreeProvider : public IDOSTreeItemProvider
 {
   public:
-    explicit IDOSWellTreeProvider(IDOSDataObject* data);
-    void populate(IDOSTreeItem* item) override;
+    IDOSWellTreeProvider(IDOSDataObject* data);
+    void refresh() override;
 
   private:
     IDOSTreeItem* addItem(IDOSTreeItem* parent, const QString& key, const QString& title);

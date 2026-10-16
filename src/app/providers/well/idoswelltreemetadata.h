@@ -2,17 +2,17 @@
 #define IDOS_WELL_TREE_METADATA_H
 
 #include "idos_app.h"
-#include "providers/idostreemetadata.h"
+#include "providers/idostreeitemprovidermetadata.h"
 
 class IDOSWellTreeProvider;
 
-class APP_EXPORT IDOSWellTreeMetadata : public IDOSTreeMetadata
+class APP_EXPORT IDOSWellTreeMetadata : public IDOSTreeItemProviderMetadata
 {
   public:
-    QString typeId() const override;
+    QString id() const override;
     QString treeName() const override;
     QString groupKey() const override;
-    IDOSTreeProvider* create(IDOSDataObject* data) const override;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const override;
 };
 
 #endif

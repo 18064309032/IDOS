@@ -21,16 +21,16 @@ class IDOSDataProviderMetadata;
  *
  * 用法：
  *   // 按扩展名查 → 拿 Metadata → 工厂创建 → 解析
- *   QList<IDOSDataProviderMetadata*> metas = registry.providers(path);
+ *   QList<IDOSDataProviderMetadata*> metas = registry.metadataForFile(path);
  *   if (!metas.isEmpty()) {
- *       std::unique_ptr<IDOSDataProvider> provider = metas.first()->create();
+ *       std::unique_ptr<IDOSDataProvider> provider = metas.first()->createProvider();
  *       provider->read(path, project);
  *   }
  *
  *   // 文件对话框过滤器
  *   QString filter = registry.fileFilters();
  *
- * 未来插件可调用 add() 注册自己的格式。
+ * 未来插件可调用 registerMetadata() 注册自己的格式。
  */
 class CORE_EXPORT IDOSDataProviderRegistry
 {
@@ -44,14 +44,14 @@ class CORE_EXPORT IDOSDataProviderRegistry
      * @brief 注册 metadata，接管所有权。
      * @return true 成功；false 表示输入无效或同 id 已存在。
      */
-    bool add(IDOSDataProviderMetadata* metadata);
-    bool remove(const QString& id);
+    bool registerMetadata(IDOSDataProviderMetadata* metadata);
+    bool unregisterMetadata(const QString& id);
 
     /** 按 id 查找 metadata；找不到返回 nullptr。 */
     IDOSDataProviderMetadata* metadata(const QString& id) const;
 
     /** 按 id 创建 fresh provider 实例；找不到返回 nullptr。 */
-    std::unique_ptr<IDOSDataProvider> create(const QString& id) const;
+    std::unique_ptr<IDOSDataProvider> createProvider(const QString& id) const;
 
     /** 已注册的全部 metadata。 */
     QList<IDOSDataProviderMetadata*> metadata() const;
@@ -63,7 +63,7 @@ class CORE_EXPORT IDOSDataProviderRegistry
      * 返回列表按优先级排序：canHandle() 真检测返回 true 的排前面，
      * 仅扩展名匹配的排后面；都没匹配上返回空列表。
      */
-    QList<IDOSDataProviderMetadata*> providers(const QString& filePath) const;
+    QList<IDOSDataProviderMetadata*> metadataForFile(const QString& filePath) const;
 
     /**
      * @brief 汇总所有 metadata 的扩展名生成文件对话框过滤器。

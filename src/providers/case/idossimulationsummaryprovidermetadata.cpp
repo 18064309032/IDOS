@@ -21,7 +21,7 @@ QStringList IDOSSimulationSummaryProviderMetadata::fileExtensions() const
     return {QStringLiteral("*.SMSPEC"), QStringLiteral("*.smspec")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSSimulationSummaryProviderMetadata::create() const
+std::unique_ptr<IDOSDataProvider> IDOSSimulationSummaryProviderMetadata::createProvider() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSSimulationSummaryProvider());
 }

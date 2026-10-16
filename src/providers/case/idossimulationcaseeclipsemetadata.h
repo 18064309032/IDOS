@@ -18,7 +18,7 @@ class PROVIDERS_EXPORT IDOSSimulationCaseEclipseMetadata : public IDOSDataProvid
     QString displayName() const override;
     QStringList fileExtensions() const override;
 
-    std::unique_ptr<IDOSDataProvider> create() const override;
+    std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };
 
 #endif // IDOS_SIMULATION_CASE_ECLIPSE_METADATA_H

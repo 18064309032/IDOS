@@ -110,8 +110,6 @@ add_library(idos_core SHARED
     idosproject.h
     idosprojectmetadata.cpp
     idosprojectmetadata.h
-    idostreeserver.cpp
-    idostreeserver.h
     logger/idosconsoletarget.cpp
     logger/idosconsoletarget.h
     logger/idosfiletarget.cpp
@@ -135,18 +133,18 @@ add_library(idos_core SHARED
     providers/idosdataproviderregistry.h
     providers/idosdataregistry.cpp
     providers/idosdataregistry.h
-    providers/idostreemetadata.cpp
-    providers/idostreemetadata.h
-    providers/idostreeprovider.cpp
-    providers/idostreeprovider.h
-    providers/idostreeregistry.cpp
-    providers/idostreeregistry.h
-    tree/idostree.cpp
-    tree/idostree.h
+    providers/idostreeitemprovidermetadata.cpp
+    providers/idostreeitemprovidermetadata.h
+    providers/idostreeitemprovider.cpp
+    providers/idostreeitemprovider.h
+    providers/idostreeitemproviderregistry.cpp
+    providers/idostreeitemproviderregistry.h
+    tree/idostreeaccess.cpp
+    tree/idostreeaccess.h
+    tree/idostreemodel.h
     tree/idostreeitem.cpp
     tree/idostreeitem.h
     tree/idostreemodel.cpp
-    tree/idostreemodel.h
 )
 target_include_directories(idos_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)

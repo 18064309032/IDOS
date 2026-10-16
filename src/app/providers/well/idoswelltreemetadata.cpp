@@ -3,7 +3,7 @@
 
 #include "idoswelltreemetadata.h"
 
-QString IDOSWellTreeMetadata::typeId() const
+QString IDOSWellTreeMetadata::id() const
 {
     return QStringLiteral("idos.well");
 }
@@ -18,7 +18,7 @@ QString IDOSWellTreeMetadata::groupKey() const
     return QStringLiteral("data.wells");
 }
 
-IDOSTreeProvider* IDOSWellTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSWellTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSWellTreeProvider(data);
 }

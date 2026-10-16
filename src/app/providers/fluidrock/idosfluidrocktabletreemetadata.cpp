@@ -9,7 +9,7 @@ IDOSFluidRockTableTreeMetadata::IDOSFluidRockTableTreeMetadata(IDOSFluidRockTabl
 {
 }
 
-QString IDOSFluidRockTableTreeMetadata::typeId() const
+QString IDOSFluidRockTableTreeMetadata::id() const
 {
     return m_category == IDOSFluidRockTable::Category::Fluid
         ? QStringLiteral("idos.fluid.table")
@@ -28,7 +28,7 @@ QString IDOSFluidRockTableTreeMetadata::groupKey() const
         : QStringLiteral("data.rockPhysics");
 }
 
-IDOSTreeProvider* IDOSFluidRockTableTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSFluidRockTableTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSFluidRockTableTreeProvider(data);
 }

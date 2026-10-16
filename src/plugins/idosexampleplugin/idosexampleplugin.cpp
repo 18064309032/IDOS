@@ -18,12 +18,11 @@
 #include "idospointsetcommands.h"
 #include "idospointsetmetadata.h"
 #include "idospointsetrendermetadata.h"
-#include "idospointsettreeguiprovider.h"
 #include "idospointsettreemetadata.h"
 #include "idosproject.h"
 #include "idosrenderregistry.h"
 #include "providers/idosdataregistry.h"
-#include "providers/idostreeregistry.h"
+#include "providers/idostreeitemproviderregistry.h"
 
 #include "idosexampleplugin.h"
 
@@ -80,7 +79,7 @@ void IDOSExamplePlugin::initGui()
         data.release();
     }
     std::unique_ptr<IDOSPointSetTreeMetadata> tree(new IDOSPointSetTreeMetadata());
-    m_treeAdded = m_treeRegistry->add(tree.get());
+    m_treeAdded = m_treeRegistry->registerMetadata(tree.get());
     if (m_treeAdded)
     {
         tree.release();
@@ -90,11 +89,6 @@ void IDOSExamplePlugin::initGui()
     if (m_renderAdded)
     {
         render.release();
-    }
-    m_treeGui = std::make_shared<IDOSPointSetTreeGuiProvider>();
-    if (!m_treeRegistry->addGuiProvider(m_treeGui))
-    {
-        throw std::runtime_error(tr("Point set menu registration failed.").toStdString());
     }
     m_createAdded = m_commandRegistry->add(
         std::unique_ptr<IDOSCommandMetadata>(new IDOSCreatePointSetCommandMetadata(m_dataRegistry)));
@@ -209,13 +203,11 @@ void IDOSExamplePlugin::unload()
     }
     if (m_treeRegistry != nullptr)
     {
-        m_treeRegistry->removeGuiProvider(m_treeGui.get());
         if (m_treeAdded)
         {
-            m_treeRegistry->remove(QString::fromLatin1("idos.example.pointset"));
+            m_treeRegistry->unregisterMetadata(QString::fromLatin1("idos.example.pointset"));
         }
     }
-    m_treeGui.reset();
     if (m_dataRegistry != nullptr && m_dataAdded)
     {
         m_dataRegistry->remove(QString::fromLatin1("idos.example.pointset"));

@@ -1,14 +1,27 @@
 #ifndef IDOS_IMPORTED_DATA_TREE_PROVIDER_H
 #define IDOS_IMPORTED_DATA_TREE_PROVIDER_H
 
-#include "idos_app.h"
-#include "providers/idostreeprovider.h"
+#include <QObject>
 
-class APP_EXPORT IDOSImportedDataTreeProvider : public IDOSTreeProvider
+#include "idos_app.h"
+#include "providers/idostreeitemprovider.h"
+
+class QAction;
+class QMenu;
+
+class APP_EXPORT IDOSImportedDataTreeProvider : public QObject, public IDOSTreeItemProvider
 {
+    Q_OBJECT
+
   public:
-    explicit IDOSImportedDataTreeProvider(IDOSDataObject* data);
-    void populate(IDOSTreeItem* item) override;
+    IDOSImportedDataTreeProvider(IDOSDataObject* data);
+    QMenu* createContextMenu() override;
+    void refresh() override;
+
+  private:
+    QAction* addImportAction(QMenu* menu, const QString& text,
+                             const QString& providerId, const QString& dataTypeId,
+                             const QString& fileFilter);
 };
 
 #endif // IDOS_IMPORTED_DATA_TREE_PROVIDER_H

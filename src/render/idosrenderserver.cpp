@@ -82,6 +82,14 @@ void IDOSRenderServer::addView(IDOSRenderView* view)
     }
     m_views.append(view);
     connect(view, &QObject::destroyed, this, &IDOSRenderServer::onViewDestroyed);
+    {
+        connect(view->scene(), &IDOSRenderScene::objectAdded, this,
+                &IDOSRenderServer::onSceneChanged, Qt::UniqueConnection);
+        connect(view->scene(), &IDOSRenderScene::objectRemoved, this,
+                &IDOSRenderServer::onSceneChanged, Qt::UniqueConnection);
+        connect(view->scene(), &IDOSRenderScene::objectChanged, this,
+                &IDOSRenderServer::onSceneChanged, Qt::UniqueConnection);
+    }
     populate(view);
     if (m_currentView.isNull())
     {
@@ -96,6 +104,7 @@ void IDOSRenderServer::removeView(IDOSRenderView* view)
         return;
     }
     disconnect(view, nullptr, this, nullptr);
+    disconnect(view->scene(), nullptr, this, nullptr);
     if (m_currentView == view)
     {
         setCurrentView(m_views.isEmpty() ? nullptr : m_views.first());
@@ -133,7 +142,50 @@ bool IDOSRenderServer::setCurrentView(IDOSRenderView* view)
         view->setActive(true);
     }
     emit currentViewChanged(view);
+    emit stateChanged();
     return true;
+}
+
+bool IDOSRenderServer::isCheckable(const QString& dataId) const
+{
+    IDOSDataObject* data = m_project != nullptr ? m_project->object(dataId) : nullptr;
+    return data != nullptr && m_registry != nullptr && m_registry->metadata(data->typeId()) != nullptr;
+}
+
+Qt::CheckState IDOSRenderServer::checkState(const QString& dataId, IDOSRenderView* view) const
+{
+    bool checked = false;
+    bool unchecked = false;
+    for (const QString& id : objectIds(view, dataId))
+    {
+        IDOSRenderObject* object = view->scene()->object(id);
+        checked = checked || object->visible();
+        unchecked = unchecked || !object->visible();
+    }
+    return checked ? (unchecked ? Qt::PartiallyChecked : Qt::Checked) : Qt::Unchecked;
+}
+
+void IDOSRenderServer::setChecked(const QString& dataId, Qt::CheckState state, IDOSRenderView* view)
+{
+    if (view == nullptr || !m_views.contains(view) || !isCheckable(dataId) || state == Qt::PartiallyChecked)
+    {
+        return;
+    }
+    if (state == Qt::Checked && objectIds(view, dataId).isEmpty())
+    {
+        update(view, m_project->object(dataId), false, true);
+    }
+    for (const QString& id : objectIds(view, dataId))
+    {
+        IDOSRenderObject* object = view->scene()->object(id);
+        object->setVisible(state == Qt::Checked);
+        view->scene()->notifyChanged(id);
+    }
+}
+
+void IDOSRenderServer::onSceneChanged()
+{
+    emit stateChanged();
 }
 
 QList<QString> IDOSRenderServer::objectIds(IDOSRenderView* view, const QString& dataId) const
@@ -180,7 +232,7 @@ void IDOSRenderServer::populate(IDOSRenderView* view)
     view->resetCamera();
 }
 
-bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool dataChanged)
+bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool dataChanged, bool create)
 {
     if (m_registry == nullptr)
     {
@@ -194,6 +246,10 @@ bool IDOSRenderServer::update(IDOSRenderView* view, IDOSDataObject* data, bool d
     const QList<QString> ids = objectIds(view, data->objectId());
     if (ids.isEmpty())
     {
+        if (!create)
+        {
+            return false;
+        }
         IDOSRenderProvider* provider = metadata->create(data);
         if (provider == nullptr)
         {
@@ -473,6 +529,7 @@ void IDOSRenderServer::restorePresentationState(const QVariantMap& state)
                 {
                     continue;
                 }
+                update(view, data, false, true);
                 for (const QString& id : objectIds(view, dataId))
                 {
                     IDOSRenderObject* object = view->scene()->object(id);

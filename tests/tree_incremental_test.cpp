@@ -11,11 +11,11 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <QMimeData>
-#include <QTimer>
 #include <QPersistentModelIndex>
 #include <QScopedPointer>
 #include <QSignalSpy>
 #include <QStringList>
+#include <QTimer>
 #include <QtTest>
 
 #include <QVTKOpenGLNativeWidget.h>
@@ -32,19 +32,16 @@
 #include "data/well/idoswell.h"
 #include "data/well/idoswellmetadata.h"
 #include "idoscommandmanager.h"
+#include "idosapptreeaccess.h"
 #include "idosmainwindow.h"
 #include "idosproject.h"
 #include "idosrenderview.h"
 #include "idostoolbar.h"
 #include "idostoolregistry.h"
-#include "idostreeserver.h"
-#include "providers/case/idossimulationcasetreeguiprovider.h"
 #include "providers/idosdatametadata.h"
 #include "providers/idosdataregistry.h"
-#include "providers/idostreeregistry.h"
-#include "providers/well/idoswelltreeguiprovider.h"
+#include "providers/idostreeitemproviderregistry.h"
 #include "providers/well/idoswelltreemetadata.h"
-#include "tree/idostree.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
@@ -152,16 +149,16 @@ void TreeIncrementalTest::onDataTreeIncrementalAddRenameRemove()
 
     // 改名保留节点身份、Provider 和持久索引。
     const QPersistentModelIndex wellIndex(model->index(0, 0, wells));
-    IDOSTreeItem* wellItem = model->nodeFromIndex(wellIndex);
-    IDOSTreeProvider* wellProvider = wellItem->provider();
-    const QString treeId = wellItem->id();
+    IDOSTreeItem* wellItem = model->itemFromIndex(wellIndex);
+    IDOSTreeItemProvider* wellProvider = wellItem->provider();
+    const QString treeId = wellItem->provider()->id();
     resetSignalCounters();
     well->setName(QStringLiteral("A11"));
     QVERIFY(!m_dataTreeReset);
     QVERIFY(wellIndex.isValid());
-    QCOMPARE(model->nodeFromIndex(wellIndex), wellItem);
+    QCOMPARE(model->itemFromIndex(wellIndex), wellItem);
     QCOMPARE(wellItem->provider(), wellProvider);
-    QCOMPARE(wellItem->id(), treeId);
+    QCOMPARE(wellItem->provider()->id(), treeId);
     QCOMPARE(m_dataRowsRemoved, 0);
     QCOMPARE(m_dataRowsInserted, 0);
     QCOMPARE(model->rowCount(wells), 1);
@@ -299,8 +296,8 @@ void TreeIncrementalTest::onBatchImportRebuildsCaseBranchOnce()
     QCOMPARE(m_caseRowsRemoved, 0);
 
     const QPersistentModelIndex persistentCase(caseModel->index(0, 0, QModelIndex()));
-    IDOSTreeItem* caseItem = caseModel->nodeFromIndex(persistentCase);
-    IDOSTreeProvider* caseProvider = caseItem->provider();
+    IDOSTreeItem* caseItem = caseModel->itemFromIndex(persistentCase);
+    IDOSTreeItemProvider* caseProvider = caseItem->provider();
     const int categoryCount = caseModel->rowCount(persistentCase);
 
     // 批量导入 5 个同网格属性（模拟 Eclipse DATA 导入）
@@ -323,7 +320,7 @@ void TreeIncrementalTest::onBatchImportRebuildsCaseBranchOnce()
     QVERIFY(!m_caseTreeReset);
     // 批量修改只刷新一次子树，工况节点与 Provider 保持不变。
     QVERIFY(persistentCase.isValid());
-    QCOMPARE(caseModel->nodeFromIndex(persistentCase), caseItem);
+    QCOMPARE(caseModel->itemFromIndex(persistentCase), caseItem);
     QCOMPARE(caseItem->provider(), caseProvider);
     QCOMPARE(m_caseRowsRemoved, categoryCount);
 
@@ -474,59 +471,50 @@ void TreeIncrementalTest::onRegistryLifecycle()
     IDOSWell* well = new IDOSWell();
     project.add(well);
     const QString id = well->objectId();
-    IDOSTreeRegistry registry;
-    IDOSTreeServer server(&registry);
-    IDOSTree tree;
-    tree.setName(QStringLiteral("data"));
-    IDOSTreeModel model(&tree);
+    IDOSTreeItemProviderRegistry registry;
+    IDOSTreeModel model(&registry);
+    model.setName(QStringLiteral("data"));
     IDOSTreeView view;
     view.setModel(&model);
-    view.setRegistry(&registry);
-    QVERIFY(server.addTree(&tree));
-    QVERIFY(!server.addTree(&tree));
-    server.setProject(&project);
+    IDOSAppTreeAccess access(&project);
+    access.setDataTreeModel(&model);
     QCOMPARE(model.rowCount(), 0);
-    QVERIFY(registry.add(new IDOSWellTreeMetadata()));
+    QVERIFY(registry.registerMetadata(new IDOSWellTreeMetadata()));
     QCOMPARE(model.rowCount(), 1);
     IDOSWellTreeMetadata* duplicate = new IDOSWellTreeMetadata();
-    QVERIFY(!registry.add(duplicate));
+    QVERIFY(!registry.registerMetadata(duplicate));
     delete duplicate;
-    std::shared_ptr<IDOSWellTreeGuiProvider> gui = std::make_shared<IDOSWellTreeGuiProvider>();
-    QVERIFY(registry.addGuiProvider(gui));
-    QVERIFY(!registry.addGuiProvider(gui));
     const QModelIndex index = model.indexFromDataId(id);
     QVERIFY(!model.setData(index, Qt::Unchecked, Qt::CheckStateRole));
     QVERIFY(well->isVisible());
-    QVERIFY(registry.remove(QStringLiteral("idos.well")));
+    QVERIFY(registry.unregisterMetadata(QStringLiteral("idos.well")));
     QCOMPARE(model.rowCount(), 0);
-    QVERIFY(!registry.remove(QStringLiteral("idos.well")));
-    QVERIFY(registry.add(new IDOSWellTreeMetadata()));
+    QVERIFY(!registry.unregisterMetadata(QStringLiteral("idos.well")));
+    QVERIFY(registry.registerMetadata(new IDOSWellTreeMetadata()));
     QCOMPARE(model.rowCount(), 1);
-    QVERIFY(server.removeTree(&tree));
+    access.setDataTreeModel(nullptr);
     QCOMPARE(model.rowCount(), 0);
-    QCOMPARE(tree.project(), nullptr);
 }
 
 void TreeIncrementalTest::onTreeOwnership()
 {
-    IDOSTree first;
-    IDOSTree second;
-    IDOSTreeModel model(&first);
-    QSignalSpy inserted(&model, &QAbstractItemModel::rowsInserted);
-    QSignalSpy removed(&model, &QAbstractItemModel::rowsRemoved);
-    IDOSTreeItem* parent = new IDOSTreeItem();
-    IDOSTreeItem* child = new IDOSTreeItem();
+    IDOSTreeModel first(nullptr);
+    IDOSTreeModel second(nullptr);
+    QSignalSpy inserted(&first, &QAbstractItemModel::rowsInserted);
+    QSignalSpy removed(&first, &QAbstractItemModel::rowsRemoved);
+    IDOSTreeItem* parent = new IDOSTreeItem(new IDOSTreeItemProvider());
+    IDOSTreeItem* child = new IDOSTreeItem(new IDOSTreeItemProvider());
     QVERIFY(parent->appendChild(child));
     QVERIFY(!child->appendChild(parent));
-    QVERIFY(first.insert(first.root(), parent));
-    QVERIFY(!second.insert(second.root(), parent));
-    QVERIFY(!first.insert(parent, parent));
+    QVERIFY(first.insertItem(first.root(), parent));
+    QVERIFY(!second.insertItem(second.root(), parent));
+    QVERIFY(!first.insertItem(parent, parent));
     QCOMPARE(inserted.count(), 1);
-    IDOSTreeItem* leaf = new IDOSTreeItem();
+    IDOSTreeItem* leaf = new IDOSTreeItem(new IDOSTreeItemProvider());
     QVERIFY(child->appendChild(leaf));
     QCOMPARE(inserted.count(), 2);
-    QPersistentModelIndex leafIndex(model.indexFromNode(leaf));
-    QVERIFY(first.remove(parent));
+    QPersistentModelIndex leafIndex(first.indexFromItem(leaf));
+    QVERIFY(first.removeItem(parent));
     QCOMPARE(removed.count(), 1);
     QVERIFY(!leafIndex.isValid());
 }
@@ -549,17 +537,17 @@ void TreeIncrementalTest::onMenuTargets()
     view->selectionModel()->select(firstIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
     view->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
     QCOMPARE(view->selectedItems().size(), 2);
-    QScopedPointer<QMenu> blankMenu(view->createMenu(QModelIndex()));
+    QScopedPointer<QMenu> blankMenu(view->createContextMenu(QModelIndex()));
     QVERIFY(blankMenu->actions().isEmpty());
-    QVERIFY(view->menuItem() == nullptr);
+    QVERIFY(view->contextItem() == nullptr);
     QCOMPARE(view->selectedItems().size(), 2);
-    QScopedPointer<QMenu> menu(view->createMenu(firstIndex));
-    QCOMPARE(view->menuItem()->dataId(), first->objectId());
+    QScopedPointer<QMenu> menu(view->createContextMenu(firstIndex));
+    QCOMPARE(view->contextItem()->provider()->dataId(), first->objectId());
     QCOMPARE(view->selectedItems().size(), 2);
     QVERIFY(menu->findChild<QAction*>(QStringLiteral("deleteWellAction")) == nullptr);
     QVERIFY(menu->findChild<QAction*>(QStringLiteral("copyTreeItemsAction")) != nullptr);
     view->selectionModel()->setCurrentIndex(firstIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-    QScopedPointer<QMenu> singleMenu(view->createMenu(firstIndex));
+    QScopedPointer<QMenu> singleMenu(view->createContextMenu(firstIndex));
     QAction* remove = singleMenu->findChild<QAction*>(QStringLiteral("deleteWellAction"));
     QVERIFY(remove != nullptr);
     QCOMPARE(remove->property("dataId").toString(), first->objectId());
@@ -885,7 +873,7 @@ void TreeIncrementalTest::onObjectClipboard()
     const QModelIndex secondIndex = window.dataTreeModel()->indexFromDataId(second->objectId());
     dataView->selectionModel()->select(firstIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     dataView->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
-    QScopedPointer<QMenu> menu(dataView->createMenu(firstIndex));
+    QScopedPointer<QMenu> menu(dataView->createContextMenu(firstIndex));
     QAction* attach = menu->findChild<QAction*>(QStringLiteral("addToCaseAction"));
     QVERIFY(attach != nullptr);
     QVERIFY(menu->findChild<QAction*>(QStringLiteral("removeCaseReferencesAction")) == nullptr);
@@ -900,7 +888,7 @@ void TreeIncrementalTest::onObjectClipboard()
     QVERIFY(!copy->text().contains(QStringLiteral("References")));
     copy->trigger();
     QVERIFY(QApplication::clipboard()->mimeData()->hasFormat(QStringLiteral("application/x-idos-objects")));
-    const QModelIndex wells = window.dataTreeModel()->indexFromNode(window.dataTreeModel()->tree()->find(QStringLiteral("data.wells")));
+    const QModelIndex wells = window.dataTreeModel()->indexFromItem(window.dataTreeModel()->find(QStringLiteral("data.wells")));
     QVERIFY(wells.isValid());
     QVERIFY(dataView->pasteMimeData(QApplication::clipboard()->mimeData(), wells, Qt::CopyAction));
     QCOMPARE(project.objects().size(), 5);
@@ -917,7 +905,7 @@ void TreeIncrementalTest::onObjectClipboard()
     QVERIFY(target->itemRefs().first().objectId() != second->objectId());
     // Whole-object rename is available on a data node, independent of association.
     dataView->setCurrentIndex(window.dataTreeModel()->indexFromDataId(first->objectId()));
-    QScopedPointer<QMenu> renameMenu(dataView->createMenu(dataView->currentIndex()));
+    QScopedPointer<QMenu> renameMenu(dataView->createContextMenu(dataView->currentIndex()));
     QVERIFY(renameMenu->findChild<QAction*>(QStringLiteral("renameObjectAction")) != nullptr);
     QApplication::clipboard()->clear();
 }

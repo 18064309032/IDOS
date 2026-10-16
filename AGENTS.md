@@ -1,5 +1,7 @@
 # 编码规范
 
+- 禁止使用友元类或普通友元函数；仅在必要时允许运算符友元函数。
+
 - 同名的 `.h` 和 `.cpp` 必须放在同一目录。固定源码目录以 `docs/IDOS源码目录.md` 为准；公共接口及实现放在所属功能目录根部，具体业务实现按确认的目录归属放置。未经用户确认不得改变目录划分。
 - 项目自有 C++ 代码（含测试）禁止使用 `auto`，必须显式写出类型。
 - 项目自有 C++ 代码（含测试）禁止使用 `struct`，类型定义和前置声明统一使用 `class`，并显式声明所需访问权限。
@@ -21,13 +23,15 @@
 
 - 当前功能状态、未完成事项和后续计划统一记录在 [docs/工作进度-CJW.md](docs/工作进度-CJW.md)；实施或验收功能后同步更新。
 - 目标架构以 `docs/IDOS架构设计.md` 的新方案为准。该文档描述待实施架构，不表示当前代码已完成；不受旧类划分约束。
-- 树与渲染独立但职责一致：通用展示对象管理身份与所有权，Provider 提供展示，GuiProvider 提供菜单与交互，Server 同步工程。通用 Model、View、Scene、Server 不判断具体数据或 Provider 子类。
+- 树与渲染独立但职责一致：通用展示对象管理身份与所有权，Provider 提供展示，GuiProvider 提供菜单与交互，树由 AppTreeAccess 对接工程并驱动 Model、渲染由 Server 同步工程。通用 Model、View、Scene、Server 不判断具体数据或 Provider 子类。
 - 仅允许增加设计方案中的类及对应具体数据、Provider、GuiProvider、Metadata、命令实现；禁止新增方案外的类、结构体、命名空间、匿名命名空间和自由函数。类内接口与成员可以按需要增删调整，非公开辅助方法放在所属类 private 区域。
-- 源码按已确认的新目录组织：通用树结构和 Model 放在 src/core/tree，TreeServer 放在 core 根部；树及数据读取的 Provider、Metadata、Registry 放在 src/core/providers，TreeView 与 TreeGuiProvider 均放在 src/gui/tree。渲染及工具 Provider、Metadata 放在 src/render/providers，其他通用渲染框架放在 render 根部。具体展示实现按 well、grid、case、fluidrock、seismic、data 分入 src/app/providers 的业务子目录，视图工具放在其 render 子目录；gui 按 tree、well、grid、simulation 分类；工况对话框、新建工程、调试、运行信息及 Python 控制台位于 gui 根部，公共平台接口 IDOSInterface 位于 gui 根部并由 gui 导出。业务命令放在 src/app/command，具体文件解析放在顶层 src/providers。
+- 源码按已确认的新目录组织：通用树结构、Model 和 TreeAccess 放在 src/core/tree，AppTreeAccess 放在 src/app 根部，不设置独立 IDOSTree 或 TreeServer；树及数据读取的 Provider、Metadata、Registry 放在 src/core/providers，TreeView 与 TreeMenuProvider 均放在 src/gui/tree。渲染及工具 Provider、Metadata 放在 src/render/providers，其他通用渲染框架放在 render 根部。具体展示实现按 well、grid、case、fluidrock、seismic、data 分入 src/app/providers 的业务子目录，视图工具放在其 render 子目录；gui 按 tree、well、grid、simulation 分类；工况对话框、新建工程、调试、运行信息及 Python 控制台位于 gui 根部，公共平台接口 IDOSInterface 位于 gui 根部并由 gui 导出。业务命令放在 src/app/command，具体文件解析放在顶层 src/providers。
 - 物理源码目录与链接模块分别管理：平台业务窗口统一归档在 src/gui，但由 src/app/CMakeLists.txt 显式列入 idos_app，保持 APP_EXPORT；通用界面编入 idos_gui。依赖检查按实际目标归属执行，禁止通用 idos_gui 反向依赖 idos_app 或其业务窗口。idos_gui 与 idos_render 不互相依赖，均可依赖 core；core 不依赖 gui、render、app 或插件。
 - RenderObject 为通用具体类，管理独立 ID、名称和 Provider 所有权；RenderMetadata 创建 RenderProvider，由 RenderServer 装入通用 RenderObject。删除仅用于装配 Provider 的具体 RenderObject 子类，不增加数据 Provider 包装层。
 - 每个 RenderView 拥有独立 Scene，Scene 拥有 RenderObject，RenderObject 拥有 Provider；源数据关联非拥有，各视图显示状态独立。数据 ID、节点 ID、渲染 ID 分别管理。
-- 工程同步只由 TreeServer 和 RenderServer 处理，不委托给 Metadata、Provider 或 GuiProvider；不引入 Provider Context、synchronize()、统一交互结果协议或额外适配层。
+- 树工程同步由 AppTreeAccess 处理，渲染工程同步由 RenderServer 处理；AppTreeAccess 监听工程、两个 Model 和 RenderServer 的信号，再调用其他模块接口；Model、Item、Provider 不持有 Project、Access 或 RenderServer，不委托给 Metadata、Provider 或 GuiProvider；不引入 Provider Context、synchronize()、统一交互结果协议或已确认 TreeAccess/AppTreeAccess 之外的额外适配层。
+- TreeMenuProvider 只关联所属 View/Model；菜单描述操作，View 处理 QAction 界面事件并调用 Model 操作接口，由 Model 发业务信号，AppTreeAccess 再调用应用业务或渲染接口。节点专属菜单遵循相同链路。菜单与 TreeView 均不得保存或访问 Project、MainWindow、RenderView、RenderServer；View 使用 Model sessionId 校验上下文。
+- AppTreeAccess 负责连接、路由和回写，不实现网格属性/过滤器等具体渲染算法；这些操作放在所属业务 RenderProvider 的成员接口中。
 - 节点结构、分类、勾选联动和专属菜单由具体实现提供，不写入通用模型。View 类内组合菜单，不新增菜单组织器类；对象、空白、多选以及实际目标视图必须明确。
 - 业务修改统一调用命令，菜单、工具栏、脚本和助手共用同一逻辑；局部显示操作调用目标 Provider 或 View。失败命令不进入历史，批量通知不代替回滚。
 - 直接改造现有框架并删除被替代的类、接口及适配层，不保留两套调用链。改动前梳理完整路径；保留未被替代的日志、应用、插件和领域基础设施。
@@ -35,4 +39,4 @@
 # 编译目录
 
 - 后续所有 CMake 配置、编译和构建测试统一使用 `E:\CJW-Archive\IDOS-Build` 作为唯一构建目录。
-- 禁止在源码目录 `E:\CJW-Archive\IDOS` 及其子目录中执行源码内构建或创建构建目录；不再使用源码目录中已有的 `build` 或 `out` 子目录进行编译。
+- 禁止在源码目录 `D:\CMakeCoder\IDOS` 及其子目录中执行源码内构建或创建构建目录；不再使用源码目录中已有的 `build` 或 `out` 子目录进行编译。

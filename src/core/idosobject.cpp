@@ -41,3 +41,13 @@ void IDOSObject::setObjectId(const QString& id)
     m_objectId = id;
     emit objectIdChanged(m_objectId);
 }
+
+bool IDOSObject::restoreObjectId(const QString& id)
+{
+    if (parent() != nullptr || id.trimmed().isEmpty())
+    {
+        return false;
+    }
+    setObjectId(id);
+    return true;
+}

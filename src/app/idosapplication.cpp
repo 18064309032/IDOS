@@ -96,75 +96,75 @@ void IDOSApplication::initProviders()
     IDOSDataProviderRegistry& registry = IDOSDataProviderRegistry::instance();
     if (registry.metadata(QStringLiteral("idos.microseismic.tsv")) == nullptr)
     {
-        registry.add(new IDOSMicroseismicMetadata());
+        registry.registerMetadata(new IDOSMicroseismicMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.seismic.segy")) == nullptr)
     {
-        registry.add(new IDOSSegyProviderMetadata());
+        registry.registerMetadata(new IDOSSegyProviderMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.fracture.schedule.tsv")) == nullptr)
     {
-        registry.add(new IDOSFractureScheduleMetadata());
+        registry.registerMetadata(new IDOSFractureScheduleMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.naturalFracture.ascii")) == nullptr)
     {
-        registry.add(new IDOSNaturalFractureMetadata());
+        registry.registerMetadata(new IDOSNaturalFractureMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.production.vol")) == nullptr)
     {
-        registry.add(new IDOSProductionHistoryMetadata());
+        registry.registerMetadata(new IDOSProductionHistoryMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.fracture.materialCatalog.tsv")) == nullptr)
     {
-        registry.add(new IDOSFractureMaterialCatalogMetadata());
+        registry.registerMetadata(new IDOSFractureMaterialCatalogMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.gridproperty.eclipse")) == nullptr)
     {
-        registry.add(new IDOSGridPropertyEclipseMetadata());
+        registry.registerMetadata(new IDOSGridPropertyEclipseMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.tops")) == nullptr)
     {
-        registry.add(new IDOSWellTopsMetadata());
+        registry.registerMetadata(new IDOSWellTopsMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.completion")) == nullptr)
     {
-        registry.add(new IDOSWellCompletionMetadata());
+        registry.registerMetadata(new IDOSWellCompletionMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.checkshot")) == nullptr)
     {
-        registry.add(new IDOSWellCheckshotMetadata());
+        registry.registerMetadata(new IDOSWellCheckshotMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.header")) == nullptr)
     {
-        registry.add(new IDOSWellHeaderMetadata());
+        registry.registerMetadata(new IDOSWellHeaderMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.path")) == nullptr)
     {
-        registry.add(new IDOSWellPathMetadata());
+        registry.registerMetadata(new IDOSWellPathMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.well.las")) == nullptr)
     {
-        registry.add(new IDOSWellLasMetadata());
+        registry.registerMetadata(new IDOSWellLasMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.grid.eclipse")) == nullptr)
     {
-        registry.add(new IDOSGridEclipseMetadata());
+        registry.registerMetadata(new IDOSGridEclipseMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.grid.surface.zims")) == nullptr)
     {
-        registry.add(new IDOSGridSurfaceMetadata());
+        registry.registerMetadata(new IDOSGridSurfaceMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.grid.boundary.xygi")) == nullptr)
     {
-        registry.add(new IDOSGridBoundaryMetadata());
+        registry.registerMetadata(new IDOSGridBoundaryMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.case.simulation.eclipse")) == nullptr)
     {
-        registry.add(new IDOSSimulationCaseEclipseMetadata());
+        registry.registerMetadata(new IDOSSimulationCaseEclipseMetadata());
     }
     if (registry.metadata(QStringLiteral("idos.case.summary.eclipse")) == nullptr)
     {
-        registry.add(new IDOSSimulationSummaryProviderMetadata());
+        registry.registerMetadata(new IDOSSimulationSummaryProviderMetadata());
     }
 }
 

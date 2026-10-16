@@ -648,7 +648,13 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
             success = false;
             break;
         }
-        object->setObjectId(id);
+        if (!object->restoreObjectId(id))
+        {
+            delete object;
+            error = tr("The project contains duplicate identities, invalid object information or an unregistered type: %1.").arg(type);
+            success = false;
+            break;
+        }
         object->setName(entry.value(QStringLiteral("name")).toString());
         object->setVisible(entry.value(QStringLiteral("visible")).toBool());
         project->add(object);

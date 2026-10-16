@@ -31,15 +31,15 @@ class ProjectDialogTest : public QObject
         window.setProject(project);
         IDOSTreeView* view = window.dataTreeView();
         IDOSTreeModel* model = window.dataTreeModel();
-        QScopedPointer<QMenu> emptyMenu(view->createMenu(view->currentIndex()));
+        QScopedPointer<QMenu> emptyMenu(view->createContextMenu(view->currentIndex()));
         QVERIFY(emptyMenu->actions().isEmpty());
         view->setCurrentIndex(model->index(0, 0, QModelIndex()));
-        QScopedPointer<QMenu> groupMenu(view->createMenu(view->currentIndex()));
+        QScopedPointer<QMenu> groupMenu(view->createContextMenu(view->currentIndex()));
         QVERIFY(groupMenu->actions().isEmpty());
         const QModelIndex wells = findGroup(model, QModelIndex(), QStringLiteral("data.wells"));
         QVERIFY(wells.isValid());
         view->setCurrentIndex(wells);
-        QScopedPointer<QMenu> menu(view->createMenu(view->currentIndex()));
+        QScopedPointer<QMenu> menu(view->createContextMenu(view->currentIndex()));
         QVERIFY(menu != nullptr);
         QCOMPARE(menu->actions().size(), 2);
         QCOMPARE(menu->actions().first()->objectName(), QStringLiteral("newWellAction"));
@@ -56,7 +56,7 @@ class ProjectDialogTest : public QObject
         QCOMPARE(model->objectFromIndex(model->index(0, 0, wells)), well);
         QCOMPARE(model->rowCount(model->index(0, 0, wells)), 0);
         view->setCurrentIndex(model->index(0, 0, wells));
-        QScopedPointer<QMenu> objectMenu(view->createMenu(view->currentIndex()));
+        QScopedPointer<QMenu> objectMenu(view->createContextMenu(view->currentIndex()));
         QVERIFY(objectMenu != nullptr);
         QVERIFY(objectMenu->findChild<QAction*>(QStringLiteral("deleteWellAction")) != nullptr);
         QVERIFY(objectMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction")) != nullptr);
@@ -187,8 +187,8 @@ class ProjectDialogTest : public QObject
         for (int row = 0; row < model->rowCount(parent); ++row)
         {
             const QModelIndex index = model->index(row, 0, parent);
-            IDOSTreeItem* group = model->nodeFromIndex(index);
-            if (group != nullptr && group->key() == key)
+            IDOSTreeItem* group = model->itemFromIndex(index);
+            if (group != nullptr && group->provider()->key() == key)
             {
                 return index;
             }

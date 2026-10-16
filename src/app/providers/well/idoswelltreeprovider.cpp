@@ -1,3 +1,4 @@
+#include <QIcon>
 #include <QObject>
 
 #include "data/well/idoswell.h"
@@ -10,34 +11,39 @@
 
 IDOSWellTreeProvider::IDOSWellTreeProvider(IDOSDataObject* data)
     :
-    IDOSTreeProvider(data)
+    IDOSTreeItemProvider(data)
 {
 }
 
 IDOSTreeItem* IDOSWellTreeProvider::addItem(IDOSTreeItem* parent, const QString& key, const QString& title)
 {
-    IDOSTreeItem* item = new IDOSTreeItem();
-    item->setKey(key);
-    item->setName(title);
-    item->setDataId(parent->dataId());
-    item->setCaseId(parent->caseId());
-    item->setPartKey(key);
-    parent->appendChild(item);
+    IDOSTreeItem* item = parent->findChild(key);
+    if (item == nullptr)
+    {
+        item = new IDOSTreeItem(new IDOSTreeItemProvider());
+        parent->appendChild(item);
+    }
+
+    item->provider()->setKey(key);
+    item->provider()->setName(title);
+    item->provider()->setDataId(parent->provider()->dataId());
+    item->provider()->setCaseId(parent->provider()->caseId());
+    item->provider()->setPartKey(key);
     return item;
 }
 
-void IDOSWellTreeProvider::populate(IDOSTreeItem* item)
+void IDOSWellTreeProvider::refresh()
 {
+    IDOSTreeItem* item = this->item();
     IDOSWell* well = qobject_cast<IDOSWell*>(dataSource());
     if (well == nullptr || item == nullptr)
     {
         return;
     }
-    item->clearChildren();
-    item->setName(well->name());
-    item->setIcon(QIcon(QStringLiteral(":/images/gui-well.svg")));
-    item->setCheckable(true);
-    item->setChecked(well->isVisible());
+
+    item->provider()->setName(well->name());
+    item->provider()->setIcon(QIcon(QStringLiteral(":/images/gui-well.svg")));
+    item->provider()->setCheckable(true);
     if (well->hasPath())
     {
         addItem(item, QStringLiteral("idos.well.trajectory"),
@@ -50,8 +56,8 @@ void IDOSWellTreeProvider::populate(IDOSTreeItem* item)
         for (const IDOSWellLogChannel& channel : well->logs().channels())
         {
             IDOSTreeItem* leaf = addItem(logs, channel.name(), channel.name());
-            leaf->setPartKey(QStringLiteral("idos.well.logs"));
-            leaf->setItemKey(channel.name());
+            leaf->provider()->setPartKey(QStringLiteral("idos.well.logs"));
+            leaf->provider()->setItemKey(channel.name());
         }
     }
     if (!well->completions().isEmpty())
@@ -66,8 +72,8 @@ void IDOSWellTreeProvider::populate(IDOSTreeItem* item)
         for (const IDOSWellMarker& marker : well->markers().markers())
         {
             IDOSTreeItem* leaf = addItem(markers, marker.name(), marker.name());
-            leaf->setPartKey(QStringLiteral("idos.well.zones"));
-            leaf->setItemKey(marker.name());
+            leaf->provider()->setPartKey(QStringLiteral("idos.well.zones"));
+            leaf->provider()->setItemKey(marker.name());
         }
     }
     if (well->hasCheckshot())
@@ -75,4 +81,5 @@ void IDOSWellTreeProvider::populate(IDOSTreeItem* item)
         addItem(item, QStringLiteral("idos.well.checkshots"),
                 QObject::tr("Checkshots (%1 samples)").arg(well->checkshot().depths().size()));
     }
+
 }

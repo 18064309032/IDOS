@@ -2,20 +2,20 @@
 #define IDOS_SIMULATIONCASE_TREE_PROVIDER_H
 
 #include "idos_app.h"
-#include "providers/idostreeprovider.h"
+#include "providers/idostreeitemprovider.h"
 
-class IDOSTreeRegistry;
+class IDOSTreeItemProviderRegistry;
 
-class APP_EXPORT IDOSSimulationCaseTreeProvider : public IDOSTreeProvider
+class APP_EXPORT IDOSSimulationCaseTreeProvider : public IDOSTreeItemProvider
 {
   public:
-    IDOSSimulationCaseTreeProvider(IDOSDataObject* data, IDOSTreeRegistry* registry);
-    void populate(IDOSTreeItem* item) override;
+    IDOSSimulationCaseTreeProvider(IDOSDataObject* data, IDOSTreeItemProviderRegistry* registry);
+    void refresh() override;
     bool dependsOn(const QStringList& dataIds) const override;
 
   private:
     IDOSTreeItem* addItem(IDOSTreeItem* parent, const QString& key, const QString& title);
-    IDOSTreeRegistry* m_registry;
+    IDOSTreeItemProviderRegistry* m_registry;
 };
 
 #endif

@@ -14,8 +14,7 @@ class IDOSDataRegistry;
 class IDOSInterface;
 class IDOSProject;
 class IDOSRenderRegistry;
-class IDOSTreeGuiProvider;
-class IDOSTreeRegistry;
+class IDOSTreeItemProviderRegistry;
 class QAction;
 class QTranslator;
 class SARibbonCategory;
@@ -45,13 +44,12 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
   private:
     QPointer<IDOSInterface> m_interface;
     QPointer<IDOSDataRegistry> m_dataRegistry;
-    QPointer<IDOSTreeRegistry> m_treeRegistry;
+    QPointer<IDOSTreeItemProviderRegistry> m_treeRegistry;
     QPointer<IDOSRenderRegistry> m_renderRegistry;
     IDOSCommandRegistry* m_commandRegistry;
     QPointer<SARibbonCategory> m_category;
     QPointer<QAction> m_createAction;
     QTranslator* m_translator;
-    std::shared_ptr<IDOSTreeGuiProvider> m_treeGui;
     QList<QPointer<IDOSProject>> m_projects;
     bool m_dataAdded;
     bool m_treeAdded;

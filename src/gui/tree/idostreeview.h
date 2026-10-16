@@ -12,10 +12,9 @@
 
 #include "idos_gui.h"
 
-class IDOSProject;
-class IDOSTree;
+class IDOSTreeModel;
 class IDOSTreeItem;
-class IDOSTreeRegistry;
+class IDOSTreeMenuProvider;
 class QMenu;
 class QMimeData;
 class QDragEnterEvent;
@@ -31,20 +30,21 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
   public:
     explicit IDOSTreeView(QWidget* parent = nullptr);
     ~IDOSTreeView() override;
-    void setRegistry(IDOSTreeRegistry* registry);
     void setModel(QAbstractItemModel* model) override;
-    IDOSTree* tree() const;
-    IDOSProject* project() const;
-    QObject* targetView() const;
-    void setTargetView(QObject* view);
+    void setTreeModel(IDOSTreeModel* model);
+    IDOSTreeModel* treeModel() const;
+    void setMenuProvider(IDOSTreeMenuProvider* provider);
+    IDOSTreeMenuProvider* menuProvider() const;
     QList<IDOSTreeItem*> selectedItems() const;
-    IDOSTreeItem* menuItem() const;
+    IDOSTreeItem* contextItem() const;
     void setBlankMenuEnabled(bool enabled);
-    QMenu* createMenu(const QModelIndex& target);
-    void refreshCheckStates();
+    QMenu* createContextMenu(const QModelIndex& target);
     QVariantMap presentationState() const;
     void restorePresentationState(const QVariantMap& state);
     bool pasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action);
+
+  signals:
+    void contextMenuAboutToShow(QMenu* menu);
 
   protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -56,18 +56,17 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void paintEvent(QPaintEvent* event) override;
 
   private slots:
+    void onActionTriggered();
     void onCopy();
     void onCut();
     void onPaste();
     void onRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
     void onRowsInserted(const QModelIndex& parent, int first, int last);
     void onModelAboutToBeReset();
-    void onCheckRequested(IDOSTreeItem* item, bool checked, bool* accepted);
-    void onGuiProvidersChanged();
-    void onDataChanged(const QModelIndex& first, const QModelIndex& last);
-    void onCheckStateChanged();
 
   private:
+    void bindMenu(QMenu* menu);
+    bool acceptsSource(const IDOSTreeView* source) const;
     void collectPresentationState(const QModelIndex& parent, QStringList& expanded) const;
     QMimeData* selectedMimeData() const;
     QMimeData* actionMimeData() const;
@@ -79,9 +78,7 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     QString nodePath(const QModelIndex& index) const;
     void collectExpandedPaths(const QModelIndex& index);
     void restoreExpandedPaths(const QModelIndex& index);
-    void refreshChecks(IDOSTreeItem* item);
-    QPointer<IDOSTreeRegistry> m_registry;
-    QPointer<QObject> m_targetView;
+    QPointer<IDOSTreeMenuProvider> m_menuProvider;
     QPersistentModelIndex m_menuIndex;
     QPersistentModelIndex m_dropIndex;
     QSet<QString> m_pendingExpandedPaths;

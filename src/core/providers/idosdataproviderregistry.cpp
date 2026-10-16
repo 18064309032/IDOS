@@ -20,7 +20,7 @@ IDOSDataProviderRegistry& IDOSDataProviderRegistry::instance()
     return s_instance;
 }
 
-bool IDOSDataProviderRegistry::add(IDOSDataProviderMetadata* metadata)
+bool IDOSDataProviderRegistry::registerMetadata(IDOSDataProviderMetadata* metadata)
 {
     if (!metadata || metadata->id().isEmpty() || this->metadata(metadata->id()))
     {
@@ -31,7 +31,7 @@ bool IDOSDataProviderRegistry::add(IDOSDataProviderMetadata* metadata)
     return true;
 }
 
-bool IDOSDataProviderRegistry::remove(const QString& id)
+bool IDOSDataProviderRegistry::unregisterMetadata(const QString& id)
 {
     for (std::vector<std::unique_ptr<IDOSDataProviderMetadata>>::iterator item = m_metadata.begin();
          item != m_metadata.end(); ++item)
@@ -57,14 +57,14 @@ IDOSDataProviderMetadata* IDOSDataProviderRegistry::metadata(const QString& id) 
     return nullptr;
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSDataProviderRegistry::create(const QString& id) const
+std::unique_ptr<IDOSDataProvider> IDOSDataProviderRegistry::createProvider(const QString& id) const
 {
     IDOSDataProviderMetadata* meta = metadata(id);
     if (!meta)
     {
         return nullptr;
     }
-    return meta->create();
+    return meta->createProvider();
 }
 
 QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::metadata() const
@@ -77,7 +77,7 @@ QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::metadata() const
     return result;
 }
 
-QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::providers(const QString& filePath) const
+QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::metadataForFile(const QString& filePath) const
 {
     QList<IDOSDataProviderMetadata*> trueMatch; // canHandle() 真检测匹配
     QList<IDOSDataProviderMetadata*> extMatch;  // 仅扩展名匹配

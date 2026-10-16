@@ -1,13 +1,21 @@
 #ifndef IDOS_POINT_SET_TREE_PROVIDER_H
 #define IDOS_POINT_SET_TREE_PROVIDER_H
 
-#include "providers/idostreeprovider.h"
+#include <QObject>
 
-class IDOSPointSetTreeProvider : public IDOSTreeProvider
+#include "providers/idostreeitemprovider.h"
+
+class QMenu;
+
+class IDOSPointSetTreeProvider : public QObject, public IDOSTreeItemProvider
 {
+    Q_OBJECT
+
   public:
-    explicit IDOSPointSetTreeProvider(IDOSDataObject* data);
-    void populate(IDOSTreeItem* item) override;
+    IDOSPointSetTreeProvider(IDOSDataObject* data);
+    void refresh() override;
+    QMenu* createContextMenu() override;
+
 };
 
 #endif

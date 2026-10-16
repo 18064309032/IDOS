@@ -1,5 +1,152 @@
 # IDOS 工作进度（CJW）
 
+## 清理节点菜单、TreeView 和 Access 剩余跨模块依赖（2026-10-16）
+
+- ImportedData/FluidRock/示例插件 PointSet 节点菜单只创建操作描述，移除直接读取工程、执行命令和操作渲染的槽。导入数据、选择地震 Inline、导入流体岩石表和挂接工况迁入应用层接口；PointSet 删除通过已注册命令 ID 进入相同 Model/Access 链，应用层不依赖插件数据类型。
+- TreeView 删除 Project/RenderView 指针及四个关联接口，不再向 QAction 写工程指针；拖放使用 Model sessionId 判断上下文。TreeView 统一将 QAction 界面触发转成 Model 操作，普通菜单、节点菜单及插件扩展共用同一条 Model 信号链；删除 MenuProvider 重复绑定助手和触发槽。菜单扩展信号返回后再绑定动作。
+- 网格属性选择、过滤器预览、实际状态查询迁入现有 IDOSGridRenderProvider 业务成员接口。AppTreeAccess 仅调用业务接口、请求 RenderServer 装配并回写 Model，移除具体数据转换、过滤算法和直接渲染对象修改。业务接口接收 View 和数据列表，不保存 Project/Server，不新增类或文件。
+- 应用层从自身工程成员获取业务上下文，清理依赖 TreeView::project 的所有旧调用。对话框返回后检查工程/目标存活；地震 Inline 操作重新查找渲染对象，避免使用弹窗期间失效的 Provider。
+- 迁移既有测试中的 TreeView 目标视图 API 调用至 RenderServer，移除旧的视图覆盖方式；无当前视图的勾选预期改为拒绝。未新增或运行测试。
+- 静态检查通过：10 个修改类的实现名称与头文件声明对应、31 类菜单操作均有应用层处理、源码括号配对、翻译 XML 解析及 git diff --check。TreeView 无工程/渲染引用，三个节点菜单无直接命令/渲染调用，Access 无具体过滤算法或渲染对象修改。上述检查不代替编译和运行验证。
+- 节点对话框迁入 MainWindow 后补齐 40 条已有中文翻译；架构声明与编码约定同步更新。本轮未编译；指定 E:\CJW-Archive\IDOS-Build 当前不存在，编译及运行验证尚未完成。
+
+## 菜单参数迁移编译错误修正（2026-10-16）
+
+- 修正 onDataViewWellData 中把 const QVariantMap 参数与 nullptr 比较的迁移遗漏，改为校验树视图及其工程有效性；扫描同文件其他 action 指针表达式，剩余使用属于实际 QAction 指针。未编译或运行测试。
+
+## 菜单经 Model 信号提交操作（2026-10-16）
+
+- Data/Case TreeMenuProvider 仅绑定 TreeView，通过 Model 查询节点和源数据；Data 构造移除 MainWindow 参数。删除菜单中的工程、渲染视图、设置窗口指针及 QAction 关联表，不再直接调用工程命令或渲染接口。
+- MenuProvider 调用 Model::triggerAction，Model 发 actionTriggered，AppTreeAccess 接收并校验关联工程/Model，再调用 MainWindow::executeTreeAction。保留 26 个既有菜单动作；导入、删除、重命名、工况、井数据窗口和显示设置逻辑迁入现有应用类，业务修改仍复用命令，设置窗口在工程切换时统一清理。Case 菜单直接连接 Simulation 的信号链已移除。
+- 动作捕获 Model sessionId/节点 ID，旧菜单提交前校验有效性。Access 按动作触发时的当前 RenderView 调用显示接口；RenderAvailableRole 由 Access 同步，菜单只查询 Model。修正井轨迹子项的显示设置能力查询，保留网格属性/过滤器关联校验。
+- 剪贴板与拖放经 Model 专用 transferRequested 信号进入 Access 和应用命令接口；GUI 线程直连同步返回 bool，保留预校验、实际失败返回 false 及失败不清空剪切剪贴板的语义。剪贴板工程标识由 Access 写入 Model，菜单不读取工程。
+- 迁移界面文本补入 IDOSMainWindow 中文翻译上下文，共补齐 124 条已有翻译；翻译 XML 可解析。架构完整声明同步更新。静态检查：所有菜单动作均有应用层分派；修改类的实现名称与声明对应；Data/Case 菜单无工程/渲染/主窗口依赖；git diff --check 通过。
+- 本次未新增或运行测试，未执行编译。指定构建目录 E:\CJW-Archive\IDOS-Build 当前不存在，本次改动尚未经过编译及运行验证。
+
+## 网格菜单工程校验修正（2026-10-16）
+
+- 修正 gridDisplayRenderObject 中将 RenderView 当作 TreeView 调用 project() 的错误；恢复通过保存的 TreeView 校验工程上下文，防止旧菜单作用于切换后的工程。未编译或运行测试。
+
+## Access 统一协调模块（2026-10-16）
+
+- IDOSTreeAccess 改为 QObject 基类；IDOSAppTreeAccess(project, parent) 通过 setDataTreeModel/setCaseTreeModel/setRenderServer 对接工程、两个模型和渲染服务，一个工程共用一个 Access。MainWindow 在工程切换及销毁时释放旧 Access，清理模型并重新装配。
+- Model 删除 Project/Access 指针、访问器和工程监听槽；Provider 删除 model/project/access/changed 及刷新事务辅助接口。Provider 只保存节点数据、勾选状态及业务节点描述，Model 管理刷新复用、节点增删和 Qt 通知。
+- Model 勾选写入发 checkStateChanged；Access 接收并执行当前视图渲染，组操作共用一次批量更新和相机处理。RenderServer 变化经 Access 回写 Model::setCheckState，不重发操作信号。节点勾选能力与当前可操作条件分别保存，避免普通业务子项意外出现勾选框。
+- 网格属性选择、过滤器预览及状态查询从 TreeProvider 迁到应用层 Access；菜单和示例插件移除从 Model 获取 Project 的调用，View 的菜单工程上下文由 MainWindow 显式设置。更新现有测试调用方，未新增或运行测试。
+- 旧接口引用扫描无残留，修改后的核心类实现名称与头文件声明对应，git diff --check 通过；这些静态检查不代替编译和运行验证。同步架构完整声明、源码目录及 AGENTS 当前架构约定。当前指定构建目录 E:\CJW-Archive\IDOS-Build 不存在，本轮未编译；不得将此前 D 目录构建结果作为本次改动验收。
+
+## 勾选直接写入 Provider（2026-10-16）
+
+- Provider::setData(CheckStateRole) 直接调用 setChecked，并读取实际 checkState 返回是否达到目标状态；删除 Model::itemChecked 与 AppTreeAccess::onItemChecked 的请求转发链。
+- AppTreeAccess::setChecked 直接执行 RenderServer 操作，保留目标视图固定、Scene 更新与相机处理；渲染变化继续刷新 Model。Model 对勾选写入刷新实际状态，覆盖组项及具体 Provider 的状态变化。
+- 已同步当前架构接口与说明；未编译或运行测试。
+
+## 根 Provider 独立设置（2026-10-16）
+
+- IDOSTreeModel 构造仅接收 Registry 和 QObject parent；使用 setRootProvider 设置业务根 Provider，接管其所有权并在模型重置通知内替换旧根及子树，已有工程时重建节点。初始空根保持 Model 可直接使用。
+- MainWindow 的 Data/Case 根 Provider 改在 initProviders 中设置；同步现有测试调用方与架构声明。拒绝空指针、已绑定 Provider 和结构修改期间的替换，不转移无效请求的所有权。
+- 本次未执行编译或测试。
+
+## Tree 合并至 TreeModel（2026-10-16）
+
+- 按用户确认删除 IDOSTree 类及源码/CMake/公共头文件条目。Model 构造接收 ItemProviderRegistry，直接拥有根 Item、关联 Project/Registry/Access 并同步工程；MainWindow 移除独立 Data/Case Tree 字段，仅保存两个 Model。
+- Model 的 data/setData 直接委派 ItemProvider，setChecked 是 CheckStateRole 写入的便捷入口。普通写入和外部属性变化使用 Qt 原生 dataChanged；删除 Tree 专属的数据/结构/勾选状态转发信号。Item/Provider 改为 model()，View 使用 treeModel()，Access 绑定 Model，路径工具同步迁入 Model。
+- Model 直接配对执行 Qt 行通知；Item 的结构提交由 Model 校验和授权，不使用友元、不开放裸字段。工程切换及完整 refresh 使用模型重置，重置内不嵌套行通知。Provider 继续按 key 复用节点。
+- 勾选由 Provider::setData 校验并发 Model::itemChecked，AppTreeAccess 固定目标视图后执行 Provider::setChecked。修复既有 Access 槽和组递归中遗漏的实际调用。渲染状态/视图切换及行增删刷新实际勾选状态，不读取工程可见性覆盖视图。
+- 更新所有菜单、插件和现有测试调用方，修正无 Access 时勾选写入应拒绝的已有断言；未新增或运行测试。架构记录 13 个完整声明，固定源码目录与编码约定同步。最终 D:\CMakeCoder\IDOS-Build 的 Debug 全目标构建返回 0，主程序、全部插件、公共头文件检查和现有测试目标编译通过；check_includes 检查 465 个源文件通过。旧 Tree 类型/文件及友元扫描无残留，include 与 git diff --check 检查通过。日志：D:\CMakeCoder\IDOS-Build\tree-model-merge-build-verified.log。未运行功能测试。
+
+
+## 禁用类友元并收口访问接口（2026-10-16）
+
+- 编码规范增加：禁止类友元和普通友元函数，仅必要的运算符友元函数例外。src/tests 已清理全部 friend class 声明，不修改第三方代码。
+- ItemProvider 使用校验所属关系的一次性 bindItem、挂接前一次性 setMetadataId 和只读 metadataId；Tree/Registry 不再直接访问其私有字段。setData 只写入、Tree 成功后统一通知，删除跨类访问的 m_settingData 标志。refresh 的属性通知保持。
+- Tree 通过 Item 的完整插入/移除接口管理结构；Item 封装私有父子关系和根节点重入保护，并保证已挂接节点的 Tree 前后通知成对。Provider 清理离线子项也调用 removeChild，不再访问 Item 子项容器。根节点首次绑定使用受校验 setTree。
+- MenuProvider 的 view 查询公开，删除 View 友元。Object 增加仅离线对象可用的 restoreObjectId，工程加载不再访问 protected setter；井几何结果改为构造时确定值；导入 Metadata 的通用 schema 工具移入 CommandMetadata protected 接口，不再借用命令私有函数。
+- 架构完整声明同步。最终 Debug 全目标构建返回 0，主程序、全部插件、公共头文件检查及现有测试目标编译通过。src/tests 扫描无 friend 声明残留，git diff --check 通过。日志：D:\CMakeCoder\IDOS-Build\no-friend-build-verified.log。未新增或运行功能测试。
+
+
+## Tree 写入与数据通知统一（2026-10-16）
+
+- 按用户确认，删除 Tree::changed，增加真正的 Tree::setData(item, value, role)，将 Tree::itemChanged / Model::onItemChanged 更名为 dataChanged / onDataChanged。Model 的 setData 统一委派 Tree。
+- Tree 校验节点归属后处理写入：CheckStateRole 校验有效二态并进入已有 setCheckItem 请求链，不提前通知实际状态；其他 role 委派 ItemProvider::setData，失败不发成功通知，成功后发 dataChanged。名称写入同时通知 DisplayRole/EditRole/ToolTipRole。
+- 通过 Provider 内部写入标志和作用域恢复抑制这次 setData 引起的重复通知；refresh 等直接属性变更仍由 Provider 的 protected changed 发 Tree::dataChanged，保留既有自动刷新路径，不新增公共 notifyDataChanged。完整声明和调用链同步更新。
+- D:\CMakeCoder\IDOS-Build 的 Debug 全目标构建返回 0，主程序、全部插件、公共头文件检查和现有测试目标编译通过；check_includes 检查 467 个源文件通过，旧接口残留检查及 git diff --check 通过。日志：D:\CMakeCoder\IDOS-Build\tree-setdata-build.log。未新增或运行功能测试。
+
+
+## Tree 冗余友元清理（2026-10-16）
+
+- 核对 Item 和 ItemProvider 对 Tree 的全部访问：insertItem/removeItem/project/access/changed 均为公共接口，不访问 Tree 私有状态。移除 IDOSTree 内的两条冗余 friend 声明，架构声明同步。其他类中用于结构提交、Item 绑定及 Metadata 来源记录的友元未改动。
+- Debug 的 idos_core 目标编译通过，退出码 0；未新增或运行测试。日志：D:\CMakeCoder\IDOS-Build\tree-friend-cleanup-build.log。
+
+
+## 菜单 Provider 绑定视图接口收口（2026-10-16）
+
+- 基类及 Data/Case 的 createMimeData/canCut/canPaste/paste 移除重复 view 参数，内部统一使用构造时绑定的 view()；TreeView 调用同步。
+- 删除 Case 公共 createContextMenu(QMenu*, view) 重载及 Data 的 m_caseMenus、构造参数和借用调用。Data 自行创建 MIME、校验和执行传输，并拥有添加到工况/重命名动作；Case 只服务自身视图。沿用原 MIME 协议、动作 ID、工程绑定及共用业务命令，保持跨树复制/粘贴和拖放路径。私有菜单追加不再暴露为工厂。
+- 新迁入 Data 上下文的 9 条中文翻译和完整类声明同步。D:\CMakeCoder\IDOS-Build 的 Debug 全目标构建返回 0，主程序、插件、公共头文件检查及现有测试目标编译通过；随后 translations 目标编译通过（1501 条完整翻译）。翻译 XML、旧接口残留与 git diff --check 检查通过。日志：D:\CMakeCoder\IDOS-Build\tree-menu-bound-view-build.log。未新增或运行功能测试。
+
+
+## 数据解析 Provider 接口命名统一（2026-10-16）
+
+- IDOSDataProviderRegistry 的 add/remove/create/providers(filePath) 分别统一为 registerMetadata/unregisterMetadata/createProvider/metadataForFile(filePath)。Metadata 及具体解析 Metadata 工厂统一 createProvider，应用注册、导入命令、菜单与现有测试调用方同步，不保留旧名称别名。
+- 本轮仅统一命名；单例、参数、返回类型、所有权和文件匹配逻辑保持原实现。接口示例和架构说明同步更新。Debug 的 idos 目标及其依赖构建通过，退出码 0；git diff --check 通过。日志：D:\CMakeCoder\IDOS-Build\data-provider-naming-build.log。未新增或运行测试。
+
+
+## 菜单 Provider 统一 QObject 基类（2026-10-16）
+
+- IDOSTreeMenuProvider 继承 QObject 并声明 Q_OBJECT，构造时以所属 TreeView 为 parent。Data/Case 菜单 Provider 删除重复 QObject 继承与初始化；Data 菜单构造移除冗余 parent 参数，主窗口调用同步。
+- TreeView 使用 QPointer 观察菜单 Provider，替换时删除旧实例，析构时由 QObject 父子机制释放，外部提前销毁也不会留下悬空成员指针。架构中的完整类声明和所有权说明同步更新。
+- 在 D:\CMakeCoder\IDOS-Build 完成 Debug 全目标构建，退出码 0；主程序、插件、公共头文件检查和现有测试目标均编译通过。check_includes 检查 467 个源文件通过，git diff --check 通过。日志：D:\CMakeCoder\IDOS-Build\tree-menu-qobject-build.log。未新增或运行功能测试。
+
+## 树接口收口与 Access 落地（2026-10-16）
+
+- 按用户本轮确认，节点扩展统一为 IDOSTreeItemProvider / IDOSTreeItemProviderMetadata / IDOSTreeItemProviderRegistry，同目录头文件/实现、主窗口、Interface、插件、CMake 和现有测试调用方同步，不保留旧类型别名。
+- 工厂统一 createProvider(data)，Registry 按注册顺序匹配 supports；Item(provider) 直接接管所有权并私有绑定反向指针，删除临时 Provider 替换及 setProvider/setRootProvider 路径。Tree 构造可接收最终根 Provider。源数据非拥有 QPointer，Provider 记录实际 Metadata 来源，注销按该身份清理。
+- 新增 core/tree/IDOSTreeAccess 和 app/IDOSAppTreeAccess；后者由所属 Tree 管理 QObject 生命周期，连接 itemChecked、渲染实际状态及当前视图变化。一次请求固定目标视图并批量更新。Model 不访问 Server，RenderServer 不再持有或遍历 Tree/Item。
+- checkState 查询当前实际状态，setChecked(Qt::CheckState) 执行请求；删除勾选状态缓存、setCheckState 和工程 isVisible 回写树的路径。组节点默认遍历和三态汇总由 ItemProvider 提供，具体网格节点保留属性/过滤器语义。Access 提供 QObject* targetView 供 app 领域 Provider 使用，core/gui 不新增 render 依赖。
+- MenuProvider 构造绑定唯一 TreeView，主菜单工厂仅接收 selectedItems/contextItem；View 接管菜单 Provider 并在替换/销毁时释放。View 接口统一 contextItem/createContextMenu，并提供 setTreeModel/treeModel；保留拖放与剪贴板功能。
+- Qt roles 读写/flags 委派 ItemProvider，changed 携带 roles；Model 的 CheckStateRole 只接受有效 Checked/Unchecked。井、网格、工况和 PointSet 以 key 复用节点，仅插入缺失项、移除失效项；全树显式 refresh/工程切换仍重新装配。
+- 工程绑定与数据更新不提前创建隐藏 RenderObject；首次显示才创建，隐藏保留复用，保存状态恢复按条目补建。
+- 架构文档记录本轮 14 个完整类声明和调用链，固定源码目录、AGENTS.md 与公共头文件独立编译清单同步。静态核对无旧通用类型/工厂/树遍历接口残留，改名后 include 存在，git diff --check 通过。最终在 D:\CMakeCoder\IDOS-Build 执行 Debug 全目标构建返回 0，主程序、全部插件、公共头文件检查和现有测试目标编译通过。日志：D:\CMakeCoder\IDOS-Build\tree-access-build-verified.log。未新增或运行功能测试，不将编译通过视为交互验收完成。
+
+
+## 构建目录更正与编译收尾（2026-10-16）
+
+- 按用户最新确认，唯一构建目录改为 D:\CMakeCoder\IDOS-Build，AGENTS.md 同步更新。现有缓存对应当前源码与 Visual Studio 2022，已找到其内置 CMake，之前关于环境无法编译的判断已失效。
+- 使用现有配置执行 Debug 全量目标构建；修复 GridTreeProvider 和示例 PointSetTreeProvider 使用 IDOSTree 完整类型却缺少直接 include 的错误，两处均补齐 tree/idostree.h。
+- 最终 cmake --build D:\CMakeCoder\IDOS-Build --config Debug --parallel 6 返回 0。主程序 idosd.exe、核心/GUI/渲染/业务库、各插件、公共头文件独立编译目标及全部现有测试可执行文件均构建成功；check_includes 检查 463 个源文件通过。构建日志位于 D:\CMakeCoder\IDOS-Build\tree-framework-build.log。未运行功能测试，编译成功不代表交互及生命周期已完成运行验收。
+
+## 树 Registry 接口统一（2026-10-16，续作）
+
+- 通用 TreeMetadata/TreeRegistry 更名为 IDOSTreeProviderMetadata/IDOSTreeProviderRegistry，同目录头文件和实现文件、CMake、公共头文件清单、Interface、MainWindow 与插件引用同步替换，不保留旧类型别名。
+- Metadata 使用 id/createProvider；Registry 使用 registerMetadata/unregisterMetadata/createProvider 及 metadataRegistered/metadataUnregistering/metadataUnregistered。Tree 与工况引用节点均经 Registry 工厂创建 Provider。
+- 保留注销前同步清理节点、再销毁 Metadata 的顺序，并禁止注销中的同一 Metadata 创建新 Provider。工厂校验目标 Item 和 supports，创建结果仍由节点持有。既有测试调用方同步新接口，未新增或运行测试。
+- 静态检查：源码及现有测试无旧通用类型/文件名引用，改名后的树 include 和 CMake 路径均存在，git diff --check 通过。本轮不表示全部目标框架完成；编译仍受当前环境缺少 CMake 和 E: 构建盘限制。
+
+## 节点属性与根 Provider 迁移（2026-10-16，续作）
+
+- TreeItem 仅保留父子结构和 Provider 所有权；身份、名称、图标、数据关联、勾选及自定义 role 移入 Provider。每个节点拥有独立 Provider，不再借用父节点实例。Model 的 data/setData/flags 委派 Provider，勾选请求仍通过 Tree 发给 RenderServer。
+- 新增 Data/Case 根 Provider 并由 MainWindow 装配，分类生成从窗口移入 Data 根 Provider；移除 Registry 分类模板和 clone 链。统一节点 refresh、insertItem/removeItem、itemFromIndex/indexFromItem 及结构通知命名，调用方同步迁移。
+- 根分类中文翻译、CMake、头文件清单和固定源码目录同步更新。以下旧记录中的分类模板复制和属性归属待迁移描述已由本节替代。Registry 统一命名等后续迁移尚未完成。
+- 未运行测试；当前环境无可用 CMake 且 E: 构建盘不可见，未执行编译，仍需在规定构建目录完成编译验收。
+
+## 树菜单旧链清理（2026-10-16，续作）
+
+- 已将 Grid、井数据和井显示菜单及其操作迁入具体 IDOSDataTreeMenuProvider，保留原有动作 ID、命令、窗口及目标工程/视图绑定。Data MenuProvider 负责 Data 树菜单组合；节点已有菜单仍调用节点 Provider::createContextMenu。Case MenuProvider 直接继承 QObject 和 IDOSTreeMenuProvider，负责工况菜单，并通过同名重载提供跨树引用操作。两棵树分别绑定自己的 MenuProvider。
+- 删除 IDOSGridTreeGuiProvider、IDOSWellTreeGuiProvider、IDOSWellDisplayTreeGuiProvider 及通用 IDOSTreeGuiProvider；TreeRegistry 已删除 addGuiProvider/removeGuiProvider/guiProviders 和 GUI Provider 成员。Case MenuProvider 改由 MainWindow 以 QObject 所有权持有，Data MenuProvider 弱引用它以共用既有引用 MIME 与命令实现。core 不再持有 GUI 菜单实例。
+- 修复此前回退遗留的 WellTreeProvider 构造签名、失效勾选函数及中文翻译 XML；按当前四个实际菜单类重新生成中文上下文，全部菜单源文本有翻译。CMake、固定目录清单和现有测试调用方同步移除已删除接口。
+- 补齐分类模板复制时的 Provider 独立实例：Tree 复制分类时调用 Provider::clone，导入数据及流体/岩石分类覆盖该工厂，避免实际树节点丢失导入菜单。分类勾选使用 Scene 批量更新，固定发起时的目标视图，保留一次场景变更通知。
+- 静态核对：Data MenuProvider 的 48 个完整成员定义与头文件声明匹配，无重复定义或游离代码块；项目内部 include 均可解析；CMake 显式源文件/公共头文件引用无缺失；中文翻译 XML 可解析；源码及现有测试调用方无旧 TreeGuiProvider/Registry 菜单接口引用。
+- 本阶段完成菜单旧注册链清理；Item/Provider 属性归属、每个内部节点独立 Provider、根 Provider 与目标 Registry 命名仍待后续迁移，不能将本记录解释为全部树目标接口已经完成。当前环境缺少可用 CMake 和 E: 构建盘，未执行编译或运行回归。
+
+## 树框架讨论补充（2026-10-16）
+
+- 树新框架及调用逻辑已补入 [IDOS架构设计.md](IDOS架构设计.md#2026-10-16-树框架与调用逻辑讨论定稿)。本次讨论结论优先于下方较早记录：新框架不设 `IDOSTreeServer`；`IDOSTree` 自己监听 Project 并维护节点，Tree 与 RenderServer 通过树勾选请求及实际状态变化信号协同，Model 不访问 Server。
+- `IDOSTreeView` 持有视图级 `IDOSTreeMenuProvider`；其菜单工厂函数命名为 `createContextMenu(view, selectedItems, contextItem)`。节点 Provider 可有同名无参 `createContextMenu()`。节点 Provider 负责自身节点语义和刷新，组节点由具体 Provider 展开/汇总；Data Tree 与 Case Tree 使用各自的 `IDOSDataTreeRootProvider` / `IDOSCaseTreeRootProvider` 和 `IDOSDataTreeMenuProvider` / `IDOSCaseTreeMenuProvider`。
+- 实施进度：已将原 `IDOSTreeServer` 的 Project/Registry 监听、树填充与更新逻辑移入各自的 `IDOSTree`，MainWindow 改为分别绑定两棵树；树路径保存/恢复工具已转到 `IDOSTree`，移除 TreeServer 源文件及 CMake 引用。勾选请求由 Model 调用 `IDOSTree::setCheckItem()` 并通过 `itemChecked(item, state)` 发出；RenderServer 已注册两棵 Tree，针对当前视图处理通用对象显隐及组节点递归，并监听 Scene 对象增删改回写节点勾选状态。网格树 Provider 已承接网格、属性和过滤器的显隐及状态查询；TreeView 不再执行勾选，也不再从共享 GUI Provider 查询勾选状态。旧 `IDOSTreeGuiProvider` 的勾选接口及对应业务实现已移除；删除了只负责组节点勾选的 `IDOSDataGroupTreeGuiProvider`，组状态现在由 RenderServer 聚合。新增 `IDOSTreeMenuProvider` 接口，并让 `IDOSTreeView` 接受视图级菜单 Provider、以选择集合和右键项创建菜单，同时提供 `contextMenuAboutToShow(QMenu*)` 插件扩展信号。Tree Metadata 的 Provider 工厂现接收目标 Item 和数据对象，数据节点及工况引用节点各自绑定 Provider；节点 `createContextMenu()` 已接入 View。示例 PointSet 及 FluidRock 表节点菜单已迁至节点 Provider。Case 树使用 `IDOSCaseTreeMenuProvider` 创建空白、节点和多选菜单，并处理该树的 MIME、剪切、粘贴和拖放；Data 树使用 `IDOSDataTreeMenuProvider` 创建领域和多选菜单，并借用 Case MenuProvider 的既有跨树传输实现。View 调用各树 MenuProvider，TreeRegistry 不再保存或分发 GUI Provider。井、网格及井显示菜单已迁入 Data MenuProvider，旧注册接口和 GUI Provider 已删除。
+- 验证限制：`git diff --check` 通过；未运行测试。当前执行环境找不到 `cmake` 命令，且规定的构建盘符 `E:` 不可见，暂时无法从此环境编译。新接口尚未全部实现，文档不代表当前源码已具备全部目标签名。
+- 本轮继续迁移：流体表及分类菜单、流体目录导入进入 `IDOSFluidRockTableTreeProvider`；导入数据分类菜单及地震体 Inline 操作进入 `IDOSImportedDataTreeProvider`，对应分类组显式绑定 Provider；多选数据删除进入 `IDOSDataTreeMenuProvider`。已移除 FluidRock 与 Imported Data GUI Provider 实现、MainWindow 注册及 CMake 项。该阶段剩余的井、网格、井显示和 Case 菜单旧注册链已在上方续作中移除。
+
 ## 框架设计讨论归档（2026-10-16，待实施）
 
 - 已将本次确认的树、渲染、工具、命令命名及接口写入 [架构设计定稿记录](IDOS架构设计.md#2026-10-16-框架设计定稿记录待实施)，并在文首注明优先关系。旧章节和本文件此前审查记录保留为迁移基线；与新设计冲突的提议（每场景一个 RenderServer、Metadata 追加菜单、静态函数工厂替代命令 Metadata 等）不再作为目标。
@@ -972,3 +1119,8 @@ OPM 解析库负责输入和结果读取；Flow 是通过 WSL2 调用的独立�
 - 注册命令实例计数，覆盖撤销/重做和外部持有的未执行命令；实例存在时禁止常规卸载，窗口在切换工程和卸载时同步清理。发布到平台前经 QJsonArray 转换复制嵌套字符串，避免平台数据引用插件 DLL 的静态文字存储；清空相关命令历史后可卸载插件，已有裂缝仍可检查和保存。
 - 新增 onDfnGeneration 集成回归：按钮状态、Widget 参数、活跃单元/密度过滤、大坐标有效几何和方向、同种子逐值复现、不同种子实际顶点变化、输入错误/零权重失败保留 redo、缓存重做、树和渲染、工程保存重开、工程切换关闭窗口、历史和外部命令卸载保护、卸载后几何检查及保存。新增头文件均独立包含编译；源码目录、架构和使用指南同步。
 - 验证：E:/CJW-Archive/IDOS-Build Debug 主程序/插件/工况测试与公共头文件检查构建通过。最终 case_workflow 通过（20.76 秒），26 passed/0 failed/2 skipped，两个实际 WSL Flow 用例因缺少测试配置跳过。463 个源码边界检查、68 条插件中文翻译无 unfinished、git diff --check 通过；中文参数窗口截图 dfn-generation.png 已复查。日志为 dfn-final-build.log、dfn-final-ctest.log，QtTest 明细见 tests/case_workflow.txt。未运行 Release、全部 CTest 或真实大网格性能/物理标定验收。
+
+## 树菜单 Provider 迁移续作（2026-10-16）
+
+- 恢复 Data Tree MenuProvider 的通用菜单委派、数据多选删除和剪切/粘贴 Provider 路由。Grid 菜单迁移本轮未合并，保留现有 IDOSGridTreeGuiProvider 注册与实现；井树和井显示菜单仍使用现有 GUI Provider。
+- 后续继续时从当前完整的 Data Tree MenuProvider 与 GridTreeGuiProvider 两条现有路径开始，先按具体迁移边界拆分，再逐项迁移并核对资源和翻译。

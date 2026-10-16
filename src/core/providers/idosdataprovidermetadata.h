@@ -20,12 +20,12 @@ class IDOSDataProvider;
  * 为什么要分离？
  *   IDOSDataProvider 是有状态的（lastError、未来解析进度/取消），
  *   不能复用同一个实例解析多个文件。Metadata 无状态，每次
- *   create() 返回 fresh instance，用完即弃。
+ *   createProvider() 返回 fresh instance，用完即弃。
  *
  * 用法：
  *   // 按扩展名查 → 拿 Metadata → 工厂创建 → 解析
- *   QList<IDOSDataProviderMetadata*> metas = registry.providers(path);
- *   std::unique_ptr<IDOSDataProvider> provider = metas.first()->create();
+ *   QList<IDOSDataProviderMetadata*> metas = registry.metadataForFile(path);
+ *   std::unique_ptr<IDOSDataProvider> provider = metas.first()->createProvider();
  *   provider->read(path, project);
  */
 class CORE_EXPORT IDOSDataProviderMetadata
@@ -56,7 +56,7 @@ class CORE_EXPORT IDOSDataProviderMetadata
      *
      * 每次调用返回新实例，不复用。调用方接管所有权。
      */
-    virtual std::unique_ptr<IDOSDataProvider> create() const = 0;
+    virtual std::unique_ptr<IDOSDataProvider> createProvider() const = 0;
 
     // ===== 格式检测 =====
 

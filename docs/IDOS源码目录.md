@@ -2,15 +2,15 @@
 
 更新日期：2026-10-16。
 
-> 下节“目标目录草案”对应 2026-10-16 的新设计，尚未移动源码；其后的文件树记录实际布局。树体系迁移须与 TreeServer/RenderServer 连接方案一起最终确认。
+> 下节“目标目录草案”对应 2026-10-16 的新设计，尚未整体移动源码；其后的文件树记录实际布局。树的新框架不设 TreeServer，工程同步由一个 AppTreeAccess 对接两个 TreeModel；新旧接口迁移状态见工作进度。
 
 本文为用户确认并已实施的固定源码目录，以当前仓库的实际文件位置为准，已同步 2026-10-14 用户手工调整；保留实际源码、导出头、构建文件及资源。同名 `.h` 和 `.cpp` 必须同目录；后续改变目录划分须经用户确认。
 
 配套文档：[架构设计](IDOS架构设计.md)、[开发指南](开发指南.md)、[工作进度](工作进度-CJW.md)。
 
-- `core` 根部放对象、工程、命令及 TreeServer；`core/data` 按业务保存数据及对应 DataMetadata，通用数据对象位于 core 根部。
-- `core/providers` 放 DataProvider、TreeProvider 及其 Metadata/Registry，同时保存通用 DataMetadata/Registry；`core/tree` 放 Tree、TreeItem、TreeModel；日志位于 `core/logger`。
-- `gui` 保留 tree、well、grid、simulation 业务目录；TreeView 和 TreeGuiProvider 同放 tree。工程启动页、工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
+- `core` 根部放对象、工程和命令；`core/data` 按业务保存数据及对应 DataMetadata，通用数据对象位于 core 根部。
+- `core/providers` 放 DataProvider、TreeProvider 及其 Metadata/Registry，同时保存通用 DataMetadata/Registry；`core/tree` 放 TreeItem、TreeModel 和 QObject 基类 TreeAccess；日志位于 `core/logger`。
+- `gui` 保留 tree、well、grid、simulation 业务目录；TreeView 与树菜单接口放在 tree。旧 TreeGuiProvider 在迁移完成前仍位于该目录。工程启动页、工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
 - `render` 根部放通用渲染框架、Registry 和交互工具；`render/providers` 放 RenderProvider、ToolProvider 及其 Metadata。
 - `app` 根部负责应用装配、模拟服务和插件 Metadata/Registry；`app/command` 放具体命令，`app/plugin` 放插件列表和管理界面，`app/providers` 按 well、grid、case、fluidrock、seismic、data 分组，集中同一业务的树、菜单、渲染实现和 Metadata；内置视图工具放 `app/providers/render`。
 - 顶层 `providers` 只放具体数据格式实现，按业务分类；其他模块及示例插件保留。
@@ -27,7 +27,7 @@
 | `src/core/data/{grid,well,case,fracture,fluidrock,seismic,production}` | 平台业务实体统一 Object 后缀，保留所属类型 Metadata；值类型不机械加后缀 |
 | `src/core/providers` | 数据类型及格式读取的公共接口、Metadata、Registry；树契约拟随树整体迁出，不先零散搬文件 |
 | `src/providers` 各业务子目录 | 实际文件格式解析，继续依赖 core，不改工程或展示 |
-| `src/app/tree`（拟调整） | IDOSTree、Item、Model、View、Server、Provider、ProviderMetadata、ProviderRegistry；删除被替代的 TreeGuiProvider，不留两套菜单链。迁入前须确认服务的渲染依赖方案 |
+| `src/app/tree`（拟调整） | 早期目录草案，当前树新框架不设置 TreeServer；树类仍按固定源码目录逐步迁移，未确认目录变更前不移动。目标移除旧 TreeGuiProvider，改由节点 Provider 与 IDOSTreeMenuProvider 分工 |
 | `src/app/providers/data` | IDOSDataTreeRootProvider，以及本业务具体树/渲染实现 |
 | `src/app/providers/case` | IDOSCaseTreeRootProvider，以及工况具体树实现 |
 | `src/app/providers/{well,grid,fluidrock,seismic}` | 各业务的具体 TreeProvider/RenderProvider 及 Metadata，不搬到通用模块 |
@@ -87,17 +87,19 @@ src/
 │   │   └── idospluginmanagerwidget.h
 │   ├── providers/
 │   │   ├── case/
-│   │   │   ├── idossimulationcasetreeguiprovider.cpp
-│   │   │   ├── idossimulationcasetreeguiprovider.h
+│   │   │   ├── idoscasetreerootprovider.cpp
+│   │   │   ├── idoscasetreerootprovider.h
+│   │   │   ├── idoscasetreemenuprovider.cpp
+│   │   │   ├── idoscasetreemenuprovider.h
 │   │   │   ├── idossimulationcasetreemetadata.cpp
 │   │   │   ├── idossimulationcasetreemetadata.h
 │   │   │   ├── idossimulationcasetreeprovider.cpp
 │   │   │   └── idossimulationcasetreeprovider.h
 │   │   ├── data/
-│   │   │   ├── idosdatagrouptreeguiprovider.cpp
-│   │   │   ├── idosdatagrouptreeguiprovider.h
-│   │   │   ├── idosimporteddatatreeguiprovider.cpp
-│   │   │   ├── idosimporteddatatreeguiprovider.h
+│   │   │   ├── idosdatatreerootprovider.cpp
+│   │   │   ├── idosdatatreerootprovider.h
+│   │   │   ├── idosdatatreemenuprovider.cpp
+│   │   │   ├── idosdatatreemenuprovider.h
 │   │   │   ├── idosimporteddatatreemetadata.cpp
 │   │   │   ├── idosimporteddatatreemetadata.h
 │   │   │   ├── idosimporteddatatreeprovider.cpp
@@ -107,8 +109,6 @@ src/
 │   │   │   ├── idosnaturalfracturerenderprovider.cpp
 │   │   │   └── idosnaturalfracturerenderprovider.h
 │   │   ├── fluidrock/
-│   │   │   ├── idosfluidrocktabletreeguiprovider.cpp
-│   │   │   ├── idosfluidrocktabletreeguiprovider.h
 │   │   │   ├── idosfluidrocktabletreemetadata.cpp
 │   │   │   ├── idosfluidrocktabletreemetadata.h
 │   │   │   ├── idosfluidrocktabletreeprovider.cpp
@@ -130,8 +130,6 @@ src/
 │   │   │   ├── idosgridsurfacerendermetadata.h
 │   │   │   ├── idosgridsurfacerenderprovider.cpp
 │   │   │   ├── idosgridsurfacerenderprovider.h
-│   │   │   ├── idosgridtreeguiprovider.cpp
-│   │   │   ├── idosgridtreeguiprovider.h
 │   │   │   ├── idosgridtreemetadata.cpp
 │   │   │   ├── idosgridtreemetadata.h
 │   │   │   ├── idosgridtreeprovider.cpp
@@ -147,20 +145,18 @@ src/
 │   │   │   ├── idosseismicvolumerenderprovider.cpp
 │   │   │   └── idosseismicvolumerenderprovider.h
 │   │   └── well/
-│   │       ├── idoswelldisplaytreeguiprovider.cpp
-│   │       ├── idoswelldisplaytreeguiprovider.h
 │   │       ├── idoswellrendermetadata.cpp
 │   │       ├── idoswellrendermetadata.h
 │   │       ├── idoswellrenderprovider.cpp
 │   │       ├── idoswellrenderprovider.h
-│   │       ├── idoswelltreeguiprovider.cpp
-│   │       ├── idoswelltreeguiprovider.h
 │   │       ├── idoswelltreemetadata.cpp
 │   │       ├── idoswelltreemetadata.h
 │   │       ├── idoswelltreeprovider.cpp
 │   │       └── idoswelltreeprovider.h
 │   ├── CMakeLists.txt
 │   ├── idos_app.h
+│   ├── idosapptreeaccess.cpp
+│   ├── idosapptreeaccess.h
 │   ├── idosappinterface.cpp
 │   ├── idosappinterface.h
 │   ├── idosapplication.cpp
@@ -310,15 +306,15 @@ src/
 │   │   ├── idosdataproviderregistry.h
 │   │   ├── idosdataregistry.cpp
 │   │   ├── idosdataregistry.h
-│   │   ├── idostreemetadata.cpp
-│   │   ├── idostreemetadata.h
-│   │   ├── idostreeprovider.cpp
-│   │   ├── idostreeprovider.h
-│   │   ├── idostreeregistry.cpp
-│   │   └── idostreeregistry.h
+│   │   ├── idostreeitemprovidermetadata.cpp
+│   │   ├── idostreeitemprovidermetadata.h
+│   │   ├── idostreeitemprovider.cpp
+│   │   ├── idostreeitemprovider.h
+│   │   ├── idostreeitemproviderregistry.cpp
+│   │   └── idostreeitemproviderregistry.h
 │   ├── tree/
-│   │   ├── idostree.cpp
-│   │   ├── idostree.h
+│   │   ├── idostreeaccess.cpp
+│   │   ├── idostreeaccess.h
 │   │   ├── idostreeitem.cpp
 │   │   ├── idostreeitem.h
 │   │   ├── idostreemodel.cpp
@@ -341,8 +337,6 @@ src/
 │   ├── idosproject.h
 │   ├── idosprojectmetadata.cpp
 │   ├── idosprojectmetadata.h
-│   ├── idostreeserver.cpp
-│   └── idostreeserver.h
 ├── gui/
 │   ├── grid/
 │   │   ├── idosgridfilterwidget.cpp
@@ -383,8 +377,8 @@ src/
 │   │   ├── idossimulationworkflowwidget.cpp
 │   │   └── idossimulationworkflowwidget.h
 │   ├── tree/
-│   │   ├── idostreeguiprovider.cpp
-│   │   ├── idostreeguiprovider.h
+│   │   ├── idostreemenuprovider.cpp
+│   │   ├── idostreemenuprovider.h
 │   │   ├── idostreeview.cpp
 │   │   └── idostreeview.h
 │   ├── well/
@@ -424,8 +418,6 @@ src/
 │   │   ├── idospointsetrendermetadata.h
 │   │   ├── idospointsetrenderprovider.cpp
 │   │   ├── idospointsetrenderprovider.h
-│   │   ├── idospointsettreeguiprovider.cpp
-│   │   ├── idospointsettreeguiprovider.h
 │   │   ├── idospointsettreemetadata.cpp
 │   │   ├── idospointsettreemetadata.h
 │   │   ├── idospointsettreeprovider.cpp

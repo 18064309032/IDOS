@@ -13,8 +13,8 @@
 #include <QComboBox>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
-#include <QDialog>
 #include <QDateTime>
+#include <QDialog>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QEvent>
@@ -42,16 +42,16 @@
 #include <QSize>
 #include <QSlider>
 #include <QSpinBox>
-#include <QTableWidget>
 #include <QTabWidget>
+#include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QToolButton>
 #include <QTranslator>
-#include <QtTest>
 #include <QVariantMap>
 #include <QVector3D>
 #include <QWidget>
+#include <QtTest>
 
 #include <vtkActor.h>
 #include <vtkCellData.h>
@@ -63,6 +63,9 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 
+#include <SARibbonBar.h>
+#include <SARibbonCategory.h>
+#include <SARibbonPanel.h>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -70,9 +73,6 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/io/eclipse/EclOutput.hpp>
-#include <SARibbonBar.h>
-#include <SARibbonCategory.h>
-#include <SARibbonPanel.h>
 
 #include "command/idosdeletedatacommand.h"
 #include "command/idosdeletegridcommand.h"
@@ -110,8 +110,6 @@
 #include "idosruntimeinfowidget.h"
 #include "idostoolregistry.h"
 #include "logger/idoslogger.h"
-#include "providers/case/idossimulationcasetreeguiprovider.h"
-#include "providers/data/idosdatagrouptreeguiprovider.h"
 #include "providers/data/idosnaturalfracturerendermetadata.h"
 #include "providers/data/idosnaturalfracturerenderprovider.h"
 #include "providers/grid/idosgridrendermetadata.h"
@@ -121,13 +119,12 @@
 #include "providers/idosdataproviderregistry.h"
 #include "providers/idosdataregistry.h"
 #include "providers/idosrenderprovider.h"
-#include "providers/idostreeregistry.h"
+#include "providers/idostreeitemproviderregistry.h"
 #include "providers/well/idoswellrendermetadata.h"
 #include "providers/well/idoswellrenderprovider.h"
 #include "simulation/idossimulationinitializewidget.h"
 #include "simulation/idossimulationresultplaybackwidget.h"
 #include "simulation/idossimulationrunstatuswidget.h"
-#include "tree/idostree.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
@@ -754,7 +751,7 @@ void CaseWorkflowTest::onFractureGeometry()
         int total = 0;
         for (const QString& file : files)
         {
-            std::unique_ptr<IDOSDataProvider> provider = IDOSDataProviderRegistry::instance().create(
+            std::unique_ptr<IDOSDataProvider> provider = IDOSDataProviderRegistry::instance().createProvider(
                 QStringLiteral("idos.naturalFracture.ascii"));
             QVERIFY(provider != nullptr);
             const QList<IDOSDataObject*> objects = provider->read(directory.filePath(file));
@@ -826,13 +823,13 @@ void CaseWorkflowTest::onDataGroupChecks()
     IDOSRenderView other;
     window.renderServer()->addView(&other);
     IDOSTreeView* view = window.dataTreeView();
-    view->setTargetView(primary);
+    QVERIFY(window.renderServer()->setCurrentView(primary));
+
     IDOSTreeModel* model = window.dataTreeModel();
-    view->refreshCheckStates();
-    const QModelIndex wellParent = model->indexFromNode(model->tree()->find(QStringLiteral("data.wellGroup")));
+    const QModelIndex wellParent = model->indexFromItem(model->find(QStringLiteral("data.wellGroup")));
     for (int category = 0; category < groups.size(); ++category)
     {
-        const QModelIndex group = model->indexFromNode(model->tree()->find(groups.at(category)));
+        const QModelIndex group = model->indexFromItem(model->find(groups.at(category)));
         QVERIFY(group.isValid());
         QVERIFY(model->flags(group).testFlag(Qt::ItemIsUserCheckable));
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
@@ -851,11 +848,12 @@ void CaseWorkflowTest::onDataGroupChecks()
         QVERIFY(!findRenderObject(&other, firstIds.at(category))->visible());
         findRenderObject(primary, secondIds.at(category))->setVisible(false);
         primary->scene()->notifyChanged(findRenderObject(primary, secondIds.at(category))->id());
-        view->refreshCheckStates();
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
-        view->setTargetView(&other);
+        QVERIFY(window.renderServer()->setCurrentView(&other));
+
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
-        view->setTargetView(primary);
+        QVERIFY(window.renderServer()->setCurrentView(primary));
+
         QVERIFY(model->setData(group, Qt::Unchecked, Qt::CheckStateRole));
         QVERIFY(!findRenderObject(primary, firstIds.at(category))->visible());
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
@@ -864,25 +862,25 @@ void CaseWorkflowTest::onDataGroupChecks()
     QVERIFY(findRenderObject(primary, firstIds.at(1))->visible());
     QVERIFY(findRenderObject(primary, secondIds.at(1))->visible());
     QVERIFY(model->setData(wellParent, Qt::Unchecked, Qt::CheckStateRole));
-    IDOSDataGroupTreeGuiProvider provider(window.treeRegistry());
-    QVERIFY(!provider.supports(window.caseTreeModel()->tree()->root()));
-    IDOSTree caseTree;
-    caseTree.setName(QStringLiteral("case"));
-    IDOSTreeItem* foreignGroup = new IDOSTreeItem();
-    foreignGroup->setGroup(true);
-    foreignGroup->setKey(QStringLiteral("data.naturalFractures"));
-    QVERIFY(caseTree.insert(caseTree.root(), foreignGroup));
-    QVERIFY(!provider.supports(foreignGroup));
-    QVERIFY(!provider.setChecked(foreignGroup, true, window.caseTreeView()));
-    const QModelIndex fracturesGroup = model->indexFromNode(model->tree()->find(groups.first()));
+    IDOSTreeModel foreignModel(nullptr);
+    foreignModel.setName(QStringLiteral("case"));
+    IDOSTreeItem* foreignGroup = new IDOSTreeItem(new IDOSTreeItemProvider());
+    foreignGroup->provider()->setGroup(true);
+    foreignGroup->provider()->setKey(QStringLiteral("data.naturalFractures"));
+    QVERIFY(foreignModel.insertItem(foreignModel.root(), foreignGroup));
+    const QModelIndex foreignIndex = foreignModel.indexFromItem(foreignGroup);
+    QVERIFY(!foreignModel.flags(foreignIndex).testFlag(Qt::ItemIsUserCheckable));
+    QVERIFY(!foreignModel.setData(foreignIndex, Qt::Checked, Qt::CheckStateRole));
+    const QModelIndex fracturesGroup = model->indexFromItem(model->find(groups.first()));
     QVERIFY(project->remove(firstIds.first()));
     QVERIFY(project->remove(secondIds.first()));
-    view->refreshCheckStates();
     QVERIFY(!model->flags(fracturesGroup).testFlag(Qt::ItemIsUserCheckable));
     QVERIFY(!model->data(fracturesGroup, Qt::CheckStateRole).isValid());
-    view->setTargetView(nullptr);
+    QVERIFY(window.renderServer()->setCurrentView(nullptr));
+
     QVERIFY(!model->setData(wellParent, Qt::Checked, Qt::CheckStateRole));
-    view->setTargetView(primary);
+    QVERIFY(window.renderServer()->setCurrentView(primary));
+
 }
 
 void CaseWorkflowTest::onConfirmDataDeletion()
@@ -926,10 +924,10 @@ void CaseWorkflowTest::onDeleteImportedData()
     const QModelIndex firstIndex = window.dataTreeModel()->indexFromDataId(firstId);
     const QModelIndex secondIndex = window.dataTreeModel()->indexFromDataId(secondId);
     QVERIFY(firstIndex.isValid() && secondIndex.isValid());
-    QScopedPointer<QMenu> single(view->createMenu(firstIndex));
+    QScopedPointer<QMenu> single(view->createContextMenu(firstIndex));
     QVERIFY(single->findChild<QAction*>(QStringLiteral("deleteDataAction")) != nullptr);
     view->selectionModel()->select(secondIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
-    QScopedPointer<QMenu> multiple(view->createMenu(firstIndex));
+    QScopedPointer<QMenu> multiple(view->createContextMenu(firstIndex));
     QAction* remove = multiple->findChild<QAction*>(QStringLiteral("deleteDataAction"));
     QVERIFY(remove != nullptr);
     QCOMPARE(remove->property("objectIds").toStringList().size(), 2);
@@ -1342,7 +1340,7 @@ void CaseWorkflowTest::onFlowExecution()
     IDOSCommandRegistry registry;
     QVERIFY(registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportRestartResultsCommandMetadata())));
     project.commandManager()->setRegistry(&registry);
-    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     const QList<IDOSDataObject*> objects = reader->read(directory.path() + QStringLiteral("/SPE1.DATA"));
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -1571,7 +1569,7 @@ void CaseWorkflowTest::onProviderDimensions()
                 "WCONINJE\n'INJ' 'GAS' 'OPEN' 'RATE' 100000 1* 9014 /\n/\nEND\n");
     input.close();
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     const QList<IDOSDataObject*> objects = reader->read(input.fileName());
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -1612,7 +1610,7 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(window.treeRegistry()->metadata(typeId) != nullptr);
     QVERIFY(window.renderRegistry()->metadata(typeId) != nullptr);
     QVERIFY(window.commandRegistry()->find(QStringLiteral("pointset.create")) != nullptr);
-    QScopedPointer<QMenu> blankMenu(window.dataTreeView()->createMenu(QModelIndex()));
+    QScopedPointer<QMenu> blankMenu(window.dataTreeView()->createContextMenu(QModelIndex()));
     QVERIFY(blankMenu->actions().isEmpty());
     QJsonObject invalid;
     QVERIFY(!project.commandManager()->execute(QStringLiteral("pointset.create"), invalid)
@@ -1675,7 +1673,7 @@ void CaseWorkflowTest::onExamplePlugin()
         QVERIFY(image.save(screenshotRoot + QStringLiteral("/example-pointset.png")));
     }
 
-    QScopedPointer<QMenu> treeMenu(window.dataTreeView()->createMenu(index));
+    QScopedPointer<QMenu> treeMenu(window.dataTreeView()->createContextMenu(index));
     QAction* deleteAction = treeMenu->findChild<QAction*>(QStringLiteral("deletePointSetAction"));
     QVERIFY(deleteAction != nullptr);
     deleteAction->trigger();
@@ -1880,7 +1878,7 @@ void CaseWorkflowTest::onWellInputMenus()
     const QModelIndex root = model->indexFromDataId(well->objectId());
     QVERIFY(root.isValid());
     QCOMPARE(model->rowCount(root), 5);
-    QScopedPointer<QMenu> summaryMenu(window.dataTreeView()->createMenu(root));
+    QScopedPointer<QMenu> summaryMenu(window.dataTreeView()->createContextMenu(root));
     QAction* summary = summaryMenu->findChild<QAction*>(QStringLiteral("viewWellSummaryAction"));
     QVERIFY(summary != nullptr);
     summary->trigger();
@@ -1889,7 +1887,7 @@ void CaseWorkflowTest::onWellInputMenus()
     QCOMPARE(summaryDialog->findChild<QTableWidget*>()->rowCount(), 5);
     delete summaryDialog;
 
-    QScopedPointer<QMenu> trajectoryMenu(window.dataTreeView()->createMenu(model->index(0, 0, root)));
+    QScopedPointer<QMenu> trajectoryMenu(window.dataTreeView()->createContextMenu(model->index(0, 0, root)));
     QAction* trajectoryView = trajectoryMenu->findChild<QAction*>(QStringLiteral("viewWellPathAction"));
     QVERIFY(trajectoryView != nullptr);
     QVERIFY(trajectoryMenu->findChild<QAction*>(QStringLiteral("importWellPathAction")) != nullptr);
@@ -1900,7 +1898,7 @@ void CaseWorkflowTest::onWellInputMenus()
     QCOMPARE(trajectoryDialog->findChild<QTableWidget*>()->columnCount(), 5);
     delete trajectoryDialog;
 
-    QScopedPointer<QMenu> curvesMenu(window.dataTreeView()->createMenu(model->index(1, 0, root)));
+    QScopedPointer<QMenu> curvesMenu(window.dataTreeView()->createContextMenu(model->index(1, 0, root)));
     QAction* curvesView = curvesMenu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
     QVERIFY(curvesView != nullptr);
     QVERIFY(curvesMenu->findChild<QAction*>(QStringLiteral("importWellCurvesAction")) != nullptr);
@@ -1913,7 +1911,7 @@ void CaseWorkflowTest::onWellInputMenus()
 
     for (int row = 2; row < model->rowCount(root); ++row)
     {
-        QScopedPointer<QMenu> menu(window.dataTreeView()->createMenu(model->index(row, 0, root)));
+        QScopedPointer<QMenu> menu(window.dataTreeView()->createContextMenu(model->index(row, 0, root)));
         QAction* viewData = menu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
         QVERIFY(viewData != nullptr);
         viewData->trigger();
@@ -1931,7 +1929,7 @@ void CaseWorkflowTest::onWellInputMenus()
     }
     const QModelIndex markersIndex = model->index(3, 0, root);
     const QModelIndex markerIndex = model->index(0, 0, markersIndex);
-    QScopedPointer<QMenu> markerMenu(window.dataTreeView()->createMenu(markerIndex));
+    QScopedPointer<QMenu> markerMenu(window.dataTreeView()->createContextMenu(markerIndex));
     QAction* markerView = markerMenu->findChild<QAction*>(QStringLiteral("viewWellInputDataAction"));
     QVERIFY(markerView != nullptr);
     markerView->trigger();
@@ -2064,7 +2062,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
                          IDOSWellCompletion(1, true, 0.0, 0.0)});
     project.add(well);
     IDOSTreeView* tree = window.dataTreeView();
-    IDOSRenderView* firstView = qobject_cast<IDOSRenderView*>(tree->targetView());
+    IDOSRenderView* firstView = window.renderServer()->currentView();
     QVERIFY(firstView != nullptr);
     IDOSRenderObject* firstObject = findRenderObject(firstView, well->objectId());
     QVERIFY(firstObject != nullptr);
@@ -2081,11 +2079,10 @@ void CaseWorkflowTest::onWellDisplaySettings()
     IDOSTreeModel* model = window.dataTreeModel();
     const QModelIndex root = model->indexFromDataId(well->objectId());
     QVERIFY(root.isValid());
-    QScopedPointer<QMenu> menu(tree->createMenu(root));
+    QScopedPointer<QMenu> menu(tree->createContextMenu(root));
     QAction* action = menu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(action != nullptr);
     QVERIFY(action->isEnabled());
-    tree->setTargetView(&secondView);
     action->trigger();
     QPointer<QWidget> widget(window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow")));
     QVERIFY(!widget.isNull());
@@ -2188,9 +2185,9 @@ void CaseWorkflowTest::onWellDisplaySettings()
         QVERIFY(popup->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("well-symbols.png"))));
         symbols->hidePopup();
     }
-    tree->setTargetView(firstView);
+    QVERIFY(window.renderServer()->setCurrentView(firstView));
     const QModelIndex trajectory = model->index(0, 0, root);
-    QScopedPointer<QMenu> pathMenu(tree->createMenu(trajectory));
+    QScopedPointer<QMenu> pathMenu(tree->createContextMenu(trajectory));
     QAction* pathAction = pathMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(pathAction != nullptr);
     pathAction->trigger();
@@ -2198,10 +2195,10 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QVERIFY(!widget.isNull());
     QCOMPARE(widget->findChild<QTabWidget*>()->currentIndex(), 1);
     const QModelIndex completion = model->index(1, 0, root);
-    QScopedPointer<QMenu> completionMenu(tree->createMenu(completion));
+    QScopedPointer<QMenu> completionMenu(tree->createContextMenu(completion));
     QVERIFY(completionMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction")) == nullptr);
-    tree->setTargetView(nullptr);
-    QScopedPointer<QMenu> disabledMenu(tree->createMenu(root));
+    QVERIFY(window.renderServer()->setCurrentView(nullptr));
+    QScopedPointer<QMenu> disabledMenu(tree->createContextMenu(root));
     QAction* disabled = disabledMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(disabled != nullptr && !disabled->isEnabled());
     project.remove(well->objectId());
@@ -2212,8 +2209,8 @@ void CaseWorkflowTest::onWellDisplaySettings()
     nextWell->setName(QStringLiteral("Next Well"));
     nextWell->setPath(path);
     project.add(nextWell);
-    tree->setTargetView(firstView);
-    QScopedPointer<QMenu> nextMenu(tree->createMenu(model->indexFromDataId(nextWell->objectId())));
+    QVERIFY(window.renderServer()->setCurrentView(firstView));
+    QScopedPointer<QMenu> nextMenu(tree->createContextMenu(model->indexFromDataId(nextWell->objectId())));
     QAction* nextAction = nextMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(nextAction != nullptr);
     nextAction->trigger();
@@ -2223,11 +2220,12 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QVERIFY(nextObject != nullptr);
     firstView->scene()->remove(nextObject->id());
     QTRY_VERIFY(widget.isNull());
-    tree->setTargetView(&secondView);
+    window.renderServer()->addView(&secondView);
+    QVERIFY(window.renderServer()->setCurrentView(&secondView));
     IDOSWellRenderProvider* nextProvider = new IDOSWellRenderProvider(nextWell);
     nextProvider->update();
     QVERIFY(secondView.scene()->add(new IDOSRenderObject(nextProvider)));
-    QScopedPointer<QMenu> switchMenu(tree->createMenu(model->indexFromDataId(nextWell->objectId())));
+    QScopedPointer<QMenu> switchMenu(tree->createContextMenu(model->indexFromDataId(nextWell->objectId())));
     QAction* switchAction = switchMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(switchAction != nullptr);
     switchAction->trigger();
@@ -2259,7 +2257,7 @@ void CaseWorkflowTest::onGridSettings()
     simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
     project.add(simulationCase);
     IDOSTreeView* tree = window.caseTreeView();
-    IDOSRenderView* firstView = qobject_cast<IDOSRenderView*>(tree->targetView());
+    IDOSRenderView* firstView = window.renderServer()->currentView();
     QVERIFY(firstView != nullptr);
     IDOSRenderObject* firstObject = findRenderObject(firstView, grid->objectId());
     QVERIFY(firstObject != nullptr);
@@ -2273,7 +2271,7 @@ void CaseWorkflowTest::onGridSettings()
     const QVariantMap originalSecondSettings = secondProvider->coloringSettings();
     const QModelIndex index = window.caseTreeModel()->indexFromDataId(property->objectId());
     QVERIFY(index.isValid());
-    QScopedPointer<QMenu> menu(tree->createMenu(index));
+    QScopedPointer<QMenu> menu(tree->createContextMenu(index));
     QVERIFY(menu->findChild<QAction*>(QStringLiteral("deletePropertyAction")) != nullptr);
     QAction* settings = menu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));
     QVERIFY(settings != nullptr);
@@ -2288,7 +2286,8 @@ void CaseWorkflowTest::onGridSettings()
     QCOMPARE(tabs->count(), 2);
     QCOMPARE(tabs->currentIndex(), 1);
     QCOMPARE(firstProvider->property(), property);
-    tree->setTargetView(&secondView);
+    window.renderServer()->addView(&secondView);
+    QVERIFY(window.renderServer()->setCurrentView(&secondView));
     QComboBox* ramp = widget->findChild<QComboBox*>(QStringLiteral("gridSettingRampCombo"));
     QVERIFY(ramp != nullptr);
     QLabel* gridName = widget->findChild<QLabel*>(QStringLiteral("gridSettingGridNameLabel"));
@@ -2429,17 +2428,16 @@ void CaseWorkflowTest::onGridSettings()
     QCOMPARE(firstProvider->edgeWidth(), 4.5);
     QApplication::processEvents();
     QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("grid-setting-appearance.png"))));
-    tree->setTargetView(firstView);
+    QVERIFY(window.renderServer()->setCurrentView(firstView));
     const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
     QVERIFY(gridIndex.isValid());
-    QScopedPointer<QMenu> gridMenu(tree->createMenu(gridIndex));
+    QScopedPointer<QMenu> gridMenu(tree->createContextMenu(gridIndex));
     QVERIFY(gridMenu->findChild<QAction*>(QStringLiteral("deleteGridAction")) != nullptr);
     QCOMPARE(project.currentObject(), static_cast<IDOSDataObject*>(grid));
     QCOMPARE(project.currentCaseId(), simulationCase->objectId());
     QAction* gridSettings = gridMenu->findChild<QAction*>(QStringLiteral("gridSettingsAction"));
     QVERIFY(gridSettings != nullptr);
     QCOMPARE(gridMenu->findChildren<QAction*>(QStringLiteral("gridSettingsAction")).size(), 1);
-    tree->setTargetView(&secondView);
     gridSettings->trigger();
     widget = window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow"));
     QVERIFY(!widget.isNull());
@@ -2455,7 +2453,7 @@ void CaseWorkflowTest::onGridSettings()
     QTRY_VERIFY(widget.isNull());
     settings->trigger();
     QVERIFY(window.findChild<QWidget*>(QStringLiteral("gridSettingsWindow")) == nullptr);
-    tree->setTargetView(firstView);
+    QVERIFY(window.renderServer()->setCurrentView(firstView));
     window.setProject(nullptr);
 }
 
@@ -2748,7 +2746,7 @@ void CaseWorkflowTest::onCloseContextMenu()
 void CaseWorkflowTest::onProvider()
 {
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     QList<IDOSDataObject*> objects = reader->read(QFINDTESTDATA("data/case.DATA"));
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -2947,11 +2945,11 @@ void CaseWorkflowTest::onCreateAndImport()
     IDOSMainWindow window;
     IDOSTreeView* view = window.caseTreeView();
     IDOSTreeModel* model = window.caseTreeModel();
-    QScopedPointer<QMenu> emptyMenu(view->createMenu(view->currentIndex()));
+    QScopedPointer<QMenu> emptyMenu(view->createContextMenu(view->currentIndex()));
     QVERIFY(emptyMenu->actions().isEmpty());
     IDOSProject* project = new IDOSProject(&window);
     window.setProject(project);
-    QScopedPointer<QMenu> menu(view->createMenu(view->currentIndex()));
+    QScopedPointer<QMenu> menu(view->createContextMenu(view->currentIndex()));
     QVERIFY(menu != nullptr);
     QCOMPARE(menu->actions().size(), 2);
     QTimer timer;
@@ -3178,7 +3176,7 @@ void CaseWorkflowTest::onGridFilters()
     simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
     project.add(simulationCase);
     IDOSTreeView* tree = window.caseTreeView();
-    IDOSRenderView* view = qobject_cast<IDOSRenderView*>(tree->targetView());
+    IDOSRenderView* view = window.renderServer()->currentView();
     QVERIFY(view != nullptr);
     IDOSRenderObject* sourceObject = findRenderObject(view, grid->objectId());
     QVERIFY(sourceObject != nullptr);
@@ -3191,10 +3189,9 @@ void CaseWorkflowTest::onGridFilters()
     QVERIFY(otherView.scene()->add(new IDOSRenderObject(otherProvider)));
     const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
     QVERIFY(gridIndex.isValid());
-    QScopedPointer<QMenu> menu(tree->createMenu(gridIndex));
+    QScopedPointer<QMenu> menu(tree->createContextMenu(gridIndex));
     QAction* action = menu->findChild<QAction*>(QStringLiteral("gridFilterAction"));
     QVERIFY(action != nullptr && action->isEnabled());
-    tree->setTargetView(&otherView);
     action->trigger();
     QPointer<IDOSGridFilterWidget> widget(window.findChild<IDOSGridFilterWidget*>(QStringLiteral("gridFilterWindow")));
     QVERIFY(widget != nullptr);
@@ -3337,7 +3334,7 @@ void CaseWorkflowTest::onGridFilters()
     QVERIFY(window.caseTreeModel()->indexFromDataId(filterId).isValid());
     QVERIFY(sourceObject->visible());
     QCOMPARE(sourceProvider->previewFilterId(), filterId);
-    tree->setTargetView(view);
+    QVERIFY(window.renderServer()->setCurrentView(view));
     const QModelIndex filterIndex = window.caseTreeModel()->indexFromDataId(filterId);
     QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Unchecked, Qt::CheckStateRole));
     QVERIFY(!resultObject->visible());
@@ -3373,7 +3370,7 @@ void CaseWorkflowTest::onGridFilters()
     sourceProvider->update();
     view->scene()->notifyChanged(sourceObject->id());
     QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Checked, Qt::CheckStateRole));
-    QScopedPointer<QMenu> resultMenu(tree->createMenu(window.caseTreeModel()->indexFromDataId(filterId)));
+    QScopedPointer<QMenu> resultMenu(tree->createContextMenu(window.caseTreeModel()->indexFromDataId(filterId)));
     QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterEditAction")) != nullptr);
     QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterDeleteAction")) != nullptr);
     QAction* renameAction = resultMenu->findChild<QAction*>(QStringLiteral("gridFilterRenameAction"));

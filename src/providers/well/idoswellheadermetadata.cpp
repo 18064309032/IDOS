@@ -86,7 +86,7 @@ bool IDOSWellHeaderMetadata::canHandle(const QString& filePath) const
     return false;
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSWellHeaderMetadata::create() const
+std::unique_ptr<IDOSDataProvider> IDOSWellHeaderMetadata::createProvider() const
 {
     return std::make_unique<IDOSWellHeaderProvider>();
 }

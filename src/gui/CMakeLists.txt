@@ -15,8 +15,8 @@ add_library(idos_gui SHARED
     idosruntimeinfowidget.h
     tree/idostreeview.cpp
     tree/idostreeview.h
-    tree/idostreeguiprovider.cpp
-    tree/idostreeguiprovider.h
+    tree/idostreemenuprovider.cpp
+    tree/idostreemenuprovider.h
 )
 target_include_directories(idos_gui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(idos_gui PUBLIC idos_core Qt5::Widgets)

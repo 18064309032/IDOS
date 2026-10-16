@@ -12,7 +12,7 @@ class PROVIDERS_EXPORT IDOSSimulationSummaryProviderMetadata : public IDOSDataPr
     QString id() const override;
     QString displayName() const override;
     QStringList fileExtensions() const override;
-    std::unique_ptr<IDOSDataProvider> create() const override;
+    std::unique_ptr<IDOSDataProvider> createProvider() const override;
     bool canHandle(const QString& filePath) const override;
 };
 

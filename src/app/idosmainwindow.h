@@ -12,6 +12,11 @@
 
 #include "idos_app.h"
 
+class IDOSGridFilterWidget;
+class IDOSGridSettingWidget;
+class IDOSWellDisplayWidget;
+class IDOSRenderObject;
+class IDOSCaseObject;
 class IDOSProjectMetadata;
 class IDOSCommandRegistry;
 class IDOSDataRegistry;
@@ -24,11 +29,12 @@ class QStackedWidget;
 class IDOSProjectStartWidget;
 class IDOSCommandManager;
 class IDOSProject;
+class IDOSAppTreeAccess;
 class IDOSTreeModel;
 class IDOSTreeView;
-class IDOSTreeRegistry;
-class IDOSTreeServer;
-class IDOSTree;
+class IDOSDataTreeMenuProvider;
+class IDOSTreeItemProviderRegistry;
+class IDOSCaseTreeMenuProvider;
 class IDOSRenderRegistry;
 class IDOSRenderServer;
 class IDOSRenderView;
@@ -65,8 +71,11 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     explicit IDOSMainWindow(QWidget* parent = nullptr);
     ~IDOSMainWindow() override;
 
-    /** 设置工程，同时喂给数据树与工况树两个模型实例。 */
+    /** 切换工程并重新装配树 Access 与渲染服务。 */
     void setProject(IDOSProject* project);
+    bool transferTreeItems(IDOSTreeModel* model, const QVariantMap& arguments, bool validateOnly);
+    void executeTreeAction(IDOSTreeModel* model, const QString& operation, const QVariantMap& arguments,
+                           IDOSRenderView* targetView);
     bool openProject(const QString& path, bool confirmDiscard = true);
     bool saveProject(const QString& path = QString());
     bool createProject(const IDOSProjectMetadata& metadata,
@@ -80,7 +89,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSTreeModel* caseTreeModel() const;
     IDOSProject* project() const;
     IDOSDataRegistry* dataRegistry() const;
-    IDOSTreeRegistry* treeRegistry() const;
+    IDOSTreeItemProviderRegistry* treeRegistry() const;
     IDOSRenderRegistry* renderRegistry() const;
     IDOSToolRegistry* toolRegistry() const;
     IDOSCommandRegistry* commandRegistry() const;
@@ -104,12 +113,12 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void onStartPageRecentProjectOpenRequested(const QString& path);
     void onStartPageRecentProjectRemoveRequested(const QString& path);
     void onRenderViewFocused();
-    void onRenderViewDecorations();
     void onRenderViewActivated(const QString& id);
     void onRenderViewDestroyed(QObject* object);
     void onRenderCurrentViewChanged(IDOSRenderView* view);
     void onRenderDataRemoving(const QString& id);
     void onRenderObjectsChanged(IDOSRenderView* view, const QStringList& ids, bool dataChanged);
+    void onDataGridFilterRenameAccepted();
     void onUndoTriggered();
     void onRedoTriggered();
     void onCommandStateChanged();
@@ -136,6 +145,55 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void closeEvent(QCloseEvent* event) override;
 
   private:
+    void onDataGridSettingsTriggered(IDOSTreeView* view, const QVariantMap& arguments, IDOSRenderView* targetView);
+    void onDataGridDisplayTriggered(IDOSTreeView* view, const QVariantMap& arguments, IDOSRenderView* targetView);
+    void onDataWellSettingsTriggered(IDOSTreeView* view, const QVariantMap& arguments, IDOSRenderView* targetView);
+    void onNodeImportDataset(IDOSTreeView* view, const QVariantMap& arguments);
+    void onNodeSelectSeismicInline(IDOSTreeView* view, const QVariantMap& arguments, IDOSRenderView* targetView);
+    void onNodeImportFluidRockTables(IDOSTreeView* view, const QVariantMap& arguments);
+    void onNodeAddFluidRockTableToCase(IDOSTreeView* view, const QVariantMap& arguments);
+    void clearTreeDialogs();
+    void onDataDeleteDatasets(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataAddToCase(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataRenameObject(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataGridImportProperty(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataGridImportDynamicProperties(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataGridDeleteProperty(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataGridDelete(IDOSTreeView* sourceView, const QVariantMap& action);
+    IDOSRenderObject* dataGridRenderObject(const QString& gridId, IDOSRenderView* view) const;
+    int dataGridPropertyCount(const IDOSTreeView* view, const QString& gridId) const;
+    bool dataDeleteGrid(IDOSTreeView* view, const QString& gridId);
+    bool dataDeleteProperty(IDOSTreeView* view, const QString& propertyId);
+    bool dataImportProperty(IDOSTreeView* view, const QString& targetGridId, const QString& targetCaseId);
+    bool dataImportDynamicProperties(IDOSTreeView* view, const QString& targetGridId);
+    void dataReportGridImportSuccess(IDOSTreeView* view, const QString& message);
+    void onDataGridDeleteFilter(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataGridRenameFilter(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataViewWellData(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataNewWell(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataImportWell(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onDataDeleteWell(IDOSTreeView* sourceView, const QVariantMap& action);
+    int dataImportWellData(IDOSProject* project, QWidget* parent);
+    int dataImportWellData(IDOSProject* project, const QString& targetWellId, QWidget* parent);
+    bool dataNewWell(IDOSProject* project, QWidget* parent);
+    bool dataDeleteWell(IDOSProject* project, const QString& wellId, QWidget* parent);
+    void onCaseGenerateInput(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseViewPropertyCurves(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseImportSummaryResults(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseViewSummaryResults(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseRenameCase(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseNewCase(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseImportCase(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseImportGrid(IDOSTreeView* sourceView, const QVariantMap& action);
+    void onCaseDeleteCase(IDOSTreeView* sourceView, const QVariantMap& action);
+    int caseGridPropertyCount(const IDOSTreeView* view, const QString& gridId) const;
+    QString caseReferencedGridId(const IDOSCaseObject* caseObj);
+    bool caseNameExists(const IDOSTreeView* view, const QString& name) const;
+    bool caseNewCase(IDOSTreeView* view);
+    bool caseImportCase(IDOSTreeView* view);
+    bool caseDeleteCase(IDOSTreeView* view, const QString& caseId);
+    bool caseImportGrid(IDOSTreeView* view, const QString& targetCaseId);
+    void onCaseRenameObject(IDOSTreeView* sourceView, const QVariantMap& action);
     void collectProjectPresentation(bool force = false);
     void prepareProjectViews(const QVariantMap& state);
     void restoreProjectPresentation(const QVariantMap& state);
@@ -194,14 +252,17 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSProject* m_project;
     IDOSDataRegistry* m_dataRegistry;
     QPointer<IDOSCommandManager> m_commandManager;
-    IDOSTree* m_dataTree;
-    IDOSTree* m_caseTree;
+    IDOSTreeItemProviderRegistry* m_treeRegistry;
+    QPointer<IDOSGridSettingWidget> m_gridWidget;
+    QPointer<IDOSGridFilterWidget> m_filterWidget;
+    QPointer<IDOSWellDisplayWidget> m_wellWidget;
+    IDOSAppTreeAccess* m_treeAccess;
     IDOSTreeModel* m_dataTreeModel;
     IDOSTreeModel* m_caseTreeModel;
     IDOSTreeView* m_dataTreeView;
+    IDOSDataTreeMenuProvider* m_dataTreeMenuProvider;
     IDOSTreeView* m_caseTreeView;
-    IDOSTreeRegistry* m_treeRegistry;
-    IDOSTreeServer* m_treeServer;
+    IDOSCaseTreeMenuProvider* m_caseTreeMenuProvider;
     IDOSRenderRegistry* m_renderRegistry;
     IDOSToolRegistry* m_toolRegistry;
     IDOSRenderServer* m_renderServer;

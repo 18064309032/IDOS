@@ -11,7 +11,7 @@
  *
  * 使用方式：
  *   IDOSDataProviderMetadata* meta = registry.metadata("idos.well.las");
- *   std::unique_ptr<IDOSDataProvider> provider = meta->create();
+ *   std::unique_ptr<IDOSDataProvider> provider = meta->createProvider();
  *   provider->read(path, project);
  */
 class PROVIDERS_EXPORT IDOSWellLasMetadata : public IDOSDataProviderMetadata
@@ -22,7 +22,7 @@ class PROVIDERS_EXPORT IDOSWellLasMetadata : public IDOSDataProviderMetadata
     bool canHandle(const QString& filePath) const override;
     QStringList fileExtensions() const override;
 
-    std::unique_ptr<IDOSDataProvider> create() const override;
+    std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };
 
 #endif // IDOS_WELL_LAS_METADATA_H

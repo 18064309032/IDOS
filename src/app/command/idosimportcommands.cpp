@@ -329,12 +329,12 @@ bool IDOSImportObjectsCommand::loadObjects(QString& error)
             error = QObject::tr("The selected provider cannot read this file.");
             return false;
         }
-        provider = metadata->create();
+        provider = metadata->createProvider();
     }
     else
     {
         const QList<IDOSDataProviderMetadata*> metadataList =
-            IDOSDataProviderRegistry::instance().providers(m_filePath);
+            IDOSDataProviderRegistry::instance().metadataForFile(m_filePath);
         if (!metadataList.isEmpty())
         {
             metadata = metadataList.first();
@@ -344,7 +344,7 @@ bool IDOSImportObjectsCommand::loadObjects(QString& error)
             error = QObject::tr("No provider matches file: %1").arg(m_filePath);
             return false;
         }
-        provider = metadata->create();
+        provider = metadata->createProvider();
     }
     if (provider == nullptr)
     {
@@ -1053,32 +1053,6 @@ void IDOSImportObjectsCommand::deleteDetachedObjects()
     }
 }
 
-QJsonObject IDOSImportObjectsCommand::filePathSchema()
-{
-    QJsonObject property;
-    property.insert(QStringLiteral("type"), QStringLiteral("string"));
-    property.insert(QStringLiteral("description"), QObject::tr("Path of the file to import."));
-    return property;
-}
-
-QJsonObject IDOSImportObjectsCommand::stringPropertySchema(const QString& description)
-{
-    QJsonObject property;
-    property.insert(QStringLiteral("type"), QStringLiteral("string"));
-    property.insert(QStringLiteral("description"), description);
-    return property;
-}
-
-QJsonObject IDOSImportObjectsCommand::schemaWithProperties(const QJsonObject& properties,
-                                                               const QJsonArray& required)
-{
-    QJsonObject schemaObject;
-    schemaObject.insert(QStringLiteral("type"), QStringLiteral("object"));
-    schemaObject.insert(QStringLiteral("properties"), properties);
-    schemaObject.insert(QStringLiteral("required"), required);
-    return schemaObject;
-}
-
 IDOSImportCaseCommandMetadata::IDOSImportCaseCommandMetadata()
     : IDOSCommandMetadata(QStringLiteral("case.import"),
                           QObject::tr("Import case"),
@@ -1092,13 +1066,13 @@ IDOSImportCaseCommandMetadata::~IDOSImportCaseCommandMetadata() = default;
 QJsonObject IDOSImportCaseCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
     properties.insert(QStringLiteral("caseName"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Optional imported case name.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportCaseCommandMetadata::create(const QJsonObject& arguments,
@@ -1120,9 +1094,9 @@ IDOSImportGridCommandMetadata::~IDOSImportGridCommandMetadata() = default;
 QJsonObject IDOSImportGridCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the target case.")));
     QJsonObject replaceProperty;
     replaceProperty.insert(QStringLiteral("type"), QStringLiteral("boolean"));
@@ -1132,7 +1106,7 @@ QJsonObject IDOSImportGridCommandMetadata::schema() const
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("targetCaseId"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportGridCommandMetadata::create(const QJsonObject& arguments,
@@ -1154,18 +1128,18 @@ IDOSImportPropertyCommandMetadata::~IDOSImportPropertyCommandMetadata() = defaul
 QJsonObject IDOSImportPropertyCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
     properties.insert(QStringLiteral("targetGridId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the target grid.")));
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the target case.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("targetGridId"));
     required.append(QStringLiteral("targetCaseId"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportPropertyCommandMetadata::create(const QJsonObject& arguments,
@@ -1187,13 +1161,13 @@ IDOSImportWellDataCommandMetadata::~IDOSImportWellDataCommandMetadata() = defaul
 QJsonObject IDOSImportWellDataCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
     properties.insert(QStringLiteral("targetWellId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Optional object ID of the well receiving the imported data.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportWellDataCommandMetadata::create(const QJsonObject& arguments,
@@ -1215,8 +1189,8 @@ IDOSImportFluidRockTablesCommandMetadata::~IDOSImportFluidRockTablesCommandMetad
 QJsonObject IDOSImportFluidRockTablesCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
-    QJsonObject categorySchema = IDOSImportObjectsCommand::stringPropertySchema(
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
+    QJsonObject categorySchema = stringPropertySchema(
         QObject::tr("Table category to import: fluid or rockPhysics."));
     QJsonArray categories;
     categories.append(QStringLiteral("fluid"));
@@ -1226,7 +1200,7 @@ QJsonObject IDOSImportFluidRockTablesCommandMetadata::schema() const
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("category"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSAttachFluidRockTableCommandMetadata::IDOSAttachFluidRockTableCommandMetadata()
@@ -1243,15 +1217,15 @@ QJsonObject IDOSAttachFluidRockTableCommandMetadata::schema() const
 {
     QJsonObject properties;
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the target simulation case.")));
     properties.insert(QStringLiteral("tableId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the fluid or rock table.")));
     QJsonArray required;
     required.append(QStringLiteral("targetCaseId"));
     required.append(QStringLiteral("tableId"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSAttachFluidRockTableCommandMetadata::create(const QJsonObject& arguments,
@@ -1285,16 +1259,16 @@ IDOSImportProjectDataCommandMetadata::~IDOSImportProjectDataCommandMetadata() = 
 QJsonObject IDOSImportProjectDataCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
-    properties.insert(QStringLiteral("providerId"), IDOSImportObjectsCommand::stringPropertySchema(
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
+    properties.insert(QStringLiteral("providerId"), stringPropertySchema(
         QObject::tr("Registered data provider ID.")));
-    properties.insert(QStringLiteral("dataTypeId"), IDOSImportObjectsCommand::stringPropertySchema(
+    properties.insert(QStringLiteral("dataTypeId"), stringPropertySchema(
         QObject::tr("Expected project data type ID.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("providerId"));
     required.append(QStringLiteral("dataTypeId"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportProjectDataCommandMetadata::create(const QJsonObject& arguments,
@@ -1316,14 +1290,14 @@ IDOSImportSummaryResultsCommandMetadata::~IDOSImportSummaryResultsCommandMetadat
 QJsonObject IDOSImportSummaryResultsCommandMetadata::schema() const
 {
     QJsonObject properties;
-    properties.insert(QStringLiteral("filePath"), IDOSImportObjectsCommand::filePathSchema());
+    properties.insert(QStringLiteral("filePath"), stringPropertySchema(QObject::tr("Path of the file to import.")));
     properties.insert(QStringLiteral("targetCaseId"),
-                      IDOSImportObjectsCommand::stringPropertySchema(
+                      stringPropertySchema(
                           QObject::tr("Object ID of the target simulation case.")));
     QJsonArray required;
     required.append(QStringLiteral("filePath"));
     required.append(QStringLiteral("targetCaseId"));
-    return IDOSImportObjectsCommand::schemaWithProperties(properties, required);
+    return schemaWithProperties(properties, required);
 }
 
 IDOSCommand* IDOSImportSummaryResultsCommandMetadata::create(const QJsonObject& arguments,

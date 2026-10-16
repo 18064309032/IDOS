@@ -56,7 +56,7 @@
     </message>
 </context>
 <context>
-    <name>IDOSPointSetTreeGuiProvider</name>
+    <name>IDOSPointSetTreeProvider</name>
     <message>
         <source>Delete Point Set</source>
         <translation>删除点集</translation>

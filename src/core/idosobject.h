@@ -15,7 +15,6 @@
 class CORE_EXPORT IDOSObject : public QObject
 {
     Q_OBJECT
-    friend class IDOSProject;
 
   public:
     /**
@@ -31,6 +30,7 @@ class CORE_EXPORT IDOSObject : public QObject
      * @return 稳定的 objectId，构造时生成，对象生命周期内不变。
      */
     QString objectId() const;
+    bool restoreObjectId(const QString& id);
 
     /**
      * @brief 获取对象名称。

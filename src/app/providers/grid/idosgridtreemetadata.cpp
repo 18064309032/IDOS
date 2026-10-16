@@ -3,7 +3,7 @@
 
 #include "idosgridtreemetadata.h"
 
-QString IDOSGridTreeMetadata::typeId() const
+QString IDOSGridTreeMetadata::id() const
 {
     return QStringLiteral("idos.grid");
 }
@@ -20,10 +20,10 @@ QString IDOSGridTreeMetadata::groupKey() const
 
 bool IDOSGridTreeMetadata::supports(const IDOSDataObject* data) const
 {
-    return IDOSTreeMetadata::supports(data) && data->containerId().isEmpty();
+    return IDOSTreeItemProviderMetadata::supports(data) && data->containerId().isEmpty();
 }
 
-IDOSTreeProvider* IDOSGridTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSGridTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSGridTreeProvider(data);
 }

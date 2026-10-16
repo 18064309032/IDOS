@@ -2,16 +2,16 @@
 #define IDOS_IMPORTED_DATA_TREE_METADATA_H
 
 #include "idos_app.h"
-#include "providers/idostreemetadata.h"
+#include "providers/idostreeitemprovidermetadata.h"
 
-class APP_EXPORT IDOSImportedDataTreeMetadata : public IDOSTreeMetadata
+class APP_EXPORT IDOSImportedDataTreeMetadata : public IDOSTreeItemProviderMetadata
 {
   public:
     IDOSImportedDataTreeMetadata(const QString& dataTypeId, const QString& parentKey);
-    QString typeId() const override;
+    QString id() const override;
     QString treeName() const override;
     QString groupKey() const override;
-    IDOSTreeProvider* create(IDOSDataObject* data) const override;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const override;
 
   private:
     QString m_dataTypeId;

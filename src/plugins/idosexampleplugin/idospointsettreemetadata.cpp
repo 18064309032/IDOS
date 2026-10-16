@@ -2,7 +2,7 @@
 
 #include "idospointsettreemetadata.h"
 
-QString IDOSPointSetTreeMetadata::typeId() const
+QString IDOSPointSetTreeMetadata::id() const
 {
     return QString::fromLatin1("idos.example.pointset");
 }
@@ -12,7 +12,7 @@ QString IDOSPointSetTreeMetadata::treeName() const
     return QString::fromLatin1("data");
 }
 
-IDOSTreeProvider* IDOSPointSetTreeMetadata::create(IDOSDataObject* data) const
+IDOSTreeItemProvider* IDOSPointSetTreeMetadata::createProvider(IDOSDataObject* data) const
 {
     return new IDOSPointSetTreeProvider(data);
 }

@@ -343,49 +343,7 @@
         <translation type="vanished">示例点集</translation>
     </message>
 </context>
-<context>
-    <name>IDOSFluidRockTableTreeGuiProvider</name>
-    <message>
-        <source>Import Fluid Tables...</source>
-        <translation>导入流体表…</translation>
-    </message>
-    <message>
-        <source>Import Rock Physics Functions...</source>
-        <translation>导入岩石物理函数…</translation>
-    </message>
-    <message>
-        <source>Import Fluid Tables</source>
-        <translation>导入流体表</translation>
-    </message>
-    <message>
-        <source>Import Rock Physics Functions</source>
-        <translation>导入岩石物理函数</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Fluid Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
-        <translation>ECLIPSE 流体表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Rock Physics Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
-        <translation>ECLIPSE 岩石物理表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Add to Simulation Case...</source>
-        <translation>添加到模拟工况…</translation>
-    </message>
-    <message>
-        <source>Add Table to Simulation Case</source>
-        <translation>将表添加到模拟工况</translation>
-    </message>
-    <message>
-        <source>Create or import a simulation case first.</source>
-        <translation>请先新建或导入模拟工况。</translation>
-    </message>
-    <message>
-        <source>Simulation case:</source>
-        <translation>模拟工况：</translation>
-    </message>
-</context>
+
 <context>
     <name>IDOSFractureModelingPlugin</name>
     <message>
@@ -982,129 +940,6 @@
     </message>
 </context>
 <context>
-    <name>IDOSGridTreeGuiProvider</name>
-    <message>
-        <source>Display in Target View</source>
-        <translation>在目标视图中显示</translation>
-    </message>
-    <message>
-        <source>Color by</source>
-        <translation>着色依据</translation>
-    </message>
-    <message>
-        <source>Solid color</source>
-        <translation>单色</translation>
-    </message>
-    <message>
-        <source>Display Settings...</source>
-        <translation>显示设置…</translation>
-    </message>
-    <message>
-        <source>New Filter...</source>
-        <translation>新建筛选…</translation>
-    </message>
-    <message>
-        <source>Import Dynamic Properties...</source>
-        <translation>导入动态属性…</translation>
-    </message>
-    <message>
-        <source>Import Dynamic Properties</source>
-        <translation>导入动态属性</translation>
-    </message>
-    <message>
-        <source>Unified Eclipse restart files (*.UNRST *.unrst)</source>
-        <translation>Eclipse 统一重启文件 (*.UNRST *.unrst)</translation>
-    </message>
-    <message>
-        <source>Imported %1 dynamic properties across %2 report steps (%3–%4).</source>
-        <translation>已导入 %1 个动态属性，覆盖 %2 个报告步（%3–%4）。</translation>
-    </message>
-    <message>
-        <source>Import Property...</source>
-        <translation>导入属性…</translation>
-    </message>
-    <message>
-        <source>Import Region Properties...</source>
-        <translation>导入区域属性…</translation>
-    </message>
-    <message>
-        <source>Delete Property...</source>
-        <translation>删除属性…</translation>
-    </message>
-    <message>
-        <source>Delete Grid...</source>
-        <translation>删除网格…</translation>
-    </message>
-    <message>
-        <source>Delete Grid</source>
-        <translation>删除网格</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete grid &quot;%1&quot;?
-It will also delete %2 propert(ies) under this grid and all saved filters, and remove it from all cases that reference it.</source>
-        <translation>确定要删除网格&quot;%1&quot;吗？
-该网格下的 %2 个属性及全部已保存筛选将一并删除，并从所有引用它的工况中移除。</translation>
-    </message>
-    <message>
-        <source>Delete Property</source>
-        <translation>删除属性</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete property &quot;%1&quot;?
-It will be removed from all cases that reference it.</source>
-        <translation>确认删除属性“%1”吗？
-将从所有引用该属性的工况中移除。</translation>
-    </message>
-    <message>
-        <source>Import Grid Property</source>
-        <translation>导入网格属性</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
-        <translation type="vanished">ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
-        <translation>ECLIPSE 属性文件 (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Imported %1 properties.</source>
-        <translation>已导入 %1 个属性。</translation>
-    </message>
-    <message>
-        <source>Edit Filter...</source>
-        <translation>编辑筛选…</translation>
-    </message>
-    <message>
-        <source>Rename Filter...</source>
-        <translation>重命名筛选…</translation>
-    </message>
-    <message>
-        <source>Delete Filter...</source>
-        <translation>删除筛选…</translation>
-    </message>
-    <message>
-        <source>Grid Filter...</source>
-        <translation type="vanished">网格筛选…</translation>
-    </message>
-    <message>
-        <source>Delete Filter</source>
-        <translation>删除筛选</translation>
-    </message>
-    <message>
-        <source>Delete filter &quot;%1&quot;?</source>
-        <translation>删除筛选“%1”？</translation>
-    </message>
-    <message>
-        <source>Rename Filter</source>
-        <translation>重命名筛选</translation>
-    </message>
-    <message>
-        <source>Filter name:</source>
-        <translation>筛选名称：</translation>
-    </message>
-</context>
-<context>
     <name>IDOSImportSummaryResultsCommandMetadata</name>
     <message>
         <source>Import summary results</source>
@@ -1119,145 +954,8 @@ It will be removed from all cases that reference it.</source>
         <translation type="vanished">目标模拟工况的对象 ID。</translation>
     </message>
 </context>
-<context>
-    <name>IDOSImportedDataTreeGuiProvider</name>
-    <message>
-        <source>Import SEG-Y Seismic Volume...</source>
-        <translation>导入 SEG-Y 地震体…</translation>
-    </message>
-    <message>
-        <source>Select Inline Section...</source>
-        <translation>选择 Inline 剖面…</translation>
-    </message>
-    <message>
-        <source>Select Inline Section</source>
-        <translation>选择 Inline 剖面</translation>
-    </message>
-    <message>
-        <source>Inline number:</source>
-        <translation>Inline 编号：</translation>
-    </message>
-    <message>
-        <source>SEG-Y Seismic Volumes (*.sgy *.SGY *.segy *.SEGY);;All Files (*)</source>
-        <translation>SEG-Y 地震体 (*.sgy *.SGY *.segy *.SEGY);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Microseismic Events...</source>
-        <translation>导入微地震事件…</translation>
-    </message>
-    <message>
-        <source>Microseismic Event Tables (*.txt *.TXT);;All Files (*)</source>
-        <translation>微地震事件表 (*.txt *.TXT);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Fracture Pump Schedule...</source>
-        <translation>导入压裂泵注程序…</translation>
-    </message>
-    <message>
-        <source>Fracture Pump Schedules (*.txt *.TXT *.xlsx *.XLSX);;All Files (*)</source>
-        <translation>压裂泵注程序 (*.txt *.TXT *.xlsx *.XLSX);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Natural Fractures...</source>
-        <translation>导入天然裂缝…</translation>
-    </message>
-    <message>
-        <source>ASCII Natural Fracture Files (*.fab *.FAB);;All Files (*)</source>
-        <translation>ASCII 天然裂缝文件 (*.fab *.FAB);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Production History...</source>
-        <translation>导入生产历史…</translation>
-    </message>
-    <message>
-        <source>Production History (*.vol *.VOL);;All Files (*)</source>
-        <translation>生产历史 (*.vol *.VOL);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Proppant Catalog...</source>
-        <translation>导入支撑剂目录…</translation>
-    </message>
-    <message>
-        <source>Proppant Catalog (*.txt *.TXT);;All Files (*)</source>
-        <translation>支撑剂目录 (*.txt *.TXT);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Fluid Catalog...</source>
-        <translation>导入压裂液目录…</translation>
-    </message>
-    <message>
-        <source>Fluid Catalog (*.txt *.TXT);;All Files (*)</source>
-        <translation>压裂液目录 (*.txt *.TXT);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Grid Surface...</source>
-        <translation>导入地层面…</translation>
-    </message>
-    <message>
-        <source>ZIMS Grid Surface (*);;All Files (*)</source>
-        <translation>ZIMS 地层面文件 (*);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Import Grid Boundary...</source>
-        <translation>导入网格边界…</translation>
-    </message>
-    <message>
-        <source>Grid Boundary Point Files (*);;All Files (*)</source>
-        <translation>网格边界点文件 (*);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>%1 (%2 events)</source>
-        <translation type="vanished">%1（%2 个事件）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 samples)</source>
-        <translation type="vanished">%1（%2 个采样点）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 fractures)</source>
-        <translation type="vanished">%1（%2 条裂缝）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 records)</source>
-        <translation type="vanished">%1（%2 条记录）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 materials)</source>
-        <translation type="vanished">%1（%2 种材料）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 × %3 surface)</source>
-        <translation type="vanished">%1（%2 × %3 地层面）</translation>
-    </message>
-    <message>
-        <source>%1 (%2 boundary points)</source>
-        <translation type="vanished">%1（%2 个边界点）</translation>
-    </message>
-    <message>
-        <source>Failed to import %1:
-%2</source>
-        <translation>导入 %1 失败：
-%2</translation>
-    </message>
-    <message>
-        <source>Delete Data...</source>
-        <translation>删除数据…</translation>
-    </message>
-    <message>
-        <source>Delete Data</source>
-        <translation>删除数据</translation>
-    </message>
-    <message>
-        <source>Delete %1 selected dataset(s)?
-Their case references will also be removed. You can undo this operation.
 
-%2</source>
-        <translation>删除选中的 %1 个数据集？
-同时移除其工况引用。此操作可以撤销。
 
-%2</translation>
-    </message>
-</context>
 <context>
     <name>IDOSLocalModelService</name>
     <message>
@@ -1768,6 +1466,680 @@ Their case references will also be removed. You can undo this operation.
     <message>
         <source>Project display setup completed in %1 ms.</source>
         <translation>工程显示重建耗时 %1 毫秒。</translation>
+    </message>
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Delete Data</source>
+        <translation>删除数据</translation>
+    </message>
+    <message>
+        <source>Delete %1 selected dataset(s)?
+Their case references will also be removed. You can undo this operation.
+
+%2</source>
+        <translation>删除选中的 %1 个数据集？
+同时移除其工况引用。此操作可以撤销。
+
+%2</translation>
+    </message>
+    <message>
+        <source>Edit Filter...</source>
+        <translation>编辑筛选…</translation>
+    </message>
+    <message>
+        <source>Display Settings...</source>
+        <translation>显示设置…</translation>
+    </message>
+    <message>
+        <source>Rename Filter...</source>
+        <translation>重命名筛选…</translation>
+    </message>
+    <message>
+        <source>Delete Filter...</source>
+        <translation>删除筛选…</translation>
+    </message>
+    <message>
+        <source>New Filter...</source>
+        <translation>新建筛选…</translation>
+    </message>
+    <message>
+        <source>Import Dynamic Properties...</source>
+        <translation>导入动态属性…</translation>
+    </message>
+    <message>
+        <source>Import Property...</source>
+        <translation>导入属性…</translation>
+    </message>
+    <message>
+        <source>Import Region Properties...</source>
+        <translation>导入区域属性…</translation>
+    </message>
+    <message>
+        <source>Delete Property...</source>
+        <translation>删除属性…</translation>
+    </message>
+    <message>
+        <source>Delete Grid...</source>
+        <translation>删除网格…</translation>
+    </message>
+    <message>
+        <source>Delete Grid</source>
+        <translation>删除网格</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete grid &quot;%1&quot;?
+It will also delete %2 propert(ies) under this grid and all saved filters, and remove it from all cases that reference it.</source>
+        <translation>确定要删除网格&quot;%1&quot;吗？
+该网格下的 %2 个属性及全部已保存筛选将一并删除，并从所有引用它的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Delete Property</source>
+        <translation>删除属性</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete property &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确认删除属性“%1”吗？
+将从所有引用该属性的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Import Grid Property</source>
+        <translation>导入网格属性</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
+        <translation>ECLIPSE 属性文件 (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Imported %1 properties.</source>
+        <translation>已导入 %1 个属性。</translation>
+    </message>
+    <message>
+        <source>Import Dynamic Properties</source>
+        <translation>导入动态属性</translation>
+    </message>
+    <message>
+        <source>Unified Eclipse restart files (*.UNRST *.unrst)</source>
+        <translation>Eclipse 统一重启文件 (*.UNRST *.unrst)</translation>
+    </message>
+    <message>
+        <source>Imported %1 dynamic properties across %2 report steps (%3–%4).</source>
+        <translation>已导入 %1 个动态属性，覆盖 %2 个报告步（%3–%4）。</translation>
+    </message>
+    <message>
+        <source>Display in Target View</source>
+        <translation>在目标视图中显示</translation>
+    </message>
+    <message>
+        <source>Color by</source>
+        <translation>着色依据</translation>
+    </message>
+    <message>
+        <source>Solid color</source>
+        <translation>单色</translation>
+    </message>
+    <message>
+        <source>Delete Filter</source>
+        <translation>删除筛选</translation>
+    </message>
+    <message>
+        <source>Delete filter &quot;%1&quot;?</source>
+        <translation>删除筛选“%1”？</translation>
+    </message>
+    <message>
+        <source>Rename Filter</source>
+        <translation>重命名筛选</translation>
+    </message>
+    <message>
+        <source>Filter name:</source>
+        <translation>筛选名称：</translation>
+    </message>
+    <message>
+        <source>New Well...</source>
+        <translation>新建井…</translation>
+    </message>
+    <message>
+        <source>Import Well Data...</source>
+        <translation>导入井数据…</translation>
+    </message>
+    <message>
+        <source>Import Well Header...</source>
+        <translation>导入井头…</translation>
+    </message>
+    <message>
+        <source>View Well Data...</source>
+        <translation>查看井数据…</translation>
+    </message>
+    <message>
+        <source>View Trajectory Data...</source>
+        <translation>查看轨迹数据…</translation>
+    </message>
+    <message>
+        <source>Import or Replace Trajectory...</source>
+        <translation>导入／替换轨迹…</translation>
+    </message>
+    <message>
+        <source>Import Well Curves...</source>
+        <translation>导入井曲线…</translation>
+    </message>
+    <message>
+        <source>View Curve Data...</source>
+        <translation>查看曲线数据…</translation>
+    </message>
+    <message>
+        <source>Markers</source>
+        <translation>标志层</translation>
+    </message>
+    <message>
+        <source>Completions</source>
+        <translation>完井</translation>
+    </message>
+    <message>
+        <source>Checkshots</source>
+        <translation>校深</translation>
+    </message>
+    <message>
+        <source>Import %1 Data...</source>
+        <translation>导入%1数据…</translation>
+    </message>
+    <message>
+        <source>View %1 Data...</source>
+        <translation>查看%1数据…</translation>
+    </message>
+    <message>
+        <source>View Marker Data...</source>
+        <translation>查看标志层数据…</translation>
+    </message>
+    <message>
+        <source>Delete Well...</source>
+        <translation>删除井…</translation>
+    </message>
+    <message>
+        <source>Well Data - %1</source>
+        <translation>井数据 - %1</translation>
+    </message>
+    <message>
+        <source>Count</source>
+        <translation>数量</translation>
+    </message>
+    <message>
+        <source>Trajectory points</source>
+        <translation>轨迹点</translation>
+    </message>
+    <message>
+        <source>Log curves</source>
+        <translation>测井曲线</translation>
+    </message>
+    <message>
+        <source>Checkshot samples</source>
+        <translation>校深样本</translation>
+    </message>
+    <message>
+        <source>Measured Depth</source>
+        <translation>测量深度</translation>
+    </message>
+    <message>
+        <source>X</source>
+        <translation>X</translation>
+    </message>
+    <message>
+        <source>Y</source>
+        <translation>Y</translation>
+    </message>
+    <message>
+        <source>Z</source>
+        <translation>Z</translation>
+    </message>
+    <message>
+        <source>True Vertical Depth</source>
+        <translation>垂直深度</translation>
+    </message>
+    <message>
+        <source>Horizon</source>
+        <translation>层位</translation>
+    </message>
+    <message>
+        <source>Measured depth (m)</source>
+        <translation>测量深度（米）</translation>
+    </message>
+    <message>
+        <source>Top depth (m)</source>
+        <translation>顶深（米）</translation>
+    </message>
+    <message>
+        <source>Bottom depth (m)</source>
+        <translation>底深（米）</translation>
+    </message>
+    <message>
+        <source>Grid layer</source>
+        <translation>网格层号</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Event date</source>
+        <translation>事件日期</translation>
+    </message>
+    <message>
+        <source>Not mapped</source>
+        <translation>未映射</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Shut</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Depth (m)</source>
+        <translation>深度（米）</translation>
+    </message>
+    <message>
+        <source>Unspecified unit</source>
+        <translation>单位未声明</translation>
+    </message>
+    <message>
+        <source>Two-way time</source>
+        <translation>双程时间</translation>
+    </message>
+    <message>
+        <source>One-way time</source>
+        <translation>单程时间</translation>
+    </message>
+    <message>
+        <source>Time (type unspecified)</source>
+        <translation>时间（类型未声明）</translation>
+    </message>
+    <message>
+        <source>True vertical depth (%1)</source>
+        <translation>垂直深度（%1）</translation>
+    </message>
+    <message>
+        <source>Depth (%1)</source>
+        <translation>深度（%1）</translation>
+    </message>
+    <message>
+        <source>%1 (%2)</source>
+        <translation>%1（%2）</translation>
+    </message>
+    <message>
+        <source>Import Well Trajectory</source>
+        <translation>导入井轨迹</translation>
+    </message>
+    <message>
+        <source>Import Well Header</source>
+        <translation>导入井头</translation>
+    </message>
+    <message>
+        <source>Import Well Curves</source>
+        <translation>导入井曲线</translation>
+    </message>
+    <message>
+        <source>Import Well Markers</source>
+        <translation>导入井标志层</translation>
+    </message>
+    <message>
+        <source>Import Well Completions</source>
+        <translation>导入井完井数据</translation>
+    </message>
+    <message>
+        <source>Import Well Checkshots</source>
+        <translation>导入井校深数据</translation>
+    </message>
+    <message>
+        <source>Import Well Data</source>
+        <translation>导入井数据</translation>
+    </message>
+    <message>
+        <source>New Well</source>
+        <translation>新建井</translation>
+    </message>
+    <message>
+        <source>Well name:</source>
+        <translation>井名：</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>创建</translation>
+    </message>
+    <message>
+        <source>Please enter a well name.</source>
+        <translation>请输入井名。</translation>
+    </message>
+    <message>
+        <source>A well named &quot;%1&quot; already exists. Please enter a different name.</source>
+        <translation>已存在名为“%1”的井，请输入其他井名。</translation>
+    </message>
+    <message>
+        <source>Delete Well</source>
+        <translation>删除井</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete well &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确定删除井 &quot;%1&quot; 吗？
+它将从所有引用它的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Transfer Objects</source>
+        <translation>对象操作</translation>
+    </message>
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+    <message>
+        <source>%1 [%2]</source>
+        <translation>%1 [%2]</translation>
+    </message>
+    <message>
+        <source>Add to Case</source>
+        <translation>添加到工况</translation>
+    </message>
+    <message>
+        <source>Create a case before adding data.</source>
+        <translation>请先创建工况，再添加数据。</translation>
+    </message>
+    <message>
+        <source>Destination case:</source>
+        <translation>目标工况：</translation>
+    </message>
+    <message>
+        <source>Rename Object</source>
+        <translation>重命名对象</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>名称：</translation>
+    </message>
+    <message>
+        <source>Import Grid...</source>
+        <translation>导入网格…</translation>
+    </message>
+    <message>
+        <source>New Case...</source>
+        <translation>新建工况…</translation>
+    </message>
+    <message>
+        <source>Import Case...</source>
+        <translation>导入工况…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results...</source>
+        <translation>导入汇总结果…</translation>
+    </message>
+    <message>
+        <source>View Summary Curves...</source>
+        <translation>查看汇总曲线…</translation>
+    </message>
+    <message>
+        <source>View Property Curves...</source>
+        <translation>查看属性曲线…</translation>
+    </message>
+    <message>
+        <source>Generate Simulation Input...</source>
+        <translation>生成模拟输入…</translation>
+    </message>
+    <message>
+        <source>Rename Case...</source>
+        <translation>重命名工况…</translation>
+    </message>
+    <message>
+        <source>Delete Case...</source>
+        <translation>删除工况…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results</source>
+        <translation>导入汇总结果</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)</source>
+        <translation>ECLIPSE 汇总规格文件 (*.SMSPEC *.smspec);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The command manager is unavailable.</source>
+        <translation>命令管理器不可用。</translation>
+    </message>
+    <message>
+        <source>Rename Case</source>
+        <translation>重命名工况</translation>
+    </message>
+    <message>
+        <source>Case name:</source>
+        <translation>工况名称：</translation>
+    </message>
+    <message>
+        <source>Please enter a case name.</source>
+        <translation>请输入工况名称。</translation>
+    </message>
+    <message>
+        <source>A case with this name already exists.</source>
+        <translation>已存在同名工况。</translation>
+    </message>
+    <message>
+        <source>New Case</source>
+        <translation>新建工况</translation>
+    </message>
+    <message>
+        <source>Select ECLIPSE Case</source>
+        <translation>选择 ECLIPSE 工况文件</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Cases (*.DATA *.data);;All Files (*)</source>
+        <translation>ECLIPSE 工况 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The simulation case reader is unavailable.</source>
+        <translation>模拟工况读取器不可用。</translation>
+    </message>
+    <message>
+        <source>Import Case</source>
+        <translation>导入工况</translation>
+    </message>
+    <message>
+        <source>Simulation case parsing failed for %1: %2</source>
+        <translation>解析模拟工况文件失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Case import rejected because the name already exists: %1</source>
+        <translation>工况名称已存在，拒绝导入：%1</translation>
+    </message>
+    <message>
+        <source>Delete Case</source>
+        <translation>删除工况</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete case &quot;%1&quot;?
+Its %2 grid(s) and %3 propert(ies) will also be deleted. Unshared fluid tables imported with this case will also be deleted. Shared tables and referenced wells are kept.</source>
+        <translation>确定要删除工况&quot;%1&quot;吗？
+其下 %2 个网格和 %3 个属性将一并删除；随此工况导入且未被其他工况引用的流体表也将删除，共享表和引用的井会保留。</translation>
+    </message>
+    <message>
+        <source>Import Grid</source>
+        <translation>导入网格</translation>
+    </message>
+    <message>
+        <source>Case &quot;%1&quot; already has grid &quot;%2&quot;.
+Importing a new grid will delete it along with %3 propert(ies). Continue?</source>
+        <translation>工况&quot;%1&quot;已包含网格&quot;%2&quot;。
+导入新网格将删除旧网格及其 %3 个属性，是否继续？</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
+        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
+    </message>
+    <message>
+        <source>Select Inline Section...</source>
+        <translation>选择 Inline 剖面…</translation>
+    </message>
+    <message>
+        <source>Import Microseismic Events...</source>
+        <translation>导入微地震事件…</translation>
+    </message>
+    <message>
+        <source>Microseismic Event Tables (*.txt *.TXT);;All Files (*)</source>
+        <translation>微地震事件表 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import SEG-Y Seismic Volume...</source>
+        <translation>导入 SEG-Y 地震体…</translation>
+    </message>
+    <message>
+        <source>SEG-Y Seismic Volumes (*.sgy *.SGY *.segy *.SEGY);;All Files (*)</source>
+        <translation>SEG-Y 地震体 (*.sgy *.SGY *.segy *.SEGY);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Fracture Pump Schedule...</source>
+        <translation>导入压裂泵注程序…</translation>
+    </message>
+    <message>
+        <source>Fracture Pump Schedules (*.txt *.TXT *.xlsx *.XLSX);;All Files (*)</source>
+        <translation>压裂泵注程序 (*.txt *.TXT *.xlsx *.XLSX);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Proppant Catalog...</source>
+        <translation>导入支撑剂目录…</translation>
+    </message>
+    <message>
+        <source>Proppant Catalog (*.txt *.TXT);;All Files (*)</source>
+        <translation>支撑剂目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Natural Fractures...</source>
+        <translation>导入天然裂缝…</translation>
+    </message>
+    <message>
+        <source>ASCII Natural Fracture Files (*.fab *.FAB);;All Files (*)</source>
+        <translation>ASCII 天然裂缝文件 (*.fab *.FAB);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Production History...</source>
+        <translation>导入生产历史…</translation>
+    </message>
+    <message>
+        <source>Production History (*.vol *.VOL);;All Files (*)</source>
+        <translation>生产历史 (*.vol *.VOL);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Grid Surface...</source>
+        <translation>导入地层面…</translation>
+    </message>
+    <message>
+        <source>ZIMS Grid Surface (*);;All Files (*)</source>
+        <translation>ZIMS 地层面文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Grid Boundary...</source>
+        <translation>导入网格边界…</translation>
+    </message>
+    <message>
+        <source>Grid Boundary Point Files (*);;All Files (*)</source>
+        <translation>网格边界点文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Select Inline Section</source>
+        <translation>选择 Inline 剖面</translation>
+    </message>
+    <message>
+        <source>Inline number:</source>
+        <translation>Inline 编号：</translation>
+    </message>
+    <message>
+        <source>Failed to import %1:
+%2</source>
+        <translation>导入 %1 失败：
+%2</translation>
+    </message>
+    <message>
+        <source>%1 (%2 events)</source>
+        <translation>%1（%2 个事件）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 traces × %3 samples)</source>
+        <translation>%1（%2 道 × %3 个采样点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 × %3 surface)</source>
+        <translation>%1（%2 × %3 地层面）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 boundary points)</source>
+        <translation>%1（%2 个边界点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 samples)</source>
+        <translation>%1（%2 个采样点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 fractures)</source>
+        <translation>%1（%2 条裂缝）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 records)</source>
+        <translation>%1（%2 条记录）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 materials)</source>
+        <translation>%1（%2 种材料）</translation>
+    </message>
+    <message>
+        <source>Import Fluid Tables...</source>
+        <translation>导入流体表…</translation>
+    </message>
+    <message>
+        <source>Import Rock Physics Functions...</source>
+        <translation>导入岩石物理函数…</translation>
+    </message>
+    <message>
+        <source>Import Fluid Catalog...</source>
+        <translation>导入压裂液目录…</translation>
+    </message>
+    <message>
+        <source>Fluid Catalog (*.txt *.TXT);;All Files (*)</source>
+        <translation>压裂液目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Add to Simulation Case...</source>
+        <translation>添加到模拟工况…</translation>
+    </message>
+    <message>
+        <source>Import Fluid Tables</source>
+        <translation>导入流体表</translation>
+    </message>
+    <message>
+        <source>Import Rock Physics Functions</source>
+        <translation>导入岩石物理函数</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Fluid Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+        <translation>ECLIPSE 流体表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Rock Physics Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+        <translation>ECLIPSE 岩石物理表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Add Table to Simulation Case</source>
+        <translation>将表添加到模拟工况</translation>
+    </message>
+    <message>
+        <source>Create or import a simulation case first.</source>
+        <translation>请先新建或导入模拟工况。</translation>
+    </message>
+    <message>
+        <source>Simulation case:</source>
+        <translation>模拟工况：</translation>
     </message>
 </context>
 <context>
@@ -3172,161 +3544,7 @@ Their case references will also be removed. You can undo this operation.
         <translation>井名</translation>
     </message>
 </context>
-<context>
-    <name>IDOSSimulationCaseTreeGuiProvider</name>
-    <message>
-        <source>Import Summary Results...</source>
-        <translation>导入汇总结果…</translation>
-    </message>
-    <message>
-        <source>Import Summary Results</source>
-        <translation>导入汇总结果</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)</source>
-        <translation>ECLIPSE 汇总规格文件 (*.SMSPEC *.smspec);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>The command manager is unavailable.</source>
-        <translation>命令管理器不可用。</translation>
-    </message>
-    <message>
-        <source>View Summary Curves...</source>
-        <translation>查看汇总曲线…</translation>
-    </message>
-    <message>
-        <source>Generate Simulation Input...</source>
-        <translation>生成模拟输入…</translation>
-    </message>
-    <message>
-        <source>View Property Curves...</source>
-        <translation>查看属性曲线…</translation>
-    </message>
-    <message>
-        <source>Import Grid...</source>
-        <translation>导入网格…</translation>
-    </message>
-    <message>
-        <source>Delete Case...</source>
-        <translation>删除工况…</translation>
-    </message>
-    <message>
-        <source>Rename Case...</source>
-        <translation>重命名工况…</translation>
-    </message>
-    <message>
-        <source>Rename Case</source>
-        <translation>重命名工况</translation>
-    </message>
-    <message>
-        <source>Case name:</source>
-        <translation>工况名称：</translation>
-    </message>
-    <message>
-        <source>Please enter a case name.</source>
-        <translation>请输入工况名称。</translation>
-    </message>
-    <message>
-        <source>New Case...</source>
-        <translation>新建工况…</translation>
-    </message>
-    <message>
-        <source>Import Case...</source>
-        <translation>导入工况…</translation>
-    </message>
-    <message>
-        <source>New Case</source>
-        <translation>新建工况</translation>
-    </message>
-    <message>
-        <source>A case with this name already exists.</source>
-        <translation>已存在同名工况。</translation>
-    </message>
-    <message>
-        <source>Select ECLIPSE Case</source>
-        <translation>选择 ECLIPSE 工况文件</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Cases (*.DATA *.data);;All Files (*)</source>
-        <translation>ECLIPSE 工况 (*.DATA *.data);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>The simulation case reader is unavailable.</source>
-        <translation>模拟工况读取器不可用。</translation>
-    </message>
-    <message>
-        <source>Import Case</source>
-        <translation>导入工况</translation>
-    </message>
-    <message>
-        <source>Simulation case parsing failed for %1: %2</source>
-        <translation>解析模拟工况文件失败：%1；%2</translation>
-    </message>
-    <message>
-        <source>Case import rejected because the name already exists: %1</source>
-        <translation>工况名称已存在，拒绝导入：%1</translation>
-    </message>
-    <message>
-        <source>Delete Case</source>
-        <translation>删除工况</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete case &quot;%1&quot;?
-Its %2 grid(s) and %3 propert(ies) will also be deleted. Unshared fluid tables imported with this case will also be deleted. Shared tables and referenced wells are kept.</source>
-        <translation>确定要删除工况&quot;%1&quot;吗？
-其下 %2 个网格和 %3 个属性将一并删除；随此工况导入且未被其他工况引用的流体表也将删除，共享表和引用的井会保留。</translation>
-    </message>
-    <message>
-        <source>Import Grid</source>
-        <translation>导入网格</translation>
-    </message>
-    <message>
-        <source>Case &quot;%1&quot; already has grid &quot;%2&quot;.
-Importing a new grid will delete it along with %3 propert(ies). Continue?</source>
-        <translation>工况&quot;%1&quot;已包含网格&quot;%2&quot;。
-导入新网格将删除旧网格及其 %3 个属性，是否继续？</translation>
-    </message>
-    <message>
-        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
-        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
-    </message>
-    <message>
-        <source>Transfer Objects</source>
-        <translation>对象操作</translation>
-    </message>
-    <message>
-        <source>Add to Case...</source>
-        <translation>添加到工况…</translation>
-    </message>
-    <message>
-        <source>Rename...</source>
-        <translation>重命名…</translation>
-    </message>
-    <message>
-        <source>%1 [%2]</source>
-        <translation>%1 [%2]</translation>
-    </message>
-    <message>
-        <source>Add to Case</source>
-        <translation>添加到工况</translation>
-    </message>
-    <message>
-        <source>Create a case before adding data.</source>
-        <translation>请先创建工况，再添加数据。</translation>
-    </message>
-    <message>
-        <source>Destination case:</source>
-        <translation>目标工况：</translation>
-    </message>
-    <message>
-        <source>Rename Object</source>
-        <translation>重命名对象</translation>
-    </message>
-    <message>
-        <source>Name:</source>
-        <translation>名称：</translation>
-    </message>
-</context>
+
 <context>
     <name>IDOSSimulationCurveComparisonWidget</name>
     <message>
@@ -4455,13 +4673,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>存储的测井曲线数组长度不一致。</translation>
     </message>
 </context>
-<context>
-    <name>IDOSWellDisplayTreeGuiProvider</name>
-    <message>
-        <source>Display Settings...</source>
-        <translation>显示设置…</translation>
-    </message>
-</context>
+
 <context>
     <name>IDOSWellDisplayWidget</name>
     <message>
@@ -4784,259 +4996,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>适应全井深度</translation>
     </message>
 </context>
-<context>
-    <name>IDOSWellTreeGuiProvider</name>
-    <message>
-        <source>Display Settings...</source>
-        <translation type="vanished">显示设置…</translation>
-    </message>
-    <message>
-        <source>View Well Data...</source>
-        <translation>查看井数据…</translation>
-    </message>
-    <message>
-        <source>Data</source>
-        <translation>数据</translation>
-    </message>
-    <message>
-        <source>Count</source>
-        <translation>数量</translation>
-    </message>
-    <message>
-        <source>Trajectory points</source>
-        <translation>轨迹点</translation>
-    </message>
-    <message>
-        <source>Log curves</source>
-        <translation>测井曲线</translation>
-    </message>
-    <message>
-        <source>Checkshot samples</source>
-        <translation>校深样本</translation>
-    </message>
-    <message>
-        <source>View Trajectory Data...</source>
-        <translation>查看轨迹数据…</translation>
-    </message>
-    <message>
-        <source>Import or Replace Trajectory...</source>
-        <translation>导入／替换轨迹…</translation>
-    </message>
-    <message>
-        <source>Import Well Curves...</source>
-        <translation>导入井曲线…</translation>
-    </message>
-    <message>
-        <source>View Curve Data...</source>
-        <translation>查看曲线数据…</translation>
-    </message>
-    <message>
-        <source>View Marker Data...</source>
-        <translation>查看标志层数据…</translation>
-    </message>
-    <message>
-        <source>Depth (m)</source>
-        <translation>深度（米）</translation>
-    </message>
-    <message>
-        <source>Import %1 Data...</source>
-        <translation>导入%1数据…</translation>
-    </message>
-    <message>
-        <source>View %1 Data...</source>
-        <translation>查看%1数据…</translation>
-    </message>
-    <message>
-        <source>Markers</source>
-        <translation>标志层</translation>
-    </message>
-    <message>
-        <source>Completions</source>
-        <translation>完井</translation>
-    </message>
-    <message>
-        <source>Checkshots</source>
-        <translation>校深</translation>
-    </message>
-    <message>
-        <source>Measured Depth</source>
-        <translation>测量深度</translation>
-    </message>
-    <message>
-        <source>True Vertical Depth</source>
-        <translation>垂直深度</translation>
-    </message>
-    <message>
-        <source>Import Well Trajectory</source>
-        <translation>导入井轨迹</translation>
-    </message>
-    <message>
-        <source>Import Well Header...</source>
-        <translation>导入井头…</translation>
-    </message>
-    <message>
-        <source>Import Well Header</source>
-        <translation>导入井头</translation>
-    </message>
-    <message>
-        <source>Import Well Curves</source>
-        <translation>导入井曲线</translation>
-    </message>
-    <message>
-        <source>Import Well Markers</source>
-        <translation>导入井标志层</translation>
-    </message>
-    <message>
-        <source>Import Well Completions</source>
-        <translation>导入井完井数据</translation>
-    </message>
-    <message>
-        <source>Import Well Checkshots</source>
-        <translation>导入井校深数据</translation>
-    </message>
-    <message>
-        <source>New Well...</source>
-        <translation>新建井…</translation>
-    </message>
-    <message>
-        <source>Import Well Data...</source>
-        <translation>导入井数据…</translation>
-    </message>
-    <message>
-        <source>Import Data...</source>
-        <translation type="vanished">导入数据…</translation>
-    </message>
-    <message>
-        <source>Delete Well...</source>
-        <translation>删除井…</translation>
-    </message>
-    <message>
-        <source>Import Well Data</source>
-        <translation>导入井数据</translation>
-    </message>
-    <message>
-        <source>New Well</source>
-        <translation>新建井</translation>
-    </message>
-    <message>
-        <source>Well name:</source>
-        <translation>井名：</translation>
-    </message>
-    <message>
-        <source>Create</source>
-        <translation>创建</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <source>Please enter a well name.</source>
-        <translation>请输入井名。</translation>
-    </message>
-    <message>
-        <source>A well named &quot;%1&quot; already exists. Please enter a different name.</source>
-        <translation>已存在名为“%1”的井，请输入其他井名。</translation>
-    </message>
-    <message>
-        <source>Delete Well</source>
-        <translation>删除井</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete well &quot;%1&quot;?
-It will be removed from all cases that reference it.</source>
-        <translation>确定删除井 &quot;%1&quot; 吗？
-它将从所有引用它的工况中移除。</translation>
-    </message>
-    <message>
-        <source>View Data...</source>
-        <translation type="vanished">查看数据…</translation>
-    </message>
-    <message>
-        <source>Well Data - %1</source>
-        <translation>井数据 - %1</translation>
-    </message>
-    <message>
-        <source>Horizon</source>
-        <translation>层位</translation>
-    </message>
-    <message>
-        <source>Measured depth (m)</source>
-        <translation>测量深度（米）</translation>
-    </message>
-    <message>
-        <source>Top depth (m)</source>
-        <translation>顶深（米）</translation>
-    </message>
-    <message>
-        <source>Bottom depth (m)</source>
-        <translation>底深（米）</translation>
-    </message>
-    <message>
-        <source>Grid layer</source>
-        <translation>网格层号</translation>
-    </message>
-    <message>
-        <source>Status</source>
-        <translation>状态</translation>
-    </message>
-    <message>
-        <source>Event date</source>
-        <translation>事件日期</translation>
-    </message>
-    <message>
-        <source>Not mapped</source>
-        <translation>未映射</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>打开</translation>
-    </message>
-    <message>
-        <source>Shut</source>
-        <translation>关闭</translation>
-    </message>
-    <message>
-        <source>Unspecified unit</source>
-        <translation>单位未声明</translation>
-    </message>
-    <message>
-        <source>Two-way time</source>
-        <translation>双程时间</translation>
-    </message>
-    <message>
-        <source>One-way time</source>
-        <translation>单程时间</translation>
-    </message>
-    <message>
-        <source>Time (type unspecified)</source>
-        <translation>时间（类型未声明）</translation>
-    </message>
-    <message>
-        <source>Depth (%1)</source>
-        <translation>深度（%1）</translation>
-    </message>
-    <message>
-        <source>True vertical depth (%1)</source>
-        <translation>垂直深度（%1）</translation>
-    </message>
-    <message>
-        <source>%1 (%2)</source>
-        <translation>%1（%2）</translation>
-    </message>
-    <message>
-        <source>X</source>
-        <translation>X</translation>
-    </message>
-    <message>
-        <source>Y</source>
-        <translation>Y</translation>
-    </message>
-    <message>
-        <source>Z</source>
-        <translation>Z</translation>
-    </message>
-</context>
+
 <context>
     <name>QObject</name>
     <message>
@@ -6794,6 +6754,821 @@ It will be removed from all cases that reference it.</source>
     <message>
         <source>Delete imported data and its case references.</source>
         <translation>删除导入的数据及其工况引用。</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSDataTreeMenuProvider</name>
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Delete Data</source>
+        <translation>删除数据</translation>
+    </message>
+    <message>
+        <source>Delete %1 selected dataset(s)?
+Their case references will also be removed. You can undo this operation.
+
+%2</source>
+        <translation>删除选中的 %1 个数据集？
+同时移除其工况引用。此操作可以撤销。
+
+%2</translation>
+    </message>
+    <message>
+        <source>Edit Filter...</source>
+        <translation>编辑筛选…</translation>
+    </message>
+    <message>
+        <source>Display Settings...</source>
+        <translation>显示设置…</translation>
+    </message>
+    <message>
+        <source>Rename Filter...</source>
+        <translation>重命名筛选…</translation>
+    </message>
+    <message>
+        <source>Delete Filter...</source>
+        <translation>删除筛选…</translation>
+    </message>
+    <message>
+        <source>New Filter...</source>
+        <translation>新建筛选…</translation>
+    </message>
+    <message>
+        <source>Import Dynamic Properties...</source>
+        <translation>导入动态属性…</translation>
+    </message>
+    <message>
+        <source>Import Property...</source>
+        <translation>导入属性…</translation>
+    </message>
+    <message>
+        <source>Import Region Properties...</source>
+        <translation>导入区域属性…</translation>
+    </message>
+    <message>
+        <source>Delete Property...</source>
+        <translation>删除属性…</translation>
+    </message>
+    <message>
+        <source>Delete Grid...</source>
+        <translation>删除网格…</translation>
+    </message>
+    <message>
+        <source>Delete Grid</source>
+        <translation>删除网格</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete grid &quot;%1&quot;?
+It will also delete %2 propert(ies) under this grid and all saved filters, and remove it from all cases that reference it.</source>
+        <translation>确定要删除网格&quot;%1&quot;吗？
+该网格下的 %2 个属性及全部已保存筛选将一并删除，并从所有引用它的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Delete Property</source>
+        <translation>删除属性</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete property &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确认删除属性“%1”吗？
+将从所有引用该属性的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Import Grid Property</source>
+        <translation>导入网格属性</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Properties (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE Data Files (*.DATA *.data);;All Files (*)</source>
+        <translation>ECLIPSE 属性文件 (*.GRDECL *.grdecl *.INC *.inc *.INIT *.init);;ECLIPSE 数据文件 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Imported %1 properties.</source>
+        <translation>已导入 %1 个属性。</translation>
+    </message>
+    <message>
+        <source>Import Dynamic Properties</source>
+        <translation>导入动态属性</translation>
+    </message>
+    <message>
+        <source>Unified Eclipse restart files (*.UNRST *.unrst)</source>
+        <translation>Eclipse 统一重启文件 (*.UNRST *.unrst)</translation>
+    </message>
+    <message>
+        <source>Imported %1 dynamic properties across %2 report steps (%3–%4).</source>
+        <translation>已导入 %1 个动态属性，覆盖 %2 个报告步（%3–%4）。</translation>
+    </message>
+    <message>
+        <source>Display in Target View</source>
+        <translation>在目标视图中显示</translation>
+    </message>
+    <message>
+        <source>Color by</source>
+        <translation>着色依据</translation>
+    </message>
+    <message>
+        <source>Solid color</source>
+        <translation>单色</translation>
+    </message>
+    <message>
+        <source>Delete Filter</source>
+        <translation>删除筛选</translation>
+    </message>
+    <message>
+        <source>Delete filter &quot;%1&quot;?</source>
+        <translation>删除筛选“%1”？</translation>
+    </message>
+    <message>
+        <source>Rename Filter</source>
+        <translation>重命名筛选</translation>
+    </message>
+    <message>
+        <source>Filter name:</source>
+        <translation>筛选名称：</translation>
+    </message>
+    <message>
+        <source>New Well...</source>
+        <translation>新建井…</translation>
+    </message>
+    <message>
+        <source>Import Well Data...</source>
+        <translation>导入井数据…</translation>
+    </message>
+    <message>
+        <source>Import Well Header...</source>
+        <translation>导入井头…</translation>
+    </message>
+    <message>
+        <source>View Well Data...</source>
+        <translation>查看井数据…</translation>
+    </message>
+    <message>
+        <source>View Trajectory Data...</source>
+        <translation>查看轨迹数据…</translation>
+    </message>
+    <message>
+        <source>Import or Replace Trajectory...</source>
+        <translation>导入／替换轨迹…</translation>
+    </message>
+    <message>
+        <source>Import Well Curves...</source>
+        <translation>导入井曲线…</translation>
+    </message>
+    <message>
+        <source>View Curve Data...</source>
+        <translation>查看曲线数据…</translation>
+    </message>
+    <message>
+        <source>Markers</source>
+        <translation>标志层</translation>
+    </message>
+    <message>
+        <source>Completions</source>
+        <translation>完井</translation>
+    </message>
+    <message>
+        <source>Checkshots</source>
+        <translation>校深</translation>
+    </message>
+    <message>
+        <source>Import %1 Data...</source>
+        <translation>导入%1数据…</translation>
+    </message>
+    <message>
+        <source>View %1 Data...</source>
+        <translation>查看%1数据…</translation>
+    </message>
+    <message>
+        <source>View Marker Data...</source>
+        <translation>查看标志层数据…</translation>
+    </message>
+    <message>
+        <source>Delete Well...</source>
+        <translation>删除井…</translation>
+    </message>
+    <message>
+        <source>Well Data - %1</source>
+        <translation>井数据 - %1</translation>
+    </message>
+    <message>
+        <source>Data</source>
+        <translation>数据</translation>
+    </message>
+    <message>
+        <source>Count</source>
+        <translation>数量</translation>
+    </message>
+    <message>
+        <source>Trajectory points</source>
+        <translation>轨迹点</translation>
+    </message>
+    <message>
+        <source>Log curves</source>
+        <translation>测井曲线</translation>
+    </message>
+    <message>
+        <source>Checkshot samples</source>
+        <translation>校深样本</translation>
+    </message>
+    <message>
+        <source>Measured Depth</source>
+        <translation>测量深度</translation>
+    </message>
+    <message>
+        <source>X</source>
+        <translation>X</translation>
+    </message>
+    <message>
+        <source>Y</source>
+        <translation>Y</translation>
+    </message>
+    <message>
+        <source>Z</source>
+        <translation>Z</translation>
+    </message>
+    <message>
+        <source>True Vertical Depth</source>
+        <translation>垂直深度</translation>
+    </message>
+    <message>
+        <source>Horizon</source>
+        <translation>层位</translation>
+    </message>
+    <message>
+        <source>Measured depth (m)</source>
+        <translation>测量深度（米）</translation>
+    </message>
+    <message>
+        <source>Top depth (m)</source>
+        <translation>顶深（米）</translation>
+    </message>
+    <message>
+        <source>Bottom depth (m)</source>
+        <translation>底深（米）</translation>
+    </message>
+    <message>
+        <source>Grid layer</source>
+        <translation>网格层号</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>Event date</source>
+        <translation>事件日期</translation>
+    </message>
+    <message>
+        <source>Not mapped</source>
+        <translation>未映射</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Shut</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Depth (m)</source>
+        <translation>深度（米）</translation>
+    </message>
+    <message>
+        <source>Unspecified unit</source>
+        <translation>单位未声明</translation>
+    </message>
+    <message>
+        <source>Two-way time</source>
+        <translation>双程时间</translation>
+    </message>
+    <message>
+        <source>One-way time</source>
+        <translation>单程时间</translation>
+    </message>
+    <message>
+        <source>Time (type unspecified)</source>
+        <translation>时间（类型未声明）</translation>
+    </message>
+    <message>
+        <source>True vertical depth (%1)</source>
+        <translation>垂直深度（%1）</translation>
+    </message>
+    <message>
+        <source>Depth (%1)</source>
+        <translation>深度（%1）</translation>
+    </message>
+    <message>
+        <source>%1 (%2)</source>
+        <translation>%1（%2）</translation>
+    </message>
+    <message>
+        <source>Import Well Trajectory</source>
+        <translation>导入井轨迹</translation>
+    </message>
+    <message>
+        <source>Import Well Header</source>
+        <translation>导入井头</translation>
+    </message>
+    <message>
+        <source>Import Well Curves</source>
+        <translation>导入井曲线</translation>
+    </message>
+    <message>
+        <source>Import Well Markers</source>
+        <translation>导入井标志层</translation>
+    </message>
+    <message>
+        <source>Import Well Completions</source>
+        <translation>导入井完井数据</translation>
+    </message>
+    <message>
+        <source>Import Well Checkshots</source>
+        <translation>导入井校深数据</translation>
+    </message>
+    <message>
+        <source>Import Well Data</source>
+        <translation>导入井数据</translation>
+    </message>
+    <message>
+        <source>New Well</source>
+        <translation>新建井</translation>
+    </message>
+    <message>
+        <source>Well name:</source>
+        <translation>井名：</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>创建</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Please enter a well name.</source>
+        <translation>请输入井名。</translation>
+    </message>
+    <message>
+        <source>A well named &quot;%1&quot; already exists. Please enter a different name.</source>
+        <translation>已存在名为“%1”的井，请输入其他井名。</translation>
+    </message>
+    <message>
+        <source>Delete Well</source>
+        <translation>删除井</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete well &quot;%1&quot;?
+It will be removed from all cases that reference it.</source>
+        <translation>确定删除井 &quot;%1&quot; 吗？
+它将从所有引用它的工况中移除。</translation>
+    </message>
+    <message>
+        <source>Transfer Objects</source>
+        <translation>对象操作</translation>
+    </message>
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+    <message>
+        <source>%1 [%2]</source>
+        <translation>%1 [%2]</translation>
+    </message>
+    <message>
+        <source>Add to Case</source>
+        <translation>添加到工况</translation>
+    </message>
+    <message>
+        <source>Create a case before adding data.</source>
+        <translation>请先创建工况，再添加数据。</translation>
+    </message>
+    <message>
+        <source>Destination case:</source>
+        <translation>目标工况：</translation>
+    </message>
+    <message>
+        <source>Rename Object</source>
+        <translation>重命名对象</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>名称：</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSCaseTreeMenuProvider</name>
+    <message>
+        <source>Import Grid...</source>
+        <translation>导入网格…</translation>
+    </message>
+    <message>
+        <source>New Case...</source>
+        <translation>新建工况…</translation>
+    </message>
+    <message>
+        <source>Import Case...</source>
+        <translation>导入工况…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results...</source>
+        <translation>导入汇总结果…</translation>
+    </message>
+    <message>
+        <source>View Summary Curves...</source>
+        <translation>查看汇总曲线…</translation>
+    </message>
+    <message>
+        <source>View Property Curves...</source>
+        <translation>查看属性曲线…</translation>
+    </message>
+    <message>
+        <source>Generate Simulation Input...</source>
+        <translation>生成模拟输入…</translation>
+    </message>
+    <message>
+        <source>Rename Case...</source>
+        <translation>重命名工况…</translation>
+    </message>
+    <message>
+        <source>Delete Case...</source>
+        <translation>删除工况…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results</source>
+        <translation>导入汇总结果</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Summary Specification (*.SMSPEC *.smspec);;All Files (*)</source>
+        <translation>ECLIPSE 汇总规格文件 (*.SMSPEC *.smspec);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The command manager is unavailable.</source>
+        <translation>命令管理器不可用。</translation>
+    </message>
+    <message>
+        <source>Rename Case</source>
+        <translation>重命名工况</translation>
+    </message>
+    <message>
+        <source>Case name:</source>
+        <translation>工况名称：</translation>
+    </message>
+    <message>
+        <source>Please enter a case name.</source>
+        <translation>请输入工况名称。</translation>
+    </message>
+    <message>
+        <source>A case with this name already exists.</source>
+        <translation>已存在同名工况。</translation>
+    </message>
+    <message>
+        <source>New Case</source>
+        <translation>新建工况</translation>
+    </message>
+    <message>
+        <source>Select ECLIPSE Case</source>
+        <translation>选择 ECLIPSE 工况文件</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Cases (*.DATA *.data);;All Files (*)</source>
+        <translation>ECLIPSE 工况 (*.DATA *.data);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>The simulation case reader is unavailable.</source>
+        <translation>模拟工况读取器不可用。</translation>
+    </message>
+    <message>
+        <source>Import Case</source>
+        <translation>导入工况</translation>
+    </message>
+    <message>
+        <source>Simulation case parsing failed for %1: %2</source>
+        <translation>解析模拟工况文件失败：%1；%2</translation>
+    </message>
+    <message>
+        <source>Case import rejected because the name already exists: %1</source>
+        <translation>工况名称已存在，拒绝导入：%1</translation>
+    </message>
+    <message>
+        <source>Delete Case</source>
+        <translation>删除工况</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete case &quot;%1&quot;?
+Its %2 grid(s) and %3 propert(ies) will also be deleted. Unshared fluid tables imported with this case will also be deleted. Shared tables and referenced wells are kept.</source>
+        <translation>确定要删除工况&quot;%1&quot;吗？
+其下 %2 个网格和 %3 个属性将一并删除；随此工况导入且未被其他工况引用的流体表也将删除，共享表和引用的井会保留。</translation>
+    </message>
+    <message>
+        <source>Import Grid</source>
+        <translation>导入网格</translation>
+    </message>
+    <message>
+        <source>Case &quot;%1&quot; already has grid &quot;%2&quot;.
+Importing a new grid will delete it along with %3 propert(ies). Continue?</source>
+        <translation>工况&quot;%1&quot;已包含网格&quot;%2&quot;。
+导入新网格将删除旧网格及其 %3 个属性，是否继续？</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
+        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
+    </message>
+    <message>
+        <source>Transfer Objects</source>
+        <translation>对象操作</translation>
+    </message>
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+    <message>
+        <source>%1 [%2]</source>
+        <translation>%1 [%2]</translation>
+    </message>
+    <message>
+        <source>Add to Case</source>
+        <translation>添加到工况</translation>
+    </message>
+    <message>
+        <source>Create a case before adding data.</source>
+        <translation>请先创建工况，再添加数据。</translation>
+    </message>
+    <message>
+        <source>Destination case:</source>
+        <translation>目标工况：</translation>
+    </message>
+    <message>
+        <source>Rename Object</source>
+        <translation>重命名对象</translation>
+    </message>
+    <message>
+        <source>Name:</source>
+        <translation>名称：</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSImportedDataTreeProvider</name>
+    <message>
+        <source>Select Inline Section...</source>
+        <translation>选择 Inline 剖面…</translation>
+    </message>
+    <message>
+        <source>Import Microseismic Events...</source>
+        <translation>导入微地震事件…</translation>
+    </message>
+    <message>
+        <source>Microseismic Event Tables (*.txt *.TXT);;All Files (*)</source>
+        <translation>微地震事件表 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import SEG-Y Seismic Volume...</source>
+        <translation>导入 SEG-Y 地震体…</translation>
+    </message>
+    <message>
+        <source>SEG-Y Seismic Volumes (*.sgy *.SGY *.segy *.SEGY);;All Files (*)</source>
+        <translation>SEG-Y 地震体 (*.sgy *.SGY *.segy *.SEGY);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Fracture Pump Schedule...</source>
+        <translation>导入压裂泵注程序…</translation>
+    </message>
+    <message>
+        <source>Fracture Pump Schedules (*.txt *.TXT *.xlsx *.XLSX);;All Files (*)</source>
+        <translation>压裂泵注程序 (*.txt *.TXT *.xlsx *.XLSX);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Proppant Catalog...</source>
+        <translation>导入支撑剂目录…</translation>
+    </message>
+    <message>
+        <source>Proppant Catalog (*.txt *.TXT);;All Files (*)</source>
+        <translation>支撑剂目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Natural Fractures...</source>
+        <translation>导入天然裂缝…</translation>
+    </message>
+    <message>
+        <source>ASCII Natural Fracture Files (*.fab *.FAB);;All Files (*)</source>
+        <translation>ASCII 天然裂缝文件 (*.fab *.FAB);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Production History...</source>
+        <translation>导入生产历史…</translation>
+    </message>
+    <message>
+        <source>Production History (*.vol *.VOL);;All Files (*)</source>
+        <translation>生产历史 (*.vol *.VOL);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Grid Surface...</source>
+        <translation>导入地层面…</translation>
+    </message>
+    <message>
+        <source>ZIMS Grid Surface (*);;All Files (*)</source>
+        <translation>ZIMS 地层面文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Import Grid Boundary...</source>
+        <translation>导入网格边界…</translation>
+    </message>
+    <message>
+        <source>Grid Boundary Point Files (*);;All Files (*)</source>
+        <translation>网格边界点文件 (*);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Select Inline Section</source>
+        <translation>选择 Inline 剖面</translation>
+    </message>
+    <message>
+        <source>Inline number:</source>
+        <translation>Inline 编号：</translation>
+    </message>
+    <message>
+        <source>Failed to import %1:
+%2</source>
+        <translation>导入 %1 失败：
+%2</translation>
+    </message>
+    <message>
+        <source>%1 (%2 events)</source>
+        <translation>%1（%2 个事件）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 traces × %3 samples)</source>
+        <translation>%1（%2 道 × %3 个采样点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 × %3 surface)</source>
+        <translation>%1（%2 × %3 地层面）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 boundary points)</source>
+        <translation>%1（%2 个边界点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 samples)</source>
+        <translation>%1（%2 个采样点）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 fractures)</source>
+        <translation>%1（%2 条裂缝）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 records)</source>
+        <translation>%1（%2 条记录）</translation>
+    </message>
+    <message>
+        <source>%1 (%2 materials)</source>
+        <translation>%1（%2 种材料）</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSFluidRockTableTreeProvider</name>
+    <message>
+        <source>Import Fluid Tables...</source>
+        <translation>导入流体表…</translation>
+    </message>
+    <message>
+        <source>Import Rock Physics Functions...</source>
+        <translation>导入岩石物理函数…</translation>
+    </message>
+    <message>
+        <source>Import Fluid Catalog...</source>
+        <translation>导入压裂液目录…</translation>
+    </message>
+    <message>
+        <source>Fluid Catalog (*.txt *.TXT);;All Files (*)</source>
+        <translation>压裂液目录 (*.txt *.TXT);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Add to Simulation Case...</source>
+        <translation>添加到模拟工况…</translation>
+    </message>
+    <message>
+        <source>Failed to import %1:
+%2</source>
+        <translation>导入 %1 失败：
+%2</translation>
+    </message>
+    <message>
+        <source>Import Fluid Tables</source>
+        <translation>导入流体表</translation>
+    </message>
+    <message>
+        <source>Import Rock Physics Functions</source>
+        <translation>导入岩石物理函数</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Fluid Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+        <translation>ECLIPSE 流体表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>ECLIPSE Rock Physics Tables (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;All Files (*)</source>
+        <translation>ECLIPSE 岩石物理表 (*.TXT *.txt *.DAT *.dat *.PRN *.prn);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Add Table to Simulation Case</source>
+        <translation>将表添加到模拟工况</translation>
+    </message>
+    <message>
+        <source>Create or import a simulation case first.</source>
+        <translation>请先新建或导入模拟工况。</translation>
+    </message>
+    <message>
+        <source>Simulation case:</source>
+        <translation>模拟工况：</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSDataTreeRootProvider</name>
+    <message>
+        <source>Well Group</source>
+        <translation>井组</translation>
+    </message>
+    <message>
+        <source>Global Well Logs</source>
+        <translation>全局测井曲线</translation>
+    </message>
+    <message>
+        <source>Global Completions</source>
+        <translation>全局完井</translation>
+    </message>
+    <message>
+        <source>Global Observations</source>
+        <translation>全局观测数据</translation>
+    </message>
+    <message>
+        <source>Well Properties</source>
+        <translation>井属性</translation>
+    </message>
+    <message>
+        <source>Wells</source>
+        <translation>井</translation>
+    </message>
+    <message>
+        <source>Seismic</source>
+        <translation>地震</translation>
+    </message>
+    <message>
+        <source>Surface Properties</source>
+        <translation>层面属性</translation>
+    </message>
+    <message>
+        <source>Faults</source>
+        <translation>断层</translation>
+    </message>
+    <message>
+        <source>Polygons / Boundaries</source>
+        <translation>多边形 / 边界</translation>
+    </message>
+    <message>
+        <source>Natural Fractures</source>
+        <translation>天然裂缝</translation>
+    </message>
+    <message>
+        <source>Hydraulic Fracturing</source>
+        <translation>水力压裂</translation>
+    </message>
+    <message>
+        <source>Fluids</source>
+        <translation>流体</translation>
+    </message>
+    <message>
+        <source>Rock Physics Functions</source>
+        <translation>岩石物理函数</translation>
+    </message>
+    <message>
+        <source>Initial Conditions</source>
+        <translation>初始条件</translation>
+    </message>
+    <message>
+        <source>Microseismic</source>
+        <translation>微地震</translation>
+    </message>
+    <message>
+        <source>Production Summary</source>
+        <translation>生产汇总</translation>
+    </message>
+    <message>
+        <source>Flow Diagnostics</source>
+        <translation>流量诊断</translation>
+    </message>
+    <message>
+        <source>Field Management Strategies</source>
+        <translation>油田管理策略</translation>
     </message>
 </context>
 </TS>

@@ -22,7 +22,7 @@ class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSDataProviderMetadata
 
     bool canHandle(const QString& filePath) const override;
 
-    std::unique_ptr<IDOSDataProvider> create() const override;
+    std::unique_ptr<IDOSDataProvider> createProvider() const override;
 };
 
 #endif // IDOS_WELL_HEADER_METADATA_H

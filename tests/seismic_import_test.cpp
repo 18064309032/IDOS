@@ -31,10 +31,10 @@ void SeismicImportTest::onSegyCustomHeaderAndSamples()
     file.close();
 
     const QList<IDOSDataProviderMetadata*> metadata =
-        IDOSDataProviderRegistry::instance().providers(filePath);
+        IDOSDataProviderRegistry::instance().metadataForFile(filePath);
     QCOMPARE(metadata.size(), 1);
     QCOMPARE(metadata.first()->id(), QStringLiteral("idos.seismic.segy"));
-    std::unique_ptr<IDOSDataProvider> provider = metadata.first()->create();
+    std::unique_ptr<IDOSDataProvider> provider = metadata.first()->createProvider();
     QList<IDOSDataObject*> objects = provider->read(filePath);
     QVERIFY2(objects.size() == 1, qPrintable(provider->lastError()));
     IDOSSeismicVolume* volume = qobject_cast<IDOSSeismicVolume*>(objects.first());

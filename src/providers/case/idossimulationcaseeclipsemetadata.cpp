@@ -2,7 +2,7 @@
 
 #include "idossimulationcaseeclipsemetadata.h"
 
-std::unique_ptr<IDOSDataProvider> IDOSSimulationCaseEclipseMetadata::create() const
+std::unique_ptr<IDOSDataProvider> IDOSSimulationCaseEclipseMetadata::createProvider() const
 {
     return std::make_unique<IDOSSimulationCaseEclipseProvider>();
 }

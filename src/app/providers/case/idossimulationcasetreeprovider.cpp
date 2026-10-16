@@ -4,28 +4,35 @@
 #include "data/case/idossimulationcaseobject.h"
 #include "idosdataobject.h"
 #include "idosproject.h"
-#include "providers/idostreemetadata.h"
-#include "providers/idostreeregistry.h"
+#include "providers/idostreeitemprovidermetadata.h"
+#include "providers/idostreeitemproviderregistry.h"
 #include "tree/idostreeitem.h"
+#include "tree/idostreemodel.h"
 
 #include "idossimulationcasetreeprovider.h"
 
-IDOSSimulationCaseTreeProvider::IDOSSimulationCaseTreeProvider(IDOSDataObject* data, IDOSTreeRegistry* registry)
+IDOSSimulationCaseTreeProvider::IDOSSimulationCaseTreeProvider(IDOSDataObject* data,
+                                                               IDOSTreeItemProviderRegistry* registry)
     :
-    IDOSTreeProvider(data)
+    IDOSTreeItemProvider(data)
     , m_registry(registry)
 {
 }
 
 IDOSTreeItem* IDOSSimulationCaseTreeProvider::addItem(IDOSTreeItem* parent, const QString& key, const QString& title)
 {
-    IDOSTreeItem* item = new IDOSTreeItem();
-    item->setKey(key);
-    item->setName(title);
-    item->setDataId(parent->dataId());
-    item->setCaseId(parent->caseId());
-    item->setPartKey(key);
-    parent->appendChild(item);
+    IDOSTreeItem* item = parent->findChild(key);
+    if (item == nullptr)
+    {
+        item = new IDOSTreeItem(new IDOSTreeItemProvider());
+        parent->appendChild(item);
+    }
+
+    item->provider()->setKey(key);
+    item->provider()->setName(title);
+    item->provider()->setDataId(parent->provider()->dataId());
+    item->provider()->setCaseId(parent->provider()->caseId());
+    item->provider()->setPartKey(key);
     return item;
 }
 
@@ -36,23 +43,24 @@ bool IDOSSimulationCaseTreeProvider::dependsOn(const QStringList& dataIds) const
     return true;
 }
 
-void IDOSSimulationCaseTreeProvider::populate(IDOSTreeItem* item)
+void IDOSSimulationCaseTreeProvider::refresh()
 {
+    IDOSTreeItem* item = this->item();
     IDOSSimulationCaseObject* caseObject = qobject_cast<IDOSSimulationCaseObject*>(dataSource());
     if (caseObject == nullptr || item == nullptr)
     {
         return;
     }
-    item->clearChildren();
-    item->setName(caseObject->name());
-    item->setCaseId(caseObject->objectId());
-    item->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
-    addItem(item, QStringLiteral("case.runSettings"), QObject::tr("Run Settings"))->setGroup(true);
+
+    item->provider()->setName(caseObject->name());
+    item->provider()->setCaseId(caseObject->objectId());
+    item->provider()->setIcon(QIcon(QStringLiteral(":/images/gui-case.svg")));
+    addItem(item, QStringLiteral("case.runSettings"), QObject::tr("Run Settings"))->provider()->setGroup(true);
     IDOSTreeItem* grids = addItem(item, QStringLiteral("case.grids"), QObject::tr("Grids"));
-    grids->setGroup(true);
+    grids->provider()->setGroup(true);
     IDOSTreeItem* fluidRock = addItem(item, QStringLiteral("case.fluidRock"),
                                       QObject::tr("Fluid and Rock Properties"));
-    fluidRock->setGroup(true);
+    fluidRock->provider()->setGroup(true);
     const QList<IDOSCaseItemRef> refs = caseObject->itemRefs();
     bool hasFluidRockReferences = false;
     for (const IDOSCaseItemRef& ref : refs)
@@ -78,17 +86,17 @@ void IDOSSimulationCaseTreeProvider::populate(IDOSTreeItem* item)
             IDOSTreeItem* table = addItem(
                 fluidRock, QStringLiteral("case.curveTable:%1:%2").arg(keyword).arg(tableIndex),
                 QObject::tr("%1 — Table %2").arg(keyword).arg(tableIndex));
-            table->setItemKey(keyword);
-            table->setPartKey(QString::number(tableIndex));
+            table->provider()->setItemKey(keyword);
+            table->provider()->setPartKey(QString::number(tableIndex));
         }
     }
-    addItem(item, QStringLiteral("case.initialState"), QObject::tr("Initial State"))->setGroup(true);
+    addItem(item, QStringLiteral("case.initialState"), QObject::tr("Initial State"))->provider()->setGroup(true);
     IDOSTreeItem* wells = addItem(item, QStringLiteral("case.schedule"), QObject::tr("Wells and Development Plan"));
-    wells->setGroup(true);
-    addItem(item, QStringLiteral("case.outputSettings"), QObject::tr("Output Settings"))->setGroup(true);
+    wells->provider()->setGroup(true);
+    addItem(item, QStringLiteral("case.outputSettings"), QObject::tr("Output Settings"))->provider()->setGroup(true);
     IDOSTreeItem* summaryResults = addItem(item, QStringLiteral("case.summaryResults"),
                                            QObject::tr("Summary Results"));
-    summaryResults->setGroup(true);
+    summaryResults->provider()->setGroup(true);
     const IDOSProject* project = qobject_cast<const IDOSProject*>(caseObject->parent());
     for (const IDOSCaseItemRef& ref : refs)
     {
@@ -100,41 +108,51 @@ void IDOSSimulationCaseTreeProvider::populate(IDOSTreeItem* item)
         IDOSTreeItem* parent = ref.role() == QStringLiteral("case.grid") ? grids
                              : ref.role() == QStringLiteral("case.fluidRockTable") ? fluidRock
                              : ref.role() == QStringLiteral("case.summaryResults") ? summaryResults : wells;
-        IDOSTreeItem* reference = addItem(parent, ref.role() + QLatin1Char(':') + ref.objectId(),
-                                        data != nullptr ? data->name() : QObject::tr("Missing object: %1").arg(ref.objectId()));
-        reference->setDataId(ref.objectId());
-        reference->setReference(true);
-        reference->setPartKey(ref.partKey());
-        reference->setItemKey(ref.itemKey());
-        reference->setCheckable(data != nullptr);
-        reference->setChecked(data != nullptr && data->isVisible());
-        if (data != nullptr && m_registry != nullptr)
+        bool cycle = false;
+        for (const IDOSTreeItem* ancestor = parent; ancestor != nullptr; ancestor = ancestor->parent())
         {
-            bool cycle = false;
-            for (const IDOSTreeItem* ancestor = reference->parent(); ancestor != nullptr; ancestor = ancestor->parent())
+            if (!ancestor->provider()->isGroup() && ancestor->provider()->dataId() == ref.objectId())
             {
-                if (!ancestor->isGroup() && ancestor->dataId() == data->objectId())
-                {
-                    cycle = true;
-                    break;
-                }
-            }
-            if (cycle)
-            {
-                continue;
-            }
-            const IDOSTreeMetadata* metadata = m_registry->metadata(data->typeId());
-            IDOSTreeProvider* provider = metadata != nullptr ? metadata->create(data) : nullptr;
-            if (provider != nullptr)
-            {
-                reference->setProvider(provider);
-                provider->populate(reference);
+                cycle = true;
+                break;
             }
         }
+        if (cycle)
+        {
+            continue;
+        }
+        const QString referenceKey = ref.role() + QLatin1Char(':') + ref.objectId();
+        IDOSTreeItem* reference = parent->findChild(referenceKey);
+        if (reference != nullptr && reference->provider()->dataSource() != data)
+        {
+            parent->removeChild(reference);
+            reference = nullptr;
+        }
+        IDOSTreeItemProvider* provider = reference != nullptr ? reference->provider() : data != nullptr && m_registry != nullptr
+            ? m_registry->createProvider(data) : nullptr;
+        if (provider == nullptr)
+        {
+            provider = new IDOSTreeItemProvider();
+        }
+        if (reference == nullptr)
+        {
+            reference = new IDOSTreeItem(provider);
+            parent->appendChild(reference);
+        }
+        provider->setKey(ref.role() + QLatin1Char(':') + ref.objectId());
+        provider->setName(data != nullptr ? data->name() : QObject::tr("Missing object: %1").arg(ref.objectId()));
+        provider->setDataId(ref.objectId());
+        provider->setCaseId(parent->provider()->caseId());
+        provider->setReference(true);
+        provider->setPartKey(ref.partKey());
+        provider->setItemKey(ref.itemKey());
+        provider->setCheckable(data != nullptr);
+        provider->refresh();
     }
     for (const QString& name : caseObject->pendingWellNames())
     {
         IDOSTreeItem* unresolved = addItem(wells, QStringLiteral("unresolved:") + name, QObject::tr("%1 (unresolved)").arg(name));
-        unresolved->setGroup(true);
+        unresolved->provider()->setGroup(true);
     }
+
 }

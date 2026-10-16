@@ -3,16 +3,16 @@
 
 #include "data/fluidrock/idosfluidrocktable.h"
 #include "idos_app.h"
-#include "providers/idostreemetadata.h"
+#include "providers/idostreeitemprovidermetadata.h"
 
-class APP_EXPORT IDOSFluidRockTableTreeMetadata : public IDOSTreeMetadata
+class APP_EXPORT IDOSFluidRockTableTreeMetadata : public IDOSTreeItemProviderMetadata
 {
   public:
     explicit IDOSFluidRockTableTreeMetadata(IDOSFluidRockTable::Category category);
-    QString typeId() const override;
+    QString id() const override;
     QString treeName() const override;
     QString groupKey() const override;
-    IDOSTreeProvider* create(IDOSDataObject* data) const override;
+    IDOSTreeItemProvider* createProvider(IDOSDataObject* data) const override;
 
   private:
     IDOSFluidRockTable::Category m_category;
