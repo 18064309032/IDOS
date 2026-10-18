@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosgridboundary.h"
+#include "idosgridboundaryobject.h"
 
 #include "idosgridboundarydatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSGridBoundaryDataMetadata::displayName() const
 
 IDOSDataObject* IDOSGridBoundaryDataMetadata::create() const
 {
-    return new IDOSGridBoundary();
+    return new IDOSGridBoundaryObject();
 }

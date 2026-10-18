@@ -4,10 +4,10 @@
 #include <QJsonObject>
 #include <QPointer>
 
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 
-class IDOSNaturalFractureSet;
+class IDOSNaturalFractureSetObject;
 
 class IDOSDfnGenerateCommand : public IDOSCommand
 {
@@ -25,7 +25,7 @@ class IDOSDfnGenerateCommand : public IDOSCommand
   private:
     static int s_liveCount;
     QJsonObject m_parameters;
-    QPointer<IDOSNaturalFractureSet> m_data;
+    QPointer<IDOSNaturalFractureSetObject> m_data;
 };
 
 class IDOSDfnGenerateCommandMetadata : public IDOSCommandMetadata

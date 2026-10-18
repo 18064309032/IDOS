@@ -7,6 +7,7 @@
 #include "idos_assistant.h"
 
 class IDOSAssistantService;
+class IDOSCommandRegistry;
 class IDOSProject;
 class QLabel;
 class QPushButton;
@@ -18,7 +19,7 @@ class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
     Q_OBJECT
 
   public:
-    explicit IDOSAssistantWidget(QWidget* parent = nullptr);
+    explicit IDOSAssistantWidget(IDOSCommandRegistry* registry, QWidget* parent = nullptr);
     ~IDOSAssistantWidget() override;
     void setProject(IDOSProject* project);
     void startAssistant();
@@ -32,9 +33,9 @@ class ASSISTANT_EXPORT IDOSAssistantWidget : public QWidget
     void onAssistantReady();
     void onAssistantStopped();
     void onAssistantError(const QString& error);
-    void onRequestFailed(const QString& error);
     void onMessage(const QString& role, const QString& message);
     void onControlsChanged();
+    void onConversationReset();
 
   private:
     IDOSAssistantService* m_service;

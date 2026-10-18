@@ -1,9 +1,15 @@
 # idos_app: application composition
 add_library(idos_app SHARED
-    providers/data/idosnaturalfracturerendermetadata.cpp
-    providers/data/idosnaturalfracturerendermetadata.h
-    providers/data/idosnaturalfracturerenderprovider.cpp
-    providers/data/idosnaturalfracturerenderprovider.h
+    render/idosrenderprovidermetadata.cpp
+    render/idosrenderprovidermetadata.h
+    render/idosrenderproviderregistry.cpp
+    render/idosrenderproviderregistry.h
+    render/idosrenderserver.cpp
+    render/idosrenderserver.h
+    data/idosnaturalfracturerendermetadata.cpp
+    data/idosnaturalfracturerendermetadata.h
+    data/idosnaturalfracturerenderprovider.cpp
+    data/idosnaturalfracturerenderprovider.h
     command/idostransferobjectscommand.cpp
     command/idostransferobjectscommand.h
     command/idoscasereferencecommand.cpp
@@ -12,6 +18,10 @@ add_library(idos_app SHARED
     command/idoscreatecasecommand.h
     command/idoscreatewellcommand.cpp
     command/idoscreatewellcommand.h
+    command/idoslistobjectscommand.cpp
+    command/idoslistobjectscommand.h
+    command/idosinspectobjectcommand.cpp
+    command/idosinspectobjectcommand.h
     command/idosdeletecasecommand.cpp
     command/idosdeletecasecommand.h
     command/idosdeletegridcommand.cpp
@@ -22,10 +32,26 @@ add_library(idos_app SHARED
     command/idosdeletepropertycommand.h
     command/idosdeletewellcommand.cpp
     command/idosdeletewellcommand.h
-    command/idosgridfiltercommand.cpp
-    command/idosgridfiltercommand.h
-    command/idosimportcommands.cpp
-    command/idosimportcommands.h
+    command/idoscreategridfiltercommand.cpp
+    command/idosupdategridfiltercommand.cpp
+    command/idosdeletegridfiltercommand.cpp
+    command/idoscreategridfiltercommand.h
+    command/idosupdategridfiltercommand.h
+    command/idosdeletegridfiltercommand.h
+    command/idosimportcasecommand.cpp
+    command/idosimportcasecommand.h
+    command/idosimportgridcommand.cpp
+    command/idosimportgridcommand.h
+    command/idosimportgridpropertycommand.cpp
+    command/idosimportgridpropertycommand.h
+    command/idosimportwelldatacommand.cpp
+    command/idosimportwelldatacommand.h
+    command/idosimportfluidrocktablescommand.cpp
+    command/idosimportfluidrocktablescommand.h
+    command/idosimportdatacommand.cpp
+    command/idosimportdatacommand.h
+    command/idosimportsummaryresultscommand.cpp
+    command/idosimportsummaryresultscommand.h
     command/idosimportrestartresultscommand.cpp
     command/idosimportrestartresultscommand.h
     command/idosrenameobjectcommand.cpp
@@ -39,114 +65,126 @@ add_library(idos_app SHARED
     idosapplication.h
     idosmainwindow.cpp
     idosmainwindow.h
-    providers/case/idoscasetreerootprovider.cpp
-    providers/case/idoscasetreerootprovider.h
-    providers/data/idosdatatreerootprovider.cpp
-    providers/data/idosdatatreerootprovider.h
-    idospluginmetadata.cpp
-    idospluginmetadata.h
-    idospluginregistry.cpp
-    idospluginregistry.h
-    idossimulation.cpp
-    idossimulation.h
+    case/idoscasetreerootprovider.cpp
+    case/idoscasetreerootprovider.h
+    data/idosdatatreerootprovider.cpp
+    data/idosdatatreerootprovider.h
+    plugin/idospluginmetadata.cpp
+    plugin/idospluginmetadata.h
+    plugin/idospluginregistry.cpp
+    plugin/idospluginregistry.h
+    simulation/idossimulation.cpp
+    simulation/idossimulation.h
     plugin/idospluginlistmodel.cpp
     plugin/idospluginlistmodel.h
     plugin/idospluginmanagerwidget.cpp
     plugin/idospluginmanagerwidget.h
-    providers/fluidrock/idosfluidrocktabletreemetadata.cpp
-    providers/fluidrock/idosfluidrocktabletreemetadata.h
-    providers/fluidrock/idosfluidrocktabletreeprovider.cpp
-    providers/fluidrock/idosfluidrocktabletreeprovider.h
-    providers/grid/idosgridboundaryrendermetadata.cpp
-    providers/grid/idosgridboundaryrendermetadata.h
-    providers/grid/idosgridboundaryrenderprovider.cpp
-    providers/grid/idosgridboundaryrenderprovider.h
-    providers/grid/idosgridfilterrendermetadata.cpp
-    providers/grid/idosgridfilterrendermetadata.h
-    providers/grid/idosgridfilterrenderprovider.cpp
-    providers/grid/idosgridfilterrenderprovider.h
-    providers/grid/idosgridrendermetadata.cpp
-    providers/grid/idosgridrendermetadata.h
-    providers/grid/idosgridrenderprovider.cpp
-    providers/grid/idosgridrenderprovider.h
-    providers/grid/idosgridsurfacerendermetadata.cpp
-    providers/grid/idosgridsurfacerendermetadata.h
-    providers/grid/idosgridsurfacerenderprovider.cpp
-    providers/grid/idosgridsurfacerenderprovider.h
-    providers/grid/idosgridtreemetadata.cpp
-    providers/grid/idosgridtreemetadata.h
-    providers/grid/idosgridtreeprovider.cpp
-    providers/grid/idosgridtreeprovider.h
-    providers/data/idosimporteddatatreemetadata.cpp
-    providers/data/idosimporteddatatreemetadata.h
-    providers/data/idosimporteddatatreeprovider.cpp
-    providers/data/idosimporteddatatreeprovider.h
-    providers/data/idosdatatreemenuprovider.cpp
-    providers/data/idosdatatreemenuprovider.h
-    providers/seismic/idosseismicvolumerendermetadata.cpp
-    providers/seismic/idosseismicvolumerendermetadata.h
-    providers/seismic/idosseismicvolumerenderprovider.cpp
-    providers/seismic/idosseismicvolumerenderprovider.h
-    providers/case/idoscasetreemenuprovider.cpp
-    providers/case/idoscasetreemenuprovider.h
-    providers/case/idossimulationcasetreemetadata.cpp
-    providers/case/idossimulationcasetreemetadata.h
-    providers/case/idossimulationcasetreeprovider.cpp
-    providers/case/idossimulationcasetreeprovider.h
-    providers/well/idoswellrendermetadata.cpp
-    providers/well/idoswellrendermetadata.h
-    providers/well/idoswellrenderprovider.cpp
-    providers/well/idoswellrenderprovider.h
-    providers/well/idoswelltreemetadata.cpp
-    providers/well/idoswelltreemetadata.h
-    providers/well/idoswelltreeprovider.cpp
-    providers/well/idoswelltreeprovider.h
-    providers/render/idosrendertoolmetadata.cpp
-    providers/render/idosrendertoolmetadata.h
-    providers/render/idosrendertoolprovider.cpp
-    providers/render/idosrendertoolprovider.h
-    "${PROJECT_SOURCE_DIR}/src/gui/idoscasedialog.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/idoscasedialog.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridfilterwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridfilterwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridsettingwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridsettingwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcaseinventoryreportwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcaseinventoryreportwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcasetablewidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcasetablewidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcurvecomparisonwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationcurvecomparisonwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationdatagenerationwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationdatagenerationwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationdeckbrowserwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationdeckbrowserwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationinitializewidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationinitializewidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationparsesummarywidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationparsesummarywidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpreflightwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpreflightwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpropertycurvewidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationpropertycurvewidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationsummarycurveswidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationsummarycurveswidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultfileswidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultfileswidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultplaybackwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationresultplaybackwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationrunarchivewidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationrunarchivewidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationrunstatuswidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationrunstatuswidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationwellcontrolswidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationwellcontrolswidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationworkflowwidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/simulation/idossimulationworkflowwidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/well/idoswelldisplaywidget.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/well/idoswelldisplaywidget.h"
-    "${PROJECT_SOURCE_DIR}/src/gui/well/idoswelllogtrackview.cpp"
-    "${PROJECT_SOURCE_DIR}/src/gui/well/idoswelllogtrackview.h"
+    fluidrock/idosfluidrocktabletreemetadata.cpp
+    fluidrock/idosfluidrocktabletreemetadata.h
+    fluidrock/idosfluidrocktabletreeprovider.cpp
+    fluidrock/idosfluidrocktabletreeprovider.h
+    grid/idosgridboundaryrendermetadata.cpp
+    grid/idosgridboundaryrendermetadata.h
+    grid/idosgridboundaryrenderprovider.cpp
+    grid/idosgridboundaryrenderprovider.h
+    grid/idosgridfilterrendermetadata.cpp
+    grid/idosgridfilterrendermetadata.h
+    grid/idosgridfilterrenderprovider.cpp
+    grid/idosgridfilterrenderprovider.h
+    grid/idosgridrendermetadata.cpp
+    grid/idosgridrendermetadata.h
+    grid/idosgridrenderprovider.cpp
+    grid/idosgridrenderprovider.h
+    grid/idosgridsurfacerendermetadata.cpp
+    grid/idosgridsurfacerendermetadata.h
+    grid/idosgridsurfacerenderprovider.cpp
+    grid/idosgridsurfacerenderprovider.h
+    grid/idosgridtreemetadata.cpp
+    grid/idosgridtreemetadata.h
+    grid/idosgridtreeprovider.cpp
+    grid/idosgridtreeprovider.h
+    data/idosimporteddatatreemetadata.cpp
+    data/idosimporteddatatreemetadata.h
+    data/idosimporteddatatreeprovider.cpp
+    data/idosimporteddatatreeprovider.h
+    data/idosdatatreemenuprovider.cpp
+    data/idosdatatreemenuprovider.h
+    seismic/idosseismicvolumerendermetadata.cpp
+    seismic/idosseismicvolumerendermetadata.h
+    seismic/idosseismicvolumerenderprovider.cpp
+    seismic/idosseismicvolumerenderprovider.h
+    case/idoscasetreemenuprovider.cpp
+    case/idoscasetreemenuprovider.h
+    case/idossimulationcasetreemetadata.cpp
+    case/idossimulationcasetreemetadata.h
+    case/idossimulationcasetreeprovider.cpp
+    case/idossimulationcasetreeprovider.h
+    well/idoswellrendermetadata.cpp
+    well/idoswellrendermetadata.h
+    well/idoswellrenderprovider.cpp
+    well/idoswellrenderprovider.h
+    well/idoswelltreemetadata.cpp
+    well/idoswelltreemetadata.h
+    well/idoswelltreeprovider.cpp
+    well/idoswelltreeprovider.h
+    render/idosrendertoolmetadata.cpp
+    render/idosrendertoolmetadata.h
+    render/idospointzoomtoolprovider.cpp
+    render/idospointzoomtoolprovider.h
+    render/idospointprobetoolprovider.cpp
+    render/idospointprobetoolprovider.h
+    render/idosdistancemeasurementtoolprovider.cpp
+    render/idosdistancemeasurementtoolprovider.h
+    render/idosselectiontoolprovider.cpp
+    render/idosselectiontoolprovider.h
+    render/idosclippingplanetoolprovider.cpp
+    render/idosclippingplanetoolprovider.h
+    render/idosslicebypointstoolprovider.cpp
+    render/idosslicebypointstoolprovider.h
+    render/idosrendertoolprovider.cpp
+    render/idosrendertoolprovider.h
+    case/idoscasedialog.cpp
+    case/idoscasedialog.h
+    grid/idosgridfilterwidget.cpp
+    grid/idosgridfilterwidget.h
+    grid/idosgridsettingwidget.cpp
+    grid/idosgridsettingwidget.h
+    case/idossimulationcaseinventoryreportwidget.cpp
+    case/idossimulationcaseinventoryreportwidget.h
+    case/idossimulationcasetablewidget.cpp
+    case/idossimulationcasetablewidget.h
+    case/idossimulationcurvecomparisonwidget.cpp
+    case/idossimulationcurvecomparisonwidget.h
+    case/idossimulationdatagenerationwidget.cpp
+    case/idossimulationdatagenerationwidget.h
+    case/idossimulationdeckbrowserwidget.cpp
+    case/idossimulationdeckbrowserwidget.h
+    case/idossimulationinitializewidget.cpp
+    case/idossimulationinitializewidget.h
+    case/idossimulationparsesummarywidget.cpp
+    case/idossimulationparsesummarywidget.h
+    case/idossimulationpreflightwidget.cpp
+    case/idossimulationpreflightwidget.h
+    case/idossimulationpropertycurvewidget.cpp
+    case/idossimulationpropertycurvewidget.h
+    case/idossimulationsummarycurveswidget.cpp
+    case/idossimulationsummarycurveswidget.h
+    case/idossimulationresultfileswidget.cpp
+    case/idossimulationresultfileswidget.h
+    case/idossimulationresultplaybackwidget.cpp
+    case/idossimulationresultplaybackwidget.h
+    case/idossimulationrunarchivewidget.cpp
+    case/idossimulationrunarchivewidget.h
+    case/idossimulationrunstatuswidget.cpp
+    case/idossimulationrunstatuswidget.h
+    case/idossimulationwellcontrolswidget.cpp
+    case/idossimulationwellcontrolswidget.h
+    case/idossimulationworkflowwidget.cpp
+    case/idossimulationworkflowwidget.h
+    well/idoswelldisplaywidget.cpp
+    well/idoswelldisplaywidget.h
+    well/idoswelllogtrackview.cpp
+    well/idoswelllogtrackview.h
 )
 target_link_libraries(idos_app PUBLIC
     idos_core

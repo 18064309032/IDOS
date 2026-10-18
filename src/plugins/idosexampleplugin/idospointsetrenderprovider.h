@@ -5,30 +5,31 @@
 
 #include <vtkSmartPointer.h>
 
-#include "providers/idosrenderprovider.h"
+#include "idosrenderprovider.h"
 
-class IDOSPointSet;
+class IDOSPointSetObject;
 class vtkActor;
 class vtkPolyData;
 
 class IDOSPointSetRenderProvider : public IDOSRenderProvider
 {
   public:
-    explicit IDOSPointSetRenderProvider(IDOSPointSet* data);
+    explicit IDOSPointSetRenderProvider(IDOSPointSetObject* data);
     ~IDOSPointSetRenderProvider() override;
-    IDOSDataObject* dataSource() const override;
+    IDOSPointSetObject* pointSet() const;
     void update() override;
-    QList<vtkActor*> actors() const override;
-    QList<vtkSmartPointer<vtkProp>> legends() const override;
-    bool visible() const override;
-    void setVisible(bool visible) override;
-    bool highlighted() const override;
-    void setHighlighted(bool highlighted) override;
-    double opacity() const override;
-    void setOpacity(double opacity) override;
+    QList<vtkProp*> props() const override;
+    QVariantMap saveState() const override;
+    bool restoreState(const QVariantMap& state) override;
+    bool isVisible() const;
+    void setVisible(bool visible);
+    bool isSelected() const;
+    void setSelected(bool highlighted);
+    double opacity() const;
+    void setOpacity(double opacity);
 
   private:
-    QPointer<IDOSPointSet> m_data;
+    QPointer<IDOSPointSetObject> m_data;
     vtkSmartPointer<vtkActor> m_actor;
     vtkSmartPointer<vtkPolyData> m_polyData;
     bool m_highlighted;

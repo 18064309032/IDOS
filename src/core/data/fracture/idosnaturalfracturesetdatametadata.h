@@ -1,7 +1,7 @@
 #ifndef IDOS_NATURAL_FRACTURE_SET_DATA_METADATA_H
 #define IDOS_NATURAL_FRACTURE_SET_DATA_METADATA_H
 
-#include "providers/idosdatametadata.h"
+#include "data/idosdatametadata.h"
 
 class CORE_EXPORT IDOSNaturalFractureSetDataMetadata : public IDOSDataMetadata
 {

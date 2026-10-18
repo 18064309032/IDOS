@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosgridsurface.h"
+#include "idosgridsurfaceobject.h"
 
 #include "idosgridsurfacedatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSGridSurfaceDataMetadata::displayName() const
 
 IDOSDataObject* IDOSGridSurfaceDataMetadata::create() const
 {
-    return new IDOSGridSurface();
+    return new IDOSGridSurfaceObject();
 }

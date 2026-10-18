@@ -5,8 +5,8 @@ add_library(idosfracturemodelingplugin SHARED
     idosdfngenerationwidget.h
     idosdfngenerator.cpp
     idosdfngenerator.h
-    idosfracturegeometryreportdialog.h
-    idosfracturegeometryreportdialog.cpp
+    idosfracturecheckwidget.h
+    idosfracturecheckwidget.cpp
     idosfracturemodelingplugin.qrc
     idosfracturemodelingplugin.h
     idosfracturemodelingplugin.cpp

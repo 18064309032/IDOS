@@ -23,8 +23,8 @@ class IDOSDataProviderMetadata;
  *   // 按扩展名查 → 拿 Metadata → 工厂创建 → 解析
  *   QList<IDOSDataProviderMetadata*> metas = registry.metadataForFile(path);
  *   if (!metas.isEmpty()) {
- *       std::unique_ptr<IDOSDataProvider> provider = metas.first()->createProvider();
- *       provider->read(path, project);
+ *       std::unique_ptr<IDOSDataProvider> provider = metas.first()->create();
+ *       QList<IDOSDataObject*> objects = provider->read(path);
  *   }
  *
  *   // 文件对话框过滤器
@@ -51,7 +51,7 @@ class CORE_EXPORT IDOSDataProviderRegistry
     IDOSDataProviderMetadata* metadata(const QString& id) const;
 
     /** 按 id 创建 fresh provider 实例；找不到返回 nullptr。 */
-    std::unique_ptr<IDOSDataProvider> createProvider(const QString& id) const;
+    std::unique_ptr<IDOSDataProvider> create(const QString& id) const;
 
     /** 已注册的全部 metadata。 */
     QList<IDOSDataProviderMetadata*> metadata() const;

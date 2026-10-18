@@ -3,43 +3,46 @@
 #include <QMenu>
 #include <QObject>
 #include <QVariant>
+#include <QVariantMap>
 #include <QVector>
 #include <QVector3D>
 
-#include "idospointset.h"
+#include "idospointsetobject.h"
 #include "tree/idostreeitem.h"
+#include "tree/idostreemodel.h"
 
 #include "idospointsettreeprovider.h"
 
 IDOSPointSetTreeProvider::IDOSPointSetTreeProvider(IDOSDataObject* data)
     :
-    QObject(nullptr)
-    , IDOSTreeItemProvider(data)
+    IDOSTreeItemProvider(data)
 {
 }
 
-QMenu* IDOSPointSetTreeProvider::createContextMenu()
+QMenu* IDOSPointSetTreeProvider::createContextMenu(const QList<IDOSTreeItem*>& selectedItems)
 {
-    if (dataSource() == nullptr || item() == nullptr)
+    if (object() == nullptr || item() == nullptr || item()->model() == nullptr)
     {
         return nullptr;
     }
     QMenu* menu = new QMenu();
+    menu->setProperty("treeSession", item()->model()->sessionId());
+    const QList<IDOSTreeItem*> targets = selectedItems.isEmpty() ? QList<IDOSTreeItem*>{item()} : selectedItems;
+    if (targets.size() > 1)
+    {
+        return menu;
+    }
     QAction* action = menu->addAction(tr("Delete Point Set"));
-    action->setProperty("dataId", dataSource()->objectId());
+    action->setProperty("dataId", object()->objectId());
     action->setObjectName(QStringLiteral("deletePointSetAction"));
-    QJsonObject arguments;
-    arguments.insert(QStringLiteral("objectId"), dataSource()->objectId());
-    action->setProperty("operation", QStringLiteral("command.execute"));
-    action->setProperty("commandId", QStringLiteral("pointset.delete"));
-    action->setProperty("commandArguments", arguments);
+    connect(action, &QAction::triggered, this, &IDOSPointSetTreeProvider::onDeletePointSet);
     return menu;
 }
 
 void IDOSPointSetTreeProvider::refresh()
 {
     IDOSTreeItem* item = this->item();
-    IDOSPointSet* data = qobject_cast<IDOSPointSet*>(dataSource());
+    IDOSPointSetObject* data = qobject_cast<IDOSPointSetObject*>(object());
     if (data == nullptr || item == nullptr)
     {
         return;
@@ -63,8 +66,19 @@ void IDOSPointSetTreeProvider::refresh()
         child->provider()->setItemKey(QString::number(index));
         child->provider()->setDataId(data->objectId());
         child->provider()->setCaseId(item->provider()->caseId());
-        child->provider()->setName(QObject::tr("Point %1: (%2, %3, %4)")
-                           .arg(index + 1).arg(point.x()).arg(point.y()).arg(point.z()));
+        child->provider()->setName(
+            QObject::tr("Point %1: (%2, %3, %4)").arg(index + 1).arg(point.x()).arg(point.y()).arg(point.z()));
     }
+}
 
+void IDOSPointSetTreeProvider::onDeletePointSet()
+{
+    const QAction* action = qobject_cast<const QAction*>(sender());
+    IDOSTreeModel* model = item() != nullptr ? item()->model() : nullptr;
+    if (action == nullptr || model == nullptr || model->sessionId().isEmpty() ||
+        action->parent()->property("treeSession").toString() != model->sessionId())
+    {
+        return;
+    }
+    emit deletePointSetRequested(dataId(), model->sessionId());
 }

@@ -19,7 +19,7 @@ QStringList IDOSWellCheckshotMetadata::fileExtensions() const
     return {QStringLiteral("*.checkshot"), QStringLiteral("*.cs"), QStringLiteral("*.txt"), QStringLiteral("*.dat")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSWellCheckshotMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellCheckshotMetadata::create() const
 {
     return std::make_unique<IDOSWellCheckshotProvider>();
 }

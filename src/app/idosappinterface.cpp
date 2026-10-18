@@ -246,7 +246,7 @@ IDOSTreeItemProviderRegistry* IDOSAppInterface::treeRegistry() const
     return m_mainWindow->treeRegistry();
 }
 
-IDOSRenderRegistry* IDOSAppInterface::renderRegistry() const
+IDOSRenderProviderRegistry* IDOSAppInterface::renderRegistry() const
 {
     return m_mainWindow->renderRegistry();
 }
@@ -256,7 +256,7 @@ IDOSRenderServer* IDOSAppInterface::renderServer() const
     return m_mainWindow->renderServer();
 }
 
-IDOSToolRegistry* IDOSAppInterface::toolRegistry() const
+IDOSToolProviderRegistry* IDOSAppInterface::toolRegistry() const
 {
     return m_mainWindow->toolRegistry();
 }

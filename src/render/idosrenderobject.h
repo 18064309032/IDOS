@@ -19,10 +19,10 @@ class RENDER_EXPORT IDOSRenderObject
     void setName(const QString& name);
     IDOSRenderProvider* provider() const;
     void update();
-    bool visible() const;
+    bool isVisible() const;
     void setVisible(bool visible);
-    bool highlighted() const;
-    void setHighlighted(bool highlighted);
+    bool isSelected() const;
+    void setSelected(bool highlighted);
     double opacity() const;
     void setOpacity(double opacity);
 

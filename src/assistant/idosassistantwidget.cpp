@@ -17,10 +17,10 @@
 
 #include "idosassistantwidget.h"
 
-IDOSAssistantWidget::IDOSAssistantWidget(QWidget* parent)
+IDOSAssistantWidget::IDOSAssistantWidget(IDOSCommandRegistry* registry, QWidget* parent)
     :
     QWidget(parent)
-    , m_service(new IDOSAssistantService(this))
+    , m_service(new IDOSAssistantService(registry, this))
     , m_transcript(new QTextBrowser(this))
     , m_input(new QTextEdit(this))
     , m_sendButton(new QPushButton(tr("Send"), this))
@@ -75,14 +75,11 @@ IDOSAssistantWidget::IDOSAssistantWidget(QWidget* parent)
             &IDOSAssistantWidget::onAssistantStopped);
     connect(m_service, &IDOSAssistantService::message, this, &IDOSAssistantWidget::onMessage);
     connect(m_service, &IDOSAssistantService::busyChanged, this, &IDOSAssistantWidget::onControlsChanged);
+    connect(m_service, &IDOSAssistantService::conversationReset, this, &IDOSAssistantWidget::onConversationReset);
     connect(m_service,
             &IDOSAssistantService::errorOccurred,
             this,
             &IDOSAssistantWidget::onAssistantError);
-    connect(m_service,
-            &IDOSAssistantService::requestFailed,
-            this,
-            &IDOSAssistantWidget::onRequestFailed);
 
     onControlsChanged();
 }
@@ -102,7 +99,10 @@ bool IDOSAssistantWidget::eventFilter(QObject* watched, QEvent* event)
                                 && (keyEvent->modifiers() & Qt::ShiftModifier) == 0;
         if (shouldSend)
         {
-            onSendClicked();
+            if (!m_service->isBusy() && !m_startupPending)
+            {
+                onSendClicked();
+            }
             return true;
         }
     }
@@ -146,6 +146,21 @@ void IDOSAssistantWidget::startAssistant()
 
 void IDOSAssistantWidget::onSendClicked()
 {
+    if (m_service->isBusy() || m_startupPending)
+    {
+        m_pendingMessage.clear();
+        if (m_startupPending)
+        {
+            m_service->stop();
+            m_startupPending = false;
+        }
+        else
+        {
+            m_service->cancel();
+        }
+        onControlsChanged();
+        return;
+    }
     const QString message = m_input->toPlainText().trimmed();
     if (message.isEmpty())
     {
@@ -154,15 +169,6 @@ void IDOSAssistantWidget::onSendClicked()
 
     if (!m_service->isReady())
     {
-        if (m_startupPending)
-        {
-            m_pendingMessage = message;
-            m_statusLabel->setText(tr("Starting"));
-            onMessage(tr("System"),
-                      tr("AI assistant is starting. Your message will be sent when it is ready."));
-            return;
-        }
-
         m_pendingMessage = message;
         startAssistant();
         if (m_startupPending)
@@ -181,6 +187,7 @@ void IDOSAssistantWidget::onSendClicked()
     }
     onControlsChanged();
 }
+
 void IDOSAssistantWidget::onAssistantReady()
 {
     m_startupPending = false;
@@ -202,6 +209,7 @@ void IDOSAssistantWidget::onAssistantReady()
 void IDOSAssistantWidget::onAssistantStopped()
 {
     m_startupPending = false;
+    m_pendingMessage.clear();
     m_statusLabel->setText(tr("Stopped"));
     onControlsChanged();
 }
@@ -226,12 +234,6 @@ void IDOSAssistantWidget::onAssistantError(const QString& error)
     onControlsChanged();
 }
 
-void IDOSAssistantWidget::onRequestFailed(const QString& error)
-{
-    onMessage(tr("System"), error);
-    onControlsChanged();
-}
-
 void IDOSAssistantWidget::onMessage(const QString& role, const QString& message)
 {
     QTextCursor cursor(m_transcript->document());
@@ -248,5 +250,22 @@ void IDOSAssistantWidget::onMessage(const QString& role, const QString& message)
 
 void IDOSAssistantWidget::onControlsChanged()
 {
-    m_sendButton->setEnabled(!m_service->isBusy() && !m_startupPending);
+    const bool active = m_service->isBusy() || m_startupPending;
+    m_sendButton->setText(active ? tr("Stop") : tr("Send"));
+    m_sendButton->setEnabled(true);
+    if (m_service->isBusy())
+    {
+        m_statusLabel->setText(tr("Working"));
+    }
+    else if (m_service->isReady())
+    {
+        m_statusLabel->setText(tr("Ready"));
+    }
+}
+
+void IDOSAssistantWidget::onConversationReset()
+{
+    m_pendingMessage.clear();
+    m_transcript->clear();
+    onControlsChanged();
 }

@@ -8,7 +8,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "data/well/idoswell.h"
+#include "data/well/idoswellobject.h"
 
 #include "idoswellpathprovider.h"
 
@@ -108,7 +108,7 @@ bool IDOSWellPathProvider::appendWell(const QString& wellName, const QVector<IDO
     path.setPoints(points);
     path.setSourceComments(comments);
     path.setSpatialReference(spatialReferenceFromComments(comments));
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(wellName.trimmed());
     well->setPath(path);
     result->append(well);
@@ -420,7 +420,7 @@ bool IDOSWellPathProvider::readTabularTrajectory(const QString& filePath,
     }
     IDOSWellPath path;
     path.setPoints(points);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(wellName);
     well->setPath(path);
     result->append(well);

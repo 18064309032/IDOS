@@ -7,7 +7,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "data/fracture/idosnaturalfractureset.h"
+#include "data/fracture/idosnaturalfracturesetobject.h"
 
 #include "idosnaturalfractureprovider.h"
 
@@ -246,7 +246,7 @@ QList<IDOSDataObject*> IDOSNaturalFractureProvider::read(const QString& filePath
         setLastError(QObject::tr("The natural fracture geometry count does not match the format header."));
         return result;
     }
-    IDOSNaturalFractureSet* data = new IDOSNaturalFractureSet();
+    IDOSNaturalFractureSetObject* data = new IDOSNaturalFractureSetObject();
     data->setName(QFileInfo(filePath).completeBaseName());
     if (data->name().isEmpty())
     {

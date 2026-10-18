@@ -2,7 +2,7 @@
 
 #include "idoswelllasmetadata.h"
 
-std::unique_ptr<IDOSDataProvider> IDOSWellLasMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellLasMetadata::create() const
 {
     return std::make_unique<IDOSWellLasProvider>();
 }

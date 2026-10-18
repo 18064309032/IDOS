@@ -1,7 +1,7 @@
 #include <QScopedValueRollback>
 
+#include "idostreeitemprovider.h"
 #include "idostreemodel.h"
-#include "providers/idostreeitemprovider.h"
 
 #include "idostreeitem.h"
 
@@ -12,7 +12,7 @@ IDOSTreeItem::IDOSTreeItem(IDOSTreeItemProvider* provider)
     , m_provider(provider)
     , m_changing(false)
 {
-    const bool bound = provider != nullptr && provider->bindItem(this);
+    const bool bound = provider != nullptr && provider->setItem(this);
     Q_ASSERT(bound);
     Q_UNUSED(bound)
 }
@@ -57,7 +57,6 @@ IDOSTreeItemProvider* IDOSTreeItem::provider() const
 {
     return m_provider;
 }
-
 
 
 bool IDOSTreeItem::appendChild(IDOSTreeItem* item)

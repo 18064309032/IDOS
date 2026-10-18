@@ -22,58 +22,101 @@
 #include <DockWidget.h>
 
 #include "command/idoscasereferencecommand.h"
+#include "command/idoscommandmanager.h"
+#include "command/idoscommandmetadata.h"
+#include "command/idoscommandregistry.h"
 #include "command/idoscreatecasecommand.h"
 #include "command/idoscreatewellcommand.h"
 #include "command/idosdeletecasecommand.h"
 #include "command/idosdeletegridcommand.h"
 #include "command/idosdeletepropertycommand.h"
 #include "command/idosdeletewellcommand.h"
-#include "command/idosimportcommands.h"
+#include "command/idosimportcasecommand.h"
+#include "command/idosimportgridcommand.h"
+#include "command/idosimportgridpropertycommand.h"
+#include "command/idosimportwelldatacommand.h"
 #include "command/idosrenameobjectcommand.h"
 #include "command/idostransferobjectscommand.h"
 #include "data/case/idoscaseitemref.h"
 #include "data/case/idossimulationcaseobject.h"
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridfilter.h"
-#include "data/grid/idosgridproperty.h"
-#include "data/seismic/idosseismicvolume.h"
-#include "data/well/idoswell.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/grid/idosgridfilterobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "data/idosdatametadata.h"
+#include "data/idosdataregistry.h"
+#include "data/seismic/idosseismicvolumeobject.h"
 #include "data/well/idoswelllogset.h"
 #include "data/well/idoswellmetadata.h"
+#include "data/well/idoswellobject.h"
+#include "grid/idosgridrenderprovider.h"
 #include "idosapplication.h"
-#include "idoscommandmanager.h"
-#include "idoscommandmetadata.h"
-#include "idoscommandregistry.h"
 #include "idosdataobject.h"
 #include "idosmainwindow.h"
 #include "idosproject.h"
 #include "idosrenderobject.h"
 #include "idosrenderscene.h"
-#include "idosrenderserver.h"
 #include "idosrenderview.h"
-#include "providers/grid/idosgridrenderprovider.h"
-#include "providers/idosdatametadata.h"
-#include "providers/idosdataregistry.h"
-#include "providers/seismic/idosseismicvolumerenderprovider.h"
-#include "providers/well/idoswellrenderprovider.h"
+#include "render/idosrenderserver.h"
+#include "seismic/idosseismicvolumerenderprovider.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
 #include "well/idoswelllogtrackview.h"
+#include "well/idoswellrenderprovider.h"
 
 #include "command_registry_test.h"
+
+void CommandRegistryTest::onProjectOwnershipAndHistory()
+{
+    IDOSProject project;
+    IDOSProject other;
+    IDOSCommandManager* manager = project.commandManager();
+    QVERIFY(manager->execute(new IDOSCreateWellCommand(&project, QStringLiteral("Original"))));
+    IDOSDataObject* original = project.object(manager->result().value(QStringLiteral("objectId")).toString());
+    QVERIFY(original != nullptr);
+    const QString id = original->objectId();
+    QVERIFY(!other.add(original));
+    QCOMPARE(original->parent(), static_cast<QObject*>(&project));
+    QScopedPointer<IDOSWellObject> collision(new IDOSWellObject());
+    QVERIFY(collision->restoreObjectId(id));
+    collision->setName(QStringLiteral("Collision"));
+    QVERIFY(!project.add(collision.data()));
+    QCOMPARE(project.object(id), original);
+    manager->undo();
+    QVERIFY(manager->canRedo());
+    QVERIFY(project.add(collision.data()));
+    manager->redo();
+    QVERIFY(!manager->error().isEmpty());
+    QVERIFY(manager->canRedo());
+    QCOMPARE(project.object(id), static_cast<IDOSDataObject*>(collision.data()));
+    QCOMPARE(project.take(id), static_cast<IDOSDataObject*>(collision.data()));
+    manager->redo();
+    QVERIFY(manager->error().isEmpty());
+    QCOMPARE(project.object(id), original);
+    QVERIFY(manager->execute(new IDOSDeleteWellCommand(&project, id)));
+    QVERIFY(project.add(collision.data()));
+    manager->undo();
+    QVERIFY(!manager->error().isEmpty());
+    QVERIFY(manager->canUndo());
+    QVERIFY(!manager->canRedo());
+    QCOMPARE(project.object(id), static_cast<IDOSDataObject*>(collision.data()));
+    QCOMPARE(project.take(id), static_cast<IDOSDataObject*>(collision.data()));
+    manager->undo();
+    QVERIFY(manager->error().isEmpty());
+    QCOMPARE(project.object(id), original);
+}
 
 void CommandRegistryTest::onDataRegistryOwnsRegisteredMetadata()
 {
     IDOSDataRegistry registry;
-    QSignalSpy added(&registry, &IDOSDataRegistry::added);
-    QSignalSpy removed(&registry, &IDOSDataRegistry::removed);
-    QVERIFY(!registry.add(nullptr));
-    QVERIFY(registry.add(new IDOSWellMetadata()));
+    QSignalSpy added(&registry, &IDOSDataRegistry::metadataRegistered);
+    QSignalSpy removed(&registry, &IDOSDataRegistry::metadataUnregistered);
+    QVERIFY(!registry.registerMetadata(nullptr));
+    QVERIFY(registry.registerMetadata(new IDOSWellMetadata()));
     QCOMPARE(added.count(), 1);
     IDOSWellMetadata* duplicate = new IDOSWellMetadata();
-    QVERIFY(!registry.add(duplicate));
+    QVERIFY(!registry.registerMetadata(duplicate));
     delete duplicate;
     const IDOSDataMetadata* metadata = registry.metadata(QStringLiteral("idos.well"));
     QVERIFY(metadata != nullptr);
@@ -81,10 +124,10 @@ void CommandRegistryTest::onDataRegistryOwnsRegisteredMetadata()
     QVERIFY(data != nullptr);
     QCOMPARE(data->typeId(), QStringLiteral("idos.well"));
     delete data;
-    QVERIFY(registry.remove(QStringLiteral("idos.well")));
+    QVERIFY(registry.unregisterMetadata(QStringLiteral("idos.well")));
     QCOMPARE(removed.count(), 1);
     QCOMPARE(registry.metadata(QStringLiteral("idos.well")), nullptr);
-    QVERIFY(!registry.remove(QStringLiteral("idos.well")));
+    QVERIFY(!registry.unregisterMetadata(QStringLiteral("idos.well")));
 }
 
 void CommandRegistryTest::onFailedCommandPreservesRedo()
@@ -121,7 +164,7 @@ void CommandRegistryTest::onDefaultRegistryContainsCreateWell()
     QCOMPARE(registry->toToolJson().size(), 0);
     registerAllCommands(registry.get());
 
-    const IDOSCommandMetadata* metadata = registry->find(QStringLiteral("well.create"));
+    const IDOSCommandMetadata* metadata = registry->metadata(QStringLiteral("well.create"));
     QVERIFY(metadata != nullptr);
     QCOMPARE(metadata->name(), QStringLiteral("well.create"));
     QCOMPARE(metadata->type(), IDOSCommand::Type::Action);
@@ -234,7 +277,7 @@ void CommandRegistryTest::onExecuteCreateWellFromJson()
     const QString objectId = result.value(QStringLiteral("objectId")).toString();
     QVERIFY(!objectId.isEmpty());
 
-    IDOSWell* well = qobject_cast<IDOSWell*>(project.object(objectId));
+    IDOSWellObject* well = qobject_cast<IDOSWellObject*>(project.object(objectId));
     QVERIFY(well != nullptr);
     QCOMPARE(well->name(), QStringLiteral("A10"));
     QVERIFY(project.commandManager()->canUndo());
@@ -244,7 +287,7 @@ void CommandRegistryTest::onExecuteCreateWellFromJson()
     QVERIFY(project.commandManager()->canRedo());
 
     project.commandManager()->redo();
-    well = qobject_cast<IDOSWell*>(project.object(objectId));
+    well = qobject_cast<IDOSWellObject*>(project.object(objectId));
     QVERIFY(well != nullptr);
     QCOMPARE(well->name(), QStringLiteral("A10"));
 }
@@ -291,7 +334,7 @@ void CommandRegistryTest::onExecuteDeleteWellFromJson()
     registerAllCommands(registry.get());
     project.commandManager()->setRegistry(registry.get());
 
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("A10"));
     const QString wellId = well->objectId();
     project.add(well);
@@ -318,7 +361,7 @@ void CommandRegistryTest::onExecuteDeleteWellFromJson()
     QCOMPARE(caseObject->itemRefs().size(), 0);
 
     project.commandManager()->undo();
-    well = qobject_cast<IDOSWell*>(project.object(wellId));
+    well = qobject_cast<IDOSWellObject*>(project.object(wellId));
     QVERIFY(well != nullptr);
     caseObject = qobject_cast<IDOSSimulationCaseObject*>(project.object(caseId));
     QVERIFY(caseObject != nullptr);
@@ -339,7 +382,7 @@ void CommandRegistryTest::onExecuteDeletePropertyFromJson()
     registerAllCommands(registry.get());
     project.commandManager()->setRegistry(registry.get());
 
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("PORO"));
     const QString propertyId = property->objectId();
     project.add(property);
@@ -365,7 +408,7 @@ void CommandRegistryTest::onExecuteDeletePropertyFromJson()
     QCOMPARE(caseObject->itemRefs().size(), 0);
 
     project.commandManager()->undo();
-    property = qobject_cast<IDOSGridProperty*>(project.object(propertyId));
+    property = qobject_cast<IDOSGridPropertyObject*>(project.object(propertyId));
     QVERIFY(property != nullptr);
     caseObject = qobject_cast<IDOSSimulationCaseObject*>(project.object(caseId));
     QVERIFY(caseObject != nullptr);
@@ -380,12 +423,12 @@ void CommandRegistryTest::onExecuteDeleteGridFromJson()
     registerAllCommands(registry.get());
     project.commandManager()->setRegistry(registry.get());
 
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("Main Grid"));
     const QString gridId = grid->objectId();
     project.add(grid);
 
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("PORO"));
     property->setGridId(gridId);
     const QString propertyId = property->objectId();
@@ -414,8 +457,8 @@ void CommandRegistryTest::onExecuteDeleteGridFromJson()
     QCOMPARE(caseObject->itemRefs().size(), 0);
 
     project.commandManager()->undo();
-    QVERIFY(qobject_cast<IDOSGrid*>(project.object(gridId)) != nullptr);
-    QVERIFY(qobject_cast<IDOSGridProperty*>(project.object(propertyId)) != nullptr);
+    QVERIFY(qobject_cast<IDOSGridObject*>(project.object(gridId)) != nullptr);
+    QVERIFY(qobject_cast<IDOSGridPropertyObject*>(project.object(propertyId)) != nullptr);
     caseObject = qobject_cast<IDOSSimulationCaseObject*>(project.object(caseId));
     QVERIFY(caseObject != nullptr);
     QCOMPARE(caseObject->itemRefs().size(), 2);
@@ -428,12 +471,12 @@ void CommandRegistryTest::onExecuteDeleteCaseFromJson()
     registerAllCommands(registry.get());
     project.commandManager()->setRegistry(registry.get());
 
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("Main Grid"));
     const QString gridId = grid->objectId();
     project.add(grid);
 
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("PORO"));
     property->setGridId(gridId);
     const QString propertyId = property->objectId();
@@ -461,8 +504,8 @@ void CommandRegistryTest::onExecuteDeleteCaseFromJson()
 
     project.commandManager()->undo();
     QVERIFY(qobject_cast<IDOSSimulationCaseObject*>(project.object(caseId)) != nullptr);
-    QVERIFY(qobject_cast<IDOSGrid*>(project.object(gridId)) != nullptr);
-    QVERIFY(qobject_cast<IDOSGridProperty*>(project.object(propertyId)) != nullptr);
+    QVERIFY(qobject_cast<IDOSGridObject*>(project.object(gridId)) != nullptr);
+    QVERIFY(qobject_cast<IDOSGridPropertyObject*>(project.object(propertyId)) != nullptr);
 
     project.commandManager()->redo();
     QCOMPARE(project.object(caseId), nullptr);
@@ -477,7 +520,7 @@ void CommandRegistryTest::onExecuteRenameObjectFromJson()
     registerAllCommands(registry.get());
     project.commandManager()->setRegistry(registry.get());
 
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("A10"));
     const QString wellId = well->objectId();
     project.add(well);
@@ -492,7 +535,7 @@ void CommandRegistryTest::onExecuteRenameObjectFromJson()
                                           arguments);
 
     QCOMPARE(response.value(QStringLiteral("success")).toBool(), true);
-    well = qobject_cast<IDOSWell*>(project.object(wellId));
+    well = qobject_cast<IDOSWellObject*>(project.object(wellId));
     QVERIFY(well != nullptr);
     QCOMPARE(well->name(), QStringLiteral("B20"));
 
@@ -502,12 +545,12 @@ void CommandRegistryTest::onExecuteRenameObjectFromJson()
     QCOMPARE(result.value(QStringLiteral("name")).toString(), QStringLiteral("B20"));
 
     project.commandManager()->undo();
-    well = qobject_cast<IDOSWell*>(project.object(wellId));
+    well = qobject_cast<IDOSWellObject*>(project.object(wellId));
     QVERIFY(well != nullptr);
     QCOMPARE(well->name(), QStringLiteral("A10"));
 
     project.commandManager()->redo();
-    well = qobject_cast<IDOSWell*>(project.object(wellId));
+    well = qobject_cast<IDOSWellObject*>(project.object(wellId));
     QVERIFY(well != nullptr);
     QCOMPARE(well->name(), QStringLiteral("B20"));
 }
@@ -516,20 +559,20 @@ void CommandRegistryTest::registerAllCommands(IDOSCommandRegistry* registry) con
 {
     QVERIFY(registry != nullptr);
 
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("copy"))));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("move"))));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCaseReferenceCommandMetadata(QStringLiteral("remove"))));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateCaseCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCreateWellCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteCaseCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteGridCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePropertyCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDeleteWellCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSRenameObjectCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportCaseCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportGridCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportPropertyCommandMetadata()));
-    registry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportWellDataCommandMetadata()));
+    registry->registerMetadata(new IDOSCaseReferenceCommandMetadata(QStringLiteral("copy")));
+    registry->registerMetadata(new IDOSCaseReferenceCommandMetadata(QStringLiteral("move")));
+    registry->registerMetadata(new IDOSCaseReferenceCommandMetadata(QStringLiteral("remove")));
+    registry->registerMetadata(new IDOSCreateCaseCommandMetadata());
+    registry->registerMetadata(new IDOSCreateWellCommandMetadata());
+    registry->registerMetadata(new IDOSDeleteCaseCommandMetadata());
+    registry->registerMetadata(new IDOSDeleteGridCommandMetadata());
+    registry->registerMetadata(new IDOSDeletePropertyCommandMetadata());
+    registry->registerMetadata(new IDOSDeleteWellCommandMetadata());
+    registry->registerMetadata(new IDOSRenameObjectCommandMetadata());
+    registry->registerMetadata(new IDOSImportCaseCommandMetadata());
+    registry->registerMetadata(new IDOSImportGridCommandMetadata());
+    registry->registerMetadata(new IDOSImportGridPropertyCommandMetadata());
+    registry->registerMetadata(new IDOSImportWellDataCommandMetadata());
 }
 
 QTEST_MAIN(CommandRegistryTest)
@@ -555,8 +598,8 @@ void CommandRegistryTest::onCaseReferencesAtomic()
     registerAllCommands(&registry);
     IDOSProject project;
     project.commandManager()->setRegistry(&registry);
-    IDOSWell* well = new IDOSWell();
-    IDOSFluidRockTable* table = new IDOSFluidRockTable();
+    IDOSWellObject* well = new IDOSWellObject();
+    IDOSFluidRockTableObject* table = new IDOSFluidRockTableObject();
     IDOSSimulationCaseObject* first = new IDOSSimulationCaseObject();
     IDOSSimulationCaseObject* second = new IDOSSimulationCaseObject();
     project.add(well);
@@ -645,7 +688,7 @@ void CommandRegistryTest::onCaseReferenceParts()
     registerAllCommands(&registry);
     IDOSProject project;
     project.commandManager()->setRegistry(&registry);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     IDOSSimulationCaseObject* source = new IDOSSimulationCaseObject();
     IDOSSimulationCaseObject* target = new IDOSSimulationCaseObject();
     project.add(well);
@@ -709,16 +752,16 @@ void CommandRegistryTest::onObjectCopies()
     IDOSProject project;
     IDOSSimulationCaseObject* source = new IDOSSimulationCaseObject();
     source->setName(QStringLiteral("Source"));
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("Grid"));
     grid->setDimensions(1, 1, 1);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("PORO"));
     property->setKeyword(QStringLiteral("PORO"));
     property->setGridId(grid->objectId());
     property->setDimensions(1, 1, 1);
     QVERIFY(property->setValues(QVector<double>{0.2}));
-    IDOSGridFilter* filter = new IDOSGridFilter();
+    IDOSGridFilterObject* filter = new IDOSGridFilterObject();
     filter->setGridId(grid->objectId());
     QVariantMap condition;
     condition.insert(QStringLiteral("propertyId"), property->objectId());
@@ -730,7 +773,7 @@ void CommandRegistryTest::onObjectCopies()
     QVariantMap criteria;
     criteria.insert(QStringLiteral("conditions"), conditions);
     QVERIFY(filter->setCriteria(criteria));
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Well"));
     well->setReferenceDepth(123.0);
     project.add(source);
@@ -780,29 +823,29 @@ void CommandRegistryTest::onObjectCopies()
     }
     QVERIFY(copyGridId != grid->objectId());
     QVERIFY(copyWellId != well->objectId());
-    IDOSGridProperty* copiedProperty = nullptr;
-    IDOSGridFilter* copiedFilter = nullptr;
+    IDOSGridPropertyObject* copiedProperty = nullptr;
+    IDOSGridFilterObject* copiedFilter = nullptr;
     for (IDOSDataObject* object : project.objects())
     {
         if (object->containerId() == copyGridId)
         {
-            if (qobject_cast<IDOSGridProperty*>(object) != nullptr)
+            if (qobject_cast<IDOSGridPropertyObject*>(object) != nullptr)
             {
-                copiedProperty = qobject_cast<IDOSGridProperty*>(object);
+                copiedProperty = qobject_cast<IDOSGridPropertyObject*>(object);
             }
-            else if (qobject_cast<IDOSGridFilter*>(object) != nullptr)
+            else if (qobject_cast<IDOSGridFilterObject*>(object) != nullptr)
             {
-                copiedFilter = qobject_cast<IDOSGridFilter*>(object);
+                copiedFilter = qobject_cast<IDOSGridFilterObject*>(object);
             }
         }
     }
     QVERIFY(copiedProperty != nullptr && copiedFilter != nullptr);
-    const QStringList copiedPropertyIds = IDOSGridFilter::propertyIds(copiedFilter->criteria());
+    const QStringList copiedPropertyIds = IDOSGridFilterObject::propertyIds(copiedFilter->criteria());
     QCOMPARE(copiedPropertyIds.size(), 1);
     QCOMPARE(copiedPropertyIds.first(), copiedProperty->objectId());
     copiedProperty->setValueAt(0, 0, 0, 0.8);
     QCOMPARE(property->valueAt(0, 0, 0), 0.2);
-    IDOSWell* copiedWell = qobject_cast<IDOSWell*>(project.object(copyWellId));
+    IDOSWellObject* copiedWell = qobject_cast<IDOSWellObject*>(project.object(copyWellId));
     QVERIFY(copiedWell != nullptr);
     copiedWell->setReferenceDepth(999.0);
     QCOMPARE(well->referenceDepth(), 123.0);
@@ -822,13 +865,13 @@ void CommandRegistryTest::onObjectCopies()
 void CommandRegistryTest::onPropertyMoves()
 {
     IDOSProject project;
-    IDOSGrid* first = new IDOSGrid();
-    IDOSGrid* second = new IDOSGrid();
-    IDOSGrid* incompatible = new IDOSGrid();
+    IDOSGridObject* first = new IDOSGridObject();
+    IDOSGridObject* second = new IDOSGridObject();
+    IDOSGridObject* incompatible = new IDOSGridObject();
     first->setDimensions(1, 1, 1);
     second->setDimensions(1, 1, 1);
     incompatible->setDimensions(2, 1, 1);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("Property"));
     property->setGridId(first->objectId());
     property->setDimensions(1, 1, 1);
@@ -956,25 +999,25 @@ void CommandRegistryTest::onProjectStorageRoundTrip()
         project.add(object);
         objects.insert(object->typeId(), object);
     }
-    IDOSGrid* grid = qobject_cast<IDOSGrid*>(objects.value(QStringLiteral("idos.grid")));
+    IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(objects.value(QStringLiteral("idos.grid")));
     QVERIFY(grid != nullptr);
     grid->setCornerPointData(1, 1, 1, QVector<double>(24, 0.0), QVector<double>{0, 0, 0, 0, 1, 1, 1, 1}, QVector<int>{1});
-    IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(objects.value(QStringLiteral("idos.gridproperty")));
+    IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(objects.value(QStringLiteral("idos.gridproperty")));
     QVERIFY(property != nullptr);
     property->setGridId(grid->objectId());
     property->setDimensions(1, 1, 1);
     property->setKeyword(QStringLiteral("PORO"));
     QVERIFY(property->setValues(QVector<double>{0.25}));
-    IDOSGridProperty* dynamic = new IDOSGridProperty();
+    IDOSGridPropertyObject* dynamic = new IDOSGridPropertyObject();
     dynamic->setName(QStringLiteral("Pressure"));
-    dynamic->setKind(IDOSGridProperty::Kind::Dynamic);
+    dynamic->setKind(IDOSGridPropertyObject::Kind::Dynamic);
     dynamic->setGridId(grid->objectId());
     dynamic->setDimensions(1, 1, 1);
     QVERIFY(dynamic->setReportStepValues(0, QVector<double>{100.0}));
     QVERIFY(dynamic->setReportStepValues(10, QVector<double>{200.0}));
     QVERIFY(dynamic->setCurrentReportStep(10));
     project.add(dynamic);
-    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(objects.value(QStringLiteral("idos.grid.filter")));
+    IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(objects.value(QStringLiteral("idos.grid.filter")));
     filter->setGridId(grid->objectId());
     QVariantMap condition;
     condition.insert(QStringLiteral("propertyId"), property->objectId());
@@ -986,7 +1029,7 @@ void CommandRegistryTest::onProjectStorageRoundTrip()
     QVariantMap criteria;
     criteria.insert(QStringLiteral("conditions"), conditions);
     QVERIFY(filter->setCriteria(criteria));
-    IDOSWell* well = qobject_cast<IDOSWell*>(objects.value(QStringLiteral("idos.well")));
+    IDOSWellObject* well = qobject_cast<IDOSWellObject*>(objects.value(QStringLiteral("idos.well")));
     IDOSWellHead head;
     head.setSurfaceX(123.5);
     head.setSurfaceY(456.25);
@@ -1001,7 +1044,7 @@ void CommandRegistryTest::onProjectStorageRoundTrip()
     IDOSWellLogSet logs;
     logs.addChannel(channel);
     well->setLogs(logs);
-    IDOSSeismicVolume* seismic = qobject_cast<IDOSSeismicVolume*>(objects.value(QStringLiteral("idos.seismic.volume")));
+    IDOSSeismicVolumeObject* seismic = qobject_cast<IDOSSeismicVolumeObject*>(objects.value(QStringLiteral("idos.seismic.volume")));
     QVERIFY(seismic != nullptr);
     seismic->setTraceCount(1);
     seismic->setTraceSampleOffsets(QVector<qint64>{0});
@@ -1044,7 +1087,6 @@ void CommandRegistryTest::onProjectStorageRoundTrip()
         QVERIFY(restored != nullptr);
         QCOMPARE(restored->typeId(), original->typeId());
         QCOMPARE(restored->name(), original->name());
-        QCOMPARE(restored->isVisible(), original->isVisible());
         QVERIFY2(sameProjectValue(restored->projectData(), original->projectData()), qPrintable(original->typeId()));
     }
     QVERIFY(!loaded->commandManager()->canUndo());
@@ -1118,7 +1160,7 @@ void CommandRegistryTest::onProjectWindowStorage()
     const QString path = directory.filePath(QStringLiteral("window.idos"));
     IDOSMainWindow window;
     IDOSProject source;
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Saved well"));
     source.add(well);
     const QString id = well->objectId();
@@ -1135,7 +1177,7 @@ void CommandRegistryTest::onProjectWindowStorage()
     QVERIFY(window.project() != &source);
     QVERIFY(window.project()->object(id) != nullptr);
     QCOMPARE(window.project()->object(id)->name(), QStringLiteral("Saved well"));
-    QVERIFY(window.dataTreeModel()->indexFromDataId(id).isValid());
+    QVERIFY(window.dataTreeModel()->index(id).isValid());
     QVERIFY(!window.project()->isModified());
     QVERIFY(!window.isWindowModified());
 }
@@ -1148,7 +1190,7 @@ void CommandRegistryTest::onStoragePerformance()
     IDOSDataRegistry registry;
     IDOSApplication::initDataRegistry(&registry);
     IDOSProject project;
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Benchmark well"));
     QVector<IDOSWellPathPoint> points;
     points.reserve(2000);
@@ -1204,7 +1246,7 @@ void CommandRegistryTest::onLegacyProjectStorage()
     bool foundWell = false;
     for (IDOSDataObject* object : loaded->objects())
     {
-        IDOSWell* well = qobject_cast<IDOSWell*>(object);
+        IDOSWellObject* well = qobject_cast<IDOSWellObject*>(object);
         if (well != nullptr)
         {
             QCOMPARE(well->path().pointCount(), 2000);
@@ -1266,7 +1308,7 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
     QVERIFY(directory.isValid());
     const QString path = directory.filePath(QStringLiteral("presentation.idos"));
     IDOSProject project;
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Visible well"));
     IDOSWellLogChannel channel(QStringLiteral("GR"));
     channel.setData(QVector<double>{0.0, 5.0, 10.0}, QVector<double>{1.0, 2.0, 3.0});
@@ -1274,10 +1316,10 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
     logSet.addChannel(channel);
     well->setLogs(logSet);
     project.add(well);
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setCornerPointData(1, 1, 1, QVector<double>(24, 0.0), QVector<double>{0, 0, 0, 0, 1, 1, 1, 1}, QVector<int>{1});
     project.add(grid);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setGridId(grid->objectId());
     property->setKeyword(QStringLiteral("PORO"));
     property->setDimensions(1, 1, 1);
@@ -1288,18 +1330,18 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
     const QString propertyId = property->objectId();
     IDOSMainWindow window;
     window.setProject(&project);
-    const QModelIndex wellRoot = window.dataTreeModel()->indexFromDataId(wellId);
+    const QModelIndex wellRoot = window.dataTreeModel()->index(wellId);
     const QModelIndex logBranch = window.dataTreeModel()->index(0, 0, wellRoot);
     const QModelIndex logLeaf = window.dataTreeModel()->index(0, 0, logBranch);
     QVERIFY(logLeaf.isValid());
     QVERIFY(QMetaObject::invokeMethod(&window, "onDataTreeItemActivated", Qt::DirectConnection, Q_ARG(QModelIndex, logLeaf)));
     QList<IDOSWellLogTrackView*> logViews = window.findChildren<IDOSWellLogTrackView*>();
     QCOMPARE(logViews.size(), 1);
-    QVariantMap expectedLog = logViews.first()->presentationState();
+    QVariantMap expectedLog = logViews.first()->saveState();
     expectedLog.insert(QStringLiteral("hasDepthRange"), true);
     expectedLog.insert(QStringLiteral("minimumDepth"), 2.0);
     expectedLog.insert(QStringLiteral("maximumDepth"), 8.0);
-    logViews.first()->restorePresentationState(expectedLog);
+    logViews.first()->restoreState(expectedLog);
     window.findChild<QAction*>(QStringLiteral("new2DWindowAction"))->trigger();
     window.findChild<QAction*>(QStringLiteral("new3DWindowAction"))->trigger();
     const QList<IDOSRenderView*> views = window.renderServer()->views();
@@ -1314,14 +1356,16 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
         view->setAxesVisible(index != 1);
         view->setLegendVisible(index != 2);
         view->setCursorTrackingEnabled(index == 1);
-        QVariantMap state = view->presentationState();
+        QVariantMap state = view->saveState();
         QVariantMap camera = state.value(QStringLiteral("camera")).toMap();
         camera.insert(QStringLiteral("position"), QVariantList{10.0 + index, 20.0, 30.0});
         camera.insert(QStringLiteral("focalPoint"), QVariantList{1.0, 2.0, 3.0});
         camera.insert(QStringLiteral("viewUp"), QVariantList{0.0, 1.0, 0.0});
         camera.insert(QStringLiteral("parallelScale"), 12.5 + index);
         state.insert(QStringLiteral("camera"), camera);
-        QVERIFY(view->restorePresentationState(state));
+        QVERIFY(view->restoreState(state));
+        window.renderServer()->setChecked(wellId, Qt::Checked, view);
+        window.renderServer()->setChecked(gridId, Qt::Checked, view);
         const QString wellRenderId = window.renderServer()->objectIds(view, wellId).first();
         IDOSWellRenderProvider* wellProvider = dynamic_cast<IDOSWellRenderProvider*>(view->scene()->object(wellRenderId)->provider());
         QVERIFY(wellProvider != nullptr);
@@ -1342,12 +1386,12 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
         QVariantMap coloring = gridProvider->coloringSettings();
         coloring.insert(QStringLiteral("reversed"), index == 1);
         QVERIFY(gridProvider->setColoringSettings(coloring));
-        expectedViews.append(view->presentationState());
-        expectedWells.append(wellProvider->presentationState());
-        expectedGrids.append(gridProvider->presentationState());
+        expectedViews.append(view->saveState());
+        expectedWells.append(wellProvider->saveState());
+        expectedGrids.append(gridProvider->saveState());
     }
     window.dataTreeView()->collapseAll();
-    const QModelIndex wellIndex = window.dataTreeModel()->indexFromDataId(wellId);
+    const QModelIndex wellIndex = window.dataTreeModel()->index(wellId);
     QVERIFY(wellIndex.isValid());
     window.dataTreeView()->setExpanded(wellIndex.parent(), true);
     window.dataTreeView()->setExpanded(wellIndex, true);
@@ -1355,10 +1399,10 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
     window.show();
     QVERIFY(QTest::qWaitForWindowExposed(&window));
     QCoreApplication::processEvents();
-    const QVariantMap treeState = window.dataTreeView()->presentationState();
+    const QVariantMap treeState = window.dataTreeView()->saveState();
     const QString activeId = window.renderServer()->currentView()->property("viewId").toString();
     QVERIFY(window.saveProject(path));
-    QCOMPARE(project.presentationState().value(QStringLiteral("logViews")).toList().size(), 1);
+    QCOMPARE(project.saveState().value(QStringLiteral("logViews")).toList().size(), 1);
     QVERIFY(!project.isModified());
     QVERIFY(window.openProject(path, false));
     const QList<IDOSRenderView*> restored = window.renderServer()->views();
@@ -1369,30 +1413,30 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
     QVERIFY(logDock != nullptr);
     IDOSWellLogTrackView* restoredLog = qobject_cast<IDOSWellLogTrackView*>(logDock->widget());
     QVERIFY(restoredLog != nullptr);
-    QVERIFY(sameProjectValue(restoredLog->presentationState(), expectedLog));
+    QVERIFY(sameProjectValue(restoredLog->saveState(), expectedLog));
     QCOMPARE(window.renderServer()->currentView()->property("viewId").toString(), activeId);
     QVERIFY(!window.project()->isModified());
     QCoreApplication::processEvents();
     QVERIFY(!window.project()->isModified());
-    QVERIFY(sameProjectValue(window.project()->presentationState().value(QStringLiteral("render")), window.renderServer()->presentationState()));
-    QVERIFY(sameProjectValue(window.dataTreeView()->presentationState(), treeState));
+    QVERIFY(sameProjectValue(window.project()->saveState().value(QStringLiteral("render")), window.renderServer()->saveState()));
+    QVERIFY(sameProjectValue(window.dataTreeView()->saveState(), treeState));
     for (int index = 0; index < restored.size(); ++index)
     {
         IDOSRenderView* view = restored.at(index);
-        QVERIFY(sameProjectValue(view->presentationState(), expectedViews.at(index)));
+        QVERIFY(sameProjectValue(view->saveState(), expectedViews.at(index)));
         const QString wellRenderId = window.renderServer()->objectIds(view, wellId).first();
         const QString gridRenderId = window.renderServer()->objectIds(view, gridId).first();
-        QVERIFY(sameProjectValue(view->scene()->object(wellRenderId)->provider()->presentationState(), expectedWells.at(index)));
-        QVERIFY(sameProjectValue(view->scene()->object(gridRenderId)->provider()->presentationState(), expectedGrids.at(index)));
+        QVERIFY(sameProjectValue(view->scene()->object(wellRenderId)->provider()->saveState(), expectedWells.at(index)));
+        QVERIFY(sameProjectValue(view->scene()->object(gridRenderId)->provider()->saveState(), expectedGrids.at(index)));
     }
-    const QVariantMap unlinked = restored.last()->presentationState();
+    const QVariantMap unlinked = restored.last()->saveState();
     QVERIFY(restored.last()->linkCameraTo(restored.first()));
     QVERIFY(window.saveProject(path));
     QVERIFY(window.openProject(path, false));
     const QList<IDOSRenderView*> linkedViews = window.renderServer()->views();
     QVERIFY(linkedViews.last()->isCameraLinkedTo(linkedViews.first()));
     linkedViews.last()->unlinkCamera();
-    QVERIFY(sameProjectValue(linkedViews.last()->presentationState(), unlinked));
+    QVERIFY(sameProjectValue(linkedViews.last()->saveState(), unlinked));
     linkedViews.first()->scaleView(1.1);
     QVERIFY(window.project()->isModified());
     QVERIFY(window.saveProject(path));
@@ -1408,20 +1452,20 @@ void CommandRegistryTest::onProjectPresentationRoundTrip()
 void CommandRegistryTest::onInvalidPresentationState()
 {
     IDOSRenderView view;
-    const QVariantMap original = view.presentationState();
+    const QVariantMap original = view.saveState();
     QVariantMap invalid = original;
     QVariantMap camera = invalid.value(QStringLiteral("camera")).toMap();
     camera.insert(QStringLiteral("parallelScale"), -1.0);
     invalid.insert(QStringLiteral("camera"), camera);
-    QVERIFY(!view.restorePresentationState(invalid));
-    QVERIFY(sameProjectValue(view.presentationState(), original));
-    IDOSSeismicVolume volume;
+    QVERIFY(!view.restoreState(invalid));
+    QVERIFY(sameProjectValue(view.saveState(), original));
+    IDOSSeismicVolumeObject volume;
     volume.setTraceInlineNumbers(QVector<int>{10, 20, 30});
     IDOSSeismicVolumeRenderProvider seismic(&volume);
     QVERIFY(seismic.setInlineNumber(10));
-    const QVariantMap slice = seismic.presentationState();
+    const QVariantMap slice = seismic.saveState();
     QVERIFY(seismic.setInlineNumber(30));
-    QVERIFY(seismic.restorePresentationState(slice));
+    QVERIFY(seismic.restoreState(slice));
     QCOMPARE(seismic.inlineNumber(), 10);
     IDOSProject project;
     QVariantMap state;
@@ -1429,7 +1473,7 @@ void CommandRegistryTest::onInvalidPresentationState()
     QVariantMap render;
     render.insert(QStringLiteral("views"), QVariantList{QVariantMap{{QStringLiteral("id"), QStringLiteral("view_999999999")}}});
     state.insert(QStringLiteral("render"), render);
-    project.setPresentationState(state);
+    project.restoreState(state);
     IDOSMainWindow window;
     window.setProject(&project);
     QCOMPARE(window.renderServer()->views().size(), 1);

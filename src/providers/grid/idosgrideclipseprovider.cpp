@@ -15,9 +15,9 @@
 #include <opm/io/eclipse/EInit.hpp>
 
 #include "case/idossimulationsummaryprovider.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
-#include "grid/idosgridpropertyeclipseprovider.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "idosgridpropertyeclipseprovider.h"
 
 #include "idosgrideclipseprovider.h"
 
@@ -97,7 +97,7 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
         {
             actnum.append(value);
         }
-        IDOSGrid* grid = new IDOSGrid();
+        IDOSGridObject* grid = new IDOSGridObject();
         grid->setName(fi.completeBaseName());
         grid->setCornerPointData(static_cast<int>(nx), static_cast<int>(ny), static_cast<int>(nz), coord, zcorn, actnum);
         result.append(grid);
@@ -119,7 +119,7 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
 bool IDOSGridEclipseProvider::readCompanionFiles(const QString& filePath,
                                                QList<IDOSDataObject*>* objects)
 {
-    IDOSGrid* grid = qobject_cast<IDOSGrid*>(objects->first());
+    IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(objects->first());
     const QFileInfo gridFile(filePath);
     const QFileInfoList files = gridFile.dir().entryInfoList(QDir::Files, QDir::Name);
     QMap<QString, QString> companions;
@@ -186,7 +186,7 @@ bool IDOSGridEclipseProvider::readCompanionFiles(const QString& filePath,
         {
             for (IDOSDataObject* object : imported)
             {
-                IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+                IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
                 QVector<double> values = property->values();
                 if (values.size() == grid->activeCellCount()
                     && values.size() != grid->totalCellCount())

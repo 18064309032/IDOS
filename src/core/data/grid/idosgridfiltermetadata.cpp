@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosgridfilter.h"
+#include "idosgridfilterobject.h"
 
 #include "idosgridfiltermetadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSGridFilterMetadata::displayName() const
 
 IDOSDataObject* IDOSGridFilterMetadata::create() const
 {
-    return new IDOSGridFilter();
+    return new IDOSGridFilterObject();
 }

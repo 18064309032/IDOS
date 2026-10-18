@@ -3,11 +3,11 @@
 
 #include <QPointer>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
-class IDOSWell;
+class IDOSWellObject;
 
 /**
  * @brief Creates a well in a project.
@@ -27,7 +27,7 @@ protected:
 
 private:
     QString m_wellName;
-    QPointer<IDOSWell> m_well;
+    QPointer<IDOSWellObject> m_well;
 };
 
 /**

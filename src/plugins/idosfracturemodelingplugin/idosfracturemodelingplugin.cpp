@@ -15,18 +15,18 @@
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
-#include "data/fracture/idosnaturalfractureset.h"
-#include "data/grid/idosgrid.h"
-#include "idoscommandregistry.h"
+#include "command/idoscommandregistry.h"
+#include "data/fracture/idosnaturalfracturesetobject.h"
+#include "data/grid/idosgridobject.h"
 #include "idosdfngeneratecommand.h"
 #include "idosdfngenerationwidget.h"
-#include "idosfracturegeometryreportdialog.h"
+#include "idosfracturecheckwidget.h"
 #include "idosinterface.h"
 #include "idosproject.h"
 #include "idosrenderobject.h"
 #include "idosrenderscene.h"
-#include "idosrenderserver.h"
 #include "idosrenderview.h"
+#include "render/idosrenderserver.h"
 
 #include "idosfracturemodelingplugin.h"
 
@@ -89,7 +89,12 @@ void IDOSFractureModelingPlugin::initGui()
     {
         throw std::runtime_error(tr("The command registry is unavailable.").toStdString());
     }
-    m_commandAdded = m_commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSDfnGenerateCommandMetadata()));
+    std::unique_ptr<IDOSCommandMetadata> commandMetadata0(new IDOSDfnGenerateCommandMetadata());
+    m_commandAdded = m_commandRegistry->registerMetadata(commandMetadata0.get());
+    if (m_commandAdded)
+    {
+        commandMetadata0.release();
+    }
     if (!m_commandAdded)
     {
         throw std::runtime_error(tr("DFN command registration failed.").toStdString());
@@ -158,7 +163,7 @@ void IDOSFractureModelingPlugin::unload()
 
     if (m_commandRegistry != nullptr && m_commandAdded)
     {
-        m_commandRegistry->remove(QStringLiteral("fracture.dfn.generate"));
+        m_commandRegistry->unregisterMetadata(QStringLiteral("fracture.dfn.generate"));
     }
     m_commandAdded = false;
     m_commandRegistry = nullptr;
@@ -209,9 +214,9 @@ void IDOSFractureModelingPlugin::onUpdateCheckAction()
     {
         for (IDOSDataObject* object : m_project->objects())
         {
-            fracturesAvailable = fracturesAvailable || qobject_cast<IDOSNaturalFractureSet*>(object) != nullptr;
-            const IDOSGrid* grid = qobject_cast<IDOSGrid*>(object);
-            gridAvailable = gridAvailable || (grid != nullptr && grid->type() == IDOSGrid::Type::CornerPoint);
+            fracturesAvailable = fracturesAvailable || qobject_cast<IDOSNaturalFractureSetObject*>(object) != nullptr;
+            const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(object);
+            gridAvailable = gridAvailable || (grid != nullptr && grid->type() == IDOSGridObject::Type::CornerPoint);
         }
     }
     if (!m_checkAction.isNull())
@@ -243,7 +248,7 @@ void IDOSFractureModelingPlugin::onGenerateDfn()
     {
         return;
     }
-    showWindow(new IDOSDfnGenerationWidget(m_project.data(), m_interface->mainWindow()));
+    showWindow(new IDOSDfnGenerationWidget(m_interface));
 }
 
 void IDOSFractureModelingPlugin::onCheckFractures()
@@ -252,39 +257,15 @@ void IDOSFractureModelingPlugin::onCheckFractures()
     {
         return;
     }
-    QList<IDOSNaturalFractureSet*> sets;
-    IDOSNaturalFractureSet* selected = qobject_cast<IDOSNaturalFractureSet*>(m_project->currentObject());
-    if (selected != nullptr)
-    {
-        sets.append(selected);
-    }
-    else
-    {
-        for (IDOSDataObject* object : m_project->objects())
-        {
-            IDOSNaturalFractureSet* fractures = qobject_cast<IDOSNaturalFractureSet*>(object);
-            if (fractures != nullptr)
-            {
-                sets.append(fractures);
-            }
-        }
-    }
-    if (sets.isEmpty())
-    {
-        return;
-    }
-    IDOSRenderView* targetView = m_interface->renderServer() != nullptr
-        ? m_interface->renderServer()->currentView() : nullptr;
-    IDOSFractureGeometryReportDialog* dialog = new IDOSFractureGeometryReportDialog(
-        sets, m_project.data(), targetView, m_interface->mainWindow());
-    connect(dialog, &IDOSFractureGeometryReportDialog::issueActivated,
+    IDOSFractureCheckWidget* dialog = new IDOSFractureCheckWidget(m_interface);
+    connect(dialog, &IDOSFractureCheckWidget::issueActivated,
         this, &IDOSFractureModelingPlugin::onIssueActivated);
     showWindow(dialog);
 }
 
 void IDOSFractureModelingPlugin::onIssueActivated(const QString& objectId, const QVariantList& center)
 {
-    IDOSFractureGeometryReportDialog* dialog = qobject_cast<IDOSFractureGeometryReportDialog*>(sender());
+    IDOSFractureCheckWidget* dialog = qobject_cast<IDOSFractureCheckWidget*>(sender());
     if (dialog == nullptr || m_project.isNull() || dialog->project() != m_project.data()
         || m_interface == nullptr || m_interface->project() != m_project.data())
     {

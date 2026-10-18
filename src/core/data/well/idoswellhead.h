@@ -1,5 +1,5 @@
-#ifndef IDOS_WELL_HEAD_H
-#define IDOS_WELL_HEAD_H
+#ifndef IDOS_WELL_OBJECT_HEAD_H
+#define IDOS_WELL_OBJECT_HEAD_H
 
 #include <QVariantMap>
 
@@ -72,4 +72,4 @@ class CORE_EXPORT IDOSWellHead
     int m_symbol;
 };
 
-#endif // IDOS_WELL_HEAD_H
+#endif // IDOS_WELL_OBJECT_HEAD_H

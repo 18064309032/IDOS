@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosseismicvolume.h"
+#include "idosseismicvolumeobject.h"
 
 #include "idosseismicvolumedatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSSeismicVolumeDataMetadata::displayName() const
 
 IDOSDataObject* IDOSSeismicVolumeDataMetadata::create() const
 {
-    return new IDOSSeismicVolume();
+    return new IDOSSeismicVolumeObject();
 }

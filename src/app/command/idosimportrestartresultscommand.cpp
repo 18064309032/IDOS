@@ -4,9 +4,10 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
+#include <QSet>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "grid/idosgridpropertyeclipseprovider.h"
 #include "idosproject.h"
 
@@ -83,7 +84,7 @@ bool IDOSImportRestartResultsCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (qobject_cast<IDOSGrid*>(targetProject->object(m_gridId)) == nullptr)
+    if (qobject_cast<IDOSGridObject*>(targetProject->object(m_gridId)) == nullptr)
     {
         error = QObject::tr("The target grid is unavailable.");
         return false;
@@ -129,17 +130,20 @@ bool IDOSImportRestartResultsCommand::apply(QString& error)
         return false;
     }
 
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    QSet<QString> ids;
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
-        if (property.isNull() || property->parent() != nullptr)
+        if (property.isNull() || property->parent() != nullptr || property->objectId().isEmpty() ||
+            targetProject->object(property->objectId()) != nullptr || ids.contains(property->objectId()))
         {
             error = QObject::tr("A result property is unavailable or already attached.");
             return false;
         }
+        ids.insert(property->objectId());
     }
 
     targetProject->beginUpdate();
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
         targetProject->add(property.data());
     }
@@ -164,7 +168,7 @@ bool IDOSImportRestartResultsCommand::revert(QString& error)
         return false;
     }
 
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
         if (property.isNull() || targetProject->object(property->objectId()) != property.data())
         {
@@ -173,19 +177,19 @@ bool IDOSImportRestartResultsCommand::revert(QString& error)
         }
     }
 
-    QList<IDOSGridProperty*> detachedProperties;
+    QList<IDOSGridPropertyObject*> detachedProperties;
     targetProject->beginUpdate();
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
         IDOSDataObject* detachedObject = targetProject->take(property->objectId());
-        IDOSGridProperty* detachedProperty = qobject_cast<IDOSGridProperty*>(detachedObject);
+        IDOSGridPropertyObject* detachedProperty = qobject_cast<IDOSGridPropertyObject*>(detachedObject);
         if (detachedProperty == nullptr)
         {
             if (detachedObject != nullptr)
             {
                 targetProject->add(detachedObject);
             }
-            for (IDOSGridProperty* previousProperty : detachedProperties)
+            for (IDOSGridPropertyObject* previousProperty : detachedProperties)
             {
                 targetProject->add(previousProperty);
             }
@@ -203,8 +207,8 @@ bool IDOSImportRestartResultsCommand::revert(QString& error)
 bool IDOSImportRestartResultsCommand::loadProperties(QString& error)
 {
     IDOSProject* targetProject = project();
-    const IDOSGrid* grid = targetProject != nullptr
-        ? qobject_cast<IDOSGrid*>(targetProject->object(m_gridId)) : nullptr;
+    const IDOSGridObject* grid = targetProject != nullptr
+        ? qobject_cast<IDOSGridObject*>(targetProject->object(m_gridId)) : nullptr;
     IDOSGridPropertyEclipseProvider provider;
     QList<IDOSDataObject*> objects = provider.readRestart(m_filePath, grid);
     if (objects.isEmpty() || !provider.lastError().isEmpty())
@@ -215,12 +219,12 @@ bool IDOSImportRestartResultsCommand::loadProperties(QString& error)
     }
     for (IDOSDataObject* object : objects)
     {
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
         for (IDOSDataObject* existingObject : targetProject->objects())
         {
-            const IDOSGridProperty* existing = qobject_cast<IDOSGridProperty*>(existingObject);
+            const IDOSGridPropertyObject* existing = qobject_cast<IDOSGridPropertyObject*>(existingObject);
             if (existing != nullptr && existing->gridId() == m_gridId
-                && existing->kind() == IDOSGridProperty::Kind::Dynamic
+                && existing->kind() == IDOSGridPropertyObject::Kind::Dynamic
                 && (existing->keyword().compare(property->keyword(), Qt::CaseInsensitive) == 0
                     || existing->name() == property->name()))
             {
@@ -233,7 +237,7 @@ bool IDOSImportRestartResultsCommand::loadProperties(QString& error)
     }
     for (IDOSDataObject* object : objects)
     {
-        m_properties.append(QPointer<IDOSGridProperty>(qobject_cast<IDOSGridProperty*>(object)));
+        m_properties.append(QPointer<IDOSGridPropertyObject>(qobject_cast<IDOSGridPropertyObject*>(object)));
     }
     const QList<int> reportSteps = provider.restartReportSteps();
     m_firstReportStep = reportSteps.first();
@@ -245,7 +249,7 @@ bool IDOSImportRestartResultsCommand::loadProperties(QString& error)
 
 void IDOSImportRestartResultsCommand::deleteDetachedProperties()
 {
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
         if (!property.isNull() && property->parent() == nullptr)
         {

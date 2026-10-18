@@ -4,7 +4,7 @@
 #include <QList>
 
 #include "idos_core.h"
-#include "providers/idostreeitemprovider.h"
+#include "idostreeitemprovider.h"
 
 class IDOSTreeModel;
 

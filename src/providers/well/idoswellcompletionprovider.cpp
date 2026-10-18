@@ -1,4 +1,5 @@
 #include <cmath>
+#include <xlsxdocument.h>
 
 #include <QFile>
 #include <QFileInfo>
@@ -6,10 +7,8 @@
 #include <QObject>
 #include <QTextStream>
 
-#include <xlsxdocument.h>
-
-#include "data/well/idoswell.h"
 #include "data/well/idoswellcompletion.h"
+#include "data/well/idoswellobject.h"
 
 #include "idoswellcompletionprovider.h"
 
@@ -178,7 +177,7 @@ QList<IDOSDataObject*> IDOSWellCompletionProvider::readSpreadsheet(const QString
     {
         wellName.remove(0, QStringLiteral("Perforation_").size());
     }
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(wellName);
     well->setCompletions(completions);
     result.append(well);
@@ -282,7 +281,7 @@ QList<IDOSDataObject*> IDOSWellCompletionProvider::read(const QString& filePath)
     QList<IDOSDataObject*> result;
     for (QMap<QString, QList<IDOSWellCompletion>>::const_iterator iterator = wells.constBegin(); iterator != wells.constEnd(); ++iterator)
     {
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(iterator.key());
         well->setCompletions(iterator.value());
         result.append(well);

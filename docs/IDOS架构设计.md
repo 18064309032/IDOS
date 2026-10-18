@@ -12,6 +12,12 @@
 
 ## 2026-10-16 树框架与调用逻辑（讨论定稿）
 
+### 数据树与工况树分别派生 Model、View
+
+- IDOSDataTreeItemModel 与 IDOSCaseTreeItemModel 分别继承 IDOSTreeModel，位于 src/core/tree；通用基类只保留节点、索引、通知、会话校验与传输基础机制。专用 Model 使用明确参数提供业务操作函数，并发出对应的具名业务信号，不持有 Project、MainWindow、Access 或 RenderServer。
+- IDOSDataTreeView 与 IDOSCaseTreeView 分别继承 IDOSTreeView，位于 src/gui/tree；各自只接受对应的专用 Model，分别提供 dataModel()/caseModel()，对应 TreeMenuProvider 构造参数也限定为具体 View 类型，工况树启用空白菜单，数据树保持原有空白菜单策略。选择、节点命中、Qt 菜单弹出、展开状态及拖放基础行为仍由通用 View 提供。
+- 相同领域节点可复用结构 Provider；菜单槽通过具体 Model 类型调用对应的明确接口，不根据操作字符串统一分发。数据树增加导入、删除及添加到工况接口；井头、轨迹、曲线、分层、完井、校深导入各自有明确函数，不用 QAction 名称识别操作；工况树增加新建、导入、重命名、删除工况及模拟输入/结果接口，井和网格在各模型中分别提供所需操作。
+
 ### 本轮确认：Access 作为模块之间的中间人
 
 IDOSTreeModel 管理根 Item、节点结构、Registry、Qt 索引及模型通知，不保存 Project、Access、RenderServer，也不监听工程。IDOSTreeItemProvider 提供节点数据、局部状态和具体节点结构，不保存 Access/RenderServer，不提供 model()/project()/access() 或直接发送 Model 信号的 changed()。具体业务刷新可以从源数据的领域关联读取相关对象，不通过模型获取工程上下文。
@@ -36,13 +42,13 @@ Model 构造只接收 Registry 和 QObject parent，初始提供空根。setRoot
 
 ### 菜单与渲染
 
-TreeMenuProvider 继承 QObject，只绑定唯一 TreeView，通过 View 获取 Model。Data/Case 菜单不保存或访问 Project、MainWindow、RenderView、RenderServer，不创建业务设置窗口；仅通过 Model 查询节点数据、创建菜单并调用 Model 操作接口。节点专属菜单继续由 ItemProvider::createContextMenu 创建，仅描述操作与数据 ID，不再执行工程命令或访问渲染。TreeView 在 contextMenuAboutToShow 返回后统一绑定菜单动作，插件追加的描述式操作也经过同一 Model 信号链。
+TreeMenuProvider 继承 QObject，只绑定唯一 TreeView，通过 View 获取 Model。Data/Case 菜单不保存或访问 Project、MainWindow、RenderView、RenderServer，不创建业务设置窗口；仅通过 Model 查询节点数据、创建菜单并调用 Model 操作接口。IDOSTreeItemProvider 直接继承 QObject，具体 Provider 不重复继承 QObject；节点专属菜单直接在 createContextMenu(selectedItems) 中 new QAction 并连接具名槽，不再拆出通用动作装配函数；空白菜单由树 MenuProvider 创建并连接。Provider 不直接执行工程命令或访问渲染，动作通过 Model 进入业务信号链。TreeView 发出 contextMenuAboutToShow 供插件追加已连接的菜单项，不再统一绑定动作。节点 Provider 的菜单工厂分别处理分类、单个数据和多选；根 Provider 仅创建根结构，不作为其他 Provider 的菜单工具类。复制粘贴 MIME 数据由对应树 MenuProvider 创建。
 
-调用链：MenuProvider 创建 QAction 操作描述 → TreeView 处理界面触发并调用 Model::triggerAction → Model::actionTriggered → AppTreeAccess::onActionTriggered → MainWindow::executeTreeAction。Access 校验工程及目标 Model，并在动作触发时获取当前 RenderView；应用层接口负责已有导入/删除/命名/工况操作及设置窗口，业务修改继续使用现有命令。Data 菜单构造只接收 View，删除 MainWindow 参数及工程/渲染视图关联表。Case 菜单不再直接向 Simulation 发信号，统一走 Model 信号和 Access。
+调用链：右键节点 → Item Provider::createContextMenu(selectedItems)，右键空白 → 树 MenuProvider::createContextMenu。添加 QAction 的 Provider 直接创建并连接自己的具名槽；槽调用具体 Model 的明确方法（例如 deleteWell、importDataset、newCase），方法校验所属节点与菜单创建时的 sessionId，再发出 deleteWellRequested/importDatasetRequested/newCaseRequested 等独立业务信号。AppTreeAccess 分别连接这些信号到对应具名槽，校验当前工程和 Model 绑定，获取实际目标 RenderView 后调用 MainWindow 的明确参数接口。业务修改继续通过命令执行；不存在操作名称加 QVariantMap 的菜单统一分发入口，也不保留旧分发链。TreeView 负责菜单分派、扩展信号和弹出，不识别业务操作。
 
-Model 的 sessionId 是 Access 设置的工程上下文标识，仅用于剪贴板和旧菜单有效性校验；Model 不据此获取工程。动作保存节点 ID 与 sessionId，提交前检查节点仍在模型且上下文未切换。dataObjects/dataObject 仅查询现有节点的非拥有数据源。RenderAvailableRole 由 Access 根据当前 Scene 回写，菜单通过 Model 查询显示设置是否可用。
+Model 的 sessionId 是 Access 设置的工程上下文标识，仅用于剪贴板和旧菜单有效性校验；Model 不据此获取工程。菜单保存 sessionId，提交前检查上下文未切换；节点身份直接来自所属 Provider，多选数据目标由动作参数固定，命令校验数据是否仍然存在。dataObjects/dataObject 仅查询现有节点的非拥有数据源。RenderAvailableRole 由 Access 根据当前 Scene 回写，菜单通过 Model 查询显示设置是否可用。
 
-剪贴板调用链：MenuProvider::canPaste/paste → Model::transferItems → Model::transferRequested → Access → MainWindow::transferTreeItems。专用传输信号在 GUI 线程直连，通过 bool 引用同步返回校验/执行结果，满足 Qt 拖放和粘贴接口的布尔返回语义；操作失败不清空剪切剪贴板。预览校验只运行现有命令 validate，实际执行由 CommandManager 完成。TreeView 不保存 Project 或目标 RenderView，也不提供 project/setProject/targetView/setTargetView；拖放通过两边 Model 的非空 sessionId 判断上下文一致性。节点菜单、普通菜单、插件菜单共用 TreeView 的 QAction 界面事件处理；对外业务操作信号只由 Model 发出。
+剪贴板调用链：MenuProvider::canPaste/paste → Model::transferItems → Model::transferRequested → Access → MainWindow::transferTreeItems。专用传输信号在 GUI 线程直连，通过 bool 引用同步返回校验/执行结果，满足 Qt 拖放和粘贴接口的布尔返回语义；操作失败不清空剪切剪贴板。预览校验只运行现有命令 validate，实际执行由 CommandManager 完成。TreeView 不保存 Project 或目标 RenderView，也不提供 project/setProject/targetView/setTargetView；拖放通过两边 Model 的非空 sessionId 判断上下文一致性。节点菜单、空白菜单和插件追加菜单均由各自创建方连接 QAction；平台业务信号由具体 Model 发出。插件自有类型的专属菜单连接插件自己的具名业务处理函数，不向通用 Model 塞入插件操作或平台通用命令入口；示例点集删除通过 Provider 的专用信号连接插件槽，执行前校验会话，继续调用插件命令。树 MenuProvider 监听菜单扩展信号补充复制、剪切、粘贴；快捷键与菜单复用 View 的传输槽。
 
 RenderServer 不依赖树节点或分组。组项状态在 Provider 聚合，Access 将组操作展开为数据操作，按当前视图回写实际状态。网格属性选择、过滤器预览及状态查询由 IDOSGridRenderProvider 的业务接口实现。AppTreeAccess 调用 supportsData/renderDataId/requiredDataIds 确定路由及需装配的数据，再调用 setDataChecked/dataCheckState 并回写模型；Access 不实现过滤规则、不转换具体数据或 Provider 子类，不直接设置对象显隐或网格属性。业务 Provider 接收当前 View 与非拥有数据对象列表，不保存工程或 Server。首次显示创建 RenderObject，隐藏后保留复用。Provider 不再查询或操作渲染视图。
 
@@ -88,13 +94,15 @@ class CORE_EXPORT IDOSTreeItem
 #### `IDOSTreeItemProvider`
 
 ```cpp
-class CORE_EXPORT IDOSTreeItemProvider
+class CORE_EXPORT IDOSTreeItemProvider : public QObject
 {
+    Q_OBJECT
+
   public:
     explicit IDOSTreeItemProvider(IDOSDataObject* data = nullptr);
     virtual ~IDOSTreeItemProvider();
     IDOSTreeItem* item() const;
-    bool bindItem(IDOSTreeItem* item);
+    bool setItem(IDOSTreeItem* item);
     QString metadataId() const;
     bool setMetadataId(const QString& id);
     IDOSDataObject* dataSource() const;
@@ -127,7 +135,7 @@ class CORE_EXPORT IDOSTreeItemProvider
     virtual QVariant data(int role) const;
     virtual bool setData(const QVariant& value, int role);
     virtual Qt::ItemFlags flags() const;
-    virtual QMenu* createContextMenu();
+    virtual QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems = QList<IDOSTreeItem*>());
     virtual void refresh();
     virtual bool dependsOn(const QStringList& dataIds) const;
 
@@ -220,8 +228,6 @@ public:
     void setSessionId(const QString& sessionId);
     QList<IDOSDataObject*> dataObjects() const;
     IDOSDataObject* dataObject(const QString& dataId) const;
-    bool triggerAction(const QString& operation, const QStringList& itemIds,
-                       const QVariantMap& arguments);
     QString name() const;
     void setName(const QString& name);
     IDOSTreeItem* item(const QString& id) const;
@@ -256,8 +262,8 @@ signals:
     void checkStateChanged(IDOSTreeItem* item, Qt::CheckState state);
     void registryChanged();
     void transferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted);
-    void actionTriggered(const QString& operation, const QStringList& itemIds,
-                         const QVariantMap& arguments);
+protected:
+    bool acceptsContext(const QString& session, const QString& itemId) const;
 private slots:
     void onMetadataAdded(const QString& metadataId);
     void onMetadataRemoving(const QString& metadataId);
@@ -284,6 +290,194 @@ private:
 };
 ```
 
+#### `IDOSDataTreeItemModel`
+
+```cpp
+class CORE_EXPORT IDOSDataTreeItemModel : public IDOSTreeModel
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSDataTreeItemModel(IDOSTreeItemProviderRegistry* registry, QObject* parent = nullptr);
+    bool importDataset(const QString& itemId, const QString& session, const QString& text, const QString& fileFilter,
+                       const QString& providerId, const QString& dataTypeId);
+    bool selectSeismicInline(const QString& itemId, const QString& session, const QString& dataId);
+    bool importFluidRockTables(const QString& itemId, const QString& session, const QString& category);
+    bool addFluidRockTableToCase(const QString& itemId, const QString& session, const QString& dataId);
+    bool showGridSettings(const QString& itemId, const QString& session, const QString& gridId, const QString& filterId,
+                          const QString& propertyId, bool openFilter);
+    bool displayGridProperty(const QString& itemId, const QString& session, const QString& gridId,
+                             const QString& propertyId);
+    bool showWellSettings(const QString& itemId, const QString& session, const QString& wellId, bool trajectory);
+    bool deleteData(const QString& itemId, const QString& session, const QStringList& objectIds);
+    bool addToCase(const QString& itemId, const QString& session, const QJsonArray& items);
+    bool renameObject(const QString& itemId, const QString& session, const QString& dataId);
+    bool importGridProperty(const QString& itemId, const QString& session, const QString& dataId,
+                            const QString& caseId);
+    bool importGridDynamicProperties(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGridProperty(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGrid(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGridFilter(const QString& itemId, const QString& session, const QString& dataId);
+    bool renameGridFilter(const QString& itemId, const QString& session, const QString& dataId);
+    bool viewWellData(const QString& itemId, const QString& session, const QString& dataId, const QString& part,
+                      const QString& itemKey);
+    bool newWell(const QString& itemId, const QString& session);
+    bool importWell(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteWell(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellHeader(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellTrajectory(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCurves(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellMarkers(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCompletions(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCheckshots(const QString& itemId, const QString& session, const QString& dataId);
+
+  signals:
+    void importDatasetRequested(const QString& text, const QString& fileFilter, const QString& providerId,
+                                const QString& dataTypeId);
+    void selectSeismicInlineRequested(const QString& dataId);
+    void importFluidRockTablesRequested(const QString& category);
+    void addFluidRockTableToCaseRequested(const QString& dataId);
+    void showGridSettingsRequested(const QString& gridId, const QString& filterId, const QString& propertyId,
+                                   bool openFilter);
+    void displayGridPropertyRequested(const QString& gridId, const QString& propertyId);
+    void showWellSettingsRequested(const QString& wellId, bool trajectory);
+    void deleteDataRequested(const QStringList& objectIds);
+    void addToCaseRequested(const QJsonArray& items);
+    void renameObjectRequested(const QString& dataId);
+    void importGridPropertyRequested(const QString& dataId, const QString& caseId);
+    void importGridDynamicPropertiesRequested(const QString& dataId);
+    void deleteGridPropertyRequested(const QString& dataId);
+    void deleteGridRequested(const QString& dataId);
+    void deleteGridFilterRequested(const QString& dataId);
+    void renameGridFilterRequested(const QString& dataId);
+    void viewWellDataRequested(const QString& dataId, const QString& part, const QString& itemKey);
+    void newWellRequested();
+    void importWellRequested(const QString& dataId);
+    void deleteWellRequested(const QString& dataId);
+    void importWellHeaderRequested(const QString& dataId);
+    void importWellTrajectoryRequested(const QString& dataId);
+    void importWellCurvesRequested(const QString& dataId);
+    void importWellMarkersRequested(const QString& dataId);
+    void importWellCompletionsRequested(const QString& dataId);
+    void importWellCheckshotsRequested(const QString& dataId);
+};
+```
+
+#### `IDOSCaseTreeItemModel`
+
+```cpp
+class CORE_EXPORT IDOSCaseTreeItemModel : public IDOSTreeModel
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSCaseTreeItemModel(IDOSTreeItemProviderRegistry* registry, QObject* parent = nullptr);
+    bool showGridSettings(const QString& itemId, const QString& session, const QString& gridId, const QString& filterId,
+                          const QString& propertyId, bool openFilter);
+    bool displayGridProperty(const QString& itemId, const QString& session, const QString& gridId,
+                             const QString& propertyId);
+    bool showWellSettings(const QString& itemId, const QString& session, const QString& wellId, bool trajectory);
+    bool renameObject(const QString& itemId, const QString& session, const QString& dataId);
+    bool importGridProperty(const QString& itemId, const QString& session, const QString& dataId,
+                            const QString& caseId);
+    bool importGridDynamicProperties(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGridProperty(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGrid(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteGridFilter(const QString& itemId, const QString& session, const QString& dataId);
+    bool renameGridFilter(const QString& itemId, const QString& session, const QString& dataId);
+    bool viewWellData(const QString& itemId, const QString& session, const QString& dataId, const QString& part,
+                      const QString& itemKey);
+    bool importWell(const QString& itemId, const QString& session, const QString& dataId);
+    bool deleteWell(const QString& itemId, const QString& session, const QString& dataId);
+    bool generateInput(const QString& itemId, const QString& session, const QString& dataId);
+    bool viewPropertyCurves(const QString& itemId, const QString& session, const QString& caseId);
+    bool importSummaryResults(const QString& itemId, const QString& session, const QString& dataId);
+    bool viewSummaryResults(const QString& itemId, const QString& session, const QString& dataId);
+    bool renameCase(const QString& itemId, const QString& session, const QString& dataId);
+    bool newCase(const QString& session);
+    bool importCase(const QString& session);
+    bool importGrid(const QString& itemId, const QString& session, const QString& caseId);
+    bool deleteCase(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellHeader(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellTrajectory(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCurves(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellMarkers(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCompletions(const QString& itemId, const QString& session, const QString& dataId);
+
+    bool importWellCheckshots(const QString& itemId, const QString& session, const QString& dataId);
+
+  signals:
+    void showGridSettingsRequested(const QString& gridId, const QString& filterId, const QString& propertyId,
+                                   bool openFilter);
+    void displayGridPropertyRequested(const QString& gridId, const QString& propertyId);
+    void showWellSettingsRequested(const QString& wellId, bool trajectory);
+    void renameObjectRequested(const QString& dataId);
+    void importGridPropertyRequested(const QString& dataId, const QString& caseId);
+    void importGridDynamicPropertiesRequested(const QString& dataId);
+    void deleteGridPropertyRequested(const QString& dataId);
+    void deleteGridRequested(const QString& dataId);
+    void deleteGridFilterRequested(const QString& dataId);
+    void renameGridFilterRequested(const QString& dataId);
+    void viewWellDataRequested(const QString& dataId, const QString& part, const QString& itemKey);
+    void importWellRequested(const QString& dataId);
+    void deleteWellRequested(const QString& dataId);
+    void generateInputRequested(const QString& dataId);
+    void viewPropertyCurvesRequested(const QString& caseId);
+    void importSummaryResultsRequested(const QString& dataId);
+    void viewSummaryResultsRequested(const QString& dataId);
+    void renameCaseRequested(const QString& dataId);
+    void newCaseRequested();
+    void importCaseRequested();
+    void importGridRequested(const QString& caseId);
+    void deleteCaseRequested(const QString& dataId);
+    void importWellHeaderRequested(const QString& dataId);
+    void importWellTrajectoryRequested(const QString& dataId);
+    void importWellCurvesRequested(const QString& dataId);
+    void importWellMarkersRequested(const QString& dataId);
+    void importWellCompletionsRequested(const QString& dataId);
+    void importWellCheckshotsRequested(const QString& dataId);
+};
+```
+
+#### `IDOSDataTreeView`
+
+```cpp
+class GUI_EXPORT IDOSDataTreeView : public IDOSTreeView
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSDataTreeView(QWidget* parent = nullptr);
+    void setModel(QAbstractItemModel* model) override;
+    IDOSDataTreeItemModel* dataModel() const;
+};
+```
+
+#### `IDOSCaseTreeView`
+
+```cpp
+class GUI_EXPORT IDOSCaseTreeView : public IDOSTreeView
+{
+    Q_OBJECT
+
+  public:
+    explicit IDOSCaseTreeView(QWidget* parent = nullptr);
+    void setModel(QAbstractItemModel* model) override;
+    IDOSCaseTreeItemModel* caseModel() const;
+};
+```
+
 #### `IDOSTreeAccess`
 
 ```cpp
@@ -302,23 +496,59 @@ public:
 class APP_EXPORT IDOSAppTreeAccess : public IDOSTreeAccess
 {
     Q_OBJECT
-public:
+  public:
     explicit IDOSAppTreeAccess(IDOSProject* project, QObject* parent = nullptr);
     ~IDOSAppTreeAccess() override;
-    void setDataTreeModel(IDOSTreeModel* model);
-    void setCaseTreeModel(IDOSTreeModel* model);
+    void setDataTreeModel(IDOSDataTreeItemModel* model);
+    void setCaseTreeModel(IDOSCaseTreeItemModel* model);
     void setRenderServer(IDOSRenderServer* server);
-private slots:
+  private slots:
     void onProjectChanged(const QString& id);
     void onProjectChanged(const QStringList& ids);
     void onProjectDestroyed();
     void onRegistryChanged();
     void onTransferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted);
-    void onActionTriggered(const QString& operation, const QStringList& itemIds,
-                           const QVariantMap& arguments);
+    void onImportDatasetRequested(const QString& text, const QString& fileFilter, const QString& providerId,
+                                  const QString& dataTypeId);
+    void onSelectSeismicInlineRequested(const QString& dataId);
+    void onImportFluidRockTablesRequested(const QString& category);
+    void onAddFluidRockTableToCaseRequested(const QString& dataId);
+    void onShowGridSettingsRequested(const QString& gridId, const QString& filterId, const QString& propertyId,
+                                     bool openFilter);
+    void onDisplayGridPropertyRequested(const QString& gridId, const QString& propertyId);
+    void onShowWellSettingsRequested(const QString& wellId, bool trajectory);
+    void onDeleteDataRequested(const QStringList& objectIds);
+    void onAddToCaseRequested(const QJsonArray& items);
+    void onRenameObjectRequested(const QString& dataId);
+    void onImportGridPropertyRequested(const QString& dataId, const QString& caseId);
+    void onImportGridDynamicPropertiesRequested(const QString& dataId);
+    void onDeleteGridPropertyRequested(const QString& dataId);
+    void onDeleteGridRequested(const QString& dataId);
+    void onDeleteGridFilterRequested(const QString& dataId);
+    void onRenameGridFilterRequested(const QString& dataId);
+    void onViewWellDataRequested(const QString& dataId, const QString& part, const QString& itemKey);
+    void onNewWellRequested();
+    void onImportWellRequested(const QString& dataId);
+    void onDeleteWellRequested(const QString& dataId);
+    void onGenerateInputRequested(const QString& dataId);
+    void onViewPropertyCurvesRequested(const QString& caseId);
+    void onImportSummaryResultsRequested(const QString& dataId);
+    void onViewSummaryResultsRequested(const QString& dataId);
+    void onRenameCaseRequested(const QString& dataId);
+    void onNewCaseRequested();
+    void onImportCaseRequested();
+    void onImportGridRequested(const QString& caseId);
+    void onDeleteCaseRequested(const QString& dataId);
+    void onImportWellHeaderRequested(const QString& dataId);
+    void onImportWellTrajectoryRequested(const QString& dataId);
+    void onImportWellCurvesRequested(const QString& dataId);
+    void onImportWellMarkersRequested(const QString& dataId);
+    void onImportWellCompletionsRequested(const QString& dataId);
+    void onImportWellCheckshotsRequested(const QString& dataId);
     void onCheckStateChanged(IDOSTreeItem* item, Qt::CheckState state);
     void onRenderStateChanged();
-private:
+
+  private:
     void connectModel(IDOSTreeModel* model);
     void initializeModel(IDOSTreeModel* model);
     void updateModel(IDOSTreeModel* model, const QStringList& ids);
@@ -329,8 +559,8 @@ private:
     bool isCheckable(IDOSDataObject* data) const;
     IDOSRenderView* targetView() const;
     QPointer<IDOSProject> m_project;
-    QPointer<IDOSTreeModel> m_dataTreeModel;
-    QPointer<IDOSTreeModel> m_caseTreeModel;
+    QPointer<IDOSDataTreeItemModel> m_dataTreeModel;
+    QPointer<IDOSCaseTreeItemModel> m_caseTreeModel;
     QPointer<IDOSRenderServer> m_renderServer;
     QPointer<IDOSRenderView> m_targetView;
     bool m_applying;
@@ -356,6 +586,9 @@ class GUI_EXPORT IDOSTreeMenuProvider : public QObject
     virtual bool paste(const QMimeData* data, IDOSTreeItem* target,
                        Qt::DropAction action);
     IDOSTreeView* view() const;
+
+private slots:
+    void onContextMenuAboutToShow(QMenu* menu);
 
 private:
     QPointer<IDOSTreeView> m_view;
@@ -383,6 +616,7 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     QMenu* createContextMenu(const QModelIndex& target);
     QVariantMap presentationState() const;
     void restorePresentationState(const QVariantMap& state);
+    QMimeData* selectedMimeData() const;
     bool pasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action);
 
   signals:
@@ -397,25 +631,23 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void dropEvent(QDropEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
 
-  private slots:
-    void onActionTriggered();
+  public slots:
     void onCopy();
     void onCut();
     void onPaste();
+
+  private slots:
     void onRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
     void onRowsInserted(const QModelIndex& parent, int first, int last);
     void onModelAboutToBeReset();
 
   private:
-    void bindMenu(QMenu* menu);
     bool acceptsSource(const IDOSTreeView* source) const;
     void collectPresentationState(const QModelIndex& parent, QStringList& expanded) const;
-    QMimeData* selectedMimeData() const;
     QMimeData* actionMimeData() const;
     QMimeData* cloneMimeData(const QMimeData* data) const;
     bool canCutMimeData(const QMimeData* data) const;
     bool canPasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action) const;
-    void populateTransferMenu(QMenu* menu, const QModelIndex& target);
     Qt::DropAction dragAction(Qt::KeyboardModifiers modifiers) const;
     QString nodePath(const QModelIndex& index) const;
     void collectExpandedPaths(const QModelIndex& index);
@@ -459,7 +691,7 @@ class APP_EXPORT IDOSDataTreeMenuProvider : public IDOSTreeMenuProvider
 {
     Q_OBJECT
 public:
-    explicit IDOSDataTreeMenuProvider(IDOSTreeView* view);
+    explicit IDOSDataTreeMenuProvider(IDOSDataTreeView* view);
     ~IDOSDataTreeMenuProvider() override;
     QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems,
                              IDOSTreeItem* contextItem) override;
@@ -468,19 +700,8 @@ public:
     bool canPaste(const QMimeData* data, const IDOSTreeItem* target, Qt::DropAction action) const override;
     bool paste(const QMimeData* data, IDOSTreeItem* target, Qt::DropAction action) override;
 private:
-    void addDeleteActions(QMenu* menu, IDOSTreeView* view, const QList<IDOSTreeItem*>& selectedItems);
-    void addTransferActions(QMenu* menu);
-    QAction* addTransferAction(QMenu* menu, const QString& text);
-    QAction* addGridAction(QMenu* menu, IDOSTreeView* view, const QString& text);
-    void addGridActions(QMenu* menu, IDOSTreeView* view);
-    void addGridDisplayActions(QMenu* menu, IDOSTreeView* view);
-    QAction* addGridDisplayAction(QMenu* menu, IDOSTreeView* view, const QString& text, const QString& gridId, const QString& propertyId);
-    void addWellActions(QMenu* menu, IDOSTreeView* view);
-    bool supportsWellDisplayItem(const IDOSTreeItem* item) const;
-    void addWellDisplayActions(QMenu* menu, IDOSTreeView* view);
     QJsonObject readTransfer(const QMimeData* data) const;
     QJsonObject transferArguments(const QMimeData* data, const IDOSTreeItem* target) const;
-    bool supportsDelete(const IDOSDataObject* data) const;
 };
 ```
 
@@ -491,7 +712,7 @@ class APP_EXPORT IDOSCaseTreeMenuProvider : public IDOSTreeMenuProvider
 {
     Q_OBJECT
 public:
-    explicit IDOSCaseTreeMenuProvider(IDOSTreeView* view);
+    explicit IDOSCaseTreeMenuProvider(IDOSCaseTreeView* view);
     ~IDOSCaseTreeMenuProvider() override;
     QMenu* createContextMenu(const QList<IDOSTreeItem*>& selectedItems,
                              IDOSTreeItem* contextItem) override;
@@ -500,11 +721,11 @@ public:
     bool canPaste(const QMimeData* data, const IDOSTreeItem* target, Qt::DropAction action) const override;
     bool paste(const QMimeData* data, IDOSTreeItem* target, Qt::DropAction action) override;
 private:
-    QAction* addAction(QMenu* menu, IDOSTreeView* view, const QString& text);
-    void addCaseActions(QMenu* menu, IDOSTreeView* view);
-    void addTransferActions(QMenu* menu);
     QJsonObject readTransfer(const QMimeData* data) const;
     QJsonObject transferArguments(const QMimeData* data, const IDOSTreeItem* target) const;
+  private slots:
+    void onNewCase();
+    void onImportCase();
 };
 ```
 

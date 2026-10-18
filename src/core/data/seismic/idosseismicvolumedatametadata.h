@@ -1,7 +1,7 @@
 #ifndef IDOS_SEISMIC_VOLUME_DATA_METADATA_H
 #define IDOS_SEISMIC_VOLUME_DATA_METADATA_H
 
-#include "providers/idosdatametadata.h"
+#include "data/idosdatametadata.h"
 
 class CORE_EXPORT IDOSSeismicVolumeDataMetadata : public IDOSDataMetadata
 {

@@ -5,7 +5,7 @@
 #include <QObject>
 
 #include "data/case/idoscaseobject.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "idosproject.h"
 
 #include "idosdeletepropertycommand.h"
@@ -13,7 +13,8 @@
 IDOSDeletePropertyCommand::IDOSDeletePropertyCommand(
     IDOSProject* project,
     QString propertyId)
-    : IDOSCommand(QStringLiteral("property.delete"),
+    :
+    IDOSCommand(QStringLiteral("property.delete"),
                   Type::Action,
                   project,
                   QObject::tr("Delete property"))
@@ -52,7 +53,7 @@ bool IDOSDeletePropertyCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (object != nullptr && qobject_cast<IDOSGridProperty*>(object) == nullptr)
+    if (object != nullptr && qobject_cast<IDOSGridPropertyObject*>(object) == nullptr)
     {
         error = QObject::tr("The target object is not a property.");
         return false;
@@ -82,7 +83,7 @@ bool IDOSDeletePropertyCommand::apply(QString& error)
     removeCaseReferences();
 
     IDOSDataObject* detachedObject = targetProject->take(m_propertyId);
-    IDOSGridProperty* detachedProperty = qobject_cast<IDOSGridProperty*>(detachedObject);
+    IDOSGridPropertyObject* detachedProperty = qobject_cast<IDOSGridPropertyObject*>(detachedObject);
     if (detachedProperty == nullptr)
     {
         if (detachedObject != nullptr)
@@ -118,7 +119,11 @@ bool IDOSDeletePropertyCommand::revert(QString& error)
         return false;
     }
 
-    targetProject->add(m_property.data());
+    if (!targetProject->add(m_property.data()))
+    {
+        error = QObject::tr("The target property is unavailable.");
+        return false;
+    }
     restoreCaseReferences();
     return true;
 }
@@ -200,7 +205,8 @@ void IDOSDeletePropertyCommand::restoreCaseReferences()
 }
 
 IDOSDeletePropertyCommandMetadata::IDOSDeletePropertyCommandMetadata()
-    : IDOSCommandMetadata(QStringLiteral("property.delete"),
+    :
+    IDOSCommandMetadata(QStringLiteral("property.delete"),
                           QObject::tr("Delete property"),
                           QObject::tr("Delete a grid property from the current project."),
                           IDOSCommand::Type::Action)

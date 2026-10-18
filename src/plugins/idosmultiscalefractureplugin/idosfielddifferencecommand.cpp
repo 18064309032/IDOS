@@ -7,9 +7,9 @@
 #include <QScopedPointer>
 #include <QStringList>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridobject.h"
 #include "data/grid/idosgridpropertymetadata.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "idosproject.h"
 
 #include "idosfielddifferencecommand.h"
@@ -40,10 +40,10 @@ int IDOSFieldDifferenceCommand::liveCount()
 
 bool IDOSFieldDifferenceCommand::readInputs(QVector<double>& before, QVector<double>& after, QString& error) const
 {
-    const IDOSGrid* grid = qobject_cast<IDOSGrid*>(project()->object(m_arguments.value(QStringLiteral("gridId")).toString()));
-    const IDOSGridProperty* inputs[2] = {
-        qobject_cast<IDOSGridProperty*>(project()->object(m_arguments.value(QStringLiteral("beforeId")).toString())),
-        qobject_cast<IDOSGridProperty*>(project()->object(m_arguments.value(QStringLiteral("afterId")).toString()))};
+    const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(project()->object(m_arguments.value(QStringLiteral("gridId")).toString()));
+    const IDOSGridPropertyObject* inputs[2] = {
+        qobject_cast<IDOSGridPropertyObject*>(project()->object(m_arguments.value(QStringLiteral("beforeId")).toString())),
+        qobject_cast<IDOSGridPropertyObject*>(project()->object(m_arguments.value(QStringLiteral("afterId")).toString()))};
     if (grid == nullptr || grid->nx() <= 0 || grid->ny() <= 0 || grid->nz() <= 0
         || qint64(grid->nx()) * grid->ny() > std::numeric_limits<int>::max() / qint64(grid->nz()))
     {
@@ -61,14 +61,14 @@ bool IDOSFieldDifferenceCommand::readInputs(QVector<double>& before, QVector<dou
     const QStringList steps = {QStringLiteral("beforeStep"), QStringLiteral("afterStep")};
     for (int index = 0; index < 2; ++index)
     {
-        const IDOSGridProperty* property = inputs[index];
+        const IDOSGridPropertyObject* property = inputs[index];
         if (property == nullptr || property->gridId() != grid->objectId()
             || property->numX() != grid->nx() || property->numY() != grid->ny() || property->numZ() != grid->nz())
         {
             error = QObject::tr("Both input properties must belong to the selected grid and match its dimensions.");
             return false;
         }
-        if (property->kind() == IDOSGridProperty::Kind::Dynamic)
+        if (property->kind() == IDOSGridPropertyObject::Kind::Dynamic)
         {
             const QJsonValue step = m_arguments.value(steps.at(index));
             if (!step.isDouble() || step.toDouble() != step.toInt(-1) || !property->reportSteps().contains(step.toInt(-1)))
@@ -90,8 +90,8 @@ bool IDOSFieldDifferenceCommand::readInputs(QVector<double>& before, QVector<dou
     }
     const bool knownMatch = !inputs[0]->keyword().trimmed().isEmpty()
         && inputs[0]->keyword().compare(inputs[1]->keyword(), Qt::CaseInsensitive) == 0
-        && inputs[0]->valueUnits() == IDOSGridProperty::ValueUnits::SI
-        && inputs[1]->valueUnits() == IDOSGridProperty::ValueUnits::SI;
+        && inputs[0]->valueUnits() == IDOSGridPropertyObject::ValueUnits::SI
+        && inputs[1]->valueUnits() == IDOSGridPropertyObject::ValueUnits::SI;
     if (!knownMatch && !m_arguments.value(QStringLiteral("confirmUnits")).toBool())
     {
         error = QObject::tr("Confirm matching physical quantities and units. No unit conversion is performed.");
@@ -104,7 +104,7 @@ bool IDOSFieldDifferenceCommand::validateCommand(QString& error) const
 {
     if (!m_output.isNull())
     {
-        const IDOSGrid* grid = qobject_cast<IDOSGrid*>(project()->object(m_output->gridId()));
+        const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(project()->object(m_output->gridId()));
         if (m_output->parent() != nullptr || project()->object(m_output->objectId()) != nullptr || grid == nullptr
             || grid->nx() != m_output->numX() || grid->ny() != m_output->numY() || grid->nz() != m_output->numZ())
         {
@@ -125,6 +125,12 @@ QJsonObject IDOSFieldDifferenceCommand::buildPreview() const
 
 bool IDOSFieldDifferenceCommand::apply(QString& error)
 {
+    if (m_output.isNull() && !result().isEmpty())
+    {
+        error = QObject::tr("The output property is unavailable.");
+        return false;
+    }
+
     if (m_output.isNull())
     {
         QVector<double> before;
@@ -133,7 +139,7 @@ bool IDOSFieldDifferenceCommand::apply(QString& error)
         {
             return false;
         }
-        const IDOSGrid* grid = qobject_cast<IDOSGrid*>(project()->object(m_arguments.value(QStringLiteral("gridId")).toString()));
+        const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(project()->object(m_arguments.value(QStringLiteral("gridId")).toString()));
         QVector<double> difference(before.size(), std::numeric_limits<double>::quiet_NaN());
         int count = 0;
         double minimum = std::numeric_limits<double>::max();
@@ -162,15 +168,15 @@ bool IDOSFieldDifferenceCommand::apply(QString& error)
             error = QObject::tr("No valid active cells are available for comparison.");
             return false;
         }
-        const IDOSGridProperty* source = qobject_cast<IDOSGridProperty*>(project()->object(m_arguments.value(QStringLiteral("beforeId")).toString()));
+        const IDOSGridPropertyObject* source = qobject_cast<IDOSGridPropertyObject*>(project()->object(m_arguments.value(QStringLiteral("beforeId")).toString()));
         const IDOSGridPropertyMetadata metadata;
-        QScopedPointer<IDOSGridProperty> output(qobject_cast<IDOSGridProperty*>(metadata.create()));
+        QScopedPointer<IDOSGridPropertyObject> output(qobject_cast<IDOSGridPropertyObject*>(metadata.create()));
         output->setGridId(grid->objectId());
         output->setName(m_arguments.value(QStringLiteral("name")).toString().trimmed());
         output->setKeyword(QString::fromLatin1("DELTA_") + source->keyword());
         output->setDimensions(grid->nx(), grid->ny(), grid->nz());
         output->setValueUnits(m_arguments.value(QStringLiteral("confirmUnits")).toBool()
-            ? IDOSGridProperty::ValueUnits::Unknown : IDOSGridProperty::ValueUnits::SI);
+            ? IDOSGridPropertyObject::ValueUnits::Unknown : IDOSGridPropertyObject::ValueUnits::SI);
         if (!output->setValues(difference))
         {
             error = QObject::tr("The difference values could not be stored.");
@@ -180,7 +186,11 @@ bool IDOSFieldDifferenceCommand::apply(QString& error)
             {QStringLiteral("maximum"), maximum}, {QStringLiteral("mean"), mean}};
         m_output = output.take();
     }
-    project()->add(m_output.data());
+    if (!project()->add(m_output.data()))
+    {
+        error = QObject::tr("The output property is unavailable.");
+        return false;
+    }
     QJsonObject result = m_statistics;
     result.insert(QStringLiteral("objectId"), m_output->objectId());
     result.insert(QStringLiteral("inputs"), m_arguments);

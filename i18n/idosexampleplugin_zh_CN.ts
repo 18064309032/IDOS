@@ -43,9 +43,13 @@
         <source>Example points</source>
         <translation>示例点集</translation>
     </message>
+    <message>
+        <source>Delete Point Set</source>
+        <translation>删除点集</translation>
+    </message>
 </context>
 <context>
-    <name>IDOSPointSet</name>
+    <name>IDOSPointSetObject</name>
     <message>
         <source>Stored point coordinates have an invalid type.</source>
         <translation>存储的点坐标类型无效。</translation>

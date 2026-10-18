@@ -6,19 +6,19 @@
 #include <QVariantList>
 #include <QVector>
 
-class IDOSGrid;
-class IDOSGridProperty;
+class IDOSGridObject;
+class IDOSGridPropertyObject;
 
 class IDOSDfnGenerator
 {
   public:
-    static bool validate(const IDOSGrid* grid, const IDOSGridProperty* density,
+    static bool validate(const IDOSGridObject* grid, const IDOSGridPropertyObject* density,
                          const QJsonObject& parameters, QString& error);
-    static bool generate(const IDOSGrid* grid, const IDOSGridProperty* density,
+    static bool generate(const IDOSGridObject* grid, const IDOSGridPropertyObject* density,
                          const QJsonObject& parameters, QVariantList& fractures, QString& error);
 
   private:
-    static bool cellCoordinates(const IDOSGrid* grid, int cell, QVector<double>& corners);
+    static bool cellCoordinates(const IDOSGridObject* grid, int cell, QVector<double>& corners);
 };
 
 #endif // IDOS_DFN_GENERATOR_H

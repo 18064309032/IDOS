@@ -3,9 +3,9 @@
 
 #include "idosdataobject.h"
 #include "idostreeitem.h"
-#include "providers/idostreeitemprovider.h"
-#include "providers/idostreeitemprovidermetadata.h"
-#include "providers/idostreeitemproviderregistry.h"
+#include "idostreeitemprovider.h"
+#include "idostreeitemprovidermetadata.h"
+#include "idostreeitemproviderregistry.h"
 
 #include "idostreemodel.h"
 
@@ -26,9 +26,9 @@ IDOSTreeModel::IDOSTreeModel(IDOSTreeItemProviderRegistry* registry, QObject* pa
     m_root->setModel(this);
     if (registry != nullptr)
     {
-        connect(registry, &IDOSTreeItemProviderRegistry::metadataRegistered, this, &IDOSTreeModel::onMetadataAdded);
+        connect(registry, &IDOSTreeItemProviderRegistry::metadataRegistered, this, &IDOSTreeModel::onMetadataRegistered);
         connect(registry, &IDOSTreeItemProviderRegistry::metadataUnregistering, this, &IDOSTreeModel::onMetadataRemoving);
-        connect(registry, &IDOSTreeItemProviderRegistry::metadataUnregistered, this, &IDOSTreeModel::onMetadataAdded);
+        connect(registry, &IDOSTreeItemProviderRegistry::metadataUnregistered, this, &IDOSTreeModel::onMetadataRegistered);
     }
 }
 
@@ -70,7 +70,7 @@ void IDOSTreeModel::refreshCheckStates(IDOSTreeItem* item)
     {
         refreshCheckStates(child);
     }
-    const QModelIndex index = indexFromItem(item);
+    const QModelIndex index = this->index(item);
     if (index.isValid())
     {
         emit dataChanged(index, index, {Qt::CheckStateRole});
@@ -132,7 +132,7 @@ bool IDOSTreeModel::insertItem(IDOSTreeItem* parent, IDOSTreeItem* item, int row
     m_inserting = true;
     if (!m_resetting)
     {
-        beginInsertRows(indexFromItem(parent), row, row);
+        beginInsertRows(this->index(parent), row, row);
     }
     m_committing = true;
     const bool inserted = parent->insertChild(row, item);
@@ -163,7 +163,7 @@ bool IDOSTreeModel::removeItem(IDOSTreeItem* item)
     m_inserting = false;
     if (!m_resetting)
     {
-        beginRemoveRows(indexFromItem(parent), row, row);
+        beginRemoveRows(this->index(parent), row, row);
     }
     m_committing = true;
     const bool removed = parent->removeChild(item);
@@ -218,7 +218,7 @@ IDOSTreeItem* IDOSTreeModel::find(const QString& key) const
 
 bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
-    IDOSTreeItem* item = itemFromIndex(index);
+    IDOSTreeItem* item = this->item(index);
     if (item == nullptr || item->model() != this || !item->provider()->setData(value, role))
     {
         return false;
@@ -246,7 +246,7 @@ bool IDOSTreeModel::setData(const QModelIndex& index, const QVariant& value, int
 
 bool IDOSTreeModel::setChecked(IDOSTreeItem* item, Qt::CheckState state)
 {
-    return setData(indexFromItem(item), state, Qt::CheckStateRole);
+    return setData(this->index(item), state, Qt::CheckStateRole);
 }
 
 void IDOSTreeModel::addObject(IDOSDataObject* data)
@@ -259,13 +259,13 @@ void IDOSTreeModel::addObject(IDOSDataObject* data)
     const IDOSTreeItemProviderMetadata* metadata = nullptr;
     for (const IDOSTreeItemProviderMetadata* candidate : m_registry->metadata())
     {
-        if (candidate->supports(data))
+        if (candidate->treeName() == m_name && candidate->supports(data))
         {
             metadata = candidate;
             break;
         }
     }
-    if (metadata == nullptr || metadata->treeName() != m_name || !metadata->supports(data))
+    if (metadata == nullptr)
     {
         if (old != nullptr)
         {
@@ -279,16 +279,21 @@ void IDOSTreeModel::addObject(IDOSDataObject* data)
         parent = m_root;
     }
     if (old != nullptr && old->parent() == parent && old->provider() != nullptr &&
-        old->provider()->dataSource() == data)
+        old->provider()->object() == data && old->provider()->metadataId() == metadata->id())
     {
         old->provider()->setName(data->name());
         refreshItem(old);
         return;
     }
     const int row = old != nullptr && old->parent() == parent ? old->row() : parent->childCount();
-    IDOSTreeItemProvider* provider = m_registry->createProvider(data);
+    IDOSTreeItemProvider* provider = metadata->create(data);
     if (provider == nullptr)
     {
+        return;
+    }
+    if (!provider->setMetadataId(metadata->id()))
+    {
+        delete provider;
         return;
     }
     IDOSTreeItem* item = new IDOSTreeItem(provider);
@@ -306,7 +311,7 @@ void IDOSTreeModel::addObject(IDOSDataObject* data)
     }
 }
 
-void IDOSTreeModel::onMetadataAdded(const QString& typeId)
+void IDOSTreeModel::onMetadataRegistered(const QString& typeId)
 {
     Q_UNUSED(typeId);
     emit registryChanged();
@@ -384,15 +389,15 @@ QModelIndex IDOSTreeModel::index(int row, int column, const QModelIndex& parent)
     {
         return QModelIndex();
     }
-    IDOSTreeItem* parentItem = parent.isValid() ? itemFromIndex(parent) : m_root;
+    IDOSTreeItem* parentItem = parent.isValid() ? this->item(parent) : m_root;
     IDOSTreeItem* item = parentItem->child(row);
     return item != nullptr ? createIndex(row, column, item) : QModelIndex();
 }
 
 QModelIndex IDOSTreeModel::parent(const QModelIndex& child) const
 {
-    IDOSTreeItem* item = itemFromIndex(child);
-    return item != nullptr ? indexFromItem(item->parent()) : QModelIndex();
+    IDOSTreeItem* item = this->item(child);
+    return item != nullptr ? index(item->parent()) : QModelIndex();
 }
 
 int IDOSTreeModel::rowCount(const QModelIndex& parent) const
@@ -401,7 +406,7 @@ int IDOSTreeModel::rowCount(const QModelIndex& parent) const
     {
         return 0;
     }
-    IDOSTreeItem* item = parent.isValid() ? itemFromIndex(parent) : m_root;
+    IDOSTreeItem* item = parent.isValid() ? this->item(parent) : m_root;
     return item->childCount();
 }
 
@@ -413,7 +418,7 @@ int IDOSTreeModel::columnCount(const QModelIndex& parent) const
 
 QVariant IDOSTreeModel::data(const QModelIndex& index, int role) const
 {
-    IDOSTreeItem* item = itemFromIndex(index);
+    IDOSTreeItem* item = this->item(index);
     if (item == nullptr)
     {
         return QVariant();
@@ -423,7 +428,7 @@ QVariant IDOSTreeModel::data(const QModelIndex& index, int role) const
 
 Qt::ItemFlags IDOSTreeModel::flags(const QModelIndex& index) const
 {
-    IDOSTreeItem* item = itemFromIndex(index);
+    IDOSTreeItem* item = this->item(index);
     if (item == nullptr)
     {
         return Qt::ItemIsDropEnabled;
@@ -431,12 +436,12 @@ Qt::ItemFlags IDOSTreeModel::flags(const QModelIndex& index) const
     return item->provider()->flags();
 }
 
-IDOSTreeItem* IDOSTreeModel::itemFromIndex(const QModelIndex& index) const
+IDOSTreeItem* IDOSTreeModel::item(const QModelIndex& index) const
 {
     return index.isValid() && index.model() == this ? static_cast<IDOSTreeItem*>(index.internalPointer()) : nullptr;
 }
 
-QModelIndex IDOSTreeModel::indexFromItem(const IDOSTreeItem* item) const
+QModelIndex IDOSTreeModel::index(const IDOSTreeItem* item) const
 {
     if (m_resetting || item == nullptr || item == m_root || item->model() != this)
     {
@@ -462,14 +467,14 @@ IDOSTreeItem* IDOSTreeModel::findData(IDOSTreeItem* branch, const QString& id) c
     return nullptr;
 }
 
-QModelIndex IDOSTreeModel::indexFromDataId(const QString& id) const
+QModelIndex IDOSTreeModel::index(const QString& id) const
 {
-    return !id.isEmpty() ? indexFromItem(findData(m_root, id)) : QModelIndex();
+    return !id.isEmpty() ? this->index(findData(m_root, id)) : QModelIndex();
 }
 
-IDOSDataObject* IDOSTreeModel::objectFromIndex(const QModelIndex& index) const
+IDOSDataObject* IDOSTreeModel::object(const QModelIndex& index) const
 {
-    IDOSTreeItem* item = itemFromIndex(index);
+    IDOSTreeItem* item = this->item(index);
     if (item == nullptr)
     {
         return nullptr;
@@ -477,7 +482,7 @@ IDOSDataObject* IDOSTreeModel::objectFromIndex(const QModelIndex& index) const
     const QString dataId = item->provider()->dataId();
     for (IDOSTreeItem* current = item; current != nullptr; current = current->parent())
     {
-        IDOSDataObject* data = current->provider()->dataSource();
+        IDOSDataObject* data = current->provider()->object();
         if (data != nullptr && data->objectId() == dataId)
         {
             return data;
@@ -551,7 +556,7 @@ void IDOSTreeModel::refreshItem(IDOSTreeItem* item)
 
 void IDOSTreeModel::updateItem(IDOSTreeItem* item, const QList<int>& roles)
 {
-    const QModelIndex index = indexFromItem(item);
+    const QModelIndex index = this->index(item);
     if (index.isValid())
     {
         emit dataChanged(index, index, roles.toVector());
@@ -578,7 +583,7 @@ void IDOSTreeModel::setSessionId(const QString& sessionId)
     m_sessionId = sessionId;
 }
 
-QList<IDOSDataObject*> IDOSTreeModel::dataObjects() const
+QList<IDOSDataObject*> IDOSTreeModel::objects() const
 {
     QList<IDOSDataObject*> objects;
     QList<IDOSTreeItem*> pending;
@@ -586,7 +591,7 @@ QList<IDOSDataObject*> IDOSTreeModel::dataObjects() const
     while (!pending.isEmpty())
     {
         IDOSTreeItem* item = pending.takeLast();
-        IDOSDataObject* data = item->provider()->dataSource();
+        IDOSDataObject* data = item->provider()->object();
         if (data != nullptr && !objects.contains(data))
         {
             objects.append(data);
@@ -596,9 +601,9 @@ QList<IDOSDataObject*> IDOSTreeModel::dataObjects() const
     return objects;
 }
 
-IDOSDataObject* IDOSTreeModel::dataObject(const QString& dataId) const
+IDOSDataObject* IDOSTreeModel::object(const QString& dataId) const
 {
-    for (IDOSDataObject* data : dataObjects())
+    for (IDOSDataObject* data : objects())
     {
         if (data->objectId() == dataId)
         {
@@ -608,22 +613,10 @@ IDOSDataObject* IDOSTreeModel::dataObject(const QString& dataId) const
     return nullptr;
 }
 
-bool IDOSTreeModel::triggerAction(const QString& operation, const QStringList& itemIds,
-                                  const QVariantMap& arguments)
+bool IDOSTreeModel::acceptsContext(const QString& session, const QString& itemId) const
 {
-    if (operation.isEmpty() || m_sessionId.isEmpty())
-    {
-        return false;
-    }
-    for (const QString& id : itemIds)
-    {
-        if (item(id) == nullptr)
-        {
-            return false;
-        }
-    }
-    emit actionTriggered(operation, itemIds, arguments);
-    return true;
+    return !m_sessionId.isEmpty() && session == m_sessionId &&
+        (itemId.isEmpty() || item(itemId) != nullptr);
 }
 
 bool IDOSTreeModel::transferItems(const QVariantMap& arguments, bool validateOnly)

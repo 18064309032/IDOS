@@ -10,7 +10,7 @@
 #include <QTime>
 #include <QVariantMap>
 
-#include "data/production/idosproductionhistory.h"
+#include "data/production/idosproductionhistoryobject.h"
 
 #include "idosproductionhistoryprovider.h"
 
@@ -147,7 +147,7 @@ QList<IDOSDataObject*> IDOSProductionHistoryProvider::read(const QString& filePa
         setLastError(QObject::tr("The VOL file contains no supported production history."));
         return result;
     }
-    IDOSProductionHistory* history = new IDOSProductionHistory();
+    IDOSProductionHistoryObject* history = new IDOSProductionHistoryObject();
     history->setName(QFileInfo(filePath).completeBaseName());
     history->setSourceFile(filePath);
     history->setColumns(columns);

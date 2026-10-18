@@ -3,10 +3,10 @@
 #include <QVector>
 #include <QVector3D>
 
-#include "idospointset.h"
+#include "data/idosdatametadata.h"
+#include "data/idosdataregistry.h"
+#include "idospointsetobject.h"
 #include "idosproject.h"
-#include "providers/idosdatametadata.h"
-#include "providers/idosdataregistry.h"
 
 #include "idospointsetcommands.h"
 
@@ -42,7 +42,7 @@ bool IDOSCreatePointSetCommand::apply(QString& error)
     if (m_data == nullptr)
     {
         IDOSDataObject* object = m_registry->metadata(QString::fromLatin1("idos.example.pointset"))->create();
-        IDOSPointSet* data = qobject_cast<IDOSPointSet*>(object);
+        IDOSPointSetObject* data = qobject_cast<IDOSPointSetObject*>(object);
         if (data == nullptr)
         {
             delete object;
@@ -69,7 +69,11 @@ bool IDOSCreatePointSetCommand::apply(QString& error)
         error = QObject::tr("The point set is already attached.");
         return false;
     }
-    project()->add(m_data.data());
+    if (!project()->add(m_data.data()))
+    {
+        error = QObject::tr("The point set is unavailable.");
+        return false;
+    }
     QJsonObject result;
     result.insert(QString::fromLatin1("objectId"), m_data->objectId());
     result.insert(QString::fromLatin1("pointCount"), m_data->points().size());
@@ -131,7 +135,7 @@ IDOSDeletePointSetCommand::~IDOSDeletePointSetCommand()
 
 bool IDOSDeletePointSetCommand::validateCommand(QString& error) const
 {
-    if (project() == nullptr || qobject_cast<IDOSPointSet*>(project()->object(m_id)) == nullptr)
+    if (project() == nullptr || qobject_cast<IDOSPointSetObject*>(project()->object(m_id)) == nullptr)
     {
         error = QObject::tr("The point set is unavailable.");
         return false;
@@ -142,7 +146,7 @@ bool IDOSDeletePointSetCommand::validateCommand(QString& error) const
 bool IDOSDeletePointSetCommand::apply(QString& error)
 {
     Q_UNUSED(error);
-    m_data = qobject_cast<IDOSPointSet*>(project()->take(m_id));
+    m_data = qobject_cast<IDOSPointSetObject*>(project()->take(m_id));
     QJsonObject result;
     result.insert(QString::fromLatin1("objectId"), m_id);
     setResult(result);
@@ -156,7 +160,11 @@ bool IDOSDeletePointSetCommand::revert(QString& error)
         error = QObject::tr("The point set cannot be restored.");
         return false;
     }
-    project()->add(m_data.data());
+    if (!project()->add(m_data.data()))
+    {
+        error = QObject::tr("The point set is unavailable.");
+        return false;
+    }
     return true;
 }
 

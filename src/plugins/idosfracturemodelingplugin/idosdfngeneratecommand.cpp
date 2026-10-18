@@ -1,11 +1,11 @@
 #include <QJsonArray>
 #include <QObject>
-#include <QStringList>
 #include <QScopedPointer>
+#include <QStringList>
 
-#include "data/fracture/idosnaturalfractureset.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/fracture/idosnaturalfracturesetobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "idosdfngenerator.h"
 #include "idosproject.h"
 
@@ -51,10 +51,10 @@ bool IDOSDfnGenerateCommand::validateCommand(QString& error) const
         error = QObject::tr("Enter a name for the generated fracture set.");
         return false;
     }
-    const IDOSGrid* grid = qobject_cast<IDOSGrid*>(project()->object(m_parameters.value(QStringLiteral("gridId")).toString()));
+    const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(project()->object(m_parameters.value(QStringLiteral("gridId")).toString()));
     const QString densityId = m_parameters.value(QStringLiteral("densityId")).toString();
-    const IDOSGridProperty* density = densityId.isEmpty() ? nullptr
-        : qobject_cast<IDOSGridProperty*>(project()->object(densityId));
+    const IDOSGridPropertyObject* density = densityId.isEmpty() ? nullptr
+        : qobject_cast<IDOSGridPropertyObject*>(project()->object(densityId));
     if ((m_parameters.contains(QStringLiteral("densityId")) && !m_parameters.value(QStringLiteral("densityId")).isString())
         || (!densityId.isEmpty() && density == nullptr))
     {
@@ -71,18 +71,23 @@ QJsonObject IDOSDfnGenerateCommand::buildPreview() const
 
 bool IDOSDfnGenerateCommand::apply(QString& error)
 {
+    if (m_data.isNull() && !result().isEmpty())
+    {
+        error = QObject::tr("The generated fracture set is unavailable.");
+        return false;
+    }
+
     if (m_data.isNull())
     {
-        const IDOSGrid* grid = qobject_cast<IDOSGrid*>(project()->object(m_parameters.value(QStringLiteral("gridId")).toString()));
-        const IDOSGridProperty* density = qobject_cast<IDOSGridProperty*>(project()->object(m_parameters.value(QStringLiteral("densityId")).toString()));
+        const IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(project()->object(m_parameters.value(QStringLiteral("gridId")).toString()));
+        const IDOSGridPropertyObject* density = qobject_cast<IDOSGridPropertyObject*>(project()->object(m_parameters.value(QStringLiteral("densityId")).toString()));
         QVariantList fractures;
         if (!IDOSDfnGenerator::generate(grid, density, m_parameters, fractures, error))
         {
             return false;
         }
-        QScopedPointer<IDOSNaturalFractureSet> data(new IDOSNaturalFractureSet());
+        QScopedPointer<IDOSNaturalFractureSetObject> data(new IDOSNaturalFractureSetObject());
         data->setName(m_parameters.value(QStringLiteral("name")).toString().trimmed());
-        data->setVisible(false);
         // Copy nested strings out of plugin literal storage before publishing platform data.
         data->setFractures(QJsonArray::fromVariantList(fractures).toVariantList());
         for (const QVariant& value : data->geometryReport())
@@ -95,7 +100,11 @@ bool IDOSDfnGenerateCommand::apply(QString& error)
         }
         m_data = data.take();
     }
-    project()->add(m_data.data());
+    if (!project()->add(m_data.data()))
+    {
+        error = QObject::tr("The generated fracture set is unavailable.");
+        return false;
+    }
     QJsonObject result;
     result.insert(QStringLiteral("objectId"), m_data->objectId());
     result.insert(QStringLiteral("count"), m_data->fractures().size());

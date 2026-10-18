@@ -1,0 +1,36 @@
+#include "idosdataobject.h"
+#include "idosfluidrocktabletreeprovider.h"
+
+#include "idosfluidrocktabletreemetadata.h"
+
+IDOSFluidRockTableTreeMetadata::IDOSFluidRockTableTreeMetadata(IDOSFluidRockTableObject::Category category)
+    :
+    m_category(category)
+{
+}
+
+QString IDOSFluidRockTableTreeMetadata::id() const
+{
+    return m_category == IDOSFluidRockTableObject::Category::Fluid
+        ? QStringLiteral("idos.fluid.table")
+        :
+        QStringLiteral("idos.rockPhysics.table");
+}
+
+QString IDOSFluidRockTableTreeMetadata::treeName() const
+{
+    return QStringLiteral("data");
+}
+
+QString IDOSFluidRockTableTreeMetadata::groupKey() const
+{
+    return m_category == IDOSFluidRockTableObject::Category::Fluid
+        ? QStringLiteral("data.fluids")
+        :
+        QStringLiteral("data.rockPhysics");
+}
+
+IDOSTreeItemProvider* IDOSFluidRockTableTreeMetadata::create(IDOSDataObject* data) const
+{
+    return new IDOSFluidRockTableTreeProvider(data);
+}

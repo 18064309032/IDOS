@@ -16,6 +16,7 @@ class CommandRegistryTest : public QObject
     static void initMain();
 
 private slots:
+    void onProjectOwnershipAndHistory();
     void onExistingProjectPerformance();
     void onStoragePerformance();
     void onLegacyProjectStorage();

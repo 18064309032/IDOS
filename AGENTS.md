@@ -30,8 +30,9 @@
 - RenderObject 为通用具体类，管理独立 ID、名称和 Provider 所有权；RenderMetadata 创建 RenderProvider，由 RenderServer 装入通用 RenderObject。删除仅用于装配 Provider 的具体 RenderObject 子类，不增加数据 Provider 包装层。
 - 每个 RenderView 拥有独立 Scene，Scene 拥有 RenderObject，RenderObject 拥有 Provider；源数据关联非拥有，各视图显示状态独立。数据 ID、节点 ID、渲染 ID 分别管理。
 - 树工程同步由 AppTreeAccess 处理，渲染工程同步由 RenderServer 处理；AppTreeAccess 监听工程、两个 Model 和 RenderServer 的信号，再调用其他模块接口；Model、Item、Provider 不持有 Project、Access 或 RenderServer，不委托给 Metadata、Provider 或 GuiProvider；不引入 Provider Context、synchronize()、统一交互结果协议或已确认 TreeAccess/AppTreeAccess 之外的额外适配层。
-- TreeMenuProvider 只关联所属 View/Model；菜单描述操作，View 处理 QAction 界面事件并调用 Model 操作接口，由 Model 发业务信号，AppTreeAccess 再调用应用业务或渲染接口。节点专属菜单遵循相同链路。菜单与 TreeView 均不得保存或访问 Project、MainWindow、RenderView、RenderServer；View 使用 Model sessionId 校验上下文。
+- TreeMenuProvider 只关联所属 View/Model；右键节点由 Item Provider 创建菜单并连接自身具名槽，右键空白由树 MenuProvider 创建菜单并连接自身具名槽；Provider 校验动作上下文后调用 Model 操作接口，由 Model 发业务信号，AppTreeAccess 再调用应用业务或渲染接口。View 仅按命中位置选择 Provider、发菜单扩展信号并弹出菜单，不统一绑定业务 QAction。菜单与 TreeView 均不得保存或访问 Project、MainWindow、RenderView、RenderServer；菜单保存创建时的 Model sessionId，多选动作固定业务数据 ID；Provider 直接调用 Model，Model 校验 session 和所属节点归属，命令校验数据目标；不以 QAction 的 operation 属性统一解析代替具体 Provider 槽。根 Provider 不作为其他节点 Provider 的菜单工具类。
 - AppTreeAccess 负责连接、路由和回写，不实现网格属性/过滤器等具体渲染算法；这些操作放在所属业务 RenderProvider 的成员接口中。
+- 数据树与工况树分别使用 IDOSDataTreeItemModel/IDOSCaseTreeItemModel 和 IDOSDataTreeView/IDOSCaseTreeView，分别继承通用 Model/View；Model 位于 src/core/tree，View 位于 src/gui/tree。具体 Model 提供明确参数的业务函数及对应信号，AppTreeAccess 用独立具名槽对接业务；禁止恢复操作字符串加参数字典的树菜单统一分发。
 - 节点结构、分类、勾选联动和专属菜单由具体实现提供，不写入通用模型。View 类内组合菜单，不新增菜单组织器类；对象、空白、多选以及实际目标视图必须明确。
 - 业务修改统一调用命令，菜单、工具栏、脚本和助手共用同一逻辑；局部显示操作调用目标 Provider 或 View。失败命令不进入历史，批量通知不代替回滚。
 - 直接改造现有框架并删除被替代的类、接口及适配层，不保留两套调用链。改动前梳理完整路径；保留未被替代的日志、应用、插件和领域基础设施。

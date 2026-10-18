@@ -34,7 +34,7 @@ class CORE_EXPORT IDOSDataProvider
      * @return 成功解析的对象列表（调用方接管所有权）；空列表 +
      *         lastError() 表示失败。
      *
-     * 子类负责 new 出 IDOSWell / IDOSGrid 等并填充字段。
+     * 子类负责 new 出 IDOSWellObject / IDOSGridObject 等并填充字段。
      * 对象无 parent，调用方负责加进 Project 或合并后释放。
      */
     virtual QList<IDOSDataObject*> read(const QString& filePath) = 0;

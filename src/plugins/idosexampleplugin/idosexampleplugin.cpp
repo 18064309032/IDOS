@@ -11,8 +11,9 @@
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
-#include "idoscommandmanager.h"
-#include "idoscommandregistry.h"
+#include "command/idoscommandmanager.h"
+#include "command/idoscommandregistry.h"
+#include "data/idosdataregistry.h"
 #include "idosdataobject.h"
 #include "idosinterface.h"
 #include "idospointsetcommands.h"
@@ -20,9 +21,8 @@
 #include "idospointsetrendermetadata.h"
 #include "idospointsettreemetadata.h"
 #include "idosproject.h"
-#include "idosrenderregistry.h"
-#include "providers/idosdataregistry.h"
-#include "providers/idostreeitemproviderregistry.h"
+#include "render/idosrenderproviderregistry.h"
+#include "tree/idostreeitemproviderregistry.h"
 
 #include "idosexampleplugin.h"
 
@@ -57,43 +57,50 @@ void IDOSExamplePlugin::initGui()
     m_renderRegistry = m_interface->renderRegistry();
     m_commandRegistry = m_interface->commandRegistry();
     const QString typeId = QString::fromLatin1("idos.example.pointset");
-    if (m_dataRegistry == nullptr || m_treeRegistry == nullptr ||
-        m_renderRegistry == nullptr || m_commandRegistry == nullptr ||
-        m_dataRegistry->metadata(typeId) != nullptr || m_treeRegistry->metadata(typeId) != nullptr ||
-        m_renderRegistry->metadata(typeId) != nullptr ||
-        m_commandRegistry->find(QString::fromLatin1("pointset.create")) != nullptr ||
-        m_commandRegistry->find(QString::fromLatin1("pointset.delete")) != nullptr)
+    if (m_dataRegistry == nullptr || m_treeRegistry == nullptr || m_renderRegistry == nullptr ||
+        m_commandRegistry == nullptr || m_dataRegistry->metadata(typeId) != nullptr ||
+        m_treeRegistry->metadata(typeId) != nullptr || m_renderRegistry->metadata(typeId) != nullptr ||
+        m_commandRegistry->metadata(QString::fromLatin1("pointset.create")) != nullptr ||
+        m_commandRegistry->metadata(QString::fromLatin1("pointset.delete")) != nullptr)
     {
         throw std::runtime_error(tr("Point set registration is unavailable or already in use.").toStdString());
     }
     m_translator = new QTranslator(this);
     if (m_translator->load(qApp->applicationDirPath() + QString::fromLatin1("/i18n/idosexampleplugin_") +
-                          QLocale().name() + QString::fromLatin1(".qm")))
+                           QLocale().name() + QString::fromLatin1(".qm")))
     {
         qApp->installTranslator(m_translator);
     }
     std::unique_ptr<IDOSPointSetMetadata> data(new IDOSPointSetMetadata());
-    m_dataAdded = m_dataRegistry->add(data.get());
+    m_dataAdded = m_dataRegistry->registerMetadata(data.get());
     if (m_dataAdded)
     {
         data.release();
     }
-    std::unique_ptr<IDOSPointSetTreeMetadata> tree(new IDOSPointSetTreeMetadata());
+    std::unique_ptr<IDOSPointSetTreeMetadata> tree(new IDOSPointSetTreeMetadata(this));
     m_treeAdded = m_treeRegistry->registerMetadata(tree.get());
     if (m_treeAdded)
     {
         tree.release();
     }
     std::unique_ptr<IDOSPointSetRenderMetadata> render(new IDOSPointSetRenderMetadata());
-    m_renderAdded = m_renderRegistry->add(render.get());
+    m_renderAdded = m_renderRegistry->registerMetadata(render.get());
     if (m_renderAdded)
     {
         render.release();
     }
-    m_createAdded = m_commandRegistry->add(
-        std::unique_ptr<IDOSCommandMetadata>(new IDOSCreatePointSetCommandMetadata(m_dataRegistry)));
-    m_deleteAdded = m_commandRegistry->add(
-        std::unique_ptr<IDOSCommandMetadata>(new IDOSDeletePointSetCommandMetadata()));
+    std::unique_ptr<IDOSCommandMetadata> commandMetadata0(new IDOSCreatePointSetCommandMetadata(m_dataRegistry));
+    m_createAdded = m_commandRegistry->registerMetadata(commandMetadata0.get());
+    if (m_createAdded)
+    {
+        commandMetadata0.release();
+    }
+    std::unique_ptr<IDOSCommandMetadata> commandMetadata1(new IDOSDeletePointSetCommandMetadata());
+    m_deleteAdded = m_commandRegistry->registerMetadata(commandMetadata1.get());
+    if (m_deleteAdded)
+    {
+        commandMetadata1.release();
+    }
     if (!m_dataAdded || !m_treeAdded || !m_renderAdded || !m_createAdded || !m_deleteAdded)
     {
         throw std::runtime_error(tr("Point set registration failed.").toStdString());
@@ -163,9 +170,10 @@ bool IDOSExamplePlugin::canUnload(QString& reason) const
             }
         }
     }
-    const IDOSPointSetMetadata* metadata = m_dataRegistry != nullptr
-        ? dynamic_cast<const IDOSPointSetMetadata*>(m_dataRegistry->metadata(QString::fromLatin1("idos.example.pointset")))
-        : nullptr;
+    const IDOSPointSetMetadata* metadata =
+        m_dataRegistry != nullptr ? dynamic_cast<const IDOSPointSetMetadata*>(
+                                        m_dataRegistry->metadata(QString::fromLatin1("idos.example.pointset")))
+                                  : nullptr;
     if (metadata != nullptr && metadata->isInUse())
     {
         reason = tr("Point set instances are still alive outside project history.");
@@ -185,11 +193,11 @@ void IDOSExamplePlugin::unload()
         }
         if (m_commandRegistry != nullptr && m_createAdded)
         {
-            m_commandRegistry->remove(QString::fromLatin1("pointset.create"));
+            m_commandRegistry->unregisterMetadata(QString::fromLatin1("pointset.create"));
         }
         if (m_commandRegistry != nullptr && m_deleteAdded)
         {
-            m_commandRegistry->remove(QString::fromLatin1("pointset.delete"));
+            m_commandRegistry->unregisterMetadata(QString::fromLatin1("pointset.delete"));
         }
     }
     m_category = nullptr;
@@ -198,7 +206,7 @@ void IDOSExamplePlugin::unload()
     {
         if (m_renderAdded)
         {
-            m_renderRegistry->remove(QString::fromLatin1("idos.example.pointset"));
+            m_renderRegistry->unregisterMetadata(QString::fromLatin1("idos.example.pointset"));
         }
     }
     if (m_treeRegistry != nullptr)
@@ -210,7 +218,7 @@ void IDOSExamplePlugin::unload()
     }
     if (m_dataRegistry != nullptr && m_dataAdded)
     {
-        m_dataRegistry->remove(QString::fromLatin1("idos.example.pointset"));
+        m_dataRegistry->unregisterMetadata(QString::fromLatin1("idos.example.pointset"));
     }
     if (m_translator != nullptr)
     {
@@ -265,3 +273,20 @@ int IDOSExamplePlugin::pluginType()
     return IDOSPlugin::UI;
 }
 
+void IDOSExamplePlugin::onDeletePointSet(const QString& dataId, const QString& session)
+{
+    IDOSProject* project = m_interface != nullptr ? m_interface->project() : nullptr;
+    if (project == nullptr || session.isEmpty() || project->property("idosTreeTransferSession").toString() != session ||
+        project->commandManager() == nullptr)
+    {
+        return;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("objectId"), dataId);
+    const QJsonObject response = project->commandManager()->execute(QStringLiteral("pointset.delete"), arguments);
+    if (!response.value(QStringLiteral("success")).toBool())
+    {
+        QMessageBox::warning(m_interface->mainWindow(), tr("Delete Point Set"),
+                             response.value(QStringLiteral("error")).toString());
+    }
+}

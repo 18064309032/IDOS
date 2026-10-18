@@ -7,7 +7,7 @@
  * @brief 网格单元值类型。
  *
  * 独立值类型，不继承 QObject。存储单个角点网格单元的 8 个顶点坐标。
- * 仅作为 IDOSGrid::cell() 的返回值，不作为主存储容器。
+ * 仅作为 IDOSGridObject::cell() 的返回值，不作为主存储容器。
  *
  * 角点索引约定（遵循 VTK_HEXAHEDRON 环绕顺序）：
  * @code

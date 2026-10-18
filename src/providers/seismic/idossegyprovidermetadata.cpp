@@ -20,7 +20,7 @@ QStringList IDOSSegyProviderMetadata::fileExtensions() const
             QStringLiteral("*.segy"), QStringLiteral("*.SEGY")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSSegyProviderMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSSegyProviderMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSSegyProvider());
 }

@@ -16,7 +16,7 @@ class PROVIDERS_EXPORT IDOSGridPropertyEclipseMetadata : public IDOSDataProvider
     QString id() const override;
     QString displayName() const override;
     QStringList fileExtensions() const override;
-    std::unique_ptr<IDOSDataProvider> createProvider() const override;
+    std::unique_ptr<IDOSDataProvider> create() const override;
 };
 
 #endif // IDOS_GRID_PROPERTY_ECLIPSE_METADATA_H

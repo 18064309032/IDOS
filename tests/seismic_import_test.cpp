@@ -4,12 +4,12 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
-#include "data/seismic/idosseismicvolume.h"
+#include "data/seismic/idosseismicvolumeobject.h"
 #include "idosapplication.h"
 #include "providers/idosdataprovider.h"
 #include "providers/idosdataprovidermetadata.h"
 #include "providers/idosdataproviderregistry.h"
-#include "providers/seismic/idosseismicvolumerenderprovider.h"
+#include "seismic/idosseismicvolumerenderprovider.h"
 
 #include "seismic_import_test.h"
 
@@ -34,10 +34,10 @@ void SeismicImportTest::onSegyCustomHeaderAndSamples()
         IDOSDataProviderRegistry::instance().metadataForFile(filePath);
     QCOMPARE(metadata.size(), 1);
     QCOMPARE(metadata.first()->id(), QStringLiteral("idos.seismic.segy"));
-    std::unique_ptr<IDOSDataProvider> provider = metadata.first()->createProvider();
+    std::unique_ptr<IDOSDataProvider> provider = metadata.first()->create();
     QList<IDOSDataObject*> objects = provider->read(filePath);
     QVERIFY2(objects.size() == 1, qPrintable(provider->lastError()));
-    IDOSSeismicVolume* volume = qobject_cast<IDOSSeismicVolume*>(objects.first());
+    IDOSSeismicVolumeObject* volume = qobject_cast<IDOSSeismicVolumeObject*>(objects.first());
     QVERIFY(volume != nullptr);
     QCOMPARE(volume->traceCount(), static_cast<qint64>(2));
     QCOMPARE(volume->samplesPerTrace(), 2);
@@ -67,10 +67,10 @@ void SeismicImportTest::onSegyCustomHeaderAndSamples()
 
     IDOSSeismicVolumeRenderProvider renderProvider(volume);
     QCOMPARE(renderProvider.inlineNumber(), 108);
-    QCOMPARE(renderProvider.actors().size(), 1);
+    QCOMPARE(renderProvider.props().size(), 1);
     QVERIFY(renderProvider.setInlineNumber(107));
     QCOMPARE(renderProvider.inlineNumber(), 107);
-    QCOMPARE(renderProvider.actors().size(), 1);
+    QCOMPARE(renderProvider.props().size(), 1);
     qDeleteAll(objects);
 }
 

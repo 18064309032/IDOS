@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idoswell.h"
+#include "idoswellobject.h"
 
 #include "idoswellmetadata.h"
 
@@ -24,5 +24,5 @@ QString IDOSWellMetadata::displayName() const
 
 IDOSDataObject* IDOSWellMetadata::create() const
 {
-    return new IDOSWell();
+    return new IDOSWellObject();
 }

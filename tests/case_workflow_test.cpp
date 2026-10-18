@@ -50,10 +50,12 @@
 #include <QTranslator>
 #include <QVariantMap>
 #include <QVector3D>
+#include <QVTKOpenGLNativeWidget.h>
 #include <QWidget>
 #include <QtTest>
 
 #include <vtkActor.h>
+#include <vtkCamera.h>
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
@@ -62,6 +64,9 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
+#include <vtkRendererCollection.h>
 
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
@@ -74,60 +79,62 @@
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/io/eclipse/EclOutput.hpp>
 
+#include "case/idoscasedialog.h"
+#include "case/idossimulationinitializewidget.h"
+#include "case/idossimulationresultplaybackwidget.h"
+#include "case/idossimulationrunstatuswidget.h"
+#include "command/idoscommandmanager.h"
+#include "command/idoscommandregistry.h"
+#include "command/idoscreategridfiltercommand.h"
 #include "command/idosdeletedatacommand.h"
 #include "command/idosdeletegridcommand.h"
-#include "command/idosgridfiltercommand.h"
+#include "command/idosdeletegridfiltercommand.h"
 #include "command/idosimportrestartresultscommand.h"
+#include "command/idosupdategridfiltercommand.h"
 #include "data/case/idoscaseitemref.h"
 #include "data/case/idossimulationcaseobject.h"
-#include "data/case/idossimulationsummaryresults.h"
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/fracture/idosnaturalfractureset.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridboundary.h"
-#include "data/grid/idosgridfilter.h"
-#include "data/grid/idosgridproperty.h"
-#include "data/well/idoswell.h"
+#include "data/case/idossimulationsummaryresultsobject.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/fracture/idosnaturalfracturesetobject.h"
+#include "data/grid/idosgridboundaryobject.h"
+#include "data/grid/idosgridfilterobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "data/idosdatametadata.h"
+#include "data/idosdataregistry.h"
+#include "data/idosnaturalfracturerendermetadata.h"
+#include "data/idosnaturalfracturerenderprovider.h"
 #include "data/well/idoswellhead.h"
 #include "data/well/idoswelllogchannel.h"
 #include "data/well/idoswelllogset.h"
+#include "data/well/idoswellobject.h"
 #include "data/well/idoswellpath.h"
 #include "data/well/idoswellpathpoint.h"
 #include "grid/idosgridfilterwidget.h"
+#include "grid/idosgridrendermetadata.h"
+#include "grid/idosgridrenderprovider.h"
 #include "grid/idosgridsettingwidget.h"
 #include "idosapplication.h"
-#include "idoscasedialog.h"
-#include "idoscommandmanager.h"
-#include "idoscommandregistry.h"
 #include "idosmainwindow.h"
-#include "idospluginregistry.h"
 #include "idosproject.h"
 #include "idosrenderobject.h"
-#include "idosrenderregistry.h"
+#include "idosrenderprovider.h"
 #include "idosrenderscene.h"
-#include "idosrenderserver.h"
 #include "idosrenderview.h"
 #include "idosruntimeinfowidget.h"
-#include "idostoolregistry.h"
 #include "logger/idoslogger.h"
-#include "providers/data/idosnaturalfracturerendermetadata.h"
-#include "providers/data/idosnaturalfracturerenderprovider.h"
-#include "providers/grid/idosgridrendermetadata.h"
-#include "providers/grid/idosgridrenderprovider.h"
-#include "providers/idosdatametadata.h"
+#include "plugin/idospluginregistry.h"
 #include "providers/idosdataprovider.h"
 #include "providers/idosdataproviderregistry.h"
-#include "providers/idosdataregistry.h"
-#include "providers/idosrenderprovider.h"
-#include "providers/idostreeitemproviderregistry.h"
-#include "providers/well/idoswellrendermetadata.h"
-#include "providers/well/idoswellrenderprovider.h"
-#include "simulation/idossimulationinitializewidget.h"
-#include "simulation/idossimulationresultplaybackwidget.h"
-#include "simulation/idossimulationrunstatuswidget.h"
+#include "render/idosrenderproviderregistry.h"
+#include "render/idosrenderserver.h"
+#include "tools/idostoolproviderregistry.h"
 #include "tree/idostreeitem.h"
+#include "tree/idostreeitemproviderregistry.h"
 #include "tree/idostreemodel.h"
 #include "tree/idostreeview.h"
+#include "well/idoswellrendermetadata.h"
+#include "well/idoswellrenderprovider.h"
 
 #include "case_workflow_test.h"
 
@@ -179,7 +186,7 @@ void CaseWorkflowTest::onFieldDifference()
     const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosmultiscalefractureplugin.dll");
     plugins->loadCppPlugin(path);
     QVERIFY(plugins->isLoaded(QStringLiteral("idosmultiscalefractureplugin")));
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     QVector<double> coord;
     for (int j = 0; j <= 1; ++j)
     {
@@ -195,13 +202,13 @@ void CaseWorkflowTest::onFieldDifference()
     simulationCase->setName(QStringLiteral("Difference case"));
     simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
     project->add(simulationCase);
-    IDOSGridProperty* field = new IDOSGridProperty();
+    IDOSGridPropertyObject* field = new IDOSGridPropertyObject();
     field->setName(QStringLiteral("Pressure"));
     field->setKeyword(QStringLiteral("PRESSURE"));
-    field->setValueUnits(IDOSGridProperty::ValueUnits::SI);
+    field->setValueUnits(IDOSGridPropertyObject::ValueUnits::SI);
     field->setGridId(grid->objectId());
     field->setDimensions(2, 1, 1);
-    field->setKind(IDOSGridProperty::Kind::Dynamic);
+    field->setKind(IDOSGridPropertyObject::Kind::Dynamic);
     QVERIFY(field->setReportStepValues(1, {10.0, 20.0}));
     QVERIFY(field->setReportStepValues(2, {14.0, std::numeric_limits<double>::quiet_NaN()}));
     QVERIFY(field->setCurrentReportStep(1));
@@ -218,12 +225,12 @@ void CaseWorkflowTest::onFieldDifference()
     QJsonObject response = project->commandManager()->execute(command, arguments);
     QVERIFY2(response.value(QStringLiteral("success")).toBool(), qPrintable(project->commandManager()->error()));
     const QString outputId = project->commandManager()->result().value(QStringLiteral("objectId")).toString();
-    IDOSGridProperty* output = qobject_cast<IDOSGridProperty*>(project->object(outputId));
+    IDOSGridPropertyObject* output = qobject_cast<IDOSGridPropertyObject*>(project->object(outputId));
     QVERIFY(output != nullptr);
     QCOMPARE(output->values().first(), 4.0);
     QVERIFY(std::isnan(output->values().last()));
     QCOMPARE(field->currentReportStep(), 1);
-    QVERIFY(window.caseTreeModel()->indexFromDataId(outputId).isValid());
+    QVERIFY(window.caseTreeModel()->index(outputId).isValid());
     project->commandManager()->undo();
     QVERIFY(project->object(outputId) == nullptr);
     QJsonObject invalid = arguments;
@@ -233,7 +240,7 @@ void CaseWorkflowTest::onFieldDifference()
     QVERIFY(field->setReportStepValues(2, {50.0, 0.0}));
     project->commandManager()->redo();
     QCOMPARE(output->values().first(), 4.0);
-    field->setValueUnits(IDOSGridProperty::ValueUnits::Unknown);
+    field->setValueUnits(IDOSGridPropertyObject::ValueUnits::Unknown);
     QVERIFY(!project->commandManager()->execute(command, arguments).value(QStringLiteral("success")).toBool());
     invalid = arguments;
     invalid.insert(QStringLiteral("confirmUnits"), true);
@@ -262,7 +269,7 @@ void CaseWorkflowTest::onFieldDifference()
     QVERIFY2(project->save(saved.filePath(QStringLiteral("difference.idos")), window.dataRegistry(), error), qPrintable(error));
     QScopedPointer<IDOSProject> restored(IDOSProject::load(saved.filePath(QStringLiteral("difference.idos")), window.dataRegistry(), error));
     QVERIFY2(!restored.isNull(), qPrintable(error));
-    IDOSGridProperty* loaded = qobject_cast<IDOSGridProperty*>(restored->object(outputId));
+    IDOSGridPropertyObject* loaded = qobject_cast<IDOSGridPropertyObject*>(restored->object(outputId));
     QVERIFY(loaded != nullptr);
     QCOMPARE(loaded->values().first(), 4.0);
     QVERIFY(std::isnan(loaded->values().last()));
@@ -366,7 +373,7 @@ void CaseWorkflowTest::onCurveEvaluation()
     QVERIFY(observed.open(QIODevice::WriteOnly | QIODevice::Truncate));
     observed.write("days,value\n0,0\n1,0\n");
     observed.close();
-    IDOSSimulationSummaryResults* summary = new IDOSSimulationSummaryResults();
+    IDOSSimulationSummaryResultsObject* summary = new IDOSSimulationSummaryResultsObject();
     summary->setName(QStringLiteral("Simulation"));
     const qint64 start = QDateTime::fromString(QStringLiteral("2020-01-01T00:00:00Z"), Qt::ISODate).toMSecsSinceEpoch();
     summary->setTimeValues({start, start + 2 * 86400000LL});
@@ -480,7 +487,7 @@ void CaseWorkflowTest::onDfnGeneration()
     QAction* action = window.findChild<QAction*>(QStringLiteral("idosGenerateDfnAction"));
     QVERIFY(action != nullptr);
     QVERIFY(!action->isEnabled());
-    QVERIFY(window.commandRegistry()->find(QStringLiteral("fracture.dfn.generate")) != nullptr);
+    QVERIFY(window.commandRegistry()->metadata(QStringLiteral("fracture.dfn.generate")) != nullptr);
     QVector<double> coord;
     for (int j = 0; j <= 1; ++j)
     {
@@ -501,11 +508,11 @@ void CaseWorkflowTest::onDfnGeneration()
             }
         }
     }
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("DFN source grid"));
     grid->setCornerPointData(2, 1, 2, coord, zcorn, {1, 0, 1, 1});
     project->add(grid);
-    IDOSGridProperty* density = new IDOSGridProperty();
+    IDOSGridPropertyObject* density = new IDOSGridPropertyObject();
     density->setName(QStringLiteral("Sampling weights"));
     density->setGridId(grid->objectId());
     density->setDimensions(2, 1, 2);
@@ -527,7 +534,7 @@ void CaseWorkflowTest::onDfnGeneration()
     QVERIFY(weights->currentIndex() > 0);
     widget->findChild<QPushButton*>(QStringLiteral("dfnGenerate"))->click();
     const QString outputId = project->commandManager()->result().value(QStringLiteral("objectId")).toString();
-    IDOSNaturalFractureSet* output = qobject_cast<IDOSNaturalFractureSet*>(project->object(outputId));
+    IDOSNaturalFractureSetObject* output = qobject_cast<IDOSNaturalFractureSetObject*>(project->object(outputId));
     QVERIFY2(output != nullptr, qPrintable(project->commandManager()->error()));
     QCOMPARE(output->fractures().size(), 12);
     const QVariantList original = output->fractures();
@@ -551,23 +558,23 @@ void CaseWorkflowTest::onDfnGeneration()
     {
         QVERIFY(widget->grab().save(QDir(screenshotRoot).filePath(QStringLiteral("dfn-generation.png"))));
     }
-    const QModelIndex node = window.dataTreeModel()->indexFromDataId(outputId);
+    const QModelIndex node = window.dataTreeModel()->index(outputId);
     QVERIFY(node.isValid());
     QVERIFY(window.dataTreeModel()->setData(node, Qt::Checked, Qt::CheckStateRole));
-    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId)->visible());
+    QVERIFY(findRenderObject(window.renderServer(), window.renderServer()->currentView(), outputId)->isVisible());
     QTemporaryDir saved;
     QString error;
     QVERIFY2(project->save(saved.filePath(QStringLiteral("dfn.idos")), window.dataRegistry(), error), qPrintable(error));
     QScopedPointer<IDOSProject> loaded(IDOSProject::load(saved.filePath(QStringLiteral("dfn.idos")), window.dataRegistry(), error));
     QVERIFY2(!loaded.isNull(), qPrintable(error));
-    IDOSNaturalFractureSet* restored = qobject_cast<IDOSNaturalFractureSet*>(loaded->object(outputId));
+    IDOSNaturalFractureSetObject* restored = qobject_cast<IDOSNaturalFractureSetObject*>(loaded->object(outputId));
     QVERIFY(restored != nullptr);
     QCOMPARE(restored->fractures(), original);
     plugins->unloadCppPlugin(pluginPath);
     QVERIFY(plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
     project->commandManager()->undo();
     QVERIFY(project->object(outputId) == nullptr);
-    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), window.renderServer()->currentView(), outputId) == nullptr);
     QVERIFY(density->setValues({0.0, 0.0, 0.0, 0.0}));
     QJsonObject failure = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), parameters);
     QVERIFY(!failure.value(QStringLiteral("success")).toBool());
@@ -578,7 +585,7 @@ void CaseWorkflowTest::onDfnGeneration()
     QVERIFY(density->setValues({0.0, 1000.0, 1.0, 0.0}));
     QJsonObject response = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), parameters);
     QVERIFY(response.value(QStringLiteral("success")).toBool());
-    IDOSNaturalFractureSet* repeated = qobject_cast<IDOSNaturalFractureSet*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
+    IDOSNaturalFractureSetObject* repeated = qobject_cast<IDOSNaturalFractureSetObject*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
     QVERIFY(repeated != nullptr);
     QVERIFY(repeated->objectId() != outputId);
     QCOMPARE(repeated->fractures(), original);
@@ -611,7 +618,7 @@ void CaseWorkflowTest::onDfnGeneration()
     changedSeed.insert(QStringLiteral("seed"), 43);
     response = project->commandManager()->execute(QStringLiteral("fracture.dfn.generate"), changedSeed);
     QVERIFY(response.value(QStringLiteral("success")).toBool());
-    IDOSNaturalFractureSet* different = qobject_cast<IDOSNaturalFractureSet*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
+    IDOSNaturalFractureSetObject* different = qobject_cast<IDOSNaturalFractureSetObject*>(project->object(response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString()));
     QVERIFY(different != nullptr);
     QVERIFY(different->fractures().first().toMap().value(QStringLiteral("vertices"))
         != original.first().toMap().value(QStringLiteral("vertices")));
@@ -632,8 +639,8 @@ void CaseWorkflowTest::onDfnGeneration()
     plugins->unloadCppPlugin(pluginPath);
     QVERIFY(!plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
     QVERIFY(widget.isNull());
-    QVERIFY(window.commandRegistry()->find(QStringLiteral("fracture.dfn.generate")) == nullptr);
-    QVERIFY(findRenderObject(window.renderServer()->currentView(), outputId) != nullptr);
+    QVERIFY(window.commandRegistry()->metadata(QStringLiteral("fracture.dfn.generate")) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), window.renderServer()->currentView(), outputId) != nullptr);
     QCOMPARE(output->fractures(), original);
     for (const QVariant& value : output->geometryReport())
     {
@@ -652,7 +659,7 @@ void CaseWorkflowTest::onDfnGeneration()
 
 void CaseWorkflowTest::onFractureGeometry()
 {
-    IDOSNaturalFractureSet data;
+    IDOSNaturalFractureSetObject data;
     QSignalSpy changes(&data, &IDOSDataObject::dataChanged);
     const QVector<double> square = {5000000.0, 7000000.0, 3000.0,
                                    5000002.0, 7000000.0, 3000.0,
@@ -751,13 +758,13 @@ void CaseWorkflowTest::onFractureGeometry()
         int total = 0;
         for (const QString& file : files)
         {
-            std::unique_ptr<IDOSDataProvider> provider = IDOSDataProviderRegistry::instance().createProvider(
+            std::unique_ptr<IDOSDataProvider> provider = IDOSDataProviderRegistry::instance().create(
                 QStringLiteral("idos.naturalFracture.ascii"));
             QVERIFY(provider != nullptr);
             const QList<IDOSDataObject*> objects = provider->read(directory.filePath(file));
             QVERIFY2(objects.size() == 1, qPrintable(provider->lastError()));
             QScopedPointer<IDOSDataObject> owner(objects.first());
-            IDOSNaturalFractureSet* field = qobject_cast<IDOSNaturalFractureSet*>(owner.data());
+            IDOSNaturalFractureSetObject* field = qobject_cast<IDOSNaturalFractureSetObject*>(owner.data());
             QVERIFY(field != nullptr);
             const QVariantList fieldReports = field->geometryReport();
             for (const QVariant& fieldValue : fieldReports)
@@ -789,17 +796,17 @@ void CaseWorkflowTest::onDataGroupChecks()
             IDOSDataObject* data = nullptr;
             if (category == 0)
             {
-                IDOSNaturalFractureSet* fractures = new IDOSNaturalFractureSet();
+                IDOSNaturalFractureSetObject* fractures = new IDOSNaturalFractureSetObject();
                 fractures->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1)});
                 data = fractures;
             }
             else if (category == 1)
             {
-                data = new IDOSWell();
+                data = new IDOSWellObject();
             }
             else
             {
-                IDOSGridBoundary* boundary = new IDOSGridBoundary();
+                IDOSGridBoundaryObject* boundary = new IDOSGridBoundaryObject();
                 boundary->setXCoordinates({0, 2, 2, 0});
                 boundary->setYCoordinates({0, 0, 2, 2});
                 boundary->setZCoordinates({0, 0, 0, 0});
@@ -807,7 +814,6 @@ void CaseWorkflowTest::onDataGroupChecks()
                 data = boundary;
             }
             data->setName(QStringLiteral("Group test %1 %2").arg(category).arg(index));
-            data->setVisible(false);
             project->add(data);
             if (index == 0)
             {
@@ -826,14 +832,14 @@ void CaseWorkflowTest::onDataGroupChecks()
     QVERIFY(window.renderServer()->setCurrentView(primary));
 
     IDOSTreeModel* model = window.dataTreeModel();
-    const QModelIndex wellParent = model->indexFromItem(model->find(QStringLiteral("data.wellGroup")));
+    const QModelIndex wellParent = model->index(model->find(QStringLiteral("data.wellGroup")));
     for (int category = 0; category < groups.size(); ++category)
     {
-        const QModelIndex group = model->indexFromItem(model->find(groups.at(category)));
+        const QModelIndex group = model->index(model->find(groups.at(category)));
         QVERIFY(group.isValid());
         QVERIFY(model->flags(group).testFlag(Qt::ItemIsUserCheckable));
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
-        const QModelIndex first = model->indexFromDataId(firstIds.at(category));
+        const QModelIndex first = model->index(firstIds.at(category));
         QVERIFY(model->setData(first, Qt::Checked, Qt::CheckStateRole));
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
         if (category == 1)
@@ -844,10 +850,10 @@ void CaseWorkflowTest::onDataGroupChecks()
         QVERIFY(model->setData(group, Qt::Checked, Qt::CheckStateRole));
         QCOMPARE(changes.count(), 1);
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Checked));
-        QVERIFY(findRenderObject(primary, secondIds.at(category))->visible());
-        QVERIFY(!findRenderObject(&other, firstIds.at(category))->visible());
-        findRenderObject(primary, secondIds.at(category))->setVisible(false);
-        primary->scene()->notifyChanged(findRenderObject(primary, secondIds.at(category))->id());
+        QVERIFY(findRenderObject(window.renderServer(), primary, secondIds.at(category))->isVisible());
+        QVERIFY(findRenderObject(window.renderServer(), &other, firstIds.at(category)) == nullptr);
+        findRenderObject(window.renderServer(), primary, secondIds.at(category))->setVisible(false);
+        primary->scene()->notifyChanged(findRenderObject(window.renderServer(), primary, secondIds.at(category))->id());
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::PartiallyChecked));
         QVERIFY(window.renderServer()->setCurrentView(&other));
 
@@ -855,12 +861,12 @@ void CaseWorkflowTest::onDataGroupChecks()
         QVERIFY(window.renderServer()->setCurrentView(primary));
 
         QVERIFY(model->setData(group, Qt::Unchecked, Qt::CheckStateRole));
-        QVERIFY(!findRenderObject(primary, firstIds.at(category))->visible());
+        QVERIFY(!findRenderObject(window.renderServer(), primary, firstIds.at(category))->isVisible());
         QCOMPARE(model->data(group, Qt::CheckStateRole).toInt(), int(Qt::Unchecked));
     }
     QVERIFY(model->setData(wellParent, Qt::Checked, Qt::CheckStateRole));
-    QVERIFY(findRenderObject(primary, firstIds.at(1))->visible());
-    QVERIFY(findRenderObject(primary, secondIds.at(1))->visible());
+    QVERIFY(findRenderObject(window.renderServer(), primary, firstIds.at(1))->isVisible());
+    QVERIFY(findRenderObject(window.renderServer(), primary, secondIds.at(1))->isVisible());
     QVERIFY(model->setData(wellParent, Qt::Unchecked, Qt::CheckStateRole));
     IDOSTreeModel foreignModel(nullptr);
     foreignModel.setName(QStringLiteral("case"));
@@ -868,10 +874,10 @@ void CaseWorkflowTest::onDataGroupChecks()
     foreignGroup->provider()->setGroup(true);
     foreignGroup->provider()->setKey(QStringLiteral("data.naturalFractures"));
     QVERIFY(foreignModel.insertItem(foreignModel.root(), foreignGroup));
-    const QModelIndex foreignIndex = foreignModel.indexFromItem(foreignGroup);
+    const QModelIndex foreignIndex = foreignModel.index(foreignGroup);
     QVERIFY(!foreignModel.flags(foreignIndex).testFlag(Qt::ItemIsUserCheckable));
     QVERIFY(!foreignModel.setData(foreignIndex, Qt::Checked, Qt::CheckStateRole));
-    const QModelIndex fracturesGroup = model->indexFromItem(model->find(groups.first()));
+    const QModelIndex fracturesGroup = model->index(model->find(groups.first()));
     QVERIFY(project->remove(firstIds.first()));
     QVERIFY(project->remove(secondIds.first()));
     QVERIFY(!model->flags(fracturesGroup).testFlag(Qt::ItemIsUserCheckable));
@@ -897,13 +903,13 @@ void CaseWorkflowTest::onDeleteImportedData()
     IDOSMainWindow window;
     IDOSProject* project = new IDOSProject(&window);
     window.setProject(project);
-    IDOSNaturalFractureSet* first = new IDOSNaturalFractureSet();
+    IDOSNaturalFractureSetObject* first = new IDOSNaturalFractureSetObject();
     first->setName(QStringLiteral("First fractures"));
     first->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1)});
-    IDOSNaturalFractureSet* second = new IDOSNaturalFractureSet();
+    IDOSNaturalFractureSetObject* second = new IDOSNaturalFractureSetObject();
     second->setName(QStringLiteral("Second fractures"));
     second->setFractures(first->fractures());
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     project->add(first);
     project->add(second);
     project->add(grid);
@@ -918,11 +924,13 @@ void CaseWorkflowTest::onDeleteImportedData()
     IDOSRenderView* primary = window.renderServer()->currentView();
     IDOSRenderView additional;
     window.renderServer()->addView(&additional);
-    QVERIFY(findRenderObject(primary, firstId) != nullptr);
-    QVERIFY(findRenderObject(&additional, secondId) != nullptr);
+    window.renderServer()->setChecked(firstId, Qt::Checked, primary);
+    window.renderServer()->setChecked(secondId, Qt::Checked, &additional);
+    QVERIFY(findRenderObject(window.renderServer(), primary, firstId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), &additional, secondId) != nullptr);
     IDOSTreeView* view = window.dataTreeView();
-    const QModelIndex firstIndex = window.dataTreeModel()->indexFromDataId(firstId);
-    const QModelIndex secondIndex = window.dataTreeModel()->indexFromDataId(secondId);
+    const QModelIndex firstIndex = window.dataTreeModel()->index(firstId);
+    const QModelIndex secondIndex = window.dataTreeModel()->index(secondId);
     QVERIFY(firstIndex.isValid() && secondIndex.isValid());
     QScopedPointer<QMenu> single(view->createContextMenu(firstIndex));
     QVERIFY(single->findChild<QAction*>(QStringLiteral("deleteDataAction")) != nullptr);
@@ -943,9 +951,9 @@ void CaseWorkflowTest::onDeleteImportedData()
     timer.stop();
     QVERIFY(project->object(firstId) == nullptr);
     QVERIFY(project->object(secondId) == nullptr);
-    QVERIFY(!window.dataTreeModel()->indexFromDataId(firstId).isValid());
-    QVERIFY(findRenderObject(primary, firstId) == nullptr);
-    QVERIFY(findRenderObject(&additional, secondId) == nullptr);
+    QVERIFY(!window.dataTreeModel()->index(firstId).isValid());
+    QVERIFY(findRenderObject(window.renderServer(), primary, firstId) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), &additional, secondId) == nullptr);
     QCOMPARE(caseObject->itemRefs().size(), 1);
     QCOMPARE(caseObject->itemRefs().first().objectId(), grid->objectId());
     project->commandManager()->undo();
@@ -953,9 +961,9 @@ void CaseWorkflowTest::onDeleteImportedData()
     QCOMPARE(project->object(secondId), static_cast<IDOSDataObject*>(second));
     QCOMPARE(caseObject->itemRefs().size(), 3);
     QCOMPARE(caseObject->itemRefs().first().refId(), referenceId);
-    QVERIFY(window.dataTreeModel()->indexFromDataId(firstId).isValid());
-    QVERIFY(findRenderObject(primary, firstId) != nullptr);
-    QVERIFY(findRenderObject(&additional, secondId) != nullptr);
+    QVERIFY(window.dataTreeModel()->index(firstId).isValid());
+    QVERIFY(findRenderObject(window.renderServer(), primary, firstId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), &additional, secondId) != nullptr);
     QVERIFY(project->commandManager()->canRedo());
     QVERIFY(!project->commandManager()->execute(new IDOSDeleteDataCommand(project, {firstId, grid->objectId()})));
     QCOMPARE(project->object(firstId), static_cast<IDOSDataObject*>(first));
@@ -966,7 +974,7 @@ void CaseWorkflowTest::onDeleteImportedData()
     project->commandManager()->redo();
     QVERIFY(project->object(firstId) == nullptr);
     QCOMPARE(caseObject->itemRefs().size(), 1);
-    QPointer<IDOSNaturalFractureSet> lifetime(first);
+    QPointer<IDOSNaturalFractureSetObject> lifetime(first);
     project->commandManager()->clear();
     QVERIFY(lifetime.isNull());
     QVERIFY(project->object(grid->objectId()) != nullptr);
@@ -992,11 +1000,10 @@ void CaseWorkflowTest::onFractureDisplay()
     QAction* check = window.findChild<QAction*>(QStringLiteral("idosCheckFracturesAction"));
     QVERIFY(check != nullptr);
     QVERIFY(!check->isEnabled());
-    IDOSNaturalFractureSet* data = new IDOSNaturalFractureSet();
+    IDOSNaturalFractureSetObject* data = new IDOSNaturalFractureSetObject();
     data->setName(QStringLiteral("Sample fractures"));
     data->setFractures({fracture({0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0}, 1),
                         fracture({0, 0, 1, 1, 0, 1, 2, 0, 1}, 2)});
-    data->setVisible(false);
     project->add(data);
     project->setCurrentObject(data);
     QVERIFY(check->isEnabled());
@@ -1006,32 +1013,35 @@ void CaseWorkflowTest::onFractureDisplay()
     QVERIFY(firstView != nullptr);
     IDOSRenderView secondView;
     server->addView(&secondView);
-    IDOSRenderObject* first = findRenderObject(firstView, dataId);
-    IDOSRenderObject* second = findRenderObject(&secondView, dataId);
+    server->setChecked(dataId, Qt::Checked, firstView);
+    server->setChecked(dataId, Qt::Checked, &secondView);
+    server->setChecked(dataId, Qt::Unchecked, &secondView);
+    IDOSRenderObject* first = findRenderObject(window.renderServer(), firstView, dataId);
+    IDOSRenderObject* second = findRenderObject(window.renderServer(), &secondView, dataId);
     QVERIFY(first != nullptr && second != nullptr);
     QVERIFY(first->provider() != second->provider());
-    QCOMPARE(first->provider()->actors().size(), 1);
-    vtkActor* actor = first->provider()->actors().first();
+    QCOMPARE(actors(first->provider()).size(), 1);
+    vtkActor* actor = actors(first->provider()).first();
     vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(actor->GetMapper());
     QVERIFY(mapper != nullptr);
     mapper->Update();
     QCOMPARE(mapper->GetInput()->GetNumberOfCells(), vtkIdType(2));
     QVERIFY(mapper->GetInput()->GetCellData()->GetArray("FractureId") != nullptr);
     QCOMPARE(mapper->GetInput()->GetCellData()->GetArray("FractureId")->GetComponent(0, 0), 1.0);
-    const QModelIndex node = window.dataTreeModel()->indexFromDataId(dataId);
+    const QModelIndex node = window.dataTreeModel()->index(dataId);
     QVERIFY(node.isValid());
     QVERIFY(window.dataTreeModel()->flags(node).testFlag(Qt::ItemIsUserCheckable));
     QVERIFY(window.dataTreeModel()->setData(node, Qt::Checked, Qt::CheckStateRole));
-    QVERIFY(first->visible());
-    QVERIFY(!second->visible());
+    QVERIFY(first->isVisible());
+    QVERIFY(!second->isVisible());
     first->setOpacity(0.4);
     firstView->setSelection({first->id()});
-    QVERIFY(first->highlighted());
-    QVERIFY(!second->highlighted());
+    QVERIFY(first->isSelected());
+    QVERIFY(!second->isSelected());
     QCOMPARE(second->opacity(), 1.0);
-    const QVariantMap appearance = first->provider()->presentationState();
+    const QVariantMap appearance = first->provider()->saveState();
     first->setOpacity(0.9);
-    QVERIFY(first->provider()->restorePresentationState(appearance));
+    QVERIFY(first->provider()->restoreState(appearance));
     QCOMPARE(first->opacity(), 0.4);
 
     window.resize(1100, 800);
@@ -1045,7 +1055,7 @@ void CaseWorkflowTest::onFractureDisplay()
         QVERIFY(firstView->grab().save(QDir(screenshots).filePath(QStringLiteral("fracture-display.png"))));
     }
     check->trigger();
-    QPointer<QDialog> dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    QPointer<QWidget> dialog = window.findChild<QWidget*>(QStringLiteral("idosFractureGeometryReport"));
     QVERIFY(!dialog.isNull());
     QTableWidget* table = dialog->findChild<QTableWidget*>(QStringLiteral("idosFractureGeometryIssues"));
     QVERIFY(table != nullptr);
@@ -1057,16 +1067,16 @@ void CaseWorkflowTest::onFractureDisplay()
     QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
                                      Q_ARG(int, 0), Q_ARG(int, 0)));
     QCOMPARE(firstView->selection().first(), first->id());
-    QVERIFY(!second->visible());
+    QVERIFY(!second->isVisible());
     server->setCurrentView(&secondView);
     QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
                                      Q_ARG(int, 0), Q_ARG(int, 0)));
-    QVERIFY(!second->visible());
+    QVERIFY(!second->isVisible());
     data->setFractures({fracture({0, 0, 0, 3, 0, 0, 3, 3, 0, 0, 3, 0}, 3)});
     QTRY_VERIFY(dialog.isNull());
     QCOMPARE(first->opacity(), 0.4);
-    QVERIFY(first->visible());
-    QCOMPARE(first->provider()->actors().size(), 1);
+    QVERIFY(first->isVisible());
+    QCOMPARE(actors(first->provider()).size(), 1);
 
     QTemporaryDir saved;
     QString error;
@@ -1074,27 +1084,27 @@ void CaseWorkflowTest::onFractureDisplay()
     QScopedPointer<IDOSProject> loaded(IDOSProject::load(saved.filePath(QStringLiteral("fractures.idos")),
                                                        window.dataRegistry(), error));
     QVERIFY2(!loaded.isNull(), qPrintable(error));
-    IDOSNaturalFractureSet* restored = qobject_cast<IDOSNaturalFractureSet*>(loaded->object(dataId));
+    IDOSNaturalFractureSetObject* restored = qobject_cast<IDOSNaturalFractureSetObject*>(loaded->object(dataId));
     QVERIFY(restored != nullptr);
     IDOSNaturalFractureRenderProvider restoredProvider(restored);
-    QCOMPARE(restoredProvider.actors().size(), 1);
+    QCOMPARE(actors(&restoredProvider).size(), 1);
 
     check->trigger();
-    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    dialog = window.findChild<QWidget*>(QStringLiteral("idosFractureGeometryReport"));
     QVERIFY(!dialog.isNull());
     IDOSDataObject* detached = project->take(dataId);
     QCOMPARE(detached, static_cast<IDOSDataObject*>(data));
     QTRY_VERIFY(dialog.isNull());
-    QVERIFY(findRenderObject(firstView, dataId) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), firstView, dataId) == nullptr);
     QVERIFY(!check->isEnabled());
     project->add(detached);
     project->setCurrentObject(data);
-    QVERIFY(findRenderObject(firstView, dataId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), firstView, dataId) != nullptr);
     QVERIFY(check->isEnabled());
 
     server->setCurrentView(firstView);
     check->trigger();
-    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    dialog = window.findChild<QWidget*>(QStringLiteral("idosFractureGeometryReport"));
     QVERIFY(!dialog.isNull());
     IDOSProject* nextProject = new IDOSProject(&window);
     window.setProject(nextProject);
@@ -1103,12 +1113,12 @@ void CaseWorkflowTest::onFractureDisplay()
     window.setProject(project);
     project->setCurrentObject(data);
     check->trigger();
-    dialog = window.findChild<QDialog*>(QStringLiteral("idosFractureGeometryReport"));
+    dialog = window.findChild<QWidget*>(QStringLiteral("idosFractureGeometryReport"));
     QVERIFY(!dialog.isNull());
     plugins->unloadCppPlugin(pluginPath);
     QVERIFY(dialog.isNull());
     QVERIFY(!plugins->isLoaded(QStringLiteral("idosfracturemodelingplugin")));
-    QVERIFY(findRenderObject(firstView, dataId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), firstView, dataId) != nullptr);
     if (hadSetting)
     {
         settings.setValue(settingKey, previousSetting);
@@ -1190,7 +1200,7 @@ void CaseWorkflowTest::onGridCompanionFiles()
     QString gridId;
     for (IDOSDataObject* object : project->objects())
     {
-        if (qobject_cast<IDOSGrid*>(object) != nullptr)
+        if (qobject_cast<IDOSGridObject*>(object) != nullptr)
         {
             gridId = object->objectId();
         }
@@ -1204,14 +1214,14 @@ void CaseWorkflowTest::onGridCompanionFiles()
     int summaries = 0;
     for (IDOSDataObject* object : project->objects())
     {
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
         if (property != nullptr)
         {
             ++properties;
             QCOMPARE(property->gridId(), gridId);
             QCOMPARE(property->totalCellCount(), 2);
             QCOMPARE(property->values().at(1), 0.0);
-            if (property->kind() == IDOSGridProperty::Kind::Dynamic)
+            if (property->kind() == IDOSGridPropertyObject::Kind::Dynamic)
             {
                 QCOMPARE(property->reportSteps().size(), 2);
                 QVERIFY(property->setCurrentReportStep(2));
@@ -1222,7 +1232,7 @@ void CaseWorkflowTest::onGridCompanionFiles()
                 QCOMPARE(property->values().at(0), 0.25);
             }
         }
-        IDOSSimulationSummaryResults* summary = qobject_cast<IDOSSimulationSummaryResults*>(object);
+        IDOSSimulationSummaryResultsObject* summary = qobject_cast<IDOSSimulationSummaryResultsObject*>(object);
         if (summary != nullptr)
         {
             ++summaries;
@@ -1298,7 +1308,7 @@ void CaseWorkflowTest::onGridCompanionFiles()
     QCOMPARE(project->objects().size(), 2);
     for (IDOSDataObject* object : project->objects())
     {
-        if (qobject_cast<IDOSGrid*>(object) != nullptr)
+        if (qobject_cast<IDOSGridObject*>(object) != nullptr)
         {
             gridId = object->objectId();
         }
@@ -1338,9 +1348,9 @@ void CaseWorkflowTest::onFlowExecution()
     QVERIFY(QFile::copy(source, directory.path() + QStringLiteral("/SPE1.DATA")));
     IDOSProject project;
     IDOSCommandRegistry registry;
-    QVERIFY(registry.add(std::unique_ptr<IDOSCommandMetadata>(new IDOSImportRestartResultsCommandMetadata())));
+    QVERIFY(registry.registerMetadata(new IDOSImportRestartResultsCommandMetadata()));
     project.commandManager()->setRegistry(&registry);
-    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
+    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     const QList<IDOSDataObject*> objects = reader->read(directory.path() + QStringLiteral("/SPE1.DATA"));
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -1476,7 +1486,7 @@ void CaseWorkflowTest::onFlowOutputFraming()
         << QStringLiteral("Ubuntu-24.04") << QStringLiteral("--exec") << QStringLiteral("chmod")
         << QStringLiteral("+x") << linuxScript), 0);
     IDOSProject project;
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setDimensions(1, 1, 1);
     project.add(grid);
     IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
@@ -1506,22 +1516,22 @@ void CaseWorkflowTest::onFlowOutputFraming()
 void CaseWorkflowTest::onSimulationOutput()
 {
     IDOSProject project;
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setDimensions(1, 1, 1);
     project.add(grid);
     IDOSSimulationCaseObject* simulationCase = new IDOSSimulationCaseObject();
     simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
     project.add(simulationCase);
-    IDOSGrid* otherGrid = new IDOSGrid();
+    IDOSGridObject* otherGrid = new IDOSGridObject();
     otherGrid->setDimensions(1, 1, 1);
     project.add(otherGrid);
     IDOSSimulationCaseObject* otherCase = new IDOSSimulationCaseObject();
     otherCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), otherGrid->objectId()));
     project.add(otherCase);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setGridId(grid->objectId());
     property->setKeyword(QStringLiteral("SGAS"));
-    property->setKind(IDOSGridProperty::Kind::Dynamic);
+    property->setKind(IDOSGridPropertyObject::Kind::Dynamic);
     property->setDimensions(1, 1, 1);
     QVERIFY(property->setReportStepValues(1, QVector<double>{0.1}));
     QVERIFY(property->setReportStepValues(3, QVector<double>{0.3}));
@@ -1569,7 +1579,7 @@ void CaseWorkflowTest::onProviderDimensions()
                 "WCONINJE\n'INJ' 'GAS' 'OPEN' 'RATE' 100000 1* 9014 /\n/\nEND\n");
     input.close();
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     const QList<IDOSDataObject*> objects = reader->read(input.fileName());
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -1609,7 +1619,7 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(window.dataRegistry()->metadata(typeId) != nullptr);
     QVERIFY(window.treeRegistry()->metadata(typeId) != nullptr);
     QVERIFY(window.renderRegistry()->metadata(typeId) != nullptr);
-    QVERIFY(window.commandRegistry()->find(QStringLiteral("pointset.create")) != nullptr);
+    QVERIFY(window.commandRegistry()->metadata(QStringLiteral("pointset.create")) != nullptr);
     QScopedPointer<QMenu> blankMenu(window.dataTreeView()->createContextMenu(QModelIndex()));
     QVERIFY(blankMenu->actions().isEmpty());
     QJsonObject invalid;
@@ -1625,40 +1635,42 @@ void CaseWorkflowTest::onExamplePlugin()
     const QString id = response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString();
     QVERIFY(project.object(id) != nullptr);
     QCOMPARE(project.object(id)->typeId(), typeId);
-    const QModelIndex index = window.dataTreeModel()->indexFromDataId(id);
+    const QModelIndex index = window.dataTreeModel()->index(id);
     QVERIFY(index.isValid());
     QCOMPARE(window.dataTreeModel()->rowCount(index), 8);
     IDOSSimulationCaseObject* caseObject = new IDOSSimulationCaseObject();
     caseObject->setName(QStringLiteral("Point set reference"));
     caseObject->addItemRef(IDOSCaseItemRef(QStringLiteral("case.input"), id));
     project.add(caseObject);
-    const QModelIndex referenceIndex = window.caseTreeModel()->indexFromDataId(id);
+    const QModelIndex referenceIndex = window.caseTreeModel()->index(id);
     QVERIFY(referenceIndex.isValid());
     QCOMPARE(window.caseTreeModel()->rowCount(referenceIndex), 8);
     const QList<IDOSRenderView*> views = window.findChildren<IDOSRenderView*>();
     QVERIFY(!views.isEmpty());
     IDOSRenderView* firstView = views.first();
-    IDOSRenderObject* firstObject = findRenderObject(firstView, id);
+    window.renderServer()->setChecked(id, Qt::Checked, firstView);
+    IDOSRenderObject* firstObject = findRenderObject(window.renderServer(), firstView, id);
     QVERIFY(firstObject != nullptr);
-    QCOMPARE(firstObject->provider()->actors().first()->GetMapper()->GetInput()->GetNumberOfPoints(), vtkIdType(8));
+    QCOMPARE(actors(firstObject->provider()).first()->GetMapper()->GetInput()->GetNumberOfPoints(), vtkIdType(8));
     QPersistentModelIndex persistentIndex(index);
     project.object(id)->setName(QStringLiteral("Updated sample"));
     QVERIFY(persistentIndex.isValid());
     QCOMPARE(persistentIndex.data().toString(), QStringLiteral("Updated sample"));
-    QCOMPARE(findRenderObject(firstView, id), firstObject);
+    QCOMPARE(findRenderObject(window.renderServer(), firstView, id), firstObject);
 
     IDOSRenderView secondView;
     IDOSRenderServer server(window.renderRegistry());
     server.addView(&secondView);
     server.setProject(&project);
-    IDOSRenderObject* secondObject = findRenderObject(&secondView, id);
+    server.setChecked(id, Qt::Checked, &secondView);
+    IDOSRenderObject* secondObject = findRenderObject(&server, &secondView, id);
     QVERIFY(secondObject != nullptr);
     QVERIFY(firstObject->id() != secondObject->id());
-    const double originalSize = firstObject->provider()->actors().first()->GetProperty()->GetPointSize();
+    const double originalSize = actors(firstObject->provider()).first()->GetProperty()->GetPointSize();
     secondObject->setOpacity(0.5);
-    QCOMPARE(secondObject->provider()->actors().first()->GetProperty()->GetOpacity(), 0.5);
+    QCOMPARE(actors(secondObject->provider()).first()->GetProperty()->GetOpacity(), 0.5);
     QCOMPARE(firstObject->opacity(), 1.0);
-    QCOMPARE(firstObject->provider()->actors().first()->GetProperty()->GetPointSize(), originalSize);
+    QCOMPARE(actors(firstObject->provider()).first()->GetProperty()->GetPointSize(), originalSize);
     QCOMPARE(manager->undoText(), QObject::tr("Create Point Set"));
     secondView.resize(900, 600);
     secondView.show();
@@ -1678,12 +1690,12 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(deleteAction != nullptr);
     deleteAction->trigger();
     QVERIFY(project.object(id) == nullptr);
-    QVERIFY(findRenderObject(firstView, id) == nullptr);
-    QVERIFY(findRenderObject(&secondView, id) == nullptr);
-    QVERIFY(!window.dataTreeModel()->indexFromDataId(id).isValid());
+    QVERIFY(findRenderObject(window.renderServer(), firstView, id) == nullptr);
+    QVERIFY(findRenderObject(&server, &secondView, id) == nullptr);
+    QVERIFY(!window.dataTreeModel()->index(id).isValid());
     manager->undo();
     QVERIFY(project.object(id) != nullptr);
-    QVERIFY(findRenderObject(firstView, id) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), firstView, id) != nullptr);
     manager->undo();
     QVERIFY(project.object(id) == nullptr);
     plugins->unloadCppPlugin(path);
@@ -1709,7 +1721,7 @@ void CaseWorkflowTest::onExamplePlugin()
     QVERIFY(treeMenu->findChild<QAction*>(QStringLiteral("deletePointSetAction")) == nullptr);
     QVERIFY(window.treeRegistry()->metadata(typeId) == nullptr);
     QVERIFY(window.renderRegistry()->metadata(typeId) == nullptr);
-    QVERIFY(window.commandRegistry()->find(QStringLiteral("pointset.create")) == nullptr);
+    QVERIFY(window.commandRegistry()->metadata(QStringLiteral("pointset.create")) == nullptr);
     plugins->loadCppPlugin(path);
     QVERIFY(plugins->isLoaded(QStringLiteral("idosexampleplugin")));
     QScopedPointer<IDOSDataObject> detached(window.dataRegistry()->metadata(typeId)->create());
@@ -1748,9 +1760,9 @@ void CaseWorkflowTest::onViewDecorations()
     view->setAxesVisible(true);
     QVERIFY(orientationAction->isChecked());
 
-    IDOSGrid grid;
+    IDOSGridObject grid;
     grid.setDimensions(1, 1, 1);
-    IDOSGridProperty property;
+    IDOSGridPropertyObject property;
     property.setDimensions(1, 1, 1);
     property.setName(QStringLiteral("Porosity"));
     property.setValues(QVector<double>{0.2});
@@ -1767,7 +1779,7 @@ void CaseWorkflowTest::onViewDecorations()
     QVERIFY(legendAction->isChecked());
     legendAction->trigger();
     QVERIFY(!view->legendVisible());
-    QCOMPARE(provider->legends().first()->GetVisibility(), 1);
+    QCOMPARE(legends(provider).first()->GetVisibility(), 1);
     view->scene()->notifyChanged(object->id());
     QVERIFY(!view->legendVisible());
     QVERIFY(!legendAction->isChecked());
@@ -1852,7 +1864,7 @@ void CaseWorkflowTest::onWellInputMenus()
     IDOSProject project;
     IDOSMainWindow window;
     window.setProject(&project);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Input Well"));
     IDOSWellPath path;
     path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 10.0, 20.0, 0.0, 0.0),
@@ -1875,7 +1887,7 @@ void CaseWorkflowTest::onWellInputMenus()
     well->setCheckshot(checkshot);
     project.add(well);
     IDOSTreeModel* model = window.dataTreeModel();
-    const QModelIndex root = model->indexFromDataId(well->objectId());
+    const QModelIndex root = model->index(well->objectId());
     QVERIFY(root.isValid());
     QCOMPARE(model->rowCount(root), 5);
     QScopedPointer<QMenu> summaryMenu(window.dataTreeView()->createContextMenu(root));
@@ -1943,7 +1955,7 @@ void CaseWorkflowTest::onWellInputMenus()
 
 void CaseWorkflowTest::onWellSymbolsAndStatusColors()
 {
-    IDOSWell well;
+    IDOSWellObject well;
     well.setName(QStringLiteral("Symbol Well"));
     IDOSWellPath path;
     path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 0.0, 0.0, 0.0, 0.0),
@@ -1967,8 +1979,8 @@ void CaseWorkflowTest::onWellSymbolsAndStatusColors()
         settings.insert(QStringLiteral("symbol"), symbol);
         QVERIFY(provider.setDisplaySettings(settings));
         QCOMPARE(provider.effectiveSymbol(), symbol);
-        QCOMPARE(provider.actors().size(), 4);
-        vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(provider.actors().first()->GetMapper());
+        QCOMPARE(actors(&provider).size(), 4);
+        vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(actors(&provider).first()->GetMapper());
         QVERIFY(mapper != nullptr);
         mapper->Update();
         QCOMPARE(mapper->GetInput()->GetNumberOfLines(), static_cast<vtkIdType>(lineCounts[symbol]));
@@ -1976,11 +1988,11 @@ void CaseWorkflowTest::onWellSymbolsAndStatusColors()
         const QColor expected = symbol == 15 || symbol == 16 ? injector
             : symbol == 2 || (symbol >= 9 && symbol <= 14) || (symbol >= 19 && symbol <= 22) || symbol >= 26
                 ? closed : producer;
-        const double* color = provider.actors().at(1)->GetProperty()->GetColor();
+        const double* color = actors(&provider).at(1)->GetProperty()->GetColor();
         QVERIFY(std::fabs(color[0] - expected.redF()) < 1.0e-8);
         QVERIFY(std::fabs(color[1] - expected.greenF()) < 1.0e-8);
         QVERIFY(std::fabs(color[2] - expected.blueF()) < 1.0e-8);
-        QVERIFY(provider.actors().at(1)->GetProperty()->GetRenderLinesAsTubes());
+        QVERIFY(actors(&provider).at(1)->GetProperty()->GetRenderLinesAsTubes());
     }
     const QStringList statuses{QStringLiteral("producer"), QStringLiteral("injector"),
         QStringLiteral("closed"), QStringLiteral("stopped")};
@@ -2000,17 +2012,17 @@ void CaseWorkflowTest::onWellSymbolsAndStatusColors()
         settings.insert(QStringLiteral("symbol"), statusSymbols[index]);
         QVERIFY(provider.setDisplaySettings(settings));
         const QColor expected(colors.at(index));
-        const double* color = provider.actors().at(1)->GetProperty()->GetColor();
+        const double* color = actors(&provider).at(1)->GetProperty()->GetColor();
         QVERIFY(std::fabs(color[0] - expected.redF()) < 1.0e-8);
         QVERIFY(std::fabs(color[1] - expected.greenF()) < 1.0e-8);
         QVERIFY(std::fabs(color[2] - expected.blueF()) < 1.0e-8);
         const QColor expectedCompletion(completionColors.at(index));
-        color = provider.actors().at(2)->GetProperty()->GetColor();
+        color = actors(&provider).at(2)->GetProperty()->GetColor();
         QVERIFY(std::fabs(color[0] - expectedCompletion.redF()) < 1.0e-8);
         QVERIFY(std::fabs(color[1] - expectedCompletion.greenF()) < 1.0e-8);
         QVERIFY(std::fabs(color[2] - expectedCompletion.blueF()) < 1.0e-8);
         const QColor expectedClosed(completionColors.at(index == 3 ? 3 : 2));
-        color = provider.actors().at(3)->GetProperty()->GetColor();
+        color = actors(&provider).at(3)->GetProperty()->GetColor();
         QVERIFY(std::fabs(color[0] - expectedClosed.redF()) < 1.0e-8);
         QVERIFY(std::fabs(color[1] - expectedClosed.greenF()) < 1.0e-8);
         QVERIFY(std::fabs(color[2] - expectedClosed.blueF()) < 1.0e-8);
@@ -2023,8 +2035,8 @@ void CaseWorkflowTest::onWellSymbolsAndStatusColors()
     settings.insert(QStringLiteral("symbol"), -1);
     settings.insert(QStringLiteral("tubes"), false);
     QVERIFY(provider.setDisplaySettings(settings));
-    QVERIFY(!provider.actors().at(1)->GetProperty()->GetRenderLinesAsTubes());
-    well.setType(IDOSWell::Type::Injector);
+    QVERIFY(!actors(&provider).at(1)->GetProperty()->GetRenderLinesAsTubes());
+    well.setType(IDOSWellObject::Type::Injector);
     provider.update();
     QCOMPARE(provider.effectiveSymbol(), 15);
     well.setOpen(false);
@@ -2051,7 +2063,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
     IDOSProject project;
     IDOSMainWindow window;
     window.setProject(&project);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("Display Well"));
     IDOSWellPath path;
     path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 0.0, 0.0, 0.0, 0.0),
@@ -2064,7 +2076,8 @@ void CaseWorkflowTest::onWellDisplaySettings()
     IDOSTreeView* tree = window.dataTreeView();
     IDOSRenderView* firstView = window.renderServer()->currentView();
     QVERIFY(firstView != nullptr);
-    IDOSRenderObject* firstObject = findRenderObject(firstView, well->objectId());
+    window.renderServer()->setChecked(well->objectId(), Qt::Checked, firstView);
+    IDOSRenderObject* firstObject = findRenderObject(window.renderServer(), firstView, well->objectId());
     QVERIFY(firstObject != nullptr);
     IDOSWellRenderProvider* firstProvider = dynamic_cast<IDOSWellRenderProvider*>(firstObject->provider());
     QVERIFY(firstProvider != nullptr);
@@ -2077,7 +2090,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QVERIFY(secondView.scene()->add(secondObject));
     const QVariantMap secondSettings = secondProvider->displaySettings();
     IDOSTreeModel* model = window.dataTreeModel();
-    const QModelIndex root = model->indexFromDataId(well->objectId());
+    const QModelIndex root = model->index(well->objectId());
     QVERIFY(root.isValid());
     QScopedPointer<QMenu> menu(tree->createContextMenu(root));
     QAction* action = menu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
@@ -2098,7 +2111,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
     width->setValue(8.0);
     QCOMPARE(firstProvider->displaySettings().value(QStringLiteral("trajectoryWidth")).toDouble(), 8.0);
     QCOMPARE(secondProvider->displaySettings(), secondSettings);
-    QCOMPARE(firstProvider->actors().at(1)->GetProperty()->GetLineWidth(), 8.0f);
+    QCOMPARE(actors(firstProvider).at(1)->GetProperty()->GetLineWidth(), 8.0f);
     QPushButton* trajectoryColor = widget->findChild<QPushButton*>(QStringLiteral("wellDisplay_trajectoryColor"));
     QVERIFY(trajectoryColor != nullptr);
     QCheckBox* statusColors = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_statusColors"));
@@ -2118,7 +2131,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
     clip->setChecked(true);
     minimum->setValue(50.0);
     maximum->setValue(150.0);
-    vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(1)->GetMapper());
+    vtkPolyDataMapper* mapper = vtkPolyDataMapper::SafeDownCast(actors(firstProvider).at(1)->GetMapper());
     QVERIFY(mapper != nullptr);
     mapper->Update();
     double bounds[6];
@@ -2132,16 +2145,16 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QCheckBox* completions = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_completionVisible"));
     QVERIFY(completions != nullptr);
     completions->setChecked(true);
-    QCOMPARE(firstProvider->actors().size(), 3);
-    QVERIFY(firstProvider->actors().at(2)->GetVisibility() != 0);
+    QCOMPARE(actors(firstProvider).size(), 3);
+    QVERIFY(actors(firstProvider).at(2)->GetVisibility() != 0);
     QCheckBox* label = widget->findChild<QCheckBox*>(QStringLiteral("wellDisplay_labelVisible"));
     QVERIFY(label != nullptr);
     label->setChecked(true);
-    QCOMPARE(firstProvider->legends().size(), 1);
+    QCOMPARE(legends(firstProvider).size(), 1);
     QComboBox* shape = widget->findChild<QComboBox*>(QStringLiteral("wellDisplayHeadShape"));
     QVERIFY(shape != nullptr);
     shape->setCurrentIndex(shape->findData(QStringLiteral("sphere")));
-    vtkPolyDataMapper* headMapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(0)->GetMapper());
+    vtkPolyDataMapper* headMapper = vtkPolyDataMapper::SafeDownCast(actors(firstProvider).at(0)->GetMapper());
     QVERIFY(headMapper != nullptr);
     headMapper->Update();
     QVERIFY(headMapper->GetInput()->GetNumberOfPolys() > 0);
@@ -2149,12 +2162,12 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QVERIFY(smooth != nullptr);
     clip->setChecked(false);
     smooth->setChecked(true);
-    mapper = vtkPolyDataMapper::SafeDownCast(firstProvider->actors().at(1)->GetMapper());
+    mapper = vtkPolyDataMapper::SafeDownCast(actors(firstProvider).at(1)->GetMapper());
     mapper->Update();
     QVERIFY(mapper->GetInput()->GetNumberOfPoints() > path.pointCount());
     const QVariantMap saved = firstProvider->displaySettings();
-    firstProvider->setHighlighted(true);
-    firstProvider->setHighlighted(false);
+    firstProvider->setSelected(true);
+    firstProvider->setSelected(false);
     firstProvider->update();
     QCOMPARE(firstProvider->displaySettings(), saved);
     QCOMPARE(well->path().pointCount(), 3);
@@ -2164,9 +2177,9 @@ void CaseWorkflowTest::onWellDisplaySettings()
     opacity->setValue(40.0);
     QCOMPARE(firstProvider->opacity(), 0.4);
     visibility->setChecked(false);
-    QVERIFY(!firstProvider->visible());
+    QVERIFY(!firstProvider->isVisible());
     visibility->setChecked(true);
-    QVERIFY(firstProvider->visible());
+    QVERIFY(firstProvider->isVisible());
     const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
     if (!screenshotDirectory.isEmpty())
     {
@@ -2205,18 +2218,18 @@ void CaseWorkflowTest::onWellDisplaySettings()
     QTRY_VERIFY(widget.isNull());
     action->trigger();
     QVERIFY(window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow")) == nullptr);
-    IDOSWell* nextWell = new IDOSWell();
+    IDOSWellObject* nextWell = new IDOSWellObject();
     nextWell->setName(QStringLiteral("Next Well"));
     nextWell->setPath(path);
     project.add(nextWell);
     QVERIFY(window.renderServer()->setCurrentView(firstView));
-    QScopedPointer<QMenu> nextMenu(tree->createContextMenu(model->indexFromDataId(nextWell->objectId())));
+    QScopedPointer<QMenu> nextMenu(tree->createContextMenu(model->index(nextWell->objectId())));
     QAction* nextAction = nextMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(nextAction != nullptr);
     nextAction->trigger();
     widget = window.findChild<QWidget*>(QStringLiteral("wellDisplaySettingsWindow"));
     QVERIFY(!widget.isNull());
-    IDOSRenderObject* nextObject = findRenderObject(firstView, nextWell->objectId());
+    IDOSRenderObject* nextObject = findRenderObject(window.renderServer(), firstView, nextWell->objectId());
     QVERIFY(nextObject != nullptr);
     firstView->scene()->remove(nextObject->id());
     QTRY_VERIFY(widget.isNull());
@@ -2225,7 +2238,7 @@ void CaseWorkflowTest::onWellDisplaySettings()
     IDOSWellRenderProvider* nextProvider = new IDOSWellRenderProvider(nextWell);
     nextProvider->update();
     QVERIFY(secondView.scene()->add(new IDOSRenderObject(nextProvider)));
-    QScopedPointer<QMenu> switchMenu(tree->createContextMenu(model->indexFromDataId(nextWell->objectId())));
+    QScopedPointer<QMenu> switchMenu(tree->createContextMenu(model->index(nextWell->objectId())));
     QAction* switchAction = switchMenu->findChild<QAction*>(QStringLiteral("wellDisplaySettingsAction"));
     QVERIFY(switchAction != nullptr);
     switchAction->trigger();
@@ -2242,11 +2255,11 @@ void CaseWorkflowTest::onGridSettings()
     IDOSProject project;
     IDOSMainWindow window;
     window.setProject(&project);
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setDimensions(1, 1, 1);
     grid->setName(QStringLiteral("Coloring Grid"));
     project.add(grid);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setDimensions(1, 1, 1);
     property->setGridId(grid->objectId());
     property->setName(QStringLiteral("Porosity"));
@@ -2259,7 +2272,8 @@ void CaseWorkflowTest::onGridSettings()
     IDOSTreeView* tree = window.caseTreeView();
     IDOSRenderView* firstView = window.renderServer()->currentView();
     QVERIFY(firstView != nullptr);
-    IDOSRenderObject* firstObject = findRenderObject(firstView, grid->objectId());
+    window.renderServer()->setChecked(grid->objectId(), Qt::Checked, firstView);
+    IDOSRenderObject* firstObject = findRenderObject(window.renderServer(), firstView, grid->objectId());
     QVERIFY(firstObject != nullptr);
     IDOSGridRenderProvider* firstProvider = dynamic_cast<IDOSGridRenderProvider*>(firstObject->provider());
     QVERIFY(firstProvider != nullptr);
@@ -2269,7 +2283,7 @@ void CaseWorkflowTest::onGridSettings()
     QVERIFY(secondView.scene()->add(secondObject));
     secondProvider->setProperty(property);
     const QVariantMap originalSecondSettings = secondProvider->coloringSettings();
-    const QModelIndex index = window.caseTreeModel()->indexFromDataId(property->objectId());
+    const QModelIndex index = window.caseTreeModel()->index(property->objectId());
     QVERIFY(index.isValid());
     QScopedPointer<QMenu> menu(tree->createContextMenu(index));
     QVERIFY(menu->findChild<QAction*>(QStringLiteral("deletePropertyAction")) != nullptr);
@@ -2306,7 +2320,7 @@ void CaseWorkflowTest::onGridSettings()
         const QString key = ramp->currentData().toString();
         const QList<QColor> colors = IDOSGridRenderProvider::colorRampColors(key, false);
         QCOMPARE(colors.size(), 256);
-        vtkLookupTable* lookup = vtkLookupTable::SafeDownCast(firstProvider->actors().first()->GetMapper()->GetLookupTable());
+        vtkLookupTable* lookup = vtkLookupTable::SafeDownCast(actors(firstProvider).first()->GetMapper()->GetLookupTable());
         QVERIFY(lookup != nullptr);
         for (const int sample : QList<int>{0, 127, 255})
         {
@@ -2328,7 +2342,7 @@ void CaseWorkflowTest::onGridSettings()
     QVERIFY(reverse != nullptr);
     ramp->setCurrentIndex(ramp->findData(QStringLiteral("OceanBreeze")));
     reverse->setChecked(true);
-    vtkLookupTable* reversedLookup = vtkLookupTable::SafeDownCast(firstProvider->actors().first()->GetMapper()->GetLookupTable());
+    vtkLookupTable* reversedLookup = vtkLookupTable::SafeDownCast(actors(firstProvider).first()->GetMapper()->GetLookupTable());
     QVERIFY(reversedLookup != nullptr);
     double reversedColor[4];
     reversedLookup->GetTableValue(0, reversedColor);
@@ -2353,8 +2367,8 @@ void CaseWorkflowTest::onGridSettings()
     maximum->setValue(1.0);
     QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("minimum")).toDouble(), 0.0);
     QCOMPARE(firstProvider->coloringSettings().value(QStringLiteral("maximum")).toDouble(), 1.0);
-    QCOMPARE(firstProvider->actors().first()->GetMapper()->GetScalarRange()[0], 0.0);
-    QCOMPARE(firstProvider->actors().first()->GetMapper()->GetScalarRange()[1], 1.0);
+    QCOMPARE(actors(firstProvider).first()->GetMapper()->GetScalarRange()[0], 0.0);
+    QCOMPARE(actors(firstProvider).first()->GetMapper()->GetScalarRange()[1], 1.0);
     QApplication::processEvents();
     const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath());
     QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("grid-setting-coloring.png"))));
@@ -2364,9 +2378,9 @@ void CaseWorkflowTest::onGridSettings()
     QCheckBox* legend = widget->findChild<QCheckBox*>(QStringLiteral("gridSettingLegendCheck"));
     QVERIFY(legend != nullptr);
     legend->setChecked(false);
-    QVERIFY(firstProvider->legends().isEmpty());
+    QVERIFY(legends(firstProvider).isEmpty());
     QVERIFY(property->setValues(QVector<double>{std::numeric_limits<double>::quiet_NaN()}));
-    QVERIFY(std::isnan(firstProvider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0)));
+    QVERIFY(std::isnan(actors(firstProvider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0)));
     tabs->setCurrentIndex(0);
     QComboBox* mode = widget->findChild<QComboBox*>(QStringLiteral("gridSettingModeCombo"));
     QDoubleSpinBox* opacity = widget->findChild<QDoubleSpinBox*>(QStringLiteral("gridSettingOpacitySpin"));
@@ -2382,7 +2396,7 @@ void CaseWorkflowTest::onGridSettings()
         QCOMPARE(firstProvider->displayMode(), displayMode);
         const int representation = displayMode == IDOSDisplayMode::Wireframe ? VTK_WIREFRAME
             : displayMode == IDOSDisplayMode::Points ? VTK_POINTS : VTK_SURFACE;
-        QCOMPARE(firstProvider->actors().first()->GetProperty()->GetRepresentation(), representation);
+        QCOMPARE(actors(firstProvider).first()->GetProperty()->GetRepresentation(), representation);
         QCOMPARE(secondProvider->displayMode(), IDOSDisplayMode::Surface);
     }
     edges->setChecked(true);
@@ -2395,7 +2409,7 @@ void CaseWorkflowTest::onGridSettings()
     edgeWidth->setValue(4.5);
     QCOMPARE(firstProvider->opacity(), 0.65);
     QCOMPARE(firstProvider->edgeWidth(), 4.5);
-    QCOMPARE(firstProvider->actors().first()->GetProperty()->GetLineWidth(), 4.5f);
+    QCOMPARE(actors(firstProvider).first()->GetProperty()->GetLineWidth(), 4.5f);
     QCOMPARE(secondProvider->opacity(), 1.0);
     QCOMPARE(secondProvider->edgeWidth(), 1.0);
     edgeColor->click();
@@ -2405,19 +2419,19 @@ void CaseWorkflowTest::onGridSettings()
     colorDialog->accept();
     QCOMPARE(firstProvider->edgeColor(), QColor(QStringLiteral("#123456")));
     QCOMPARE(secondProvider->edgeColor(), QColor(Qt::black));
-    firstProvider->setHighlighted(true);
-    firstProvider->setHighlighted(false);
+    firstProvider->setSelected(true);
+    firstProvider->setSelected(false);
     const QColor restored(firstProvider->edgeColor());
-    const double* restoredColor = firstProvider->actors().first()->GetProperty()->GetEdgeColor();
+    const double* restoredColor = actors(firstProvider).first()->GetProperty()->GetEdgeColor();
     QVERIFY(std::fabs(restoredColor[0] - restored.redF()) < 1.0e-8);
     QVERIFY(std::fabs(restoredColor[1] - restored.greenF()) < 1.0e-8);
     QVERIFY(std::fabs(restoredColor[2] - restored.blueF()) < 1.0e-8);
-    QCOMPARE(firstProvider->actors().first()->GetProperty()->GetLineWidth(), 4.5f);
+    QCOMPARE(actors(firstProvider).first()->GetProperty()->GetLineWidth(), 4.5f);
     visible->setChecked(false);
-    QVERIFY(!firstProvider->visible());
+    QVERIFY(!firstProvider->isVisible());
     QCOMPARE(firstProvider->property(), property);
     visible->setChecked(true);
-    QVERIFY(firstProvider->visible());
+    QVERIFY(firstProvider->isVisible());
     firstProvider->update();
     QCOMPARE(firstProvider->edgeColor(), restored);
     QCOMPARE(firstProvider->edgeWidth(), 4.5);
@@ -2429,7 +2443,7 @@ void CaseWorkflowTest::onGridSettings()
     QApplication::processEvents();
     QVERIFY(widget->grab().save(QDir(screenshotDirectory).filePath(QStringLiteral("grid-setting-appearance.png"))));
     QVERIFY(window.renderServer()->setCurrentView(firstView));
-    const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
+    const QModelIndex gridIndex = window.caseTreeModel()->index(grid->objectId());
     QVERIFY(gridIndex.isValid());
     QScopedPointer<QMenu> gridMenu(tree->createContextMenu(gridIndex));
     QVERIFY(gridMenu->findChild<QAction*>(QStringLiteral("deleteGridAction")) != nullptr);
@@ -2457,73 +2471,175 @@ void CaseWorkflowTest::onGridSettings()
     window.setProject(nullptr);
 }
 
+void CaseWorkflowTest::onRenderStateAndUndo()
+{
+    IDOSProject project;
+    IDOSRenderProviderRegistry registry;
+    QVERIFY(registry.registerMetadata(new IDOSGridRenderMetadata()));
+    IDOSRenderServer server(&registry);
+    IDOSRenderView first;
+    IDOSRenderView second;
+    first.setProperty("viewId", QStringLiteral("first"));
+    second.setProperty("viewId", QStringLiteral("second"));
+    server.addView(&first);
+    server.addView(&second);
+    server.setProject(&project);
+    IDOSGridObject* grid = new IDOSGridObject();
+    grid->setDimensions(1, 1, 1);
+    QVERIFY(project.add(grid));
+    const QString id = grid->objectId();
+    QVERIFY(first.scene()->objects().isEmpty());
+    server.setChecked(id, Qt::Checked, &first);
+    server.setChecked(id, Qt::Checked, &second);
+    IDOSRenderObject* firstObject = findRenderObject(&server, &first, id);
+    QVERIFY(firstObject != nullptr);
+    firstObject->setOpacity(0.35);
+    first.setSelection({firstObject->id()});
+    server.setChecked(id, Qt::Unchecked, &second);
+    const QVariantMap saved = server.saveState();
+    QVERIFY(project.commandManager()->execute(new IDOSDeleteGridCommand(&project, id)));
+    QVERIFY(first.scene()->objects().isEmpty());
+    QVERIFY(second.scene()->objects().isEmpty());
+    project.commandManager()->undo();
+    QCOMPARE(server.checkState(id, &first), Qt::Checked);
+    QCOMPARE(server.checkState(id, &second), Qt::Unchecked);
+    firstObject = findRenderObject(&server, &first, id);
+    QVERIFY(firstObject != nullptr);
+    QCOMPARE(firstObject->opacity(), 0.35);
+    QVERIFY(first.selection().contains(firstObject->id()));
+    IDOSGridObject* extra = new IDOSGridObject();
+    extra->setDimensions(1, 1, 1);
+    QVERIFY(project.add(extra));
+    server.setChecked(extra->objectId(), Qt::Checked, &first);
+    QCOMPARE(first.scene()->objects().size(), 2);
+    QVERIFY(server.restoreState(saved));
+    QCOMPARE(first.scene()->objects().size(), 1);
+    QVERIFY(server.objectIds(&first, extra->objectId()).isEmpty());
+    QCOMPARE(server.checkState(id, &first), Qt::Checked);
+    QCOMPARE(server.checkState(id, &second), Qt::Unchecked);
+    firstObject = findRenderObject(&server, &first, id);
+    QCOMPARE(firstObject->opacity(), 0.35);
+    const QString renderId = firstObject->id();
+    QVariantMap invalid = saved;
+    QVariantList entries = invalid.value(QStringLiteral("views")).toList();
+    QVariantMap entry = entries.first().toMap();
+    QVariantList objects = entry.value(QStringLiteral("objects")).toList();
+    QVariantMap object = objects.first().toMap();
+    object.insert(QStringLiteral("dataId"), QStringLiteral("missing"));
+    objects[0] = object;
+    entry.insert(QStringLiteral("objects"), objects);
+    entries[0] = entry;
+    invalid.insert(QStringLiteral("views"), entries);
+    QVERIFY(!server.restoreState(invalid));
+    QCOMPARE(findRenderObject(&server, &first, id)->id(), renderId);
+    QCOMPARE(first.scene()->objects().size(), 1);
+}
+
+void CaseWorkflowTest::onRenderRestoreClipping()
+{
+    IDOSProject project;
+    IDOSRenderProviderRegistry registry;
+    QVERIFY(registry.registerMetadata(new IDOSGridRenderMetadata()));
+    IDOSRenderServer server(&registry);
+    IDOSRenderView view;
+    view.setProperty("viewId", QStringLiteral("main"));
+    server.addView(&view);
+    server.setProject(&project);
+    IDOSGridObject* grid = new IDOSGridObject();
+    grid->setDimensions(1, 1, 1);
+    QVERIFY(project.add(grid));
+    server.setChecked(grid->objectId(), Qt::Checked, &view);
+    vtkRenderer* renderer = view.vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
+    QVERIFY(renderer != nullptr);
+    double bounds[6];
+    renderer->ComputeVisiblePropBounds(bounds);
+    QVERIFY(bounds[0] <= bounds[1]);
+    const double x = (bounds[0] + bounds[1]) * 0.5;
+    const double y = (bounds[2] + bounds[3]) * 0.5;
+    const double z = (bounds[4] + bounds[5]) * 0.5;
+    vtkCamera* camera = renderer->GetActiveCamera();
+    camera->SetPosition(x, y, z + 5000.0);
+    camera->SetFocalPoint(x, y, z);
+    camera->SetViewUp(0.0, 1.0, 0.0);
+    renderer->ResetCameraClippingRange();
+    const QVariantMap saved = server.saveState();
+    const QVariantMap savedCamera = view.saveState().value(QStringLiteral("camera")).toMap();
+    view.scene()->clear();
+    QVERIFY(server.restoreState(saved));
+    QCOMPARE(server.checkState(grid->objectId(), &view), Qt::Checked);
+    QCOMPARE(view.saveState().value(QStringLiteral("camera")).toMap(), savedCamera);
+    const double* clipping = renderer->GetActiveCamera()->GetClippingRange();
+    QVERIFY(clipping[0] < 5000.0);
+    QVERIFY(clipping[1] > 5000.0);
+}
+
 void CaseWorkflowTest::onRenderLifecycle()
 {
     IDOSProject project;
-    IDOSRenderRegistry registry;
+    IDOSRenderProviderRegistry registry;
     IDOSRenderServer server(&registry);
     QScopedPointer<IDOSRenderView> firstView(new IDOSRenderView());
     server.addView(firstView.data());
-    registry.add(new IDOSGridRenderMetadata());
+    registry.registerMetadata(new IDOSGridRenderMetadata());
     server.setProject(&project);
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setDimensions(1, 1, 1);
-    grid->setVisible(true);
     project.add(grid);
-    IDOSRenderObject* object = findRenderObject(firstView.data(), grid->objectId());
+    QVERIFY(firstView->scene()->objects().isEmpty());
+    server.setChecked(grid->objectId(), Qt::Checked, firstView.data());
+    IDOSRenderObject* object = findRenderObject(&server, firstView.data(), grid->objectId());
     QVERIFY(object != nullptr);
     object->setVisible(true);
     QVERIFY(object->id() != grid->objectId());
     const QString renderId = object->id();
     IDOSGridRenderProvider* provider = dynamic_cast<IDOSGridRenderProvider*>(object->provider());
     QVERIFY(provider != nullptr);
-    QCOMPARE(provider->dataSource(), static_cast<IDOSDataObject*>(grid));
-    IDOSGridProperty* property = new IDOSGridProperty();
+    QCOMPARE(provider->grid(), grid);
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setDimensions(1, 1, 1);
     property->setGridId(grid->objectId());
     property->setName(QStringLiteral("Porosity"));
     property->setValues(QVector<double>{0.25});
-    property->setVisible(true);
     project.add(property);
     provider->setProperty(property);
     provider->update();
-    QCOMPARE(provider->actors().size(), 1);
-    QCOMPARE(provider->legends().size(), 1);
-    vtkDataArray* scalars = provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars();
+    QCOMPARE(actors(provider).size(), 1);
+    QCOMPARE(legends(provider).size(), 1);
+    vtkDataArray* scalars = actors(provider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars();
     QVERIFY(scalars != nullptr);
     QCOMPARE(scalars->GetTuple1(0), 0.25);
-    vtkActor* gridActor = provider->actors().first();
+    vtkActor* gridActor = actors(provider).first();
     vtkDataSet* gridGeometry = gridActor->GetMapper()->GetInput();
-    object->setHighlighted(true);
-    QVERIFY(object->highlighted());
-    QVERIFY(provider->highlighted());
+    object->setSelected(true);
+    QVERIFY(object->isSelected());
+    QVERIFY(provider->isSelected());
     QVERIFY(gridActor->GetProperty()->GetEdgeVisibility() != 0);
     object->setOpacity(0.3);
     QCOMPARE(gridActor->GetProperty()->GetOpacity(), 0.3);
     object->setVisible(false);
     QCOMPARE(gridActor->GetVisibility(), 0);
-    QVERIFY(provider->legends().isEmpty());
+    QVERIFY(legends(provider).isEmpty());
     object->setVisible(true);
     QCOMPARE(gridActor->GetVisibility(), 1);
-    QCOMPARE(provider->actors().first(), gridActor);
+    QCOMPARE(actors(provider).first(), gridActor);
     QCOMPARE(gridActor->GetMapper()->GetInput(), gridGeometry);
     QScopedPointer<IDOSRenderView> secondViewWidget(new IDOSRenderView());
     IDOSRenderView* secondView = secondViewWidget.data();
     server.addView(secondView);
     QVERIFY(secondView != nullptr);
+    QVERIFY(secondView->scene()->objects().isEmpty());
+    server.setChecked(grid->objectId(), Qt::Checked, secondView);
     IDOSRenderObject* secondGrid = secondView->scene()->objects().first();
     QVERIFY(secondGrid->provider() != provider);
     firstView->setSelection(QList<QString>{object->id()});
     object->setOpacity(0.4);
     provider->setDisplayMode(IDOSDisplayMode::Wireframe);
     QCOMPARE(secondGrid->opacity(), 1.0);
-    QVERIFY(!secondGrid->highlighted());
+    QVERIFY(!secondGrid->isSelected());
     QCOMPARE(dynamic_cast<IDOSGridRenderProvider*>(secondGrid->provider())->displayMode(), IDOSDisplayMode::Surface);
-    grid->setVisible(false);
-    QVERIFY(provider->visible());
-    grid->setVisible(true);
-    QCOMPARE(provider->actors().first(), gridActor);
-    QCOMPARE(findRenderObject(firstView.data(), grid->objectId())->id(), renderId);
+    QVERIFY(provider->isVisible());
+    QCOMPARE(actors(provider).first(), gridActor);
+    QCOMPARE(findRenderObject(&server, firstView.data(), grid->objectId())->id(), renderId);
     QCOMPARE(provider->opacity(), 0.4);
     QCOMPARE(provider->displayMode(), IDOSDisplayMode::Wireframe);
     IDOSGridRenderProvider* secondProvider = dynamic_cast<IDOSGridRenderProvider*>(secondGrid->provider());
@@ -2531,38 +2647,38 @@ void CaseWorkflowTest::onRenderLifecycle()
     secondGrid->setVisible(true);
     secondProvider->setProperty(property);
     property->setValues(QVector<double>{0.5});
-    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
-    QCOMPARE(secondProvider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    QCOMPARE(actors(secondProvider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
     QCOMPARE(provider->opacity(), 0.4);
     QCOMPARE(provider->displayMode(), IDOSDisplayMode::Wireframe);
-    QVERIFY(provider->highlighted());
+    QVERIFY(provider->isSelected());
     QCOMPARE(secondProvider->opacity(), 1.0);
-    QVERIFY(!secondProvider->highlighted());
+    QVERIFY(!secondProvider->isSelected());
     project.beginUpdate();
     property->setValues(QVector<double>{0.75});
-    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.5);
     project.endUpdate();
-    QCOMPARE(provider->actors().first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.75);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 0.75);
     project.beginUpdate();
     IDOSDataObject* removedProperty = project.take(property->objectId());
     QVERIFY(provider->property() == nullptr);
     QVERIFY(secondProvider->property() == nullptr);
-    QVERIFY(provider->legends().isEmpty());
-    QVERIFY(secondProvider->legends().isEmpty());
+    QVERIFY(legends(provider).isEmpty());
+    QVERIFY(legends(secondProvider).isEmpty());
     delete removedProperty;
     project.endUpdate();
-    QVERIFY(provider->legends().isEmpty());
+    QVERIFY(legends(provider).isEmpty());
     project.beginUpdate();
     const QString gridId = grid->objectId();
     IDOSDataObject* removedGrid = project.take(gridId);
-    QVERIFY(findRenderObject(firstView.data(), gridId) == nullptr);
+    QVERIFY(findRenderObject(&server, firstView.data(), gridId) == nullptr);
     delete removedGrid;
     project.endUpdate();
     QVERIFY(firstView->scene()->objects().isEmpty());
     QVERIFY(firstView->selection().isEmpty());
 
-    registry.add(new IDOSWellRenderMetadata());
-    IDOSWell* well = new IDOSWell();
+    registry.registerMetadata(new IDOSWellRenderMetadata());
+    IDOSWellObject* well = new IDOSWellObject();
     IDOSWellHead head;
     head.setSurfaceX(10.0);
     head.setSurfaceY(20.0);
@@ -2571,17 +2687,17 @@ void CaseWorkflowTest::onRenderLifecycle()
     path.setPoints(QVector<IDOSWellPathPoint>{IDOSWellPathPoint(0.0, 10.0, 20.0, 0.0, 0.0),
                                             IDOSWellPathPoint(100.0, 10.0, 20.0, -100.0, 100.0)});
     well->setPath(path);
-    well->setVisible(true);
     project.add(well);
-    IDOSRenderObject* wellObject = findRenderObject(firstView.data(), well->objectId());
+    server.setChecked(well->objectId(), Qt::Checked, firstView.data());
+    IDOSRenderObject* wellObject = findRenderObject(&server, firstView.data(), well->objectId());
     QVERIFY(wellObject != nullptr);
     IDOSWellRenderProvider* wellProvider = dynamic_cast<IDOSWellRenderProvider*>(wellObject->provider());
     QVERIFY(wellProvider != nullptr);
     wellProvider->update();
-    QCOMPARE(wellProvider->actors().size(), 2);
-    vtkActor* headActor = wellProvider->actors().first();
-    vtkActor* pathActor = wellProvider->actors().last();
-    wellObject->setHighlighted(true);
+    QCOMPARE(actors(wellProvider).size(), 2);
+    vtkActor* headActor = actors(wellProvider).first();
+    vtkActor* pathActor = actors(wellProvider).last();
+    wellObject->setSelected(true);
     QCOMPARE(headActor->GetProperty()->GetPointSize(), 18.0f);
     QCOMPARE(pathActor->GetProperty()->GetLineWidth(), 5.0f);
     wellObject->setOpacity(0.5);
@@ -2590,20 +2706,20 @@ void CaseWorkflowTest::onRenderLifecycle()
     wellObject->setVisible(false);
     QCOMPARE(headActor->GetVisibility(), 0);
     QCOMPARE(pathActor->GetVisibility(), 0);
-    wellObject->setHighlighted(false);
+    wellObject->setSelected(false);
     wellObject->setVisible(true);
     QCOMPARE(headActor->GetProperty()->GetPointSize(), 12.0f);
     QCOMPARE(pathActor->GetProperty()->GetLineWidth(), 2.5f);
-    QCOMPARE(wellProvider->actors().first(), headActor);
-    QCOMPARE(wellProvider->dataSource(), static_cast<IDOSDataObject*>(well));
-    QVERIFY(registry.remove(QStringLiteral("idos.well")));
+    QCOMPARE(actors(wellProvider).first(), headActor);
+    QCOMPARE(wellProvider->well(), well);
+    QVERIFY(registry.unregisterMetadata(QStringLiteral("idos.well")));
     QVERIFY(firstView->scene()->objects().isEmpty());
 }
 
 void CaseWorkflowTest::onRenderArchitecture()
 {
     IDOSProject project;
-    IDOSRenderRegistry registry;
+    IDOSRenderProviderRegistry registry;
     IDOSRenderServer server(&registry);
     IDOSRenderView first;
     IDOSRenderView second;
@@ -2619,13 +2735,18 @@ void CaseWorkflowTest::onRenderArchitecture()
     QCOMPARE(server.currentView(), &second);
     QVERIFY(server.setCurrentView(&first));
 
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setDimensions(1, 1, 1);
-    grid->setVisible(true);
     project.add(grid);
     QVERIFY(first.scene()->objects().isEmpty());
-    QVERIFY(registry.add(new IDOSGridRenderMetadata()));
+    QVERIFY(registry.registerMetadata(new IDOSGridRenderMetadata()));
     const QString dataId = grid->objectId();
+    QVERIFY(first.scene()->objects().isEmpty());
+    QVERIFY(second.scene()->objects().isEmpty());
+    server.setChecked(dataId, Qt::Unchecked, &first);
+    QVERIFY(first.scene()->objects().isEmpty());
+    server.setChecked(dataId, Qt::Checked, &first);
+    server.setChecked(dataId, Qt::Checked, &second);
     const QString firstId = server.objectIds(&first, dataId).first();
     const QString secondId = server.objectIds(&second, dataId).first();
     QVERIFY(firstId != secondId);
@@ -2634,15 +2755,15 @@ void CaseWorkflowTest::onRenderArchitecture()
     secondObject->setVisible(true);
     QVERIFY(firstObject != secondObject);
     QVERIFY(firstObject->provider() != secondObject->provider());
-    QVERIFY(firstObject->provider()->actors().first() != secondObject->provider()->actors().first());
-    QCOMPARE(server.dataSource(&first, firstId), static_cast<IDOSDataObject*>(grid));
-    QVERIFY(server.dataSource(&second, firstId) == nullptr);
+    QVERIFY(actors(firstObject->provider()).first() != actors(secondObject->provider()).first());
+    QCOMPARE(server.dataObject(&first, firstId), static_cast<IDOSDataObject*>(grid));
+    QVERIFY(server.dataObject(&second, firstId) == nullptr);
 
     QSignalSpy selectionSpy(&first, &IDOSRenderView::selectionChanged);
     first.setSelection(QList<QString>{firstId});
     QCOMPARE(selectionSpy.count(), 1);
-    QVERIFY(firstObject->highlighted());
-    QVERIFY(!secondObject->highlighted());
+    QVERIFY(firstObject->isSelected());
+    QVERIFY(!secondObject->isSelected());
     QWidget* vtkWidget = nullptr;
     const QList<QWidget*> childWidgets = first.findChildren<QWidget*>();
     for (QWidget* child : childWidgets)
@@ -2673,13 +2794,13 @@ void CaseWorkflowTest::onRenderArchitecture()
     firstObject->setVisible(false);
     first.scene()->notifyChanged(firstId);
     QCOMPARE(secondObject->opacity(), 1.0);
-    QVERIFY(secondObject->visible());
+    QVERIFY(secondObject->isVisible());
     grid->setName(QStringLiteral("Renamed Grid"));
     QCOMPARE(firstObject->name(), QStringLiteral("Renamed Grid"));
     QCOMPARE(secondObject->name(), QStringLiteral("Renamed Grid"));
-    QVERIFY(!firstObject->visible());
+    QVERIFY(!firstObject->isVisible());
     QCOMPARE(firstObject->opacity(), 0.25);
-    QVERIFY(firstObject->highlighted());
+    QVERIFY(firstObject->isSelected());
 
     // Scene batches redraw notifications while lifecycle signals remain immediate.
     QSignalSpy sceneSpy(first.scene(), &IDOSRenderScene::changed);
@@ -2706,14 +2827,18 @@ void CaseWorkflowTest::onRenderArchitecture()
     delete detached;
     project.endUpdate();
 
-    IDOSGrid* replacement = new IDOSGrid();
+    IDOSGridObject* replacement = new IDOSGridObject();
     replacement->setDimensions(1, 1, 1);
     project.add(replacement);
+    QVERIFY(first.scene()->objects().isEmpty());
+    server.setChecked(replacement->objectId(), Qt::Checked, &first);
     QVERIFY(!first.scene()->objects().isEmpty());
-    QVERIFY(registry.remove(QStringLiteral("idos.grid")));
+    QVERIFY(registry.unregisterMetadata(QStringLiteral("idos.grid")));
     QVERIFY(first.scene()->objects().isEmpty());
     QVERIFY(second.scene()->objects().isEmpty());
-    QVERIFY(registry.add(new IDOSGridRenderMetadata()));
+    QVERIFY(registry.registerMetadata(new IDOSGridRenderMetadata()));
+    QVERIFY(second.scene()->objects().isEmpty());
+    server.setChecked(replacement->objectId(), Qt::Checked, &second);
     server.removeView(&first);
     QVERIFY(first.scene()->objects().isEmpty());
     QVERIFY(!second.scene()->objects().isEmpty());
@@ -2724,10 +2849,12 @@ void CaseWorkflowTest::onRenderArchitecture()
     delete temporaryView;
     QCOMPARE(server.views().size(), 1);
     IDOSProject* temporaryProject = new IDOSProject();
-    IDOSGrid* temporaryGrid = new IDOSGrid();
+    IDOSGridObject* temporaryGrid = new IDOSGridObject();
     temporaryGrid->setDimensions(1, 1, 1);
     temporaryProject->add(temporaryGrid);
     server.setProject(temporaryProject);
+    QVERIFY(second.scene()->objects().isEmpty());
+    server.setChecked(temporaryGrid->objectId(), Qt::Checked, &second);
     QVERIFY(!second.scene()->objects().isEmpty());
     delete temporaryProject;
     QVERIFY(server.project() == nullptr);
@@ -2746,7 +2873,7 @@ void CaseWorkflowTest::onCloseContextMenu()
 void CaseWorkflowTest::onProvider()
 {
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.case.simulation.eclipse"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
     QVERIFY(reader != nullptr);
     QList<IDOSDataObject*> objects = reader->read(QFINDTESTDATA("data/case.DATA"));
     QVERIFY2(reader->lastError().isEmpty(), qPrintable(reader->lastError()));
@@ -2757,10 +2884,10 @@ void CaseWorkflowTest::onProvider()
     QCOMPARE(simulationCase->pendingWellNames(), QStringList({QStringLiteral("A10"), QStringLiteral("B1")}));
     QVERIFY(!simulationCase->sourceFile().isEmpty());
     IDOSProject project;
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("B1"));
     project.add(grid);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("a10"));
     project.add(well);
     simulationCase->resolveReferences(&project);
@@ -2788,18 +2915,18 @@ void CaseWorkflowTest::onProvider()
         simulationCase = qobject_cast<IDOSSimulationCaseObject*>(objects.first());
         QVERIFY(simulationCase->name().contains(QStringLiteral("KES24_COMP")));
         QVERIFY(simulationCase->pendingWellNames().isEmpty());
-        IDOSGrid* grid = nullptr;
+        IDOSGridObject* grid = nullptr;
         int staticProperties = 0;
         int regionProperties = 0;
         for (IDOSDataObject* object : objects)
         {
-            IDOSGrid* candidateGrid = qobject_cast<IDOSGrid*>(object);
+            IDOSGridObject* candidateGrid = qobject_cast<IDOSGridObject*>(object);
             if (candidateGrid != nullptr)
             {
                 grid = candidateGrid;
                 continue;
             }
-            IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+            IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
             if (property == nullptr)
             {
                 continue;
@@ -2824,13 +2951,13 @@ void CaseWorkflowTest::onProvider()
         const Opm::EclipseState state(deck);
         const Opm::EclipseGrid& reference = state.getInputGrid();
         IDOSGridRenderMetadata metadata;
-        QScopedPointer<IDOSRenderObject> renderObject(new IDOSRenderObject(metadata.create(grid)));
+        QScopedPointer<IDOSRenderObject> renderObject(new IDOSRenderObject(metadata.create(grid, QList<IDOSDataObject*>())));
         QVERIFY(renderObject != nullptr);
         IDOSRenderProvider* provider = renderObject->provider();
-        provider->setVisible(true);
+        renderObject->setVisible(true);
         provider->update();
-        QCOMPARE(provider->actors().size(), 1);
-        vtkDataSet* renderedGrid = provider->actors().first()->GetMapper()->GetInput();
+        QCOMPARE(actors(provider).size(), 1);
+        vtkDataSet* renderedGrid = actors(provider).first()->GetMapper()->GetInput();
         QCOMPARE(renderedGrid->GetNumberOfCells(), static_cast<vtkIdType>(reference.getNumActive()));
         const int opmCorners[8] = {0, 1, 3, 2, 4, 5, 7, 6};
         int renderedCell = 0;
@@ -2900,17 +3027,17 @@ void CaseWorkflowTest::onFluidRockReferences()
                  .value(QStringLiteral("success")).toBool(), qPrintable(project->commandManager()->error()));
     QCOMPARE(project->objects().size(), 2);
     QVERIFY(caseObject->itemRefs().isEmpty());
-    IDOSFluidRockTable* table = nullptr;
+    IDOSFluidRockTableObject* table = nullptr;
     for (IDOSDataObject* object : project->objects())
     {
-        IDOSFluidRockTable* candidate = qobject_cast<IDOSFluidRockTable*>(object);
+        IDOSFluidRockTableObject* candidate = qobject_cast<IDOSFluidRockTableObject*>(object);
         if (candidate != nullptr)
         {
             table = candidate;
         }
     }
     QVERIFY(table != nullptr);
-    QCOMPARE(table->category(), IDOSFluidRockTable::Category::Fluid);
+    QCOMPARE(table->category(), IDOSFluidRockTableObject::Category::Fluid);
     QCOMPARE(table->tableData().value(QStringLiteral("keyword")).toString(), QStringLiteral("PVTW"));
     arguments = QJsonObject();
     arguments.insert(QStringLiteral("targetCaseId"), caseObject->objectId());
@@ -2993,7 +3120,7 @@ void CaseWorkflowTest::onCreateAndImport()
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     menu->findChild<QAction*>(QStringLiteral("importCaseAction"))->trigger();
     QCOMPARE(project->objects().size(), 1);
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     well->setName(QStringLiteral("A10"));
     project->add(well);
     m_cancel = false;
@@ -3007,7 +3134,7 @@ void CaseWorkflowTest::onCreateAndImport()
     for (int row = 0; row < model->rowCount(QModelIndex()); ++row)
     {
         const QModelIndex index = model->index(row, 0, QModelIndex());
-        if (model->objectFromIndex(index) == imported)
+        if (model->object(index) == imported)
         {
             const QModelIndex inputs = model->index(4, 0, index);
             QCOMPARE(model->rowCount(inputs), 2);
@@ -3020,7 +3147,7 @@ void CaseWorkflowTest::onCreateAndImport()
     QCOMPARE(project->objects().size(), 3);
     timer.stop();
 
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("Main Grid"));
     grid->setDimensions(1, 1, 1);
     project->add(grid);
@@ -3028,7 +3155,7 @@ void CaseWorkflowTest::onCreateAndImport()
     const QStringList keywords = {QStringLiteral("PORO"), QStringLiteral("SATNUM"), QStringLiteral("PRESSURE")};
     for (int index = 0; index < keywords.size(); ++index)
     {
-        IDOSGridProperty* property = new IDOSGridProperty();
+        IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
         property->setName(keywords.at(index));
         property->setKeyword(keywords.at(index));
         property->setGridId(grid->objectId());
@@ -3036,14 +3163,14 @@ void CaseWorkflowTest::onCreateAndImport()
         QVERIFY(property->setValues(QVector<double>{0.2}));
         if (index == 2)
         {
-            property->setKind(IDOSGridProperty::Kind::Dynamic);
+            property->setKind(IDOSGridPropertyObject::Kind::Dynamic);
         }
         project->add(property);
     }
     for (int row = 0; row < model->rowCount(QModelIndex()); ++row)
     {
         const QModelIndex index = model->index(row, 0, QModelIndex());
-        if (model->objectFromIndex(index) == imported)
+        if (model->object(index) == imported)
         {
             const QModelIndex grids = model->index(1, 0, index);
             QCOMPARE(model->rowCount(grids), 1);
@@ -3110,11 +3237,11 @@ void CaseWorkflowTest::onDialog()
     }
 }
 
-IDOSRenderObject* CaseWorkflowTest::findRenderObject(IDOSRenderView* view, const QString& dataId) const
+IDOSRenderObject* CaseWorkflowTest::findRenderObject(IDOSRenderServer* server, IDOSRenderView* view, const QString& dataId) const
 {
     for (IDOSRenderObject* object : view->scene()->objects())
     {
-        IDOSDataObject* data = object->provider()->dataSource();
+        IDOSDataObject* data = server->dataObject(view, object->id());
         if (data != nullptr && data->objectId() == dataId)
         {
             return object;
@@ -3157,16 +3284,16 @@ void CaseWorkflowTest::onGridFilters()
     IDOSProject project;
     IDOSMainWindow window;
     window.setProject(&project);
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QStringLiteral("Filter Grid"));
     grid->setDimensions(3, 2, 1);
     grid->setCornerPointData(3, 2, 1, grid->coord(), grid->zcorn(), QVector<int>{1, 1, 1, 1, 0, 1});
     project.add(grid);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("Pressure"));
     property->setGridId(grid->objectId());
     property->setDimensions(3, 2, 1);
-    property->setKind(IDOSGridProperty::Kind::Dynamic);
+    property->setKind(IDOSGridPropertyObject::Kind::Dynamic);
     QVERIFY(property->setReportStepValues(0, QVector<double>{10, 20, 30, 40, 50, 60}));
     QVERIFY(property->setReportStepValues(1, QVector<double>{60, 50, 40, 30, 20, 10}));
     QVERIFY(property->setCurrentReportStep(0));
@@ -3178,7 +3305,8 @@ void CaseWorkflowTest::onGridFilters()
     IDOSTreeView* tree = window.caseTreeView();
     IDOSRenderView* view = window.renderServer()->currentView();
     QVERIFY(view != nullptr);
-    IDOSRenderObject* sourceObject = findRenderObject(view, grid->objectId());
+    window.renderServer()->setChecked(grid->objectId(), Qt::Checked, view);
+    IDOSRenderObject* sourceObject = findRenderObject(window.renderServer(), view, grid->objectId());
     QVERIFY(sourceObject != nullptr);
     IDOSGridRenderProvider* sourceProvider = dynamic_cast<IDOSGridRenderProvider*>(sourceObject->provider());
     QVERIFY(sourceProvider != nullptr);
@@ -3187,7 +3315,7 @@ void CaseWorkflowTest::onGridFilters()
     IDOSGridRenderProvider* otherProvider = new IDOSGridRenderProvider(grid);
     otherProvider->update();
     QVERIFY(otherView.scene()->add(new IDOSRenderObject(otherProvider)));
-    const QModelIndex gridIndex = window.caseTreeModel()->indexFromDataId(grid->objectId());
+    const QModelIndex gridIndex = window.caseTreeModel()->index(grid->objectId());
     QVERIFY(gridIndex.isValid());
     QScopedPointer<QMenu> menu(tree->createContextMenu(gridIndex));
     QAction* action = menu->findChild<QAction*>(QStringLiteral("gridFilterAction"));
@@ -3207,7 +3335,7 @@ void CaseWorkflowTest::onGridFilters()
     QCOMPARE(sourceProvider->filteredCellCount(), 3);
     QCOMPARE(otherProvider->filteredCellCount(), 5);
     QCOMPARE(project.objects().size(), 3);
-    vtkDataSet* selected = sourceProvider->actors().first()->GetMapper()->GetInput();
+    vtkDataSet* selected = actors(sourceProvider).first()->GetMapper()->GetInput();
     QCOMPARE(selected->GetCellData()->GetArray("GlobalIndex")->GetTuple1(2), 3.0);
     QCOMPARE(selected->GetCellData()->GetArray("I")->GetTuple1(2), 1.0);
     QCOMPARE(selected->GetCellData()->GetArray("J")->GetTuple1(2), 2.0);
@@ -3272,7 +3400,7 @@ void CaseWorkflowTest::onGridFilters()
     nameDialog->setTextValue(QStringLiteral("Pressure subset"));
     nameDialog->accept();
     const QString filterId = project.commandManager()->result().value(QStringLiteral("filterId")).toString();
-    IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(project.object(filterId));
+    IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(project.object(filterId));
     QVERIFY(filter != nullptr);
     QCOMPARE(filter->gridId(), grid->objectId());
     QCOMPARE(filter->containerId(), grid->objectId());
@@ -3281,7 +3409,7 @@ void CaseWorkflowTest::onGridFilters()
     QVERIFY(savedCriteria != appliedCriteria);
     QCOMPARE(sourceProvider->filterCriteria(), savedCriteria);
     QVERIFY(project.commandManager()->contains(QStringLiteral("grid.filter.create")));
-    QMap<QString, IDOSGridProperty*> references;
+    QMap<QString, IDOSGridPropertyObject*> references;
     references.insert(property->objectId(), property);
     QVariantMap testCondition;
     testCondition.insert(QStringLiteral("propertyId"), property->objectId());
@@ -3294,12 +3422,12 @@ void CaseWorkflowTest::onGridFilters()
         testCondition.insert(QStringLiteral("operation"), operations.at(operation));
         QVariantMap comparisonCriteria;
         comparisonCriteria.insert(QStringLiteral("conditions"), QVariantList{testCondition});
-        const QVector<quint8> mask = IDOSGridFilter::selection(comparisonCriteria, 3, 2, 1, references);
+        const QVector<quint8> mask = IDOSGridFilterObject::selection(comparisonCriteria, 3, 2, 1, references);
         int matched = 0;
         for (int cell = 0; cell < mask.size(); ++cell)
         {
             matched += mask.at(cell);
-            QCOMPARE(mask.at(cell) != 0, IDOSGridFilter::matches(comparisonCriteria, cell % 3, cell / 3, 0, cell, references));
+            QCOMPARE(mask.at(cell) != 0, IDOSGridFilterObject::matches(comparisonCriteria, cell % 3, cell / 3, 0, cell, references));
         }
         QCOMPARE(matched, expected.at(operation));
     }
@@ -3308,14 +3436,14 @@ void CaseWorkflowTest::onGridFilters()
     secondCondition.insert(QStringLiteral("maximum"), 60.0);
     QVariantMap combinationCriteria;
     combinationCriteria.insert(QStringLiteral("conditions"), QVariantList{testCondition, secondCondition});
-    const QVector<quint8> intersected = IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references);
+    const QVector<quint8> intersected = IDOSGridFilterObject::selection(combinationCriteria, 3, 2, 1, references);
     QCOMPARE(intersected.size(), 6);
     for (quint8 selected : intersected)
     {
         QCOMPARE(selected, quint8(0));
     }
     combinationCriteria.insert(QStringLiteral("anyProperty"), true);
-    const QVector<quint8> united = IDOSGridFilter::selection(combinationCriteria, 3, 2, 1, references);
+    const QVector<quint8> united = IDOSGridFilterObject::selection(combinationCriteria, 3, 2, 1, references);
     QCOMPARE(united.size(), 6);
     for (int index = 0; index < united.size(); ++index)
     {
@@ -3324,21 +3452,21 @@ void CaseWorkflowTest::onGridFilters()
     QString validationError;
     QVariantMap malformed;
     malformed.insert(QStringLiteral("conditions"), QStringLiteral("invalid"));
-    QVERIFY(!IDOSGridFilter::validateCriteria(malformed, validationError));
-    IDOSRenderObject* resultObject = findRenderObject(view, filterId);
-    QVERIFY(resultObject != nullptr && resultObject->visible());
+    QVERIFY(!IDOSGridFilterObject::validateCriteria(malformed, validationError));
+    IDOSRenderObject* resultObject = findRenderObject(window.renderServer(), view, filterId);
+    QVERIFY(resultObject != nullptr && resultObject->isVisible());
     IDOSGridRenderProvider* resultProvider = dynamic_cast<IDOSGridRenderProvider*>(resultObject->provider());
     QVERIFY(resultProvider != nullptr);
     QCOMPARE(resultProvider->filteredCellCount(), 2);
     QCOMPARE(resultProvider->property(), property);
-    QVERIFY(window.caseTreeModel()->indexFromDataId(filterId).isValid());
-    QVERIFY(sourceObject->visible());
+    QVERIFY(window.caseTreeModel()->index(filterId).isValid());
+    QVERIFY(sourceObject->isVisible());
     QCOMPARE(sourceProvider->previewFilterId(), filterId);
     QVERIFY(window.renderServer()->setCurrentView(view));
-    const QModelIndex filterIndex = window.caseTreeModel()->indexFromDataId(filterId);
+    const QModelIndex filterIndex = window.caseTreeModel()->index(filterId);
     QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Unchecked, Qt::CheckStateRole));
-    QVERIFY(!resultObject->visible());
-    QVERIFY(sourceObject->visible());
+    QVERIFY(!resultObject->isVisible());
+    QVERIFY(sourceObject->isVisible());
     QCOMPARE(sourceProvider->filteredCellCount(), 5);
     QVERIFY(sourceProvider->filterCriteria().isEmpty());
     QVERIFY(sourceProvider->previewFilterId().isEmpty());
@@ -3348,14 +3476,14 @@ void CaseWorkflowTest::onGridFilters()
     QAction* clearDisplay = window.findChild<QAction*>(QStringLiteral("viewToolClearDisplayAction"));
     QVERIFY(clearDisplay != nullptr);
     clearDisplay->trigger();
-    QVERIFY(!sourceObject->visible());
-    QVERIFY(!resultObject->visible());
+    QVERIFY(!sourceObject->isVisible());
+    QVERIFY(!resultObject->isVisible());
     clearDisplay->trigger();
-    QVERIFY(sourceObject->visible());
-    QVERIFY(!resultObject->visible());
+    QVERIFY(sourceObject->isVisible());
+    QVERIFY(!resultObject->isVisible());
     QVERIFY(sourceProvider->filterCriteria().isEmpty());
     QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Checked, Qt::CheckStateRole));
-    QVERIFY(resultObject->visible());
+    QVERIFY(resultObject->isVisible());
     QCOMPARE(resultProvider->filteredCellCount(), 2);
     QCOMPARE(sourceProvider->filterCriteria(), savedCriteria);
     QCOMPARE(sourceProvider->previewFilterId(), filterId);
@@ -3370,7 +3498,7 @@ void CaseWorkflowTest::onGridFilters()
     sourceProvider->update();
     view->scene()->notifyChanged(sourceObject->id());
     QVERIFY(window.caseTreeModel()->setData(filterIndex, Qt::Checked, Qt::CheckStateRole));
-    QScopedPointer<QMenu> resultMenu(tree->createContextMenu(window.caseTreeModel()->indexFromDataId(filterId)));
+    QScopedPointer<QMenu> resultMenu(tree->createContextMenu(window.caseTreeModel()->index(filterId)));
     QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterEditAction")) != nullptr);
     QVERIFY(resultMenu->findChild<QAction*>(QStringLiteral("gridFilterDeleteAction")) != nullptr);
     QAction* renameAction = resultMenu->findChild<QAction*>(QStringLiteral("gridFilterRenameAction"));
@@ -3389,7 +3517,7 @@ void CaseWorkflowTest::onGridFilters()
     QVERIFY(widget->grab().save(QDir(qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR", QDir::tempPath())).filePath(QStringLiteral("grid-filter-settings.png"))));
     resultProvider->setProperty(nullptr);
     QVERIFY(property->setCurrentReportStep(1));
-    QCOMPARE(resultProvider->property(), static_cast<IDOSGridProperty*>(nullptr));
+    QCOMPARE(resultProvider->property(), static_cast<IDOSGridPropertyObject*>(nullptr));
     QCOMPARE(resultProvider->filteredCellCount(), 1);
     QCOMPARE(sourceProvider->filteredCellCount(), 1);
     QCOMPARE(filter->criteria(), savedCriteria);
@@ -3412,13 +3540,13 @@ void CaseWorkflowTest::onGridFilters()
     missingConditions[0] = missingCondition;
     missingCriteria.insert(QStringLiteral("conditions"), missingConditions);
     invalidArguments.insert(QStringLiteral("criteria"), QJsonObject::fromVariantMap(missingCriteria));
-    QVERIFY(!project.commandManager()->execute(new IDOSGridFilterCommand(&project, QStringLiteral("update"), invalidArguments)));
+    QVERIFY(!project.commandManager()->execute(new IDOSUpdateGridFilterCommand(&project, invalidArguments)));
     QCOMPARE(filter->criteria(), savedCriteria);
     QVariantMap invertedSaved = savedCriteria;
     invertedSaved.insert(QStringLiteral("invert"), true);
     filter->setCriteria(invertedSaved);
     IDOSDataObject* detachedProperty = project.take(property->objectId());
-    QVERIFY(resultProvider->actors().isEmpty());
+    QVERIFY(actors(resultProvider).isEmpty());
     QVERIFY(!resultProvider->filterError().isEmpty());
     QCOMPARE(filter->criteria(), invertedSaved);
     filter->setCriteria(savedCriteria);
@@ -3428,17 +3556,17 @@ void CaseWorkflowTest::onGridFilters()
     deleteArguments.insert(QStringLiteral("filterId"), filterId);
     QVERIFY(sourceProvider->setFilterCriteria(savedCriteria));
     sourceProvider->setPreviewFilterId(filterId);
-    sourceProvider->setDataReference(property);
+    sourceProvider->setPropertyInput(property);
     sourceProvider->update();
     QCOMPARE(sourceProvider->filteredCellCount(), 1);
     QVERIFY(project.commandManager()->execute(QStringLiteral("grid.filter.delete"), deleteArguments).value(QStringLiteral("success")).toBool());
     QVERIFY(project.object(filterId) == nullptr);
-    QVERIFY(findRenderObject(view, filterId) == nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), view, filterId) == nullptr);
     QCOMPARE(sourceProvider->filteredCellCount(), 5);
     QVERIFY(sourceProvider->previewFilterId().isEmpty());
     project.commandManager()->undo();
     QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
-    QVERIFY(window.caseTreeModel()->indexFromDataId(filterId).isValid());
+    QVERIFY(window.caseTreeModel()->index(filterId).isValid());
     project.commandManager()->redo();
     QVERIFY(project.object(filterId) == nullptr);
     project.commandManager()->undo();
@@ -3448,7 +3576,7 @@ void CaseWorkflowTest::onGridFilters()
     project.commandManager()->undo();
     QCOMPARE(project.object(gridId), static_cast<IDOSDataObject*>(grid));
     QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
-    QVERIFY(findRenderObject(view, filterId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), view, filterId) != nullptr);
     project.commandManager()->redo();
     QVERIFY(project.object(filterId) == nullptr);
     project.commandManager()->undo();
@@ -3456,17 +3584,17 @@ void CaseWorkflowTest::onGridFilters()
     QVERIFY(project.object(filterId) == nullptr);
     project.commandManager()->redo();
     QCOMPARE(project.object(filterId), static_cast<IDOSDataObject*>(filter));
-    QVERIFY(findRenderObject(view, filterId) != nullptr);
+    QVERIFY(findRenderObject(window.renderServer(), view, filterId) != nullptr);
     QApplication::removeTranslator(&translator);
 }
 
 void CaseWorkflowTest::onGridFilterCriteria()
 {
-    IDOSGridProperty property;
+    IDOSGridPropertyObject property;
     property.setDimensions(3, 2, 1);
     const double invalid = std::numeric_limits<double>::quiet_NaN();
     QVERIFY(property.setValues(QVector<double>{0.0, 1.0, 2.0, invalid, 4.0, 5.0}));
-    QMap<QString, IDOSGridProperty*> references;
+    QMap<QString, IDOSGridPropertyObject*> references;
     references.insert(property.objectId(), &property);
     QVariantMap condition;
     condition.insert(QStringLiteral("propertyId"), property.objectId());
@@ -3480,7 +3608,7 @@ void CaseWorkflowTest::onGridFilterCriteria()
         condition.insert(QStringLiteral("operation"), operations.at(operation));
         QVariantMap criteria;
         criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-        const QVector<quint8> mask = IDOSGridFilter::selection(criteria, 3, 2, 1, references);
+        const QVector<quint8> mask = IDOSGridFilterObject::selection(criteria, 3, 2, 1, references);
         int count = 0;
         for (int index = 0; index < mask.size(); ++index)
         {
@@ -3494,19 +3622,19 @@ void CaseWorkflowTest::onGridFilterCriteria()
     condition.insert(QStringLiteral("includeMaximum"), false);
     QVariantMap criteria;
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 0, 0})));
     condition.insert(QStringLiteral("includeInvalidValues"), true);
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 1, 0, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 1, 0, 0})));
     criteria.insert(QStringLiteral("propertyOperation"), QStringLiteral("hide"));
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 1, 1})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 1, 1})));
     condition.insert(QStringLiteral("propertyId"), QStringLiteral("missing"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 0, 0, 0, 0})));
     condition.insert(QStringLiteral("enabled"), false);
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 1})));
-    QVERIFY(IDOSGridFilter::propertyIds(criteria).isEmpty());
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 1})));
+    QVERIFY(IDOSGridFilterObject::propertyIds(criteria).isEmpty());
     QVERIFY(property.setValues(QVector<double>{1.0, 1.0000005, 1.000002, invalid, 4.0, 5.0}));
     condition.insert(QStringLiteral("propertyId"), property.objectId());
     condition.insert(QStringLiteral("enabled"), true);
@@ -3515,10 +3643,10 @@ void CaseWorkflowTest::onGridFilterCriteria()
     condition.insert(QStringLiteral("includeInvalidValues"), false);
     criteria.remove(QStringLiteral("propertyOperation"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
     condition.insert(QStringLiteral("operation"), QStringLiteral("notEqual"));
     criteria.insert(QStringLiteral("conditions"), QVariantList{condition});
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 1, 1})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({0, 0, 1, 0, 1, 1})));
     criteria.clear();
     QVariantMap iAxis;
     iAxis.insert(QStringLiteral("enabled"), true);
@@ -3532,23 +3660,23 @@ void CaseWorkflowTest::onGridFilterCriteria()
     QVariantMap axes;
     axes.insert(QStringLiteral("i"), iAxis);
     criteria.insert(QStringLiteral("axes"), axes);
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 1, 1, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 1, 1, 0})));
     axes.insert(QStringLiteral("j"), jAxis);
     criteria.insert(QStringLiteral("axes"), axes);
     criteria.insert(QStringLiteral("axisUnion"), true);
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 1, 1, 1, 0})));
     criteria.insert(QStringLiteral("axisUnion"), false);
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), QVector<quint8>({1, 1, 0, 0, 0, 0})));
     criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("hide"));
-    const QVector<quint8> hidden = IDOSGridFilter::selection(criteria, 3, 2, 1, references);
+    const QVector<quint8> hidden = IDOSGridFilterObject::selection(criteria, 3, 2, 1, references);
     QVERIFY(sameSelection(hidden, QVector<quint8>({0, 0, 1, 1, 1, 1})));
     criteria.insert(QStringLiteral("axisOperation"), QStringLiteral("invert"));
-    QVERIFY(sameSelection(IDOSGridFilter::selection(criteria, 3, 2, 1, references), hidden));
+    QVERIFY(sameSelection(IDOSGridFilterObject::selection(criteria, 3, 2, 1, references), hidden));
     QString error;
     iAxis.insert(QStringLiteral("values"), QVariantList{0});
     axes.insert(QStringLiteral("i"), iAxis);
     criteria.insert(QStringLiteral("axes"), axes);
-    QVERIFY(!IDOSGridFilter::validateCriteria(criteria, error));
+    QVERIFY(!IDOSGridFilterObject::validateCriteria(criteria, error));
 }
 
 
@@ -3566,4 +3694,68 @@ bool CaseWorkflowTest::sameSelection(const QVector<quint8>& first, const QVector
         }
     }
     return true;
+}
+
+void CaseWorkflowTest::onExamplePluginMenu()
+{
+    IDOSProject project;
+    IDOSProject replacement;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/plugins/idosexampleplugin.dll");
+    IDOSPluginRegistry* plugins = IDOSPluginRegistry::instance();
+    plugins->loadCppPlugin(path);
+    QVERIFY(plugins->isLoaded(QStringLiteral("idosexampleplugin")));
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("name"), QStringLiteral("Menu sample"));
+    const QJsonObject response = project.commandManager()->execute(QStringLiteral("pointset.create"), arguments);
+    QVERIFY(response.value(QStringLiteral("success")).toBool());
+    const QString id = response.value(QStringLiteral("result")).toObject().value(QStringLiteral("objectId")).toString();
+    const QModelIndex index = window.dataTreeModel()->index(id);
+    QVERIFY(index.isValid());
+    QScopedPointer<QMenu> menu(window.dataTreeView()->createContextMenu(index));
+    QAction* remove = menu->findChild<QAction*>(QStringLiteral("deletePointSetAction"));
+    QVERIFY(remove != nullptr);
+    remove->trigger();
+    QVERIFY(project.object(id) == nullptr);
+    project.commandManager()->undo();
+    QVERIFY(project.object(id) != nullptr);
+    window.setProject(&replacement);
+    remove->trigger();
+    QVERIFY(project.object(id) != nullptr);
+    QVERIFY(replacement.objects().isEmpty());
+}
+
+QList<vtkActor*> CaseWorkflowTest::actors(const IDOSRenderProvider* provider)
+{
+    QList<vtkActor*> result;
+    if (provider == nullptr)
+    {
+        return result;
+    }
+    for (vtkProp* prop : provider->props())
+    {
+        if (prop != nullptr && vtkActor::SafeDownCast(prop) != nullptr)
+        {
+            result.append(vtkActor::SafeDownCast(prop));
+        }
+    }
+    return result;
+}
+
+QList<vtkProp*> CaseWorkflowTest::legends(const IDOSRenderProvider* provider)
+{
+    QList<vtkProp*> result;
+    if (provider == nullptr)
+    {
+        return result;
+    }
+    for (vtkProp* prop : provider->props())
+    {
+        if (prop != nullptr && prop->GetVisibility() != 0 && vtkActor::SafeDownCast(prop) == nullptr)
+        {
+            result.append(prop);
+        }
+    }
+    return result;
 }

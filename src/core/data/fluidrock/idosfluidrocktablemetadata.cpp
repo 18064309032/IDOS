@@ -2,7 +2,7 @@
 
 #include "idosfluidrocktablemetadata.h"
 
-IDOSFluidRockTableMetadata::IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category category)
+IDOSFluidRockTableMetadata::IDOSFluidRockTableMetadata(IDOSFluidRockTableObject::Category category)
     :
     m_category(category)
 {
@@ -14,19 +14,20 @@ IDOSFluidRockTableMetadata::~IDOSFluidRockTableMetadata()
 
 QString IDOSFluidRockTableMetadata::typeId() const
 {
-    return m_category == IDOSFluidRockTable::Category::Fluid
+    return m_category == IDOSFluidRockTableObject::Category::Fluid
         ? QStringLiteral("idos.fluid.table")
-        : QStringLiteral("idos.rockPhysics.table");
+        :
+        QStringLiteral("idos.rockPhysics.table");
 }
 
 QString IDOSFluidRockTableMetadata::displayName() const
 {
-    return m_category == IDOSFluidRockTable::Category::Fluid
+    return m_category == IDOSFluidRockTableObject::Category::Fluid
         ? QObject::tr("Fluid Table")
         : QObject::tr("Rock Physics Table");
 }
 
 IDOSDataObject* IDOSFluidRockTableMetadata::create() const
 {
-    return new IDOSFluidRockTable(m_category);
+    return new IDOSFluidRockTableObject(m_category);
 }

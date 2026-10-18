@@ -10,7 +10,7 @@ class PROVIDERS_EXPORT IDOSProductionHistoryMetadata : public IDOSDataProviderMe
     QString id() const override;
     QString displayName() const override;
     QStringList fileExtensions() const override;
-    std::unique_ptr<IDOSDataProvider> createProvider() const override;
+    std::unique_ptr<IDOSDataProvider> create() const override;
     bool canHandle(const QString& filePath) const override;
 };
 

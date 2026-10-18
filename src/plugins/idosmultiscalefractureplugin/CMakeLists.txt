@@ -7,8 +7,8 @@ add_library(idosmultiscalefractureplugin SHARED
     idoscurveevaluation.cpp
     idoscurveevaluationcommand.h
     idoscurveevaluationcommand.cpp
-    idoscurveevaluationwidget.h
-    idoscurveevaluationwidget.cpp
+    idoscurvefitevaluationwidget.h
+    idoscurvefitevaluationwidget.cpp
     idosmultiscalefractureplugin.qrc
     idosmultiscalefractureplugin.h
     idosmultiscalefractureplugin.cpp

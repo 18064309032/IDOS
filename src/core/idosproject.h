@@ -42,8 +42,8 @@ class CORE_EXPORT IDOSProject : public QObject
     bool save(const QString& path, const IDOSDataRegistry* registry, QString& error);
     QString filePath() const;
     bool isModified() const;
-    QVariantMap presentationState() const;
-    void setPresentationState(const QVariantMap& state);
+    QVariantMap saveState() const;
+    void restoreState(const QVariantMap& state);
     void markPresentationModified();
     const IDOSProjectMetadata& metadata() const;
     bool setMetadata(const IDOSProjectMetadata& metadata);
@@ -54,7 +54,7 @@ class CORE_EXPORT IDOSProject : public QObject
     bool setCurrentCaseId(const QString& caseId);
 
     /** 将数据对象加入工程，接管所有权。已存在同 objectId 则替换。 */
-    void add(IDOSDataObject* object);
+    bool add(IDOSDataObject* object);
 
     /**
      * @brief Detach a data object without deleting it.
@@ -98,22 +98,17 @@ class CORE_EXPORT IDOSProject : public QObject
     // Emitted immediately, including during batch updates, before detaching data.
     void objectAboutToBeRemoved(const QString& objectId);
 
-    /** 对象业务数据变化，不包含可见性变化。 */
+    /** 对象业务数据变化。 */
     void objectDataChanged(const QString& objectId);
-
-    /** 对象可见性变化。 */
-    void objectVisibilityChanged(const QString& objectId, bool visible);
 
     // ===== 批量信号（事务结束时发射，列表内 id 唯一） =====
 
     void objectsAdded(const QStringList& objectIds);
     void objectsRemoved(const QStringList& objectIds);
     void objectsDataChanged(const QStringList& objectIds);
-    void objectsVisibilityChanged(const QStringList& objectIds);
 
   private slots:
     void onObjectDataChanged();
-    void onObjectVisibilityChanged(bool visible);
     void onObjectNameChanged(const QString& name);
 
   private:
@@ -139,7 +134,6 @@ class CORE_EXPORT IDOSProject : public QObject
     QSet<QString> m_pendingAdded;
     QSet<QString> m_pendingRemoved;
     QSet<QString> m_pendingDataChanged;
-    QSet<QString> m_pendingVisibilityChanged;
 };
 
 #endif // IDOS_PROJECT_H

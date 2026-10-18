@@ -1,6 +1,7 @@
 #ifndef CASE_WORKFLOW_TEST_H
 #define CASE_WORKFLOW_TEST_H
 
+#include <QList>
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -10,7 +11,14 @@
 
 class IDOSRenderObject;
 class IDOSRenderView;
+class IDOSRenderServer;
 class QTemporaryDir;
+
+class vtkActor;
+
+class vtkProp;
+
+class IDOSRenderProvider;
 
 class CaseWorkflowTest : public QObject
 {
@@ -40,8 +48,11 @@ class CaseWorkflowTest : public QObject
     void onWellDisplaySettings();
     void onWellSymbolsAndStatusColors();
     void onRenderLifecycle();
+    void onRenderStateAndUndo();
+    void onRenderRestoreClipping();
     void onRenderArchitecture();
     void onExamplePlugin();
+    void onExamplePluginMenu();
     void onCreateAndImport();
     void onFluidRockReferences();
     void onDialog();
@@ -50,12 +61,14 @@ class CaseWorkflowTest : public QObject
     void onFlowOutputFraming();
 
   private:
+    static QList<vtkProp*> legends(const IDOSRenderProvider* provider);
+    static QList<vtkActor*> actors(const IDOSRenderProvider* provider);
     QVariantMap fracture(const QVector<double>& coordinates, int id) const;
     QStringList fractureIssueCodes(const QVariantMap& report) const;
     bool sameSelection(const QVector<quint8>& first, const QVector<quint8>& second) const;
     void onCloseContextMenu();
     void onExportCurveDialog();
-    IDOSRenderObject* findRenderObject(IDOSRenderView* view, const QString& dataId) const;
+    IDOSRenderObject* findRenderObject(IDOSRenderServer* server, IDOSRenderView* view, const QString& dataId) const;
     QString m_name;
     bool m_cancel;
     bool m_expectDisabled;

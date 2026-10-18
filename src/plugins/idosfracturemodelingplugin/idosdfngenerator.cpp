@@ -6,16 +6,16 @@
 #include <QObject>
 #include <QStringList>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
 
 #include "idosdfngenerator.h"
 
-bool IDOSDfnGenerator::validate(const IDOSGrid* grid, const IDOSGridProperty* density,
+bool IDOSDfnGenerator::validate(const IDOSGridObject* grid, const IDOSGridPropertyObject* density,
                               const QJsonObject& parameters, QString& error)
 {
     error.clear();
-    if (grid == nullptr || grid->type() != IDOSGrid::Type::CornerPoint
+    if (grid == nullptr || grid->type() != IDOSGridObject::Type::CornerPoint
         || grid->nx() <= 0 || grid->ny() <= 0 || grid->nz() <= 0)
     {
         error = QObject::tr("Select a valid corner-point grid.");
@@ -38,7 +38,7 @@ bool IDOSDfnGenerator::validate(const IDOSGrid* grid, const IDOSGridProperty* de
         return false;
     }
     if (density != nullptr && (density->gridId() != grid->objectId()
-        || density->kind() != IDOSGridProperty::Kind::Static
+        || density->kind() != IDOSGridPropertyObject::Kind::Static
         || density->numX() != grid->nx() || density->numY() != grid->ny()
         || density->numZ() != grid->nz() || density->values().size() != cells))
     {
@@ -83,7 +83,7 @@ bool IDOSDfnGenerator::validate(const IDOSGrid* grid, const IDOSGridProperty* de
     return true;
 }
 
-bool IDOSDfnGenerator::cellCoordinates(const IDOSGrid* grid, int cell, QVector<double>& corners)
+bool IDOSDfnGenerator::cellCoordinates(const IDOSGridObject* grid, int cell, QVector<double>& corners)
 {
     const int i = cell % grid->nx();
     const int j = (cell / grid->nx()) % grid->ny();
@@ -111,7 +111,7 @@ bool IDOSDfnGenerator::cellCoordinates(const IDOSGrid* grid, int cell, QVector<d
     return true;
 }
 
-bool IDOSDfnGenerator::generate(const IDOSGrid* grid, const IDOSGridProperty* density,
+bool IDOSDfnGenerator::generate(const IDOSGridObject* grid, const IDOSGridPropertyObject* density,
     const QJsonObject& parameters, QVariantList& fractures, QString& error)
 {
     fractures.clear();

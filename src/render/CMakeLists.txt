@@ -1,37 +1,31 @@
 add_library(idos_render SHARED
     idos_render.h
-    idosrenderinteractiontool.cpp
-    idosrenderinteractiontool.h
+    tools/idosrenderinteractiontool.cpp
+    tools/idosrenderinteractiontool.h
     idosrenderobject.cpp
     idosrenderobject.h
-    idosrenderregistry.cpp
-    idosrenderregistry.h
     idosrenderscene.cpp
     idosrenderscene.h
-    idosrenderserver.cpp
-    idosrenderserver.h
     idosrendertypes.cpp
     idosrendertypes.h
     idosrenderview.cpp
     idosrenderview.h
-    idostool.cpp
-    idostool.h
-    idostoolbar.cpp
-    idostoolbar.h
-    idostoolregistry.cpp
-    idostoolregistry.h
-    providers/idosrendermetadata.cpp
-    providers/idosrendermetadata.h
-    providers/idosrenderprovider.cpp
-    providers/idosrenderprovider.h
-    providers/idostoolmetadata.cpp
-    providers/idostoolmetadata.h
-    providers/idostoolprovider.cpp
-    providers/idostoolprovider.h
+    tools/idostool.cpp
+    tools/idostool.h
+    tools/idostoolbar.cpp
+    tools/idostoolbar.h
+    tools/idostoolproviderregistry.cpp
+    tools/idostoolproviderregistry.h
+    idosrenderprovider.cpp
+    idosrenderprovider.h
+    tools/idostoolprovidermetadata.cpp
+    tools/idostoolprovidermetadata.h
+    tools/idostoolprovider.cpp
+    tools/idostoolprovider.h
 )
 
 target_include_directories(idos_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(idos_render PUBLIC idos_core Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(idos_render PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
 target_compile_definitions(idos_render PRIVATE IDOS_RENDER_LIB)
 
 if(IDOS_ENABLE_RENDER)

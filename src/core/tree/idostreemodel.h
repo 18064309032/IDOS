@@ -36,10 +36,8 @@ public:
     bool transferItems(const QVariantMap& arguments, bool validateOnly = false);
     QString sessionId() const;
     void setSessionId(const QString& sessionId);
-    QList<IDOSDataObject*> dataObjects() const;
-    IDOSDataObject* dataObject(const QString& dataId) const;
-    bool triggerAction(const QString& operation, const QStringList& itemIds,
-                       const QVariantMap& arguments);
+    QList<IDOSDataObject*> objects() const;
+    IDOSDataObject* object(const QString& dataId) const;
     QString name() const;
     void setName(const QString& name);
     IDOSTreeItem* item(const QString& id) const;
@@ -57,10 +55,10 @@ public:
     bool setChecked(IDOSTreeItem* item, Qt::CheckState state);
     bool isInserting(const IDOSTreeItem* parent, const IDOSTreeItem* item, int row) const;
     bool isRemoving(const IDOSTreeItem* parent, const IDOSTreeItem* item) const;
-    IDOSTreeItem* itemFromIndex(const QModelIndex& index) const;
-    QModelIndex indexFromItem(const IDOSTreeItem* item) const;
-    QModelIndex indexFromDataId(const QString& id) const;
-    IDOSDataObject* objectFromIndex(const QModelIndex& index) const;
+    IDOSTreeItem* item(const QModelIndex& index) const;
+    QModelIndex index(const IDOSTreeItem* item) const;
+    QModelIndex index(const QString& id) const;
+    IDOSDataObject* object(const QModelIndex& index) const;
     static QString itemPath(const IDOSTreeItem* item);
     static IDOSTreeItem* itemFromPath(IDOSTreeModel* model, const QString& path);
     QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override;
@@ -74,10 +72,10 @@ signals:
     void checkStateChanged(IDOSTreeItem* item, Qt::CheckState state);
     void registryChanged();
     void transferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted);
-    void actionTriggered(const QString& operation, const QStringList& itemIds,
-                         const QVariantMap& arguments);
+protected:
+    bool acceptsContext(const QString& session, const QString& itemId) const;
 private slots:
-    void onMetadataAdded(const QString& metadataId);
+    void onMetadataRegistered(const QString& metadataId);
     void onMetadataRemoving(const QString& metadataId);
 private:
     void refreshCheckStates(IDOSTreeItem* item);

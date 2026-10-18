@@ -7,8 +7,8 @@
 #include <QStringList>
 #include <QTextStream>
 
-#include "data/well/idoswell.h"
 #include "data/well/idoswellhead.h"
+#include "data/well/idoswellobject.h"
 #include "data/well/idoswellspatialreference.h"
 
 #include "idoswellheaderprovider.h"
@@ -140,7 +140,7 @@ QList<IDOSDataObject*> IDOSWellHeaderProvider::read(const QString& filePath)
         head.setBottomDepth(values[3]);
         head.setKb(values[4]);
         head.setSymbol(symbol);
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(fields[indexes[0]]);
         well->setWellHead(head);
         result.append(well);
@@ -208,7 +208,7 @@ QList<IDOSDataObject*> IDOSWellHeaderProvider::readWhitespaceHeader(const QStrin
         head.setSurfaceY(y);
         head.setBottomDepth(md);
         head.setKb(kb);
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(fields.first());
         well->setWellHead(head);
         result.append(well);
@@ -365,7 +365,7 @@ bool IDOSWellHeaderProvider::readPetrel(const QStringList& lines, QList<IDOSData
             }
         }
 
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(wellName);
         well->setWellHead(head);
         result->append(well);

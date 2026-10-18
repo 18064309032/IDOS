@@ -6,7 +6,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include "data/fracture/idosfracturematerialcatalog.h"
+#include "data/fracture/idosfracturematerialcatalogobject.h"
 
 #include "idosfracturematerialcatalogprovider.h"
 
@@ -51,10 +51,10 @@ QList<IDOSDataObject*> IDOSFractureMaterialCatalogProvider::read(const QString& 
                                       QStringLiteral("\u652f\u6491\u5242\u578b\u53f7"),
                                       QStringLiteral("\u5e73\u5747\u7c92\u5f84(mm)"),
                                       QStringLiteral("\u771f\u5b9e\u5bc6\u5ea6(kg/m^3)")};
-    IDOSFractureMaterialCatalog::Kind kind = IDOSFractureMaterialCatalog::Kind::Fluid;
+    IDOSFractureMaterialCatalogObject::Kind kind = IDOSFractureMaterialCatalogObject::Kind::Fluid;
     if (columns == proppantColumns)
     {
-        kind = IDOSFractureMaterialCatalog::Kind::Proppant;
+        kind = IDOSFractureMaterialCatalogObject::Kind::Proppant;
     }
     else if (columns != fluidColumns)
     {
@@ -100,7 +100,7 @@ QList<IDOSDataObject*> IDOSFractureMaterialCatalogProvider::read(const QString& 
         setLastError(QObject::tr("The fracture material catalog contains no records."));
         return result;
     }
-    IDOSFractureMaterialCatalog* catalog = new IDOSFractureMaterialCatalog();
+    IDOSFractureMaterialCatalogObject* catalog = new IDOSFractureMaterialCatalogObject();
     catalog->setKind(kind);
     catalog->setName(QFileInfo(filePath).completeBaseName());
     catalog->setSourceFile(filePath);

@@ -7,7 +7,7 @@
 #include <QTextStream>
 #include <QVector>
 
-#include "data/grid/idosgridboundary.h"
+#include "data/grid/idosgridboundaryobject.h"
 
 #include "idosgridboundaryprovider.h"
 
@@ -103,7 +103,7 @@ QList<IDOSDataObject*> IDOSGridBoundaryProvider::read(const QString& filePath)
         return {};
     }
 
-    IDOSGridBoundary* boundary = new IDOSGridBoundary();
+    IDOSGridBoundaryObject* boundary = new IDOSGridBoundaryObject();
     boundary->setName(QFileInfo(filePath).completeBaseName());
     boundary->setSourceFile(filePath);
     boundary->setXCoordinates(xCoordinates);

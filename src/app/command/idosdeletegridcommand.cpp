@@ -5,9 +5,9 @@
 #include <QObject>
 
 #include "data/case/idoscaseobject.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridfilter.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridfilterobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "idosproject.h"
 
 #include "idosdeletegridcommand.h"
@@ -15,7 +15,8 @@
 IDOSDeleteGridCommand::IDOSDeleteGridCommand(
     IDOSProject* project,
     QString gridId)
-    : IDOSCommand(QStringLiteral("grid.delete"),
+    :
+    IDOSCommand(QStringLiteral("grid.delete"),
                   Type::Action,
                   project,
                   QObject::tr("Delete grid"))
@@ -51,7 +52,7 @@ bool IDOSDeleteGridCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (object != nullptr && qobject_cast<IDOSGrid*>(object) == nullptr)
+    if (object != nullptr && qobject_cast<IDOSGridObject*>(object) == nullptr)
     {
         error = QObject::tr("The target object is not a grid.");
         return false;
@@ -81,7 +82,7 @@ bool IDOSDeleteGridCommand::apply(QString& error)
     m_filters.clear();
     for (IDOSDataObject* object : targetProject->objects())
     {
-        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(object);
+        IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(object);
         if (filter != nullptr && filter->gridId() == m_gridId)
         {
             m_filters.append(filter);
@@ -95,10 +96,10 @@ bool IDOSDeleteGridCommand::apply(QString& error)
     {
         removeCaseReferencesForObject(propertyId);
         IDOSDataObject* detachedObject = targetProject->take(propertyId);
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(detachedObject);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(detachedObject);
         if (property != nullptr)
         {
-            m_properties.append(QPointer<IDOSGridProperty>(property));
+            m_properties.append(QPointer<IDOSGridPropertyObject>(property));
         }
         else if (detachedObject != nullptr)
         {
@@ -108,21 +109,21 @@ bool IDOSDeleteGridCommand::apply(QString& error)
 
     removeCaseReferencesForObject(m_gridId);
     IDOSDataObject* detachedGridObject = targetProject->take(m_gridId);
-    IDOSGrid* detachedGrid = qobject_cast<IDOSGrid*>(detachedGridObject);
+    IDOSGridObject* detachedGrid = qobject_cast<IDOSGridObject*>(detachedGridObject);
     if (detachedGrid == nullptr)
     {
         if (detachedGridObject != nullptr)
         {
             targetProject->add(detachedGridObject);
         }
-        for (const QPointer<IDOSGridProperty>& property : m_properties)
+        for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
         {
             if (!property.isNull() && property->parent() == nullptr)
             {
                 targetProject->add(property.data());
             }
         }
-        for (const QPointer<IDOSGridFilter>& filter : m_filters)
+        for (const QPointer<IDOSGridFilterObject>& filter : m_filters)
         {
             if (filter != nullptr && filter->parent() == nullptr)
             {
@@ -153,26 +154,36 @@ bool IDOSDeleteGridCommand::revert(QString& error)
         return false;
     }
 
-    if (m_grid->parent() != nullptr)
+    if (m_grid->parent() != nullptr || targetProject->object(m_grid->objectId()) != nullptr)
     {
-        error = QObject::tr("The target grid is already attached to a project.");
+        error = QObject::tr("The target grid is unavailable.");
         return false;
+    }
+    for (const QPointer<IDOSGridPropertyObject>& object : m_properties)
+    {
+        if (object.isNull() || object->parent() != nullptr || targetProject->object(object->objectId()) != nullptr)
+        {
+            error = QObject::tr("The target grid is unavailable.");
+            return false;
+        }
+    }
+    for (const QPointer<IDOSGridFilterObject>& object : m_filters)
+    {
+        if (object.isNull() || object->parent() != nullptr || targetProject->object(object->objectId()) != nullptr)
+        {
+            error = QObject::tr("The target grid is unavailable.");
+            return false;
+        }
     }
 
     targetProject->add(m_grid.data());
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
-        if (!property.isNull() && property->parent() == nullptr)
-        {
-            targetProject->add(property.data());
-        }
+        targetProject->add(property.data());
     }
-    for (const QPointer<IDOSGridFilter>& filter : m_filters)
+    for (const QPointer<IDOSGridFilterObject>& filter : m_filters)
     {
-        if (filter != nullptr && filter->parent() == nullptr)
-        {
-            targetProject->add(filter.data());
-        }
+        targetProject->add(filter.data());
     }
     restoreCaseReferences();
     return true;
@@ -265,7 +276,7 @@ QStringList IDOSDeleteGridCommand::collectPropertyIds() const
 
     for (IDOSDataObject* object : targetProject->objects())
     {
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
         if (property != nullptr && property->gridId() == m_gridId)
         {
             propertyIds.append(property->objectId());
@@ -276,14 +287,14 @@ QStringList IDOSDeleteGridCommand::collectPropertyIds() const
 
 void IDOSDeleteGridCommand::clearDetachedObjects()
 {
-    for (const QPointer<IDOSGridFilter>& filter : m_filters)
+    for (const QPointer<IDOSGridFilterObject>& filter : m_filters)
     {
         if (filter != nullptr && filter->parent() == nullptr)
         {
             delete filter.data();
         }
     }
-    for (const QPointer<IDOSGridProperty>& property : m_properties)
+    for (const QPointer<IDOSGridPropertyObject>& property : m_properties)
     {
         if (!property.isNull() && property->parent() == nullptr)
         {
@@ -298,7 +309,8 @@ void IDOSDeleteGridCommand::clearDetachedObjects()
 }
 
 IDOSDeleteGridCommandMetadata::IDOSDeleteGridCommandMetadata()
-    : IDOSCommandMetadata(QStringLiteral("grid.delete"),
+    :
+    IDOSCommandMetadata(QStringLiteral("grid.delete"),
                           QObject::tr("Delete grid"),
                           QObject::tr("Delete a grid and its properties from the current project."),
                           IDOSCommand::Type::Action)

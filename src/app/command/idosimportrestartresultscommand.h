@@ -5,11 +5,11 @@
 #include <QPointer>
 #include <QString>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
-class IDOSGridProperty;
+class IDOSGridPropertyObject;
 
 class APP_EXPORT IDOSImportRestartResultsCommand : public IDOSCommand
 {
@@ -35,7 +35,7 @@ private:
     int m_lastReportStep;
     int m_reportStepCount;
     bool m_loaded;
-    QList<QPointer<IDOSGridProperty>> m_properties;
+    QList<QPointer<IDOSGridPropertyObject>> m_properties;
 };
 
 class APP_EXPORT IDOSImportRestartResultsCommandMetadata : public IDOSCommandMetadata

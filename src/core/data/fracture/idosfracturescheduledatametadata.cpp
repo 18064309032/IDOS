@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosfractureschedule.h"
+#include "idosfracturescheduleobject.h"
 
 #include "idosfracturescheduledatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSFractureScheduleDataMetadata::displayName() const
 
 IDOSDataObject* IDOSFractureScheduleDataMetadata::create() const
 {
-    return new IDOSFractureSchedule();
+    return new IDOSFractureScheduleObject();
 }

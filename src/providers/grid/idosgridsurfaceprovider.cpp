@@ -6,10 +6,10 @@
 #include <QObject>
 #include <QRegularExpression>
 #include <QTextStream>
-#include <QtGlobal>
 #include <QVector>
+#include <QtGlobal>
 
-#include "data/grid/idosgridsurface.h"
+#include "data/grid/idosgridsurfaceobject.h"
 
 #include "idosgridsurfaceprovider.h"
 
@@ -137,7 +137,7 @@ QList<IDOSDataObject*> IDOSGridSurfaceProvider::read(const QString& filePath)
         return {};
     }
 
-    IDOSGridSurface* surface = new IDOSGridSurface();
+    IDOSGridSurfaceObject* surface = new IDOSGridSurfaceObject();
     surface->setName(QFileInfo(filePath).completeBaseName());
     surface->setSourceFile(filePath);
     surface->setNx(nx);

@@ -11,7 +11,7 @@
 /**
  * @brief 一口井的全部测井曲线集合（"Well Logs" 树节点）。
  *
- * IDOSWell 的组合成员，普通类，值语义。通道以值存储。
+ * IDOSWellObject 的组合成员，普通类，值语义。通道以值存储。
  * 重复导入按通道名覆盖：同名旧通道替换为新通道。
  */
 class CORE_EXPORT IDOSWellLogSet

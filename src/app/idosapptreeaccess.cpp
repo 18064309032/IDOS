@@ -2,15 +2,17 @@
 #include <QUuid>
 #include <QVariantMap>
 
+#include "grid/idosgridrenderprovider.h"
 #include "idosdataobject.h"
 #include "idosmainwindow.h"
 #include "idosproject.h"
 #include "idosrenderscene.h"
-#include "idosrenderserver.h"
 #include "idosrenderview.h"
-#include "providers/grid/idosgridrenderprovider.h"
-#include "providers/idostreeitemprovider.h"
+#include "render/idosrenderserver.h"
+#include "tree/idoscasetreeitemmodel.h"
+#include "tree/idosdatatreeitemmodel.h"
 #include "tree/idostreeitem.h"
+#include "tree/idostreeitemprovider.h"
 #include "tree/idostreemodel.h"
 
 #include "idosapptreeaccess.h"
@@ -64,9 +66,9 @@ IDOSAppTreeAccess::~IDOSAppTreeAccess()
     }
 }
 
-void IDOSAppTreeAccess::setDataTreeModel(IDOSTreeModel* model)
+void IDOSAppTreeAccess::setDataModel(IDOSDataTreeItemModel* model)
 {
-    if (m_dataTreeModel == model || (model != nullptr && model == m_caseTreeModel))
+    if (m_dataTreeModel == model)
     {
         return;
     }
@@ -78,11 +80,60 @@ void IDOSAppTreeAccess::setDataTreeModel(IDOSTreeModel* model)
     }
     m_dataTreeModel = model;
     connectModel(model);
+    if (model != nullptr)
+    {
+        connect(model, &IDOSDataTreeItemModel::importDatasetRequested, this,
+                &IDOSAppTreeAccess::onImportDatasetRequested);
+        connect(model, &IDOSDataTreeItemModel::selectSeismicInlineRequested, this,
+                &IDOSAppTreeAccess::onSelectSeismicInlineRequested);
+        connect(model, &IDOSDataTreeItemModel::importFluidRockTablesRequested, this,
+                &IDOSAppTreeAccess::onImportFluidRockTablesRequested);
+        connect(model, &IDOSDataTreeItemModel::addFluidRockTableToCaseRequested, this,
+                &IDOSAppTreeAccess::onAddFluidRockTableToCaseRequested);
+        connect(model, &IDOSDataTreeItemModel::showGridSettingsRequested, this,
+                &IDOSAppTreeAccess::onShowGridSettingsRequested);
+        connect(model, &IDOSDataTreeItemModel::displayGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onDisplayGridPropertyRequested);
+        connect(model, &IDOSDataTreeItemModel::showWellSettingsRequested, this,
+                &IDOSAppTreeAccess::onShowWellSettingsRequested);
+        connect(model, &IDOSDataTreeItemModel::removeRequested, this, &IDOSAppTreeAccess::onRemoveRequested);
+        connect(model, &IDOSDataTreeItemModel::addToCaseRequested, this, &IDOSAppTreeAccess::onAddToCaseRequested);
+        connect(model, &IDOSDataTreeItemModel::renameRequested, this,
+                &IDOSAppTreeAccess::onRenameRequested);
+        connect(model, &IDOSDataTreeItemModel::importGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onImportGridPropertyRequested);
+        connect(model, &IDOSDataTreeItemModel::importGridDynamicPropertiesRequested, this,
+                &IDOSAppTreeAccess::onImportGridDynamicPropertiesRequested);
+        connect(model, &IDOSDataTreeItemModel::deleteGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onDeleteGridPropertyRequested);
+        connect(model, &IDOSDataTreeItemModel::deleteGridRequested, this, &IDOSAppTreeAccess::onDeleteGridRequested);
+        connect(model, &IDOSDataTreeItemModel::deleteGridFilterRequested, this,
+                &IDOSAppTreeAccess::onDeleteGridFilterRequested);
+        connect(model, &IDOSDataTreeItemModel::renameGridFilterRequested, this,
+                &IDOSAppTreeAccess::onRenameGridFilterRequested);
+        connect(model, &IDOSDataTreeItemModel::viewWellDataRequested, this,
+                &IDOSAppTreeAccess::onViewWellDataRequested);
+        connect(model, &IDOSDataTreeItemModel::newWellRequested, this, &IDOSAppTreeAccess::onNewWellRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellRequested, this, &IDOSAppTreeAccess::onImportWellRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellCheckshotsRequested, this,
+                &IDOSAppTreeAccess::onImportWellCheckshotsRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellCompletionsRequested, this,
+                &IDOSAppTreeAccess::onImportWellCompletionsRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellMarkersRequested, this,
+                &IDOSAppTreeAccess::onImportWellMarkersRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellCurvesRequested, this,
+                &IDOSAppTreeAccess::onImportWellCurvesRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellTrajectoryRequested, this,
+                &IDOSAppTreeAccess::onImportWellTrajectoryRequested);
+        connect(model, &IDOSDataTreeItemModel::importWellHeaderRequested, this,
+                &IDOSAppTreeAccess::onImportWellHeaderRequested);
+        connect(model, &IDOSDataTreeItemModel::deleteWellRequested, this, &IDOSAppTreeAccess::onDeleteWellRequested);
+    }
 }
 
-void IDOSAppTreeAccess::setCaseTreeModel(IDOSTreeModel* model)
+void IDOSAppTreeAccess::setCaseModel(IDOSCaseTreeItemModel* model)
 {
-    if (m_caseTreeModel == model || (model != nullptr && model == m_dataTreeModel))
+    if (m_caseTreeModel == model)
     {
         return;
     }
@@ -94,6 +145,57 @@ void IDOSAppTreeAccess::setCaseTreeModel(IDOSTreeModel* model)
     }
     m_caseTreeModel = model;
     connectModel(model);
+    if (model != nullptr)
+    {
+        connect(model, &IDOSCaseTreeItemModel::showGridSettingsRequested, this,
+                &IDOSAppTreeAccess::onShowGridSettingsRequested);
+        connect(model, &IDOSCaseTreeItemModel::displayGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onDisplayGridPropertyRequested);
+        connect(model, &IDOSCaseTreeItemModel::showWellSettingsRequested, this,
+                &IDOSAppTreeAccess::onShowWellSettingsRequested);
+        connect(model, &IDOSCaseTreeItemModel::renameRequested, this,
+                &IDOSAppTreeAccess::onRenameRequested);
+        connect(model, &IDOSCaseTreeItemModel::importGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onImportGridPropertyRequested);
+        connect(model, &IDOSCaseTreeItemModel::importGridDynamicPropertiesRequested, this,
+                &IDOSAppTreeAccess::onImportGridDynamicPropertiesRequested);
+        connect(model, &IDOSCaseTreeItemModel::deleteGridPropertyRequested, this,
+                &IDOSAppTreeAccess::onDeleteGridPropertyRequested);
+        connect(model, &IDOSCaseTreeItemModel::deleteGridRequested, this, &IDOSAppTreeAccess::onDeleteGridRequested);
+        connect(model, &IDOSCaseTreeItemModel::deleteGridFilterRequested, this,
+                &IDOSAppTreeAccess::onDeleteGridFilterRequested);
+        connect(model, &IDOSCaseTreeItemModel::renameGridFilterRequested, this,
+                &IDOSAppTreeAccess::onRenameGridFilterRequested);
+        connect(model, &IDOSCaseTreeItemModel::viewWellDataRequested, this,
+                &IDOSAppTreeAccess::onViewWellDataRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellRequested, this, &IDOSAppTreeAccess::onImportWellRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellCheckshotsRequested, this,
+                &IDOSAppTreeAccess::onImportWellCheckshotsRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellCompletionsRequested, this,
+                &IDOSAppTreeAccess::onImportWellCompletionsRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellMarkersRequested, this,
+                &IDOSAppTreeAccess::onImportWellMarkersRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellCurvesRequested, this,
+                &IDOSAppTreeAccess::onImportWellCurvesRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellTrajectoryRequested, this,
+                &IDOSAppTreeAccess::onImportWellTrajectoryRequested);
+        connect(model, &IDOSCaseTreeItemModel::importWellHeaderRequested, this,
+                &IDOSAppTreeAccess::onImportWellHeaderRequested);
+        connect(model, &IDOSCaseTreeItemModel::deleteWellRequested, this, &IDOSAppTreeAccess::onDeleteWellRequested);
+        connect(model, &IDOSCaseTreeItemModel::generateInputRequested, this,
+                &IDOSAppTreeAccess::onGenerateInputRequested);
+        connect(model, &IDOSCaseTreeItemModel::viewPropertyCurvesRequested, this,
+                &IDOSAppTreeAccess::onViewPropertyCurvesRequested);
+        connect(model, &IDOSCaseTreeItemModel::importSummaryResultsRequested, this,
+                &IDOSAppTreeAccess::onImportSummaryResultsRequested);
+        connect(model, &IDOSCaseTreeItemModel::viewSummaryResultsRequested, this,
+                &IDOSAppTreeAccess::onViewSummaryResultsRequested);
+        connect(model, &IDOSCaseTreeItemModel::renameCaseRequested, this, &IDOSAppTreeAccess::onRenameCaseRequested);
+        connect(model, &IDOSCaseTreeItemModel::newCaseRequested, this, &IDOSAppTreeAccess::onNewCaseRequested);
+        connect(model, &IDOSCaseTreeItemModel::importCaseRequested, this, &IDOSAppTreeAccess::onImportCaseRequested);
+        connect(model, &IDOSCaseTreeItemModel::importGridRequested, this, &IDOSAppTreeAccess::onImportGridRequested);
+        connect(model, &IDOSCaseTreeItemModel::deleteCaseRequested, this, &IDOSAppTreeAccess::onDeleteCaseRequested);
+    }
 }
 
 void IDOSAppTreeAccess::connectModel(IDOSTreeModel* model)
@@ -102,8 +204,8 @@ void IDOSAppTreeAccess::connectModel(IDOSTreeModel* model)
     {
         return;
     }
-    connect(model, &IDOSTreeModel::transferRequested, this, &IDOSAppTreeAccess::onTransferRequested, Qt::DirectConnection);
-    connect(model, &IDOSTreeModel::actionTriggered, this, &IDOSAppTreeAccess::onActionTriggered);
+    connect(model, &IDOSTreeModel::transferRequested, this, &IDOSAppTreeAccess::onTransferRequested,
+            Qt::DirectConnection);
     connect(model, &IDOSTreeModel::checkStateChanged, this, &IDOSAppTreeAccess::onCheckStateChanged);
     connect(model, &IDOSTreeModel::registryChanged, this, &IDOSAppTreeAccess::onRegistryChanged);
     connect(model, &QAbstractItemModel::modelReset, this, &IDOSAppTreeAccess::onRegistryChanged);
@@ -220,8 +322,7 @@ void IDOSAppTreeAccess::onCheckStateChanged(IDOSTreeItem* item, Qt::CheckState s
 {
     IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
     if (m_applying || item == nullptr || model == nullptr || item->model() != model ||
-        (model != m_dataTreeModel && model != m_caseTreeModel) ||
-        (state != Qt::Unchecked && state != Qt::Checked))
+        (model != m_dataTreeModel && model != m_caseTreeModel) || (state != Qt::Unchecked && state != Qt::Checked))
     {
         return;
     }
@@ -291,10 +392,12 @@ void IDOSAppTreeAccess::updateCheckStates(IDOSTreeModel* model, IDOSTreeItem* it
     }
     IDOSDataObject* data = m_project != nullptr ? m_project->object(item->provider()->dataId()) : nullptr;
     const QString renderId = IDOSGridRenderProvider::supportsData(data) ? IDOSGridRenderProvider::renderDataId(data)
-        : data != nullptr ? data->objectId() : QString();
+                             : data != nullptr                          ? data->objectId()
+                                                                        :
+                                                                        QString();
     const bool available = m_renderServer != nullptr && targetView() != nullptr && !renderId.isEmpty() &&
-        !m_renderServer->objectIds(targetView(), renderId).isEmpty();
-    const QModelIndex index = model->indexFromItem(item);
+                           !m_renderServer->objectIds(targetView(), renderId).isEmpty();
+    const QModelIndex index = model->index(item);
     if (index.isValid() && model->data(index, IDOSTreeModel::RenderAvailableRole).toBool() != available)
     {
         model->setData(index, available, IDOSTreeModel::RenderAvailableRole);
@@ -307,8 +410,9 @@ void IDOSAppTreeAccess::updateCheckStates(IDOSTreeModel* model, IDOSTreeItem* it
 
 IDOSRenderView* IDOSAppTreeAccess::targetView() const
 {
-    return m_targetView != nullptr ? m_targetView.data()
-        : m_renderServer != nullptr ? m_renderServer->currentView() : nullptr;
+    return m_targetView != nullptr     ? m_targetView.data()
+           : m_renderServer != nullptr ? m_renderServer->currentView()
+                                       : nullptr;
 }
 
 bool IDOSAppTreeAccess::isCheckable(IDOSDataObject* data) const
@@ -317,8 +421,8 @@ bool IDOSAppTreeAccess::isCheckable(IDOSDataObject* data) const
     {
         return false;
     }
-    return m_renderServer->isCheckable(IDOSGridRenderProvider::supportsData(data)
-        ? IDOSGridRenderProvider::renderDataId(data) : data->objectId());
+    return m_renderServer->isCheckable(
+        IDOSGridRenderProvider::supportsData(data) ? IDOSGridRenderProvider::renderDataId(data) : data->objectId());
 }
 
 void IDOSAppTreeAccess::updateModel(IDOSTreeModel* model, const QStringList& ids)
@@ -370,33 +474,13 @@ void IDOSAppTreeAccess::updateModel(IDOSTreeModel* model, const QStringList& ids
     }
 }
 
-void IDOSAppTreeAccess::onActionTriggered(const QString& operation, const QStringList& itemIds,
-                                         const QVariantMap& arguments)
-{
-    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
-    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
-    if (m_project == nullptr || model == nullptr || window == nullptr ||
-        window->project() != m_project || (model != m_dataTreeModel && model != m_caseTreeModel))
-    {
-        return;
-    }
-    for (const QString& id : itemIds)
-    {
-        if (model->item(id) == nullptr)
-        {
-            return;
-        }
-    }
-    window->executeTreeAction(model, operation, arguments, targetView());
-}
-
 void IDOSAppTreeAccess::onTransferRequested(const QVariantMap& arguments, bool validateOnly, bool& accepted)
 {
     IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
     IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
     accepted = false;
-    if (m_project == nullptr || model == nullptr || window == nullptr ||
-        window->project() != m_project || (model != m_dataTreeModel && model != m_caseTreeModel))
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
     {
         return;
     }
@@ -430,5 +514,504 @@ Qt::CheckState IDOSAppTreeAccess::checkState(IDOSDataObject* data) const
         return Qt::Unchecked;
     }
     return IDOSGridRenderProvider::supportsData(data) ? IDOSGridRenderProvider::dataCheckState(data, targetView())
-        : m_renderServer->checkState(data->objectId(), targetView());
+                                                      : m_renderServer->checkState(data->objectId(), targetView());
+}
+
+void IDOSAppTreeAccess::onImportDatasetRequested(const QString& text, const QString& fileFilter,
+                                                 const QString& providerId, const QString& dataTypeId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onNodeImportDataset(view, text, fileFilter, providerId, dataTypeId);
+}
+
+void IDOSAppTreeAccess::onSelectSeismicInlineRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onNodeSelectSeismicInline(view, dataId, targetView());
+}
+
+void IDOSAppTreeAccess::onImportFluidRockTablesRequested(const QString& category)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onNodeImportFluidRockTables(view, category);
+}
+
+void IDOSAppTreeAccess::onAddFluidRockTableToCaseRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onNodeAddFluidRockTableToCase(view, dataId);
+}
+
+void IDOSAppTreeAccess::onShowGridSettingsRequested(const QString& gridId, const QString& filterId,
+                                                    const QString& propertyId, bool openFilter)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridSettingsTriggered(view, gridId, filterId, propertyId, openFilter, targetView());
+}
+
+void IDOSAppTreeAccess::onDisplayGridPropertyRequested(const QString& gridId, const QString& propertyId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridDisplayTriggered(view, gridId, propertyId, targetView());
+}
+
+void IDOSAppTreeAccess::onShowWellSettingsRequested(const QString& wellId, bool trajectory)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataWellSettingsTriggered(view, wellId, trajectory, targetView());
+}
+
+void IDOSAppTreeAccess::onRemoveRequested(const QStringList& objectIds)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataDeleteDatasets(view, objectIds);
+}
+
+void IDOSAppTreeAccess::onAddToCaseRequested(const QJsonArray& items)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataAddToCase(view, items);
+}
+
+void IDOSAppTreeAccess::onRenameRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    if (model == m_caseTreeModel)
+    {
+        window->onCaseRenameObject(view, dataId);
+    }
+    else
+    {
+        window->onDataRenameObject(view, dataId);
+    }
+}
+
+void IDOSAppTreeAccess::onImportGridPropertyRequested(const QString& dataId, const QString& caseId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridImportProperty(view, dataId, caseId);
+}
+
+void IDOSAppTreeAccess::onImportGridDynamicPropertiesRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridImportDynamicProperties(view, dataId);
+}
+
+void IDOSAppTreeAccess::onDeleteGridPropertyRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridDeleteProperty(view, dataId);
+}
+
+void IDOSAppTreeAccess::onDeleteGridRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridDelete(view, dataId);
+}
+
+void IDOSAppTreeAccess::onDeleteGridFilterRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridDeleteFilter(view, dataId);
+}
+
+void IDOSAppTreeAccess::onRenameGridFilterRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataGridRenameFilter(view, dataId);
+}
+
+void IDOSAppTreeAccess::onViewWellDataRequested(const QString& dataId, const QString& part, const QString& itemKey)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataViewWellData(view, dataId, part, itemKey);
+}
+
+void IDOSAppTreeAccess::onNewWellRequested()
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataNewWell(view);
+}
+
+void IDOSAppTreeAccess::onImportWellRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWell(view, dataId);
+}
+
+void IDOSAppTreeAccess::onDeleteWellRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataDeleteWell(view, dataId);
+}
+
+void IDOSAppTreeAccess::onGenerateInputRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseGenerateInput(view, dataId);
+}
+
+void IDOSAppTreeAccess::onViewPropertyCurvesRequested(const QString& caseId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseViewPropertyCurves(view, caseId);
+}
+
+void IDOSAppTreeAccess::onImportSummaryResultsRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseImportSummaryResults(view, dataId);
+}
+
+void IDOSAppTreeAccess::onViewSummaryResultsRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseViewSummaryResults(view, dataId);
+}
+
+void IDOSAppTreeAccess::onRenameCaseRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseRenameCase(view, dataId);
+}
+
+void IDOSAppTreeAccess::onNewCaseRequested()
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseNewCase(view);
+}
+
+void IDOSAppTreeAccess::onImportCaseRequested()
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseImportCase(view);
+}
+
+void IDOSAppTreeAccess::onImportGridRequested(const QString& caseId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseImportGrid(view, caseId);
+}
+
+void IDOSAppTreeAccess::onDeleteCaseRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onCaseDeleteCase(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellHeaderRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellHeader(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellTrajectoryRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellTrajectory(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellCurvesRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellCurves(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellMarkersRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellMarkers(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellCompletionsRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellCompletions(view, dataId);
+}
+
+void IDOSAppTreeAccess::onImportWellCheckshotsRequested(const QString& dataId)
+{
+    IDOSTreeModel* model = qobject_cast<IDOSTreeModel*>(sender());
+    IDOSMainWindow* window = qobject_cast<IDOSMainWindow*>(parent());
+    if (m_project == nullptr || model == nullptr || window == nullptr || window->project() != m_project ||
+        (model != m_dataTreeModel && model != m_caseTreeModel))
+    {
+        return;
+    }
+    IDOSTreeView* view =
+        model == m_dataTreeModel ? static_cast<IDOSTreeView*>(window->dataTreeView()) : window->caseTreeView();
+    window->onDataImportWellCheckshots(view, dataId);
 }

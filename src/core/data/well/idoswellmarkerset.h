@@ -11,7 +11,7 @@
 /**
  * @brief 一口井的层位 pick 集合（"Well Tops" 树节点）。
  *
- * IDOSWell 的组合成员，普通类，值语义。重复导入按层位名
+ * IDOSWellObject 的组合成员，普通类，值语义。重复导入按层位名
  * 覆盖该条，其余层位保留。
  */
 class CORE_EXPORT IDOSWellMarkerSet

@@ -2,8 +2,7 @@
 #define IDOS_SIMULATION_SUMMARY_RESULTS_METADATA_H
 
 
-#include "providers/idosdatametadata.h"
-
+#include "data/idosdatametadata.h"
 
 class CORE_EXPORT IDOSSimulationSummaryResultsMetadata : public IDOSDataMetadata
 {

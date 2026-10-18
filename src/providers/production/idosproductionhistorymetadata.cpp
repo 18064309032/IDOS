@@ -21,7 +21,7 @@ QStringList IDOSProductionHistoryMetadata::fileExtensions() const
     return QStringList{QStringLiteral("*.vol"), QStringLiteral("*.VOL")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSProductionHistoryMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSProductionHistoryMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSProductionHistoryProvider());
 }

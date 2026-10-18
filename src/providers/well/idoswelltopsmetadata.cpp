@@ -20,7 +20,7 @@ QStringList IDOSWellTopsMetadata::fileExtensions() const
             QStringLiteral("*.dat"), QStringLiteral("WELL TOP.txt")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSWellTopsMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellTopsMetadata::create() const
 {
     return std::make_unique<IDOSWellTopsProvider>();
 }

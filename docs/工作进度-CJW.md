@@ -1,5 +1,126 @@
 # IDOS 工作进度（CJW）
 
+## AI 工程查询与连续命令调用（2026-10-17）
+
+- 根据首次手动验收中助手把“查询当前工程有哪些数据”回答成命令使用说明的反馈，强化系统提示及 `project.objects` 命令描述：工程内容/对象查询必须实际调用 `project.objects`，特定对象或工况详情必须调用 `project.inspect`，禁止让用户自行运行命令。未编译或启动模型；需按该输入复测工具调用。
+- 用户再次反馈模型把 `project.objects` 当文本输出。对明确的工程数据清单请求，AssistantService 直接排入现有 `project.objects` 结构化命令执行流程，将真实结果放入对话后再让模型组织回答；一般请求仍由模型自动选择工具。这样该只读查询不依赖模型是否服从工具调用提示。仍未编译或联调。
+本轮沿用现有 AssistantService、LocalModelService、CommandRegistry 和 CommandManager，补齐源码调用链；没有重构 Project、两棵树或通用渲染框架，没有启动编译、C++ 测试或真实模型联调。
+
+- 新增具体只读命令 `IDOSListObjectsCommand`（`project.objects`）与 `IDOSInspectObjectCommand`（`project.inspect`）及各自 Metadata，在 MainWindow 的命令注册表注册。查询返回工程元信息、当前对象/工况标识、数据名称/类型/归属，支持筛选、稳定排序及分页；详情查询提供工况引用分页以及井、网格、属性的有限摘要，不序列化完整网格数组或测井采样。查询使用现有 Query 类型，不进入撤销历史。
+- LocalModelService 的 `chat()` 改为接收消息列表。AssistantService 保存用户、助手、工具调用和工具结果；工具结果带原始 `tool_call_id` 返回模型，成功或失败均进入后续请求，直到模型给出普通回复或停止。下一轮用户请求带上会话历史，历史超限时按完整轮次移除旧消息，避免拆散工具调用与结果。
+- 删除从普通回复文本解析并执行命令的旧路径，只执行结构化工具调用。校验工具调用标识、参数格式和本轮提供的命令集合；拒绝截断响应和同批重复调用标识。业务修改仍由现有 CommandManager 执行并进入撤销历史，未引入另一套业务分发。
+- 每轮最多执行 16 个工具调用；命令分步骤通过事件循环执行。界面发送按钮在运行中变为“停止”，显示执行进度与结果。停止不回滚已完成命令，正在同步执行的命令完成后停止后续步骤；尚未执行的调用补齐 `not_executed` 结果，后续会话不会携带悬空工具调用。
+- 工程切换/销毁清理历史及待发送输入，取消网络请求并使旧流程失效；命令执行期间发生切换时不将旧结果写入新会话。模型进程退出时停止请求，网络请求设置超时；健康检查忽略已取消的旧回复。
+- 更新助手回归用例，使用现有测试类内的本地 HTTP 模型响应模拟，覆盖查询→执行→结果返回、错误参数修正、查询分页和工况引用、查询不进入撤销历史、普通文本不执行、调用上限、取消、历史保留与工程切换。补充新头文件独立检查清单、CMake 源码条目和中文翻译。
+- 已执行：模块依赖检查通过（505 个源文件）；本轮 15 个助手/查询/测试文件的声明、括号、禁用语法、翻译及 CMake 条目静态核对通过；`git diff --check` 通过。上述 C++ 回归用例尚未编译或运行，真实模型的工具调用效果和界面交互仍待用户编译后验收。
+- 当前范围仍为工程查询与已注册业务命令；没有新增相机旋转、渲染显示控制或模拟运行的 AI 命令。
+
+## 编译反馈修正（2026-10-17）
+
+- 修正工程恢复后已勾选对象要拖动才显示的问题：Server 先恢复相机再装入场景，原先裁剪范围在空场景上计算；RenderView 现于重建可见对象后、绘制前按对象边界重算裁剪范围，不重置相机位置和缩放。新增 `onRenderRestoreClipping` 回归用例，覆盖清空场景后恢复远距离相机、无需交互即得到有效裁剪范围，并检查保存的相机状态不变。本次未编译、未执行该用例或 GUI 验证。
+- 根据用户编译反馈，为 `idosrendertoolprovider.cpp` 补充 `tools/idostool.h`：连接 `RenderView::toolEnabled/toolDisabled` 信号时，Qt 元类型模板需要参数 `IDOSTool` 的完整定义，前置声明不足。未启动编译。
+- 修复 `IDOSRenderToolProvider::onGridXrayToggled` 将通用 RenderProvider 当作网格 Provider 使用的问题：开启和关闭透视两条路径均检查转换为 `IDOSGridRenderProvider` 后调用网格显示接口，并直接包含对应头文件；不向通用渲染接口添加网格业务函数。
+- 本次仅修改源码并静态核对，由用户继续编译，未启动构建。
+- 同类调用检查同时修正工况测试对通用 Provider 的 `setVisible` 调用，改为由 RenderObject 设置显示状态。
+
+## 接口与完整调用链核对、源码收尾（2026-10-17）
+
+本轮依据已确认的树框架修订及后续接口简化要求继续改造。以下为已落实的源码工作；按用户要求没有配置、编译、运行 C++ 测试或启动 GUI。此前目录与架构文档的工作区修改保留，本轮文档只更新此记录。
+
+### 接口及所有权
+
+- 业务数据类统一为 Object 后缀，包括 Well、Grid、GridProperty、GridFilter、GridSurface、GridBoundary、FluidRockTable、FractureSchedule、FractureMaterialCatalog、NaturalFractureSet、ProductionHistory、MicroseismicSet、SeismicVolume、SimulationSummaryResults 及示例插件 PointSet；文件、包含、CMake、测试、翻译上下文同步迁移，类型持久化标识保持稳定，无旧类别名。
+- RenderProviderMetadata/Registry、ToolProviderMetadata/Registry 使用确认名称；Data、Tree、Render、Tool、Command 注册接口统一 registerMetadata/unregisterMetadata/metadata，并按注册成功转移所有权、失败保留调用方所有权处理。文件解析注册器按单独确认的约定继续保持原单例及非 QObject 设计。
+- CommandRegistry 由 MainWindow 创建和持有，AssistantWidget/Service 借用；工程切换解绑旧 Manager、绑定新 Manager，助手不再拥有或决定命令注册表。Command 与 Manager 对工程/注册表使用非拥有的失效保护。
+- 数据对象删除全局可见性字段、访问接口及工程转发信号；可见性、选择、透明度由每个视图的 Provider 保存。RenderObject 删除与 Provider 重复的三份回退状态，通用渲染接口没有 IDOSDataObject/Project 依赖。
+
+### 菜单、两棵树、命令和工程
+
+- 完整路径为 View 命中节点/空白 → 对应 Provider 创建 QAction 并连接具名槽 → 专用 Model 明确业务接口及信号 → AppTreeAccess → 应用业务入口 → 具体 Command → Project。节点归属、菜单 session、多选固定目标及命令目标检查保留；删除 setTreeModel 转发接口，View 使用 setModel。
+- Model 匹配 Metadata 时先限定所属树，避免另一棵树的 Provider 抢先匹配；更换 Metadata 时不复用旧 Provider。注销中的 Metadata 不再参与创建，树注册器析构按注销流程清理存活节点。
+- 鼠标右键按命中位置、键盘右键按当前索引选择菜单；无有效键盘索引时使用视口中心定位。拒绝外部模型索引，并保护菜单嵌套事件循环期间 View/Menu 被销毁的情形。
+- 七类导入命令保留各自实现；网格过滤器进一步拆为 Create/Update/DeleteGridFilterCommand 三个命令及各自 Metadata，删除旧 GridFilterCommand 操作字符串分支。复制/移动及工况引用的既有事务算法继续服务剪贴板和引用业务，不作为菜单的通用动作路由。
+- Project::add 拒绝同 ID 不同对象及其他容器拥有的对象，不静默替换；新建、导入、删除恢复及插件输出命令检查插入结果或完整预校验。导入重做/撤销检查缓存仍存在、归属和 ID 冲突；删除工况/网格撤销先校验全部待恢复子对象，避免先恢复一部分再报错。缓存对象已丢失的新建命令不在重做时另造新身份。
+- 命令执行/撤销在工程批量更新中发布结果，内部已有批次可嵌套；失败仍由各命令的预检和回滚负责，不把批量通知当作回滚。工程先清空已提取的通知集合再发送，避免重入清掉下一批通知；Simulation 补接批量数据变化。失败时 CommandManager 不移动历史位置或销毁 redo。
+
+### 渲染、保存恢复及撤销
+
+- 源数据变化由 RenderServer 经 Metadata 更新具体 Provider 的依赖，再通知 Scene/View；AppTreeAccess 根据实际目标视图回写两棵树的勾选状态。首次勾选才创建显示对象，隐藏不存在的显示对象不创建；井/网格显示设置及属性显示菜单首次使用也可建立实际目标视图中的显示对象。
+- 删除数据前按视图保存 Provider 状态和选择；删除撤销、导入重做或批量回滚重新加入数据时，在依赖可用后恢复对应显示对象，保留各视图独立的显隐、透明度和选择。切换工程或移除视图清理缓存，缓存不持有源数据。
+- RenderServer::restoreState 改为返回成功状态：先准备并校验 Provider，再恢复视图状态及替换场景；无效对象/类型/Provider 状态失败时销毁临时对象，不污染原场景；视图状态失败时回退视图状态和相机链接。成功恢复清除旧场景多余对象，并恢复选择、相机链接和当前视图；主窗口记录恢复失败。
+- 工程 HDF5 保存/读取继续使用已注册数据 Metadata，无需重新读取源文件；加载校验实际工厂类型及插入结果，源数据不再写可见性，显示状态通过工程的展示快照保存。保存的原子替换及失败保护保留。
+
+### 插件和工具
+
+- 示例插件、裂缝建模、多尺度裂缝插件迁移注册接口；命令 Metadata 注册失败时由本地 unique_ptr 释放，成功才转交 Registry。插件卸载仍检查历史和活实例，先注销/销毁展示及菜单，再卸载动态库。
+- DfnGenerationWidget、FractureCheckWidget、CurveFitEvaluationWidget、FieldDifferenceWidget 构造接收 IDOSInterface，绑定打开时的工程；检查窗口同时绑定原目标视图。工程切换、服务销毁或目标失效关闭旧窗口。
+- PointZoom、PointProbe、DistanceMeasurement、Selection、ClippingPlane、SliceByPoints 各自具有 ToolProvider/Metadata，动作直接调用本工具实例；删除导航 Provider 按 QAction 下标切换六种交互工具的分发。导航视图控制保留所属 Provider，工具条仍由视图拥有。
+
+### 静态验证与待运行验证
+
+- 已补充 Project 插入所有权/同 ID 冲突/失败历史保持和渲染多视图删除撤销/状态替换/无效恢复保护用例；已有渲染用例改为显式请求显示，不再假设添加数据即创建所有视图的 RenderObject。测试源码已迁移，尚未执行。
+- 依赖边界检查覆盖 501 个源文件并通过，50 个边界检查器用例通过；项目包含路径、CMake 实际文件、类成员引用及方法声明名称检查通过；翻译 XML 可解析且无 unfinished。旧总导入类、旧过滤器分发类、旧 Registry 类名、setTreeModel、triggerAction、submitAction、bindMenu、bindItem 等替代接口在源码/测试中无残留。git diff --check 通过。
+- 本轮未执行 CMake、编译、公共头文件独立编译、C++ 测试和 GUI 验收。源码静态核对不能替代这些验证；后续构建和运行验收只能使用 E:/CJW-Archive/IDOS-Build，不把此前旧版本测试结果当作本次通过结果。
+
+## 导入命令拆分：补齐遗漏（2026-10-17）
+
+- 上一轮的目录迁移、接口命名和渲染分离不等于整套架构交付完成。本轮检查发现：架构方案要求的七种导入命令仍由 `IDOSImportObjectsCommand::Mode` 统一分派，上一轮漏做了这部分。
+- 已删除 `idosimportcommands.h/.cpp` 和 `IDOSImportObjectsCommand`，按方案拆为 `IDOSImportCaseCommand`、`IDOSImportGridCommand`、`IDOSImportGridPropertyCommand`、`IDOSImportWellDataCommand`、`IDOSImportFluidRockTablesCommand`、`IDOSImportDataCommand`、`IDOSImportSummaryResultsCommand`。各命令及其 Metadata 放在同名文件对中，直接继承既有命令基类，各自保留所需参数、校验、导入、撤销及缓存；没有新增 Mode 基类、转发头或旧接口别名。独立的 RestartResults 命令继续保留。
+- 原有井数据合并及前后快照、工况导入时的流体岩石表拆分、INIT 活动网格值展开、网格替换缓存、工况引用恢复、重做复用已读数据等实现迁入对应命令。流体岩石表导入直接使用自己的解析器，删除不再需要的公共对象筛选及加载转发函数。
+- 主窗口的七类导入入口直接创建各自命令，注册器的 Metadata 也各自创建明确的命令类型。助手和脚本继续使用既有命令注册协议。流体岩石表关联 Metadata 移至既有 CaseReference 命令文件，不再混在导入总文件中。CMake 源文件列表、独立头文件检查清单和现有测试调用同步迁移。
+- 静态检查：依赖边界检查覆盖 485 个源文件并通过；七对新文件的声明、括号、成员、头文件路径及 CMake 引用检查通过；源码和测试中无旧总文件、旧命令类及被替换 Metadata 名称残留。未配置 CMake、未编译、未运行 C++ 测试；撤销/重做及实际导入效果尚未运行验收，不能据此宣称整套架构已经完成。文档仅更新本工作记录。
+
+## 目录与接口改造：源码阶段（2026-10-17）
+
+- 本轮在已有工作区修改上继续实施，直接移动、重写现有文件并迁移调用方，不增加旧接口别名、转发头或兼容调用链。按本次要求未配置 CMake、未编译、未运行 C++ 测试或界面；文档仅更新本工作记录，架构设计、源码目录说明及其他文档未在本轮修改。
+- 目录整理：命令基础设施移入 `src/core/command`；数据 Metadata/Registry 移入 `src/core/data`；树 Provider/Metadata/Registry 与 Model/Item 统一位于 `src/core/tree`；文件解析接口保留在 `src/core/providers`。通用渲染框架位于 `src/render`，工具位于 `src/render/tools`；工程渲染装配的 Server/Registry/Metadata 移入 `src/app/render`。具体 Provider 和业务窗口按 well、grid、case、fluidrock、seismic、data 归入 app 对应目录，模拟运行及插件管理分别归入 app/simulation、app/plugin。同名头文件和实现一同迁移，CMake、源码 include、插件与现有测试引用同步调整。
+- 接口命名：工厂统一使用 `create`，展示状态统一使用 `saveState`/`restoreState`；Model 查询使用 `item`、`index`、`object`、`objects`；Access 装配接口使用 `setDataModel`/`setCaseModel`，两个专用 View 使用 Qt 的 `setModel` 并分别提供 `dataModel`/`caseModel`。批量删除、重命名使用 `removeObjects`/`rename`，对应 `removeRequested`/`renameRequested`。文件读取沿用返回 `QList<IDOSDataObject*>` 的 `read(file)`；迁移所有受影响的具体实现和调用端，删除被替换名称。
+- 树链路对齐：数据树和工况树继续使用各自的 Model/View；节点及空白 Provider 自己创建 QAction、连接具名槽，经专用 Model 的明确业务信号进入 AppTreeAccess 与命令。源码中不保留 `triggerAction`、`submitAction`、`bindMenu` 或基于 QAction operation 属性的通用分发。工程会话、节点归属、多选目标和命令校验继续保留。
+- 渲染接口重写：`IDOSRenderProvider` 仅提供 `update`、`props`、`saveState`、`restoreState`，删除通用接口中的数据对象访问和数据依赖操作；`idos_render` 不再链接 `idos_core`。RenderView 使用通用 VTK prop 接口添加和拾取展示内容，处理三维包围盒与缩放，不判断井、网格等业务类型。外部数据可由其具体 Provider 自行持有，直接装入 RenderObject/Scene；通用渲染模块无需 IDOSProject 或 IDOSDataObject。
+- 工程渲染同步：源数据与渲染对象的对应关系改由应用层 RenderServer 保存；应用层 Metadata 声明依赖并装配、更新具体 Provider 输入。网格与过滤器使用明确的属性输入，删除数据前解除依赖，输入缺失时清理无法继续使用的展示；数据变化和撤销重绑输入时保留 Provider 实例。井、网格、地震、裂缝、边界、曲面及示例点集插件均迁移到新接口，显示状态仍按视图独立管理。
+- 静态检查：项目头文件实际路径与 CMake 源文件路径无缺失；依赖边界检查覆盖 474 个源文件并通过，50 个边界检查用例通过；项目类型的头文件声明覆盖检查、实现与声明名称检查、源码括号配对、旧接口残留、禁用 C++ 语法、翻译 XML 解析及 `git diff --check` 检查通过。检查脚本同步禁止 render 依赖 core，允许插件使用应用层公开的渲染注册接口，仍禁止插件依赖主窗口或具体业务窗口。临时迁移脚本已移除。
+- 待验证：本轮结果是未经编译的源码改造，不表示构建或功能验收通过。后续获准编译后仅使用 `E:\CJW-Archive\IDOS-Build`，重点验证头文件独立编译、工程状态恢复、网格过滤依赖删除与撤销、多视图选择/显隐、插件装卸，以及节点/空白/多选菜单。此前完整 case_workflow 中已记录的即时创建渲染对象假设与现有延迟创建行为差异，仍需运行验证，未在本轮宣称解决。
+
+## 删除菜单 submitAction 转发函数（2026-10-16）
+
+- 按用户要求删除 ItemProvider 和 TreeMenuProvider 的 submitAction 声明、实现及所有调用；不新增替代包装函数。各具名槽直接调用现有 Model::triggerAction，并明确列出对应业务所需参数，不再遍历 QAction 动态属性统一打包。
+- Model::triggerAction 在原有操作/节点检查中校验参数 treeSession；网格着色子菜单保存同一菜单 session，节点 Provider 的 QObject 生命周期继续隔离已删除节点的旧动作。补充子菜单 session、操作及 gridId 路由回归。
+- 同步当前架构声明及约定。E:\CJW-Archive\IDOS-Build 的 Debug 全量构建通过（含公共头文件检查和插件）；check_includes、check_includes_regressions、project_dialog、tree_incremental 四项通过，井菜单/工况导入/流体岩石关联/插件菜单专项为 6 通过、0 失败（含初始化与清理）。源码、测试及当前架构声明无旧函数引用；本轮文件 diff 空白检查通过。完整 case_workflow 既有渲染问题未复测或改动。
+
+## 菜单去除过度封装（2026-10-16）
+
+- 按用户要求，各具体 Provider 使用 new QMenu、menu->addAction 和 connect 直接创建菜单与连接具名槽，删除通用 createMenu/addMenuAction/selectedData/addDeleteAction/canDeleteData 接口，以及工况空白菜单和单表菜单的单动作包装函数。
+- 多选列表直接传给具体业务成员，不再通过菜单属性反查选择；节点身份直接取所属 Provider，多选动作只保存业务需要的参数。删除能力判定回到具体导入数据/流体岩石 Provider，不在 core 增加能力接口。井/表关联参数仅保留命令所需的 objectId/role。
+- 保留执行阶段的 submitAction 作为必要校验：读取菜单创建时的 session，确认上下文后调用既有 Model/Access/命令链；节点 Provider 销毁时由 Qt 断开动作连接。保持复制粘贴、多选删除和旧菜单失效行为。
+- 同步当前架构声明及约定；本轮 C++ 源码/头文件净减少 113 行。E:\CJW-Archive\IDOS-Build 的 Debug 全量构建通过（含公共头文件检查和插件）；check_includes、check_includes_regressions、project_dialog、tree_incremental 四项全部通过，井菜单/工况导入/流体岩石关联/插件菜单专项为 6 通过、0 失败（含初始化与清理）。本轮文件 diff 空白检查通过；完整 case_workflow 既有渲染问题未复测或改动。
+
+## Provider 菜单职责与具名槽整理（2026-10-16）
+
+- Grid/Well/SimulationCase/ImportedData/FluidRock/PointSet 及工况空白菜单的 QAction 直接连接所属 Provider 的具名 on 槽；删除 QAction operation 属性和 Model::onMenuActionTriggered 通用解析槽。Provider 槽以明确操作调用原有 Model/Access 业务链，不直接访问工程或渲染服务。
+- 流体岩石与导入数据的 createContextMenu 按分类、单数据、多选明确分流，分类导入和对象操作由 private 成员分别组装。单表只保留一个添加到工况入口；多选保留兼容数据关联与批量删除。
+- 删除 DataTreeRootProvider 的 addDataActions/createMimeData/supportsDelete 工具职责；根 Provider 仅初始化固定分类。MIME 创建回到 DataTreeMenuProvider；各业务 Provider 自己组装重命名和关联菜单。通用 ItemProvider 只复用上下文快照、选中数据查询、删除能力查询和安全提交，不解析业务类型或操作属性。
+- 更新 9 条中文翻译上下文及当前接口文档；翻译编译为 1718 条完成、0 条未完成。新增分类导入、单表入口去重、跨 Provider 混合选择删除目标和具名槽分发回归；保留旧菜单 session 与插件生命周期保护。
+- 验证：E:\CJW-Archive\IDOS-Build 的 Debug 全量构建通过，包含公共头文件检查和插件。check_includes、check_includes_regressions、project_dialog、tree_incremental 四项全部通过；onWellInputMenus/onCreateAndImport/onFluidRockReferences/onExamplePluginMenu 专项为 6 通过、0 失败（含初始化与清理）。本轮文件 diff 空白检查和翻译 XML 解析通过。完整 case_workflow 的既有渲染问题未在本轮复测或改动。
+
+## ItemProvider 节点设置接口更名（2026-10-16）
+
+- 按用户要求将节点绑定接口统一命名为 setItem，同步声明、实现、Item 构造调用和架构文档；原有一次性绑定及所属关系校验保持。
+- 旧接口名称扫描无残留，git diff --check 通过；E:\CJW-Archive\IDOS-Build 的 Debug idos_core 编译通过。接口更名不新增或重复运行功能测试。
+
+## 树菜单按节点与空白分派、Provider 自行连接动作（2026-10-16）
+
+- 按用户确认，右键节点仅调用该 Item Provider 的菜单工厂，右键空白仅调用树 MenuProvider；节点无菜单时不退回空白菜单。View 保留选择更新、扩展信号、弹出及释放，删除 bindMenu/onActionTriggered 和 populateTransferMenu。
+- 网格、井及其子节点、工况及其业务子节点的菜单移入所属 Provider；内部节点使用相应业务 Provider，refresh 区分对象根和业务子项，避免子项重复展开整棵业务树。数据分类中的井目录绑定 Well Provider。既有导入数据、流体岩石表及 PointSet 节点在创建动作时直接完成连接。
+- Provider 的 createMenu 保存创建时的选中节点 ID 和 session；addMenuAction 直接连接 Model 的具名槽，由 Model 校验后走原有 triggerAction/Access/命令链，不保存工程或渲染服务。树 MenuProvider 通过菜单扩展信号补充复制、剪切、粘贴，保留 MIME 快照和目标索引；数据根 Provider 共用既有数据传输描述及通用节点操作。多选不启用单节点业务动作，支持既有批量删除和复制。
+- 迁移 44 条已有中文翻译至新上下文；翻译编译为 1709 条完成、0 条未完成。同步当前架构声明及 AGENTS 菜单职责约定。修复既有工程对话框测试仍使用已删除 Model::project 接口的问题，改用 MainWindow 工程和 Model session。
+- 验证：E:\CJW-Archive\IDOS-Build 的 Debug 全量构建通过，包含主程序、插件、公共头文件检查与现有测试目标。新增直接由 Provider 创建并触发动作、旧 session 拒绝、无树 MenuProvider 时节点菜单可用、弹出窗口标志、节点/空白菜单隔离、工况树网格菜单及插件删除/撤销/工程切换的回归；最终相关目标重编通过。tree_incremental 与 project_dialog 通过；菜单专项 onWellInputMenus/onCreateAndImport/onFluidRockReferences/onExamplePluginMenu 为 6 通过、0 失败（含初始化与清理）。check_includes 与 check_includes_regressions 通过。更新既有批量导入测试中要求重建分类的过时断言，改为验证分类保留且无删除通知。git diff --check 和翻译 XML 检查通过。
+- 验证限制：完整 case_workflow 未通过，onDfnGeneration/onFractureDisplay/onDeleteImportedData 断言渲染对象已存在失败，随后 onDataGroupChecks 解引用未创建的渲染对象发生访问异常；该批用例仍依赖此前即时创建渲染对象的行为。本次未改渲染初始化或扩展这批验收，不将菜单专项通过视为完整工况流程通过。
+
+## 树右键菜单弹出标志修复（2026-10-16）
+
+- 修复 TreeView 接管无父对象菜单时调用 QWidget::setParent 丢失原有窗口标志的问题；视图级菜单和节点菜单两条路径均保留 windowFlags，避免菜单作为普通子控件嵌入树面板。
+- 本轮仅修改两处父对象设置；完成 diff 空白检查，未编译或运行界面验收。
+
 ## 清理节点菜单、TreeView 和 Access 剩余跨模块依赖（2026-10-16）
 
 - ImportedData/FluidRock/示例插件 PointSet 节点菜单只创建操作描述，移除直接读取工程、执行命令和操作渲染的槽。导入数据、选择地震 Inline、导入流体岩石表和挂接工况迁入应用层接口；PointSet 删除通过已注册命令 ID 进入相同 Model/Access 链，应用层不依赖插件数据类型。
@@ -59,7 +180,7 @@
 ## 禁用类友元并收口访问接口（2026-10-16）
 
 - 编码规范增加：禁止类友元和普通友元函数，仅必要的运算符友元函数例外。src/tests 已清理全部 friend class 声明，不修改第三方代码。
-- ItemProvider 使用校验所属关系的一次性 bindItem、挂接前一次性 setMetadataId 和只读 metadataId；Tree/Registry 不再直接访问其私有字段。setData 只写入、Tree 成功后统一通知，删除跨类访问的 m_settingData 标志。refresh 的属性通知保持。
+- ItemProvider 使用校验所属关系的一次性 setItem、挂接前一次性 setMetadataId 和只读 metadataId；Tree/Registry 不再直接访问其私有字段。setData 只写入、Tree 成功后统一通知，删除跨类访问的 m_settingData 标志。refresh 的属性通知保持。
 - Tree 通过 Item 的完整插入/移除接口管理结构；Item 封装私有父子关系和根节点重入保护，并保证已挂接节点的 Tree 前后通知成对。Provider 清理离线子项也调用 removeChild，不再访问 Item 子项容器。根节点首次绑定使用受校验 setTree。
 - MenuProvider 的 view 查询公开，删除 View 友元。Object 增加仅离线对象可用的 restoreObjectId，工程加载不再访问 protected setter；井几何结果改为构造时确定值；导入 Metadata 的通用 schema 工具移入 CommandMetadata protected 接口，不再借用命令私有函数。
 - 架构完整声明同步。最终 Debug 全目标构建返回 0，主程序、全部插件、公共头文件检查及现有测试目标编译通过。src/tests 扫描无 friend 声明残留，git diff --check 通过。日志：D:\CMakeCoder\IDOS-Build\no-friend-build-verified.log。未新增或运行功能测试。
@@ -1124,3 +1245,18 @@ OPM 解析库负责输入和结果读取；Flow 是通过 WSL2 调用的独立�
 
 - 恢复 Data Tree MenuProvider 的通用菜单委派、数据多选删除和剪切/粘贴 Provider 路由。Grid 菜单迁移本轮未合并，保留现有 IDOSGridTreeGuiProvider 注册与实现；井树和井显示菜单仍使用现有 GUI Provider。
 - 后续继续时从当前完整的 Data Tree MenuProvider 与 GridTreeGuiProvider 两条现有路径开始，先按具体迁移边界拆分，再逐项迁移并核对资源和翻译。
+
+## 节点 Provider 与菜单简化（2026-10-16）
+
+- IDOSTreeItemProvider 直接继承 QObject 并启用 Q_OBJECT；具体节点 Provider 移除重复 QObject 继承，节点继续拥有 Provider。
+- 井、网格、工况、导入数据及流体/岩石物理 Provider 在 createContextMenu 内直接创建 QAction、设置业务参数并连接具名槽；移除 addObjectActions、addAssociationActions、addImportAction 等菜单装配辅助接口，槽直接调用 Model 现有操作入口。
+- 保留菜单工程会话校验及单选、多选分派；节点删除后 Provider 的 QObject 生命周期和连接随之结束，树所有权回归增加 QPointer 失效验证。
+- 验证：唯一构建目录 IDOS-Build 的 Debug 全量构建通过；check_includes、check_includes_regressions、project_dialog、tree_incremental 全部通过，最终整理后再次构建及树回归通过；工况菜单相关四个定向用例通过（含初始化/清理共 6 passed）。
+
+## 数据树与工况树 Model、View 拆分（2026-10-16）
+
+- 新增 core/tree 下 IDOSDataTreeItemModel、IDOSCaseTreeItemModel，分别继承通用 IDOSTreeModel；新增 gui/tree 下 IDOSDataTreeView、IDOSCaseTreeView，分别继承通用 View，并拒绝挂接另一棵树的 Model。主窗口和 AppTreeAccess 使用专用类型装配及公开访问。
+- 具体 Provider 继续自己创建并连接菜单，调用专用 Model 的明确参数函数及业务信号；移除通用 triggerAction/actionTriggered、Access 通用动作槽和 MainWindow 操作字符串分发，业务参数不再经 QVariantMap 菜单协议传递。井头、轨迹、曲线、分层、完井与校深导入分别连接明确接口。
+- AppTreeAccess 分别连接业务信号并校验当前工程/Model，继续在触发时获取实际目标渲染视图；MainWindow 业务处理仍使用既有命令。剪贴板传输保留独立 transferItems/transferRequested 机制，不属于菜单业务操作分发。
+- 示例插件点集专属删除由 Metadata 连接 Provider 的具名信号到插件槽，执行前校验工程会话，继续使用插件 pointset.delete 命令；平台 Model 不加入插件类型或通用命令执行入口。
+- 同步架构完整类声明、固定源码目录与规则；新类加入独立头文件编译检查。回归改用明确业务信号，并覆盖专用 View 类型约束、节点/session 校验、单选/多选和空白菜单。

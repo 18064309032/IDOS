@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idospointset.h"
+#include "idospointsetobject.h"
 
 #include "idospointsetmetadata.h"
 
@@ -23,7 +23,7 @@ IDOSDataObject* IDOSPointSetMetadata::create() const
             m_objects.removeAt(index);
         }
     }
-    IDOSDataObject* object = new IDOSPointSet();
+    IDOSDataObject* object = new IDOSPointSetObject();
     m_objects.append(QPointer<IDOSDataObject>(object));
     return object;
 }

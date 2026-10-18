@@ -1,6 +1,8 @@
+#include <cmath>
+
 #include <QUuid>
 
-#include "providers/idosrenderprovider.h"
+#include "idosrenderprovider.h"
 
 #include "idosrenderobject.h"
 
@@ -39,35 +41,58 @@ IDOSRenderProvider* IDOSRenderObject::provider() const
 
 void IDOSRenderObject::update()
 {
-    provider()->update();
+    if (m_provider != nullptr)
+    {
+        m_provider->update();
+    }
 }
 
-bool IDOSRenderObject::visible() const
+bool IDOSRenderObject::isVisible() const
 {
-    return provider()->visible();
+    return m_provider != nullptr ? m_provider->saveState().value(QStringLiteral("visible"), false).toBool() : false;
 }
 
 void IDOSRenderObject::setVisible(bool visible)
 {
-    provider()->setVisible(visible);
+    QVariantMap state = m_provider != nullptr ? m_provider->saveState() : QVariantMap();
+    state.insert(QStringLiteral("visible"), visible);
+    if (m_provider != nullptr)
+    {
+        m_provider->restoreState(state);
+    }
 }
 
-bool IDOSRenderObject::highlighted() const
+bool IDOSRenderObject::isSelected() const
 {
-    return provider()->highlighted();
+    return m_provider != nullptr ? m_provider->saveState().value(QStringLiteral("highlighted"), false).toBool() : false;
 }
 
-void IDOSRenderObject::setHighlighted(bool highlighted)
+void IDOSRenderObject::setSelected(bool highlighted)
 {
-    provider()->setHighlighted(highlighted);
+    QVariantMap state = m_provider != nullptr ? m_provider->saveState() : QVariantMap();
+    state.insert(QStringLiteral("highlighted"), highlighted);
+    if (m_provider != nullptr)
+    {
+        m_provider->restoreState(state);
+    }
 }
 
 double IDOSRenderObject::opacity() const
 {
-    return provider()->opacity();
+    return m_provider != nullptr ? m_provider->saveState().value(QStringLiteral("opacity"), 1.0).toDouble() : 1.0;
 }
 
 void IDOSRenderObject::setOpacity(double opacity)
 {
-    provider()->setOpacity(opacity);
+    if (!std::isfinite(opacity))
+    {
+        return;
+    }
+    opacity = qBound(0.0, opacity, 1.0);
+    QVariantMap state = m_provider != nullptr ? m_provider->saveState() : QVariantMap();
+    state.insert(QStringLiteral("opacity"), opacity);
+    if (m_provider != nullptr)
+    {
+        m_provider->restoreState(state);
+    }
 }

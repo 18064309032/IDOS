@@ -5,10 +5,10 @@
 #include <QPointer>
 #include <QVector>
 
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 
-class IDOSGridProperty;
+class IDOSGridPropertyObject;
 
 class IDOSFieldDifferenceCommand : public IDOSCommand
 {
@@ -28,7 +28,7 @@ class IDOSFieldDifferenceCommand : public IDOSCommand
     static int s_liveCount;
     QJsonObject m_arguments;
     QJsonObject m_statistics;
-    QPointer<IDOSGridProperty> m_output;
+    QPointer<IDOSGridPropertyObject> m_output;
 };
 
 class IDOSFieldDifferenceCommandMetadata : public IDOSCommandMetadata

@@ -22,9 +22,9 @@
 
 #include <vtk_hdf5.h>
 
-#include "idoscommandmanager.h"
-#include "providers/idosdatametadata.h"
-#include "providers/idosdataregistry.h"
+#include "command/idoscommandmanager.h"
+#include "data/idosdatametadata.h"
+#include "data/idosdataregistry.h"
 
 #include "idosproject.h"
 
@@ -36,7 +36,6 @@ IDOSProject::IDOSProject(QObject* parent)
     , m_pendingAdded()
     , m_pendingRemoved()
     , m_pendingDataChanged()
-    , m_pendingVisibilityChanged()
 {
 }
 
@@ -108,7 +107,8 @@ bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
     m_metadata.setDescription(metadata.description().trimmed());
     m_metadata.setCoordinateReference(metadata.coordinateType() == IDOSProjectMetadata::CoordinateType::Custom
                                       ? metadata.coordinateReference().trimmed()
-                                      : QString());
+                                      :
+                                      QString());
     m_metadata.setVerticalDatum(metadata.verticalDatum().trimmed());
     setModified(true);
     emit metadataChanged();
@@ -117,31 +117,20 @@ bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
 
 // ===== 增删查 =====
 
-void IDOSProject::add(IDOSDataObject* object)
+bool IDOSProject::add(IDOSDataObject* object)
 {
-    if (object == nullptr)
+    if (object == nullptr || object->objectId().isEmpty() ||
+        (object->parent() != nullptr && object->parent() != this))
     {
-        return;
+        return false;
     }
 
     const QString id = object->objectId();
 
-    // 已存在同 id，先移除旧的
     IDOSDataObject* existing = m_objects.value(id, nullptr);
-    if (existing != nullptr && existing != object)
+    if (existing != nullptr)
     {
-        if (m_currentCaseId == id)
-        {
-            setCurrentCaseId(QString());
-        }
-        if (m_currentObject == existing)
-        {
-            setCurrentObject(nullptr);
-        }
-        emit objectAboutToBeRemoved(id);
-        disconnectObject(existing);
-        m_objects.remove(id);
-        existing->deleteLater();
+        return existing == object;
     }
 
     object->setParent(this);
@@ -149,6 +138,7 @@ void IDOSProject::add(IDOSDataObject* object)
     connectObject(object);
 
     notifyAdded(id);
+    return true;
 }
 
 IDOSDataObject* IDOSProject::take(const QString& objectId)
@@ -231,27 +221,23 @@ void IDOSProject::endUpdate()
         return;
     }
 
-    // 最外层事务闭合：按 removed → added → data changed → visibility changed 顺序发批量信号。
-    // 集合在 notify* 中已做归并（同 id 先删后加最终算 added 等），列表天然唯一。
-    if (!m_pendingRemoved.isEmpty())
+    const QStringList removed = m_pendingRemoved.values();
+    const QStringList added = m_pendingAdded.values();
+    const QStringList changed = m_pendingDataChanged.values();
+    m_pendingRemoved.clear();
+    m_pendingAdded.clear();
+    m_pendingDataChanged.clear();
+    if (!removed.isEmpty())
     {
-        emit objectsRemoved(m_pendingRemoved.values());
-        m_pendingRemoved.clear();
+        emit objectsRemoved(removed);
     }
-    if (!m_pendingAdded.isEmpty())
+    if (!added.isEmpty())
     {
-        emit objectsAdded(m_pendingAdded.values());
-        m_pendingAdded.clear();
+        emit objectsAdded(added);
     }
-    if (!m_pendingDataChanged.isEmpty())
+    if (!changed.isEmpty())
     {
-        emit objectsDataChanged(m_pendingDataChanged.values());
-        m_pendingDataChanged.clear();
-    }
-    if (!m_pendingVisibilityChanged.isEmpty())
-    {
-        emit objectsVisibilityChanged(m_pendingVisibilityChanged.values());
-        m_pendingVisibilityChanged.clear();
+        emit objectsDataChanged(changed);
     }
 }
 
@@ -263,7 +249,6 @@ void IDOSProject::notifyAdded(const QString& objectId)
         // 删后又加（含同 id 替换）：最终状态为 added，清掉其他两类记录
         m_pendingRemoved.remove(objectId);
         m_pendingDataChanged.remove(objectId);
-        m_pendingVisibilityChanged.remove(objectId);
         m_pendingAdded.insert(objectId);
         return;
     }
@@ -278,7 +263,6 @@ void IDOSProject::notifyRemoved(const QString& objectId)
         // 加了又删 / 改了又删：最终状态为 removed
         m_pendingAdded.remove(objectId);
         m_pendingDataChanged.remove(objectId);
-        m_pendingVisibilityChanged.remove(objectId);
         m_pendingRemoved.insert(objectId);
         return;
     }
@@ -304,7 +288,6 @@ void IDOSProject::notifyDataChanged(const QString& objectId)
 
 void IDOSProject::connectObject(IDOSDataObject* object)
 {
-    connect(object, &IDOSDataObject::visibilityChanged, this, &IDOSProject::onObjectVisibilityChanged);
     connect(object, &IDOSDataObject::nameChanged, this, &IDOSProject::onObjectNameChanged);
     connect(object, &IDOSDataObject::dataChanged, this, &IDOSProject::onObjectDataChanged);
 }
@@ -320,25 +303,6 @@ void IDOSProject::onObjectDataChanged()
     if (obj != nullptr)
     {
         notifyDataChanged(obj->objectId());
-    }
-}
-
-void IDOSProject::onObjectVisibilityChanged(bool visible)
-{
-    setModified(true);
-    IDOSDataObject* obj = qobject_cast<IDOSDataObject*>(sender());
-    if (obj != nullptr)
-    {
-        if (m_updateDepth > 0)
-        {
-            if (!m_pendingAdded.contains(obj->objectId()) &&
-                !m_pendingRemoved.contains(obj->objectId()))
-            {
-                m_pendingVisibilityChanged.insert(obj->objectId());
-            }
-            return;
-        }
-        emit objectVisibilityChanged(obj->objectId(), visible);
     }
 }
 
@@ -414,7 +378,6 @@ bool IDOSProject::save(const QString& path, const IDOSDataRegistry* registry, QS
         entry.insert(QStringLiteral("id"), object->objectId());
         entry.insert(QStringLiteral("type"), object->typeId());
         entry.insert(QStringLiteral("name"), object->name());
-        entry.insert(QStringLiteral("visible"), object->isVisible());
         index.append(entry);
     }
     QVariantMap header;
@@ -622,7 +585,7 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
         const QString type = entry.value(QStringLiteral("type")).toString();
         const IDOSDataMetadata* dataMetadata = registry->metadata(type);
         if (id.trimmed().isEmpty() || project->object(id) != nullptr || dataMetadata == nullptr ||
-            entry.value(QStringLiteral("name")).type() != QVariant::String || entry.value(QStringLiteral("visible")).type() != QVariant::Bool)
+            entry.value(QStringLiteral("name")).type() != QVariant::String)
         {
             error = tr("The project contains duplicate identities, invalid object information or an unregistered type: %1.").arg(type);
             success = false;
@@ -656,8 +619,12 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
             break;
         }
         object->setName(entry.value(QStringLiteral("name")).toString());
-        object->setVisible(entry.value(QStringLiteral("visible")).toBool());
-        project->add(object);
+        if (object->typeId() != type || !project->add(object))
+        {
+            delete object;
+            success = false;
+            break;
+        }
     }
     if (group >= 0)
     {
@@ -717,12 +684,12 @@ bool IDOSProject::replaceStorageFile(const QString& temporary, const QString& de
 #endif
 }
 
-QVariantMap IDOSProject::presentationState() const
+QVariantMap IDOSProject::saveState() const
 {
     return m_presentationState;
 }
 
-void IDOSProject::setPresentationState(const QVariantMap& state)
+void IDOSProject::restoreState(const QVariantMap& state)
 {
     if (m_presentationState != state)
     {

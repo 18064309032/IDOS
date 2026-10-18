@@ -23,12 +23,12 @@
 #include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
-#include <opm/io/eclipse/EclIOdata.hpp>
 #include <opm/io/eclipse/EInit.hpp>
 #include <opm/io/eclipse/ERst.hpp>
+#include <opm/io/eclipse/EclIOdata.hpp>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
 
 #include "idosgridpropertyeclipseprovider.h"
 
@@ -87,10 +87,10 @@ void IDOSGridPropertyEclipseProvider::appendProperty(QList<IDOSDataObject*>* res
         return;
     }
 
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(keyword);
     property->setKeyword(keyword);
-    property->setKind(IDOSGridProperty::Kind::Static);
+    property->setKind(IDOSGridPropertyObject::Kind::Static);
     property->setDimensions(propertyValues.size(), 1, 1);
     if (!property->setValues(propertyValues))
     {
@@ -162,10 +162,10 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::read(const QString& file
                     continue;
                 }
                 appendProperty(&result, keyword, propertyValues);
-                IDOSGridProperty* importedProperty = qobject_cast<IDOSGridProperty*>(result.last());
+                IDOSGridPropertyObject* importedProperty = qobject_cast<IDOSGridPropertyObject*>(result.last());
                 if (importedProperty != nullptr && type != Opm::EclIO::INTE)
                 {
-                    importedProperty->setValueUnits(IDOSGridProperty::ValueUnits::Unknown);
+                    importedProperty->setValueUnits(IDOSGridPropertyObject::ValueUnits::Unknown);
                 }
             }
         }
@@ -228,7 +228,7 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::read(const QString& file
     return result;
 }
 
-QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QString& filePath, const IDOSGrid* grid)
+QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QString& filePath, const IDOSGridObject* grid)
 {
     setLastError(QString());
     m_restartReportSteps.clear();
@@ -259,7 +259,7 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QStrin
         {
             m_restartReportSteps.append(step);
         }
-        QHash<QString, IDOSGridProperty*> propertiesByKeyword;
+        QHash<QString, IDOSGridPropertyObject*> propertiesByKeyword;
         const QVector<int>& activeCells = grid->actnum();
         const int totalCellCount = grid->totalCellCount();
 
@@ -347,13 +347,13 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QStrin
                     return {};
                 }
 
-                IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
+                IDOSGridPropertyObject* property = propertiesByKeyword.value(keyword, nullptr);
                 if (property == nullptr)
                 {
                     const QString propertyName = keyword;
-                    property = new IDOSGridProperty();
+                    property = new IDOSGridPropertyObject();
                     property->setGridId(grid->objectId());
-                    property->setKind(IDOSGridProperty::Kind::Dynamic);
+                    property->setKind(IDOSGridPropertyObject::Kind::Dynamic);
                     property->setKeyword(keyword);
                     property->setDimensions(grid->nx(), grid->ny(), grid->nz());
                     property->setName(propertyName);

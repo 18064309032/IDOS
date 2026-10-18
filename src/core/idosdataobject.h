@@ -11,7 +11,7 @@ class IDOSProject;
 /**
  * @brief 数据领域对象的基类。
  *
- * 继承 IDOSObject 的 objectId 和 name，增加可见性属性。
+ * 继承 IDOSObject 的 objectId 和 name，提供业务数据通知。
  * 所有具体数据类（Well/Grid/Property 等）的共同基类。
  */
 class CORE_EXPORT IDOSDataObject : public IDOSObject
@@ -71,35 +71,15 @@ class CORE_EXPORT IDOSDataObject : public IDOSObject
      */
     virtual void resolveReferences(IDOSProject* project);
 
-    /**
-     * @brief 获取对象可见性。
-     * @return true 表示在渲染视图中显示，false 表示隐藏。
-     */
-    bool isVisible() const;
-
-    /**
-     * @brief 设置对象可见性。
-     * @param visible true 显示，false 隐藏。
-     */
-    void setVisible(bool visible);
-
-    /**
-     * @brief 对象可见性变化时发射。
-     * @param visible true 显示，false 隐藏。
-     */
   signals:
-    void visibilityChanged(bool visible);
-
     /**
      * @brief 对象任意业务数据变化时发射。
      *
-     * 子类在属性（非 objectId/name/visible）发生变化时 emit 此信号，
+     * 子类在属性（非 objectId/name）发生变化时 emit 此信号，
      * 使 Project 等容器能统一感知并转发。
      */
     void dataChanged();
 
-  private:
-    bool m_visible;
 };
 
 #endif // IDOS_DATA_OBJECT_H

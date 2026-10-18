@@ -1,0 +1,81 @@
+#ifndef IDOS_WELL_RENDER_PROVIDER_H
+#define IDOS_WELL_RENDER_PROVIDER_H
+
+#include <QColor>
+#include <QIcon>
+#include <QList>
+#include <QPointer>
+#include <QStringList>
+#include <QVariantMap>
+#include <QVector>
+
+#ifdef IDOS_ENABLE_RENDER
+#include <vtkActor.h>
+#endif
+#include <vtkSmartPointer.h>
+
+#include "data/well/idoswellpathpoint.h"
+#include "idos_app.h"
+#include "idosrenderprovider.h"
+
+class IDOSWellObject;
+#ifndef IDOS_ENABLE_RENDER
+class vtkActor;
+#endif
+class vtkCellArray;
+class vtkPoints;
+
+class APP_EXPORT IDOSWellRenderProvider : public IDOSRenderProvider
+{
+  public:
+    explicit IDOSWellRenderProvider(IDOSWellObject* dataObject);
+    ~IDOSWellRenderProvider() override;
+    IDOSWellObject* well() const;
+    void update() override;
+    QList<vtkProp*> props() const override;
+    QVariantMap saveState() const override;
+    bool restoreState(const QVariantMap& state) override;
+    bool isSelected() const;
+    void setSelected(bool highlighted);
+    bool isVisible() const;
+    void setVisible(bool visible);
+    double opacity() const;
+    void setOpacity(double opacity);
+    QVariantMap displaySettings() const;
+    bool setDisplaySettings(const QVariantMap& settings);
+    static QIcon symbolIcon(int symbol);
+    int effectiveSymbol() const;
+
+  private:
+    void applyActorProperties();
+    QVector<IDOSWellPathPoint> clippedPoints(double minimum, double maximum) const;
+    void addPathActor(const QVector<IDOSWellPathPoint>& points, const QString& part);
+    QString statusForSymbol(int symbol) const;
+    QColor actorColor(const QString& part) const;
+    static void appendLine(vtkPoints* points, vtkCellArray* lines, double ax, double ay, double az,
+                           double bx, double by, double bz);
+    static void appendCircle(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius,
+                             int segments = 24);
+    static void appendSquare(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius, bool diamond);
+    static void appendPlus(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendX(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendStar(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendSlash(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendStem(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendPlug(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendCornerBox(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendOilSymbol(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius, bool minor = false);
+    static void appendGasSymbol(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius, bool minor = false);
+    static void appendCondensateSymbol(vtkPoints* points, vtkCellArray* lines, const double center[3], double radius);
+    static void appendWellHeadSymbol(vtkPoints* points, vtkCellArray* lines, const double center[3], double size, int symbol);
+    QPointer<IDOSWellObject> m_dataObject;
+    QList<vtkSmartPointer<vtkActor>> m_actors;
+    QList<vtkSmartPointer<vtkProp>> m_legends;
+    QStringList m_actorParts;
+    QVariantMap m_settings;
+    bool m_highlighted;
+    bool m_visible;
+    double m_opacity;
+};
+
+#endif

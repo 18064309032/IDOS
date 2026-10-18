@@ -9,7 +9,7 @@
 #include <QRegularExpression>
 #include <QtGlobal>
 
-#include "data/seismic/idosseismicvolume.h"
+#include "data/seismic/idosseismicvolumeobject.h"
 
 #include "idossegyprovider.h"
 
@@ -203,7 +203,7 @@ QList<IDOSDataObject*> IDOSSegyProvider::read(const QString& filePath)
         return {};
     }
 
-    IDOSSeismicVolume* volume = new IDOSSeismicVolume();
+    IDOSSeismicVolumeObject* volume = new IDOSSeismicVolumeObject();
     volume->setName(QFileInfo(filePath).completeBaseName());
     volume->setSourceFile(filePath);
     volume->setTextHeader(decodedTextHeader);
@@ -364,7 +364,8 @@ QString IDOSSegyProvider::sampleFormatName(int sampleFormat) const
     if (sampleFormat == 8 || sampleFormat == 16)
     {
         return sampleFormat == 8 ? QStringLiteral("8-bit integer")
-                                 : QStringLiteral("8-bit unsigned integer");
+                                 :
+                                 QStringLiteral("8-bit unsigned integer");
     }
     return QObject::tr("SEG-Y sample format %1").arg(sampleFormat);
 }

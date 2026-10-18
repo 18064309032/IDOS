@@ -12,17 +12,18 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
-#include "idoscommandmanager.h"
+#include "command/idoscommandmanager.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "idosinterface.h"
 #include "idosproject.h"
 
 #include "idosdfngenerationwidget.h"
 
-IDOSDfnGenerationWidget::IDOSDfnGenerationWidget(IDOSProject* project, QWidget* parent)
+IDOSDfnGenerationWidget::IDOSDfnGenerationWidget(IDOSInterface* interface)
     :
-    QWidget(parent, Qt::Window)
-    , m_project(project)
+    QWidget(interface != nullptr ? interface->mainWindow() : nullptr, Qt::Window)
+    , m_project(interface != nullptr ? interface->project() : nullptr)
     , m_grid(new QComboBox(this))
     , m_density(new QComboBox(this))
     , m_name(new QLineEdit(tr("DFN fractures"), this))
@@ -40,6 +41,12 @@ IDOSDfnGenerationWidget::IDOSDfnGenerationWidget(IDOSProject* project, QWidget* 
     , m_result(new QLabel(this))
     , m_generate(new QPushButton(tr("Generate"), this))
 {
+    IDOSProject* project = m_project.data();
+    if (interface != nullptr)
+    {
+        connect(interface, &IDOSInterface::projectChanged, this, &QWidget::close);
+        connect(interface, &QObject::destroyed, this, &QWidget::close);
+    }
     setObjectName(QStringLiteral("idosDfnGenerationWidget"));
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("DFN Generation"));
@@ -124,8 +131,8 @@ void IDOSDfnGenerationWidget::onRefreshInputs()
     {
         for (IDOSDataObject* object : m_project->objects())
         {
-            IDOSGrid* grid = qobject_cast<IDOSGrid*>(object);
-            if (grid != nullptr && grid->type() == IDOSGrid::Type::CornerPoint)
+            IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(object);
+            if (grid != nullptr && grid->type() == IDOSGridObject::Type::CornerPoint)
             {
                 m_grid->addItem(grid->name(), grid->objectId());
             }
@@ -143,7 +150,7 @@ void IDOSDfnGenerationWidget::onGridChanged()
 {
     const QString selectedDensity = m_density->currentData().toString();
     const QString selectedGrid = m_grid->currentData().toString();
-    const IDOSGrid* grid = !m_project.isNull() ? qobject_cast<IDOSGrid*>(m_project->object(selectedGrid)) : nullptr;
+    const IDOSGridObject* grid = !m_project.isNull() ? qobject_cast<IDOSGridObject*>(m_project->object(selectedGrid)) : nullptr;
     m_density->clear();
     m_density->addItem(tr("Uniform (no property)"), QString());
     m_generate->setEnabled(grid != nullptr);
@@ -162,8 +169,8 @@ void IDOSDfnGenerationWidget::onGridChanged()
     }
     for (IDOSDataObject* object : m_project->objects())
     {
-        const IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
-        if (property != nullptr && property->gridId() == selectedGrid && property->kind() == IDOSGridProperty::Kind::Static)
+        const IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        if (property != nullptr && property->gridId() == selectedGrid && property->kind() == IDOSGridPropertyObject::Kind::Static)
         {
             m_density->addItem(property->name(), property->objectId());
         }

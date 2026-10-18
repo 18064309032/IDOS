@@ -5,14 +5,14 @@
 #include <QPointer>
 #include <QStringList>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
 class IDOSCaseObject;
-class IDOSGrid;
+class IDOSGridObject;
 class IDOSDataObject;
-class IDOSFluidRockTable;
+class IDOSFluidRockTableObject;
 
 class APP_EXPORT IDOSDeleteCaseCommand : public IDOSCommand
 {
@@ -36,9 +36,9 @@ private:
 
     QString m_caseId;
     QPointer<IDOSCaseObject> m_caseObject;
-    QList<QPointer<IDOSGrid>> m_grids;
+    QList<QPointer<IDOSGridObject>> m_grids;
     QList<QPointer<IDOSDataObject>> m_properties;
-    QList<QPointer<IDOSFluidRockTable>> m_fluidRockTables;
+    QList<QPointer<IDOSFluidRockTableObject>> m_fluidRockTables;
 };
 
 class APP_EXPORT IDOSDeleteCaseCommandMetadata : public IDOSCommandMetadata

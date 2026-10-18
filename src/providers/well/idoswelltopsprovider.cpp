@@ -7,9 +7,9 @@
 #include <QRegularExpression>
 #include <QTextStream>
 
-#include "data/well/idoswell.h"
 #include "data/well/idoswellmarker.h"
 #include "data/well/idoswellmarkerset.h"
+#include "data/well/idoswellobject.h"
 
 #include "idoswelltopsprovider.h"
 
@@ -192,7 +192,7 @@ QList<IDOSDataObject*> IDOSWellTopsProvider::read(const QString& filePath)
     QList<IDOSDataObject*> result;
     for (QMap<QString, IDOSWellMarkerSet>::const_iterator iterator = wells.constBegin(); iterator != wells.constEnd(); ++iterator)
     {
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(iterator.key());
         well->setMarkers(iterator.value());
         result.append(well);
@@ -267,7 +267,7 @@ bool IDOSWellTopsProvider::readTabularWellTops(const QString& filePath,
     for (QMap<QString, IDOSWellMarkerSet>::const_iterator iterator = wells.constBegin();
          iterator != wells.constEnd(); ++iterator)
     {
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(iterator.key());
         well->setMarkers(iterator.value());
         result->append(well);

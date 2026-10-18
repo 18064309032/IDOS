@@ -2,7 +2,7 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN" sourcelanguage="en">
 <context>
-    <name>IDOSCurveEvaluationWidget</name>
+    <name>IDOSCurveFitEvaluationWidget</name>
     <message>
         <source>CSV files have a header row</source>
         <translation>CSV 文件包含表头</translation>
@@ -443,6 +443,10 @@
     <message>
         <source>Multiscale fracture plugin</source>
         <translation>多尺度裂缝插件</translation>
+    </message>
+    <message>
+        <source>The output property is unavailable.</source>
+        <translation>输出属性不可用。</translation>
     </message>
 </context>
 </TS>

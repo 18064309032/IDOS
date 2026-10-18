@@ -20,7 +20,7 @@ QStringList IDOSWellCompletionMetadata::fileExtensions() const
             QStringLiteral("*.xlsx"), QStringLiteral("*.XLSX")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSWellCompletionMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSWellCompletionMetadata::create() const
 {
     return std::make_unique<IDOSWellCompletionProvider>();
 }

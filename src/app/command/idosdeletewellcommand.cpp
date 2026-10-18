@@ -5,7 +5,7 @@
 #include <QObject>
 
 #include "data/case/idoscaseobject.h"
-#include "data/well/idoswell.h"
+#include "data/well/idoswellobject.h"
 #include "idosproject.h"
 
 #include "idosdeletewellcommand.h"
@@ -13,7 +13,8 @@
 IDOSDeleteWellCommand::IDOSDeleteWellCommand(
     IDOSProject* project,
     QString wellId)
-    : IDOSCommand(QStringLiteral("well.delete"),
+    :
+    IDOSCommand(QStringLiteral("well.delete"),
                   Type::Action,
                   project,
                   QObject::tr("Delete well"))
@@ -52,7 +53,7 @@ bool IDOSDeleteWellCommand::validateCommand(QString& error) const
         return false;
     }
 
-    if (object != nullptr && qobject_cast<IDOSWell*>(object) == nullptr)
+    if (object != nullptr && qobject_cast<IDOSWellObject*>(object) == nullptr)
     {
         error = QObject::tr("The target object is not a well.");
         return false;
@@ -82,7 +83,7 @@ bool IDOSDeleteWellCommand::apply(QString& error)
     removeCaseReferences();
 
     IDOSDataObject* detachedObject = targetProject->take(m_wellId);
-    IDOSWell* detachedWell = qobject_cast<IDOSWell*>(detachedObject);
+    IDOSWellObject* detachedWell = qobject_cast<IDOSWellObject*>(detachedObject);
     if (detachedWell == nullptr)
     {
         if (detachedObject != nullptr)
@@ -118,7 +119,11 @@ bool IDOSDeleteWellCommand::revert(QString& error)
         return false;
     }
 
-    targetProject->add(m_well.data());
+    if (!targetProject->add(m_well.data()))
+    {
+        error = QObject::tr("The target well is unavailable.");
+        return false;
+    }
     restoreCaseReferences();
     return true;
 }
@@ -200,7 +205,8 @@ void IDOSDeleteWellCommand::restoreCaseReferences()
 }
 
 IDOSDeleteWellCommandMetadata::IDOSDeleteWellCommandMetadata()
-    : IDOSCommandMetadata(QStringLiteral("well.delete"),
+    :
+    IDOSCommandMetadata(QStringLiteral("well.delete"),
                           QObject::tr("Delete well"),
                           QObject::tr("Delete a well from the current project."),
                           IDOSCommand::Type::Action)

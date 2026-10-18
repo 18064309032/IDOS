@@ -21,7 +21,7 @@ QStringList IDOSNaturalFractureMetadata::fileExtensions() const
     return QStringList{QStringLiteral("*.fab"), QStringLiteral("*.FAB")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSNaturalFractureMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSNaturalFractureMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSNaturalFractureProvider());
 }

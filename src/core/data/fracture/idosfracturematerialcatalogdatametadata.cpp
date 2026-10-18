@@ -1,11 +1,11 @@
 #include <QObject>
 
-#include "idosfracturematerialcatalog.h"
+#include "idosfracturematerialcatalogobject.h"
 
 #include "idosfracturematerialcatalogdatametadata.h"
 
 IDOSFractureMaterialCatalogDataMetadata::IDOSFractureMaterialCatalogDataMetadata(
-    IDOSFractureMaterialCatalog::Kind kind)
+    IDOSFractureMaterialCatalogObject::Kind kind)
     :
     m_kind(kind)
 {
@@ -13,7 +13,7 @@ IDOSFractureMaterialCatalogDataMetadata::IDOSFractureMaterialCatalogDataMetadata
 
 QString IDOSFractureMaterialCatalogDataMetadata::typeId() const
 {
-    if (m_kind == IDOSFractureMaterialCatalog::Kind::Proppant)
+    if (m_kind == IDOSFractureMaterialCatalogObject::Kind::Proppant)
     {
         return QStringLiteral("idos.fracture.proppantCatalog");
     }
@@ -27,7 +27,7 @@ QString IDOSFractureMaterialCatalogDataMetadata::displayName() const
 
 IDOSDataObject* IDOSFractureMaterialCatalogDataMetadata::create() const
 {
-    IDOSFractureMaterialCatalog* catalog = new IDOSFractureMaterialCatalog();
+    IDOSFractureMaterialCatalogObject* catalog = new IDOSFractureMaterialCatalogObject();
     catalog->setKind(m_kind);
     return catalog;
 }

@@ -1,7 +1,7 @@
 #include <QObject>
 
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/well/idoswell.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/well/idoswellobject.h"
 #include "idoscaseitemref.h"
 #include "idosproject.h"
 
@@ -38,10 +38,10 @@ void IDOSSimulationCaseObject::resolveReferences(IDOSProject* project)
     QList<IDOSCaseItemRef> refs = itemRefs();
     for (const QString& wellName : m_pendingWellNames)
     {
-        QList<IDOSWell*> matches;
+        QList<IDOSWellObject*> matches;
         for (IDOSDataObject* object : project->objects())
         {
-            IDOSWell* well = qobject_cast<IDOSWell*>(object);
+            IDOSWellObject* well = qobject_cast<IDOSWellObject*>(object);
             if (well != nullptr && well->name().trimmed().compare(wellName.trimmed(), Qt::CaseInsensitive) == 0)
             {
                 matches.append(well);
@@ -108,7 +108,7 @@ QVariantList IDOSSimulationCaseObject::curveTables() const
         {
             continue;
         }
-        IDOSFluidRockTable* table = qobject_cast<IDOSFluidRockTable*>(project->object(ref.objectId()));
+        IDOSFluidRockTableObject* table = qobject_cast<IDOSFluidRockTableObject*>(project->object(ref.objectId()));
         if (table != nullptr)
         {
             referencedTables.append(table->tableData());
@@ -152,7 +152,6 @@ IDOSDataObject* IDOSSimulationCaseObject::clone() const
 {
     IDOSSimulationCaseObject* copy = new IDOSSimulationCaseObject();
     copy->setName(name());
-    copy->setVisible(isVisible());
     copy->m_pendingWellNames = m_pendingWellNames;
     copy->m_sourceFile = m_sourceFile;
     copy->m_parsedSourceData = m_parsedSourceData;

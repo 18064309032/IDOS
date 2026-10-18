@@ -57,14 +57,14 @@ IDOSDataProviderMetadata* IDOSDataProviderRegistry::metadata(const QString& id) 
     return nullptr;
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSDataProviderRegistry::createProvider(const QString& id) const
+std::unique_ptr<IDOSDataProvider> IDOSDataProviderRegistry::create(const QString& id) const
 {
     IDOSDataProviderMetadata* meta = metadata(id);
     if (!meta)
     {
         return nullptr;
     }
-    return meta->createProvider();
+    return meta->create();
 }
 
 QList<IDOSDataProviderMetadata*> IDOSDataProviderRegistry::metadata() const

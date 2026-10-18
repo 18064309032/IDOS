@@ -4,7 +4,7 @@
 #include <QJsonObject>
 #include <QObject>
 
-#include "data/well/idoswell.h"
+#include "data/well/idoswellobject.h"
 #include "idosproject.h"
 
 #include "idoscreatewellcommand.h"
@@ -12,7 +12,8 @@
 IDOSCreateWellCommand::IDOSCreateWellCommand(
     IDOSProject* project,
     QString name)
-    : IDOSCommand(QStringLiteral("well.create"),
+    :
+    IDOSCommand(QStringLiteral("well.create"),
                   Type::Action,
                   project,
                   QObject::tr("Create well"))
@@ -47,7 +48,7 @@ bool IDOSCreateWellCommand::validateCommand(QString& error) const
 
     for (IDOSDataObject* object : targetProject->objects())
     {
-        IDOSWell* existingWell = qobject_cast<IDOSWell*>(object);
+        IDOSWellObject* existingWell = qobject_cast<IDOSWellObject*>(object);
         if (existingWell != nullptr
             && existingWell != m_well
             && existingWell->name().compare(name, Qt::CaseInsensitive) == 0)
@@ -70,6 +71,12 @@ QJsonObject IDOSCreateWellCommand::buildPreview() const
 
 bool IDOSCreateWellCommand::apply(QString& error)
 {
+    if (m_well.isNull() && !result().isEmpty())
+    {
+        error = QObject::tr("The target well is unavailable.");
+        return false;
+    }
+
     IDOSProject* targetProject = project();
     if (targetProject == nullptr)
     {
@@ -79,7 +86,7 @@ bool IDOSCreateWellCommand::apply(QString& error)
 
     if (m_well.isNull())
     {
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(m_wellName.trimmed());
         m_well = well;
     }
@@ -90,7 +97,11 @@ bool IDOSCreateWellCommand::apply(QString& error)
         return false;
     }
 
-    targetProject->add(m_well.data());
+    if (!targetProject->add(m_well.data()))
+    {
+        error = QObject::tr("The target well is unavailable.");
+        return false;
+    }
 
     QJsonObject commandResult;
     commandResult.insert(QStringLiteral("objectId"), m_well->objectId());
@@ -102,7 +113,8 @@ bool IDOSCreateWellCommand::apply(QString& error)
 bool IDOSCreateWellCommand::revert(QString& error)
 {
     IDOSProject* targetProject = project();
-    if (targetProject == nullptr || m_well.isNull())
+    if (targetProject == nullptr || m_well.isNull() ||
+        targetProject->object(m_well->objectId()) != m_well.data())
     {
         error = QObject::tr("The target well is unavailable.");
         return false;
@@ -119,7 +131,8 @@ bool IDOSCreateWellCommand::revert(QString& error)
 }
 
 IDOSCreateWellCommandMetadata::IDOSCreateWellCommandMetadata()
-    : IDOSCommandMetadata(QStringLiteral("well.create"),
+    :
+    IDOSCommandMetadata(QStringLiteral("well.create"),
                           QObject::tr("Create well"),
                           QObject::tr("Create a new well in the current project."),
                           IDOSCommand::Type::Action)

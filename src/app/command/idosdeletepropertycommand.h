@@ -5,12 +5,12 @@
 #include <QList>
 #include <QPointer>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
-class IDOSGridProperty;
+class IDOSGridPropertyObject;
 
 class APP_EXPORT IDOSDeletePropertyCommand : public IDOSCommand
 {
@@ -31,7 +31,7 @@ private:
     void restoreCaseReferences();
 
     QString m_propertyId;
-    QPointer<IDOSGridProperty> m_property;
+    QPointer<IDOSGridPropertyObject> m_property;
     QHash<QString, QList<IDOSCaseItemRef>> m_caseReferences;
 };
 

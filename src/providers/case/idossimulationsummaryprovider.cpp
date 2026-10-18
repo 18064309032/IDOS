@@ -11,7 +11,7 @@
 #include <opm/io/eclipse/ESmry.hpp>
 #include <opm/io/eclipse/SummaryNode.hpp>
 
-#include "data/case/idossimulationsummaryresults.h"
+#include "data/case/idossimulationsummaryresultsobject.h"
 
 #include "idossimulationsummaryprovider.h"
 
@@ -82,7 +82,7 @@ QList<IDOSDataObject*> IDOSSimulationSummaryProvider::read(const QString& filePa
             return {};
         }
 
-        IDOSSimulationSummaryResults* results = new IDOSSimulationSummaryResults();
+        IDOSSimulationSummaryResultsObject* results = new IDOSSimulationSummaryResultsObject();
         results->setName(QFileInfo(filePath).completeBaseName());
         results->setSourceFile(QFileInfo(filePath).absoluteFilePath());
         results->setTimeValues(timeValues);

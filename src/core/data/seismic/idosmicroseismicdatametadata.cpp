@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosmicroseismicset.h"
+#include "idosmicroseismicsetobject.h"
 
 #include "idosmicroseismicdatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSMicroseismicDataMetadata::displayName() const
 
 IDOSDataObject* IDOSMicroseismicDataMetadata::create() const
 {
-    return new IDOSMicroseismicSet();
+    return new IDOSMicroseismicSetObject();
 }

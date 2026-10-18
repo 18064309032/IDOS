@@ -3,11 +3,11 @@
 
 #include <QPointer>
 
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 
 class IDOSDataRegistry;
-class IDOSPointSet;
+class IDOSPointSetObject;
 
 class IDOSCreatePointSetCommand : public IDOSCommand
 {
@@ -23,7 +23,7 @@ class IDOSCreatePointSetCommand : public IDOSCommand
   private:
     QString m_name;
     QPointer<IDOSDataRegistry> m_registry;
-    QPointer<IDOSPointSet> m_data;
+    QPointer<IDOSPointSetObject> m_data;
 };
 
 class IDOSCreatePointSetCommandMetadata : public IDOSCommandMetadata
@@ -50,7 +50,7 @@ class IDOSDeletePointSetCommand : public IDOSCommand
 
   private:
     QString m_id;
-    QPointer<IDOSPointSet> m_data;
+    QPointer<IDOSPointSetObject> m_data;
 };
 
 class IDOSDeletePointSetCommandMetadata : public IDOSCommandMetadata

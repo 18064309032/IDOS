@@ -21,7 +21,7 @@ QStringList IDOSFractureMaterialCatalogMetadata::fileExtensions() const
     return QStringList{QStringLiteral("*.txt"), QStringLiteral("*.TXT")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSFractureMaterialCatalogMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSFractureMaterialCatalogMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSFractureMaterialCatalogProvider());
 }

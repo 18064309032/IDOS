@@ -31,7 +31,6 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     explicit IDOSTreeView(QWidget* parent = nullptr);
     ~IDOSTreeView() override;
     void setModel(QAbstractItemModel* model) override;
-    void setTreeModel(IDOSTreeModel* model);
     IDOSTreeModel* treeModel() const;
     void setMenuProvider(IDOSTreeMenuProvider* provider);
     IDOSTreeMenuProvider* menuProvider() const;
@@ -39,8 +38,9 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     IDOSTreeItem* contextItem() const;
     void setBlankMenuEnabled(bool enabled);
     QMenu* createContextMenu(const QModelIndex& target);
-    QVariantMap presentationState() const;
-    void restorePresentationState(const QVariantMap& state);
+    QVariantMap saveState() const;
+    void restoreState(const QVariantMap& state);
+    QMimeData* selectedMimeData() const;
     bool pasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action);
 
   signals:
@@ -55,25 +55,23 @@ class GUI_EXPORT IDOSTreeView : public QTreeView
     void dropEvent(QDropEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
 
-  private slots:
-    void onActionTriggered();
+  public slots:
     void onCopy();
     void onCut();
     void onPaste();
+
+  private slots:
     void onRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
     void onRowsInserted(const QModelIndex& parent, int first, int last);
     void onModelAboutToBeReset();
 
   private:
-    void bindMenu(QMenu* menu);
     bool acceptsSource(const IDOSTreeView* source) const;
     void collectPresentationState(const QModelIndex& parent, QStringList& expanded) const;
-    QMimeData* selectedMimeData() const;
     QMimeData* actionMimeData() const;
     QMimeData* cloneMimeData(const QMimeData* data) const;
     bool canCutMimeData(const QMimeData* data) const;
     bool canPasteMimeData(const QMimeData* data, const QModelIndex& target, Qt::DropAction action) const;
-    void populateTransferMenu(QMenu* menu, const QModelIndex& target);
     Qt::DropAction dragAction(Qt::KeyboardModifiers modifiers) const;
     QString nodePath(const QModelIndex& index) const;
     void collectExpandedPaths(const QModelIndex& index);

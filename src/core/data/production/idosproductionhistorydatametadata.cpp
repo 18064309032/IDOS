@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosproductionhistory.h"
+#include "idosproductionhistoryobject.h"
 
 #include "idosproductionhistorydatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSProductionHistoryDataMetadata::displayName() const
 
 IDOSDataObject* IDOSProductionHistoryDataMetadata::create() const
 {
-    return new IDOSProductionHistory();
+    return new IDOSProductionHistoryObject();
 }

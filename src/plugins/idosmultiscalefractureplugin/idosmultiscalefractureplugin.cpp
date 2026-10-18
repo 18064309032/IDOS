@@ -13,10 +13,10 @@
 #include <SARibbonCategory.h>
 #include <SARibbonPanel.h>
 
-#include "data/grid/idosgrid.h"
-#include "idoscommandregistry.h"
+#include "command/idoscommandregistry.h"
+#include "data/grid/idosgridobject.h"
 #include "idoscurveevaluationcommand.h"
-#include "idoscurveevaluationwidget.h"
+#include "idoscurvefitevaluationwidget.h"
 #include "idosfielddifferencecommand.h"
 #include "idosfielddifferencewidget.h"
 #include "idosinterface.h"
@@ -84,8 +84,18 @@ void IDOSMultiscaleFracturePlugin::initGui()
     {
         throw std::runtime_error(tr("The command registry is unavailable.").toStdString());
     }
-    m_differenceAdded = m_commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSFieldDifferenceCommandMetadata()));
-    m_curveAdded = m_commandRegistry->add(std::unique_ptr<IDOSCommandMetadata>(new IDOSCurveEvaluationCommandMetadata()));
+    std::unique_ptr<IDOSCommandMetadata> commandMetadata0(new IDOSFieldDifferenceCommandMetadata());
+    m_differenceAdded = m_commandRegistry->registerMetadata(commandMetadata0.get());
+    if (m_differenceAdded)
+    {
+        commandMetadata0.release();
+    }
+    std::unique_ptr<IDOSCommandMetadata> commandMetadata1(new IDOSCurveEvaluationCommandMetadata());
+    m_curveAdded = m_commandRegistry->registerMetadata(commandMetadata1.get());
+    if (m_curveAdded)
+    {
+        commandMetadata1.release();
+    }
     if (!m_differenceAdded || !m_curveAdded)
     {
         throw std::runtime_error(tr("Analysis command registration failed.").toStdString());
@@ -167,11 +177,11 @@ void IDOSMultiscaleFracturePlugin::unload()
     }
     if (m_commandRegistry != nullptr && m_differenceAdded)
     {
-        m_commandRegistry->remove(QStringLiteral("analysis.field.difference"));
+        m_commandRegistry->unregisterMetadata(QStringLiteral("analysis.field.difference"));
     }
     if (m_commandRegistry != nullptr && m_curveAdded)
     {
-        m_commandRegistry->remove(QStringLiteral("analysis.curve.evaluate"));
+        m_commandRegistry->unregisterMetadata(QStringLiteral("analysis.curve.evaluate"));
     }
     m_differenceAdded = false;
     m_curveAdded = false;
@@ -244,7 +254,7 @@ bool IDOSMultiscaleFracturePlugin::canUnload(QString& reason) const
     }
     for (const QPointer<QWidget>& widget : m_windows)
     {
-        IDOSCurveEvaluationWidget* curves = qobject_cast<IDOSCurveEvaluationWidget*>(widget.data());
+        IDOSCurveFitEvaluationWidget* curves = qobject_cast<IDOSCurveFitEvaluationWidget*>(widget.data());
         if (curves != nullptr && curves->isBusy())
         {
             reason = tr("Close the analysis file dialog before unloading the plugin.");
@@ -306,7 +316,7 @@ void IDOSMultiscaleFracturePlugin::onUpdateActions()
     {
         for (IDOSDataObject* object : m_project->objects())
         {
-            grid = grid || qobject_cast<IDOSGrid*>(object) != nullptr;
+            grid = grid || qobject_cast<IDOSGridObject*>(object) != nullptr;
         }
     }
     if (!m_differenceAction.isNull())
@@ -323,7 +333,7 @@ void IDOSMultiscaleFracturePlugin::onFieldDifference()
 {
     if (!m_project.isNull() && m_interface != nullptr && m_interface->project() == m_project.data())
     {
-        showWindow(new IDOSFieldDifferenceWidget(m_project.data(), m_interface->mainWindow()));
+        showWindow(new IDOSFieldDifferenceWidget(m_interface));
     }
 }
 
@@ -331,6 +341,6 @@ void IDOSMultiscaleFracturePlugin::onCurveEvaluation()
 {
     if (!m_project.isNull() && m_interface != nullptr && m_interface->project() == m_project.data())
     {
-        showWindow(new IDOSCurveEvaluationWidget(m_project.data(), m_interface->mainWindow()));
+        showWindow(new IDOSCurveFitEvaluationWidget(m_interface));
     }
 }

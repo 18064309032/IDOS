@@ -6,14 +6,14 @@
 #include <QPointer>
 #include <QStringList>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
-class IDOSGrid;
-class IDOSGridFilter;
-class IDOSGridProperty;
+class IDOSGridObject;
+class IDOSGridFilterObject;
+class IDOSGridPropertyObject;
 
 class APP_EXPORT IDOSDeleteGridCommand : public IDOSCommand
 {
@@ -36,9 +36,9 @@ private:
     void clearDetachedObjects();
 
     QString m_gridId;
-    QPointer<IDOSGrid> m_grid;
-    QList<QPointer<IDOSGridProperty>> m_properties;
-    QList<QPointer<IDOSGridFilter>> m_filters;
+    QPointer<IDOSGridObject> m_grid;
+    QList<QPointer<IDOSGridPropertyObject>> m_properties;
+    QList<QPointer<IDOSGridFilterObject>> m_filters;
     QHash<QString, QList<IDOSCaseItemRef>> m_caseReferences;
 };
 

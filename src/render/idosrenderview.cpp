@@ -28,18 +28,20 @@
 #include <vtkOrientationMarkerWidget.h>
 #include <vtkOutputWindow.h>
 #include <vtkProp.h>
+#include <vtkProp3D.h>
 #include <vtkPropPicker.h>
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
+#include <vtkScalarBarActor.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringOutputWindow.h>
 #include <vtkTextProperty.h>
 
 #include "idosrenderobject.h"
+#include "idosrenderprovider.h"
 #include "idosrenderscene.h"
-#include "idostool.h"
-#include "idostoolbar.h"
-#include "providers/idosrenderprovider.h"
+#include "tools/idostool.h"
+#include "tools/idostoolbar.h"
 
 #include "idosrenderview.h"
 
@@ -73,7 +75,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_boundsAxes(vtkSmartPointer<vtkCubeAxesActor>::New())
     , m_orientationMarker(vtkSmartPointer<vtkOrientationMarkerWidget>::New())
     , m_scene(new IDOSRenderScene(this))
-    , m_actorObjectIds()
+    , m_propObjectIds()
     , m_selection()
     , m_displayVisibilitySnapshot()
     , m_orientation(IDOSOrientation::Isometric)
@@ -85,7 +87,7 @@ IDOSRenderView::IDOSRenderView(QWidget* parent)
     , m_legendVisible(true)
     , m_boundsVisible(false)
     , m_zAxisScale(1.0)
-    , m_actorBaseZScales()
+    , m_propBaseZScales()
     , m_legends()
 {
     configureVtkOutputWindow();
@@ -202,7 +204,7 @@ void IDOSRenderView::setAxesVisible(bool visible)
         m_orientationMarker->InteractiveOff();
     }
     emit decorationsChanged();
-    emit viewStateChanged();
+    emit stateChanged();
     m_renderWindow->Render();
 }
 
@@ -216,7 +218,7 @@ void IDOSRenderView::setBoundsVisible(bool visible)
     m_boundsVisible = visible;
     rebuildActors();
     emit decorationsChanged();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 double IDOSRenderView::zAxisScale() const
@@ -258,7 +260,7 @@ void IDOSRenderView::setLegendVisible(bool visible)
         m_legends.at(index)->SetVisibility(visible);
     }
     emit decorationsChanged();
-    emit viewStateChanged();
+    emit stateChanged();
     m_renderWindow->Render();
 }
 
@@ -266,7 +268,7 @@ void IDOSRenderView::resetCamera()
 {
     m_renderer->ResetCamera();
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::fitSelection()
@@ -283,20 +285,18 @@ bool IDOSRenderView::fitSelection()
     for (const QString& id : m_selection)
     {
         IDOSRenderObject* object = m_scene->object(id);
-        if (object == nullptr || !object->visible() || object->provider() == nullptr)
+        if (object == nullptr || !object->isVisible() || object->provider() == nullptr)
         {
             continue;
         }
-        const QList<vtkActor*> actors = object->provider()->actors();
-        for (vtkActor* actor : actors)
+        for (vtkProp* actor : object->provider()->props())
         {
             if (actor == nullptr || actor->GetVisibility() == 0)
             {
                 continue;
             }
-            double actorBounds[6];
-            actor->GetBounds(actorBounds);
-            if (actorBounds[0] > actorBounds[1] || actorBounds[2] > actorBounds[3] || actorBounds[4] > actorBounds[5])
+            const double* actorBounds = actor->GetBounds();
+            if (actorBounds == nullptr || actorBounds[0] > actorBounds[1] || actorBounds[2] > actorBounds[3] || actorBounds[4] > actorBounds[5])
             {
                 continue;
             }
@@ -316,7 +316,7 @@ bool IDOSRenderView::fitSelection()
 
     m_renderer->ResetCamera(bounds);
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -326,7 +326,7 @@ void IDOSRenderView::rotateView(bool clockwise)
     camera->Roll(clockwise ? -90.0 : 90.0);
     camera->OrthogonalizeViewUp();
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::saveHomeView()
@@ -355,7 +355,7 @@ void IDOSRenderView::resetToHomeView()
     {
         emit viewModeChanged();
     }
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::setParallelProjection(bool enabled)
@@ -367,7 +367,7 @@ bool IDOSRenderView::setParallelProjection(bool enabled)
     }
     camera->SetParallelProjection(enabled ? 1 : 0);
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -385,7 +385,7 @@ void IDOSRenderView::scaleView(double factor)
     m_renderer->GetActiveCamera()->Zoom(factor);
     m_renderer->ResetCameraClippingRange();
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::setDisplayVisible(bool visible)
@@ -397,7 +397,7 @@ void IDOSRenderView::setDisplayVisible(bool visible)
         m_displayVisibilitySnapshot.clear();
         for (IDOSRenderObject* object : objects)
         {
-            m_displayVisibilitySnapshot.insert(object->id(), object->visible());
+            m_displayVisibilitySnapshot.insert(object->id(), object->isVisible());
         }
     }
     for (IDOSRenderObject* object : objects)
@@ -405,7 +405,7 @@ void IDOSRenderView::setDisplayVisible(bool visible)
         const bool targetVisible = visible
                                        ? m_displayVisibilitySnapshot.value(object->id(), m_displayVisibilitySnapshot.isEmpty())
                                        : false;
-        if (object->visible() != targetVisible)
+        if (object->isVisible() != targetVisible)
         {
             object->setVisible(targetVisible);
             m_scene->notifyChanged(object->id());
@@ -444,7 +444,7 @@ bool IDOSRenderView::linkCameraTo(IDOSRenderView* sourceView)
         return false;
     }
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -466,7 +466,7 @@ void IDOSRenderView::unlinkCamera()
     {
         m_renderWindow->Render();
     }
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::isCameraLinked() const
@@ -480,7 +480,7 @@ void IDOSRenderView::onLinkedCameraModified(vtkObject* source, unsigned long eve
     Q_UNUSED(eventId)
     Q_UNUSED(callData)
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::cursorTrackingEnabled() const
@@ -496,7 +496,7 @@ void IDOSRenderView::setCursorTrackingEnabled(bool enabled)
     {
         m_cursorCoordinates->hide();
     }
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::setTwoDimensional(bool enabled)
@@ -518,7 +518,7 @@ void IDOSRenderView::setTwoDimensional(bool enabled)
     m_twoDimensional = enabled;
     m_renderWindow->Render();
     emit viewModeChanged();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::isTwoDimensional() const
@@ -547,7 +547,7 @@ void IDOSRenderView::setBackground(const QColor& color)
 
     m_renderer->SetBackground(color.redF(), color.greenF(), color.blueF());
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::setActive(bool active)
@@ -664,7 +664,7 @@ bool IDOSRenderView::setOrientation(IDOSOrientation orientation)
         m_homeViewInitialized = true;
     }
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -742,14 +742,14 @@ IDOSRenderObject* IDOSRenderView::pick(const QPoint& position) const
     {
         return nullptr;
     }
-    return m_scene->object(m_actorObjectIds.value(picker->GetActor()));
+    return m_scene->object(m_propObjectIds.value(picker->GetViewProp()));
 }
 
 
 void IDOSRenderView::rebuildActors()
 {
     m_renderer->RemoveAllViewProps();
-    m_actorObjectIds.clear();
+    m_propObjectIds.clear();
     m_legends.clear();
 
     if (m_scene == nullptr)
@@ -774,68 +774,74 @@ void IDOSRenderView::rebuildActors()
         {
             continue;
         }
+        if (!object->isVisible())
+        {
+            continue;
+        }
         IDOSRenderProvider* provider = object->provider();
         if (provider == nullptr)
         {
             continue;
         }
-        const QList<vtkActor*> actors = provider->actors();
-        for (vtkActor* actor : actors)
+        for (vtkProp* prop : provider->props())
         {
-            if (actor == nullptr)
+            if (prop == nullptr)
             {
                 continue;
             }
-            double actorScale[3];
-            actor->GetScale(actorScale);
-            if (!m_actorBaseZScales.contains(actor))
+            if (vtkScalarBarActor::SafeDownCast(prop) != nullptr)
             {
-                m_actorBaseZScales.insert(actor, actorScale[2]);
+                vtkSmartPointer<vtkProp> legend;
+                legend.TakeReference(prop->NewInstance());
+                legend->ShallowCopy(prop);
+                legend->SetVisibility(m_legendVisible && prop->GetVisibility() != 0 ? 1 : 0);
+                m_renderer->AddViewProp(legend);
+                m_legends.append(legend.GetPointer());
+                continue;
             }
-            const double baseZScale = m_actorBaseZScales.value(actor);
-            actor->SetScale(actorScale[0], actorScale[1], baseZScale);
-            double logicalActorBounds[6];
-            actor->GetBounds(logicalActorBounds);
-            actor->SetScale(actorScale[0], actorScale[1], baseZScale * m_zAxisScale);
-
-            m_renderer->AddActor(actor);
-            m_actorObjectIds.insert(actor, object->id());
-            if (object->visible() && actor->GetVisibility() != 0)
+            m_renderer->AddViewProp(prop);
+            m_propObjectIds.insert(prop, object->id());
+            vtkProp3D* geometry = vtkProp3D::SafeDownCast(prop);
+            if (geometry == nullptr)
             {
-                double actorBounds[6];
-                actor->GetBounds(actorBounds);
-                if (actorBounds[0] <= actorBounds[1] && actorBounds[2] <= actorBounds[3] &&
-                    actorBounds[4] <= actorBounds[5])
+                continue;
+            }
+            double scale[3];
+            geometry->GetScale(scale);
+            if (!m_propBaseZScales.contains(geometry))
+            {
+                m_propBaseZScales.insert(geometry, scale[2]);
+            }
+            const double baseZScale = m_propBaseZScales.value(geometry);
+            geometry->SetScale(scale[0], scale[1], baseZScale);
+            double logicalPropBounds[6];
+            geometry->GetBounds(logicalPropBounds);
+            geometry->SetScale(scale[0], scale[1], baseZScale * m_zAxisScale);
+            if (prop->GetVisibility() != 0 && prop->GetUseBounds() != 0)
+            {
+                double propBounds[6];
+                geometry->GetBounds(propBounds);
+                if (propBounds[0] <= propBounds[1] && propBounds[2] <= propBounds[3] &&
+                    propBounds[4] <= propBounds[5])
                 {
                     for (int axis = 0; axis < 3; ++axis)
                     {
-                        bounds[axis * 2] = qMin(bounds[axis * 2], actorBounds[axis * 2]);
-                        bounds[axis * 2 + 1] = qMax(bounds[axis * 2 + 1], actorBounds[axis * 2 + 1]);
-                        logicalBounds[axis * 2] = qMin(logicalBounds[axis * 2], logicalActorBounds[axis * 2]);
-                        logicalBounds[axis * 2 + 1] = qMax(logicalBounds[axis * 2 + 1], logicalActorBounds[axis * 2 + 1]);
+                        bounds[axis * 2] = qMin(bounds[axis * 2], propBounds[axis * 2]);
+                        bounds[axis * 2 + 1] = qMax(bounds[axis * 2 + 1], propBounds[axis * 2 + 1]);
+                        logicalBounds[axis * 2] = qMin(logicalBounds[axis * 2], logicalPropBounds[axis * 2]);
+                        logicalBounds[axis * 2 + 1] = qMax(logicalBounds[axis * 2 + 1], logicalPropBounds[axis * 2 + 1]);
                     }
                     hasVisibleBounds = true;
                 }
             }
         }
-        const QList<vtkSmartPointer<vtkProp>> legends = provider->legends();
-        for (int legendIndex = 0; legendIndex < legends.size(); ++legendIndex)
-        {
-            vtkSmartPointer<vtkProp> legend;
-            legend.TakeReference(legends.at(legendIndex)->NewInstance());
-            legend->ShallowCopy(legends.at(legendIndex));
-            m_renderer->AddViewProp(legend);
-            legend->SetVisibility(m_legendVisible ? 1 : 0);
-            m_legends.append(legend.GetPointer());
-        }
     }
-
-    const QList<vtkActor*> trackedActors = m_actorBaseZScales.keys();
-    for (vtkActor* actor : trackedActors)
+    const QList<vtkProp3D*> trackedProps = m_propBaseZScales.keys();
+    for (vtkProp3D* prop : trackedProps)
     {
-        if (!m_actorObjectIds.contains(actor))
+        if (!m_propObjectIds.contains(prop))
         {
-            m_actorBaseZScales.remove(actor);
+            m_propBaseZScales.remove(prop);
         }
     }
 
@@ -861,6 +867,10 @@ void IDOSRenderView::rebuildActors()
         m_boundsAxes->SetVisibility(0);
     }
 
+    if (hasVisibleBounds)
+    {
+        m_renderer->ResetCameraClippingRange(bounds);
+    }
     emit decorationsChanged();
     m_renderWindow->Render();
 }
@@ -895,22 +905,22 @@ void IDOSRenderView::setSelection(const QList<QString>& ids)
     for (IDOSRenderObject* object : objects)
     {
         const bool highlighted = valid.contains(object->id());
-        if (object->highlighted() != highlighted)
+        if (object->isSelected() != highlighted)
         {
-            object->setHighlighted(highlighted);
+            object->setSelected(highlighted);
             m_scene->notifyChanged(object->id());
         }
     }
     m_scene->endUpdate();
     emit selectionChanged(m_selection);
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::onObjectAboutToBeRemoved(const QString& id)
 {
     // Release VTK references and pick mappings before the provider is destroyed.
     m_renderer->RemoveAllViewProps();
-    m_actorObjectIds.clear();
+    m_propObjectIds.clear();
     m_legends.clear();
     if (m_selection.removeAll(id) > 0)
     {
@@ -921,7 +931,7 @@ void IDOSRenderView::onObjectAboutToBeRemoved(const QString& id)
 void IDOSRenderView::onSceneChanged()
 {
     rebuildActors();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 void IDOSRenderView::render()
@@ -938,7 +948,7 @@ bool IDOSRenderView::pickWorldPosition(const QPoint& position, double worldPosit
     vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
     picker->SetTolerance(0.005);
     picker->PickFromListOn();
-    for (vtkActor* actor : m_actorObjectIds.keys())
+    for (vtkProp* actor : m_propObjectIds.keys())
     {
         if (actor->GetVisibility() != 0)
         {
@@ -986,7 +996,7 @@ void IDOSRenderView::zoomToWorldPosition(const double worldPosition[3])
     camera->Zoom(1.5);
     m_renderer->ResetCameraClippingRange();
     m_renderWindow->Render();
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 QVTKOpenGLNativeWidget* IDOSRenderView::vtkWidget() const
@@ -1036,7 +1046,7 @@ bool IDOSRenderView::setToolBar(IDOSToolBar* toolBar)
     {
         connect(toolBar, &QObject::destroyed, this, &IDOSRenderView::onToolBarDestroyed);
         connect(toolBar, &IDOSToolBar::layoutChanged, this, &IDOSRenderView::onToolBarLayoutChanged);
-        connect(toolBar, &IDOSToolBar::presentationChanged, this, &IDOSRenderView::viewStateChanged);
+        connect(toolBar, &IDOSToolBar::presentationChanged, this, &IDOSRenderView::stateChanged);
         toolBar->setView(this);
         positionToolBar();
     }
@@ -1096,7 +1106,7 @@ bool IDOSRenderView::enableTool(IDOSTool* tool)
     tool->setActive(true);
     emit toolEnabled(tool);
     m_toolsChanging = false;
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -1126,7 +1136,7 @@ bool IDOSRenderView::disableTool(IDOSTool* tool)
     emit toolDisabled(tool);
     disconnect(tool, &IDOSTool::callbackFinished, this, &IDOSRenderView::onToolCallbackFinished);
     m_toolsChanging = false;
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
@@ -1342,7 +1352,7 @@ bool IDOSRenderView::restoreCameraState(vtkCamera* camera, const QVariantMap& st
     return true;
 }
 
-QVariantMap IDOSRenderView::presentationState() const
+QVariantMap IDOSRenderView::saveState() const
 {
     QVariantMap state;
     state.insert(QStringLiteral("twoDimensional"), isTwoDimensional());
@@ -1359,12 +1369,12 @@ QVariantMap IDOSRenderView::presentationState() const
     state.insert(QStringLiteral("homeInitialized"), m_homeViewInitialized);
     if (m_toolBar != nullptr)
     {
-        state.insert(QStringLiteral("toolBar"), m_toolBar->presentationState());
+        state.insert(QStringLiteral("toolBar"), m_toolBar->saveState());
     }
     return state;
 }
 
-bool IDOSRenderView::restorePresentationState(const QVariantMap& state)
+bool IDOSRenderView::restoreState(const QVariantMap& state)
 {
     const QColor color(state.value(QStringLiteral("background")).toString());
     const int direction = state.value(QStringLiteral("orientation")).toInt();
@@ -1391,17 +1401,17 @@ bool IDOSRenderView::restorePresentationState(const QVariantMap& state)
     m_homeTwoDimensional = state.value(QStringLiteral("homeTwoDimensional")).toBool();
     if (m_toolBar != nullptr)
     {
-        m_toolBar->restorePresentationState(state.value(QStringLiteral("toolBar")).toMap());
+        m_toolBar->restoreState(state.value(QStringLiteral("toolBar")).toMap());
         positionToolBar();
     }
     render();
-    emit viewStateChanged();
+    emit stateChanged();
     return true;
 }
 
 void IDOSRenderView::onCameraInteraction()
 {
-    emit viewStateChanged();
+    emit stateChanged();
 }
 
 bool IDOSRenderView::isCameraLinkedTo(const IDOSRenderView* view) const

@@ -4,6 +4,7 @@
 #include <QList>
 #include <QObject>
 #include <QPointer>
+#include <QString>
 #include <QtCore/qnamespace.h>
 
 #include "idos_gui.h"
@@ -29,6 +30,9 @@ class GUI_EXPORT IDOSTreeMenuProvider : public QObject
     virtual bool paste(const QMimeData* data, IDOSTreeItem* target,
                        Qt::DropAction action);
     IDOSTreeView* view() const;
+
+private slots:
+    void onContextMenuAboutToShow(QMenu* menu);
 
 private:
     QPointer<IDOSTreeView> m_view;

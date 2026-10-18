@@ -3,8 +3,8 @@
 
 #include <QJsonObject>
 
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 
 class IDOSCurveEvaluationCommand : public IDOSCommand
 {

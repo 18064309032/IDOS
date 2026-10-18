@@ -21,7 +21,7 @@ QStringList IDOSMicroseismicMetadata::fileExtensions() const
     return QStringList{QStringLiteral("*.txt"), QStringLiteral("*.TXT")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSMicroseismicMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSMicroseismicMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSMicroseismicProvider());
 }

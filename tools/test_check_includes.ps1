@@ -1,4 +1,4 @@
-# Isolated fixtures verify both accepted dependencies and rejected regressions.
+﻿# Isolated fixtures verify both accepted dependencies and rejected regressions.
 param([Parameter(Mandatory=$true)][string]$ScratchRoot)
 $ErrorActionPreference = 'Stop'
 $runRoot = Join-Path $ScratchRoot ([Guid]::NewGuid().ToString('N'))
@@ -8,11 +8,11 @@ $cases = @(
     @{ Name='gui_plugin_public_interface'; Exit=0; Files=@{'gui/idosinterface.h'=''; 'plugins/example/plugin.cpp'='#include "idosinterface.h"'} },
     @{ Name='gui_output_public_interface'; Exit=0; Files=@{'gui/idosruntimeinfowidget.h'=''; 'app/window.cpp'='#include "idosruntimeinfowidget.h"'} },
     @{ Name='core_provider_interface'; Exit=0; Files=@{'core/providers/idosdataprovider.h'=''; 'providers/well/load.cpp'='#include "providers/idosdataprovider.h"'} },
-    @{ Name='render_provider_interface'; Exit=0; Files=@{'render/providers/idosrenderprovider.h'=''; 'app/providers/display.cpp'='#include "providers/idosrenderprovider.h"'} },
-    @{ Name='app_owned_ui_binding'; Exit=0; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridsettingwidget.cpp"'; 'app/providers/private.h'=''; 'gui/grid/idosgridsettingwidget.cpp'='#include "providers/private.h"'} },
-    @{ Name='generic_gui_to_app_owned_ui'; Exit=1; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridsettingwidget.h"'; 'gui/grid/idosgridsettingwidget.h'=''; 'gui/general.cpp'='#include "grid/idosgridsettingwidget.h"'} },
-    @{ Name='app_owned_ui_public_leak'; Exit=1; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/gui/grid/idosgridsettingwidget.h"'; 'gui/grid/idosgridsettingwidget.h'=''; 'app/public.h'='#include "grid/idosgridsettingwidget.h"'} },
-    @{ Name='fluidrock_data'; Exit=0; Files=@{'core/data/fluidrock/idosfluidrocktable.h'=''; 'app/load.cpp'='#include "idosfluidrocktable.h"'} },
+    @{ Name='render_provider_interface'; Exit=0; Files=@{'render/idosrenderprovider.h'=''; 'app/providers/display.cpp'='#include "idosrenderprovider.h"'} },
+    @{ Name='app_owned_ui_binding'; Exit=0; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/app/grid/idosgridsettingwidget.cpp"'; 'app/providers/private.h'=''; 'app/grid/idosgridsettingwidget.cpp'='#include "providers/private.h"'} },
+    @{ Name='generic_gui_to_app_owned_ui'; Exit=1; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/app/grid/idosgridsettingwidget.h"'; 'app/grid/idosgridsettingwidget.h'=''; 'gui/general.cpp'='#include "grid/idosgridsettingwidget.h"'} },
+    @{ Name='app_owned_ui_public_leak'; Exit=1; Files=@{'app/CMakeLists.txt'='"${PROJECT_SOURCE_DIR}/src/app/grid/idosgridsettingwidget.h"'; 'app/grid/idosgridsettingwidget.h'=''; 'app/public.h'='#include "grid/idosgridsettingwidget.h"'} },
+    @{ Name='fluidrock_data'; Exit=0; Files=@{'core/data/fluidrock/idosfluidrocktableobject.h'=''; 'app/load.cpp'='#include "idosfluidrocktableobject.h"'} },
     @{ Name='grid_parser'; Exit=0; Files=@{'providers/grid/idosgridprovider.h'=''; 'app/load.cpp'='#include "idosgridprovider.h"'} },
     @{ Name='plugin_case_menu_boundary'; Exit=1; Files=@{'app/case/idossimulationcasetreeguiprovider.h'=''; 'plugins/example/plugin.cpp'='#include "case/idossimulationcasetreeguiprovider.h"'} },
     @{ Name='public_dependency'; Exit=0; Files=@{'core/idosdata.h'='class IDOSData {};'; 'providers/load.cpp'='#include "idosdata.h"'} },
@@ -29,7 +29,7 @@ $cases = @(
     @{ Name='core_tree_to_gui'; Exit=1; Files=@{'core/tree/idostreemodel.cpp'='#include "idostreeview.h"'; 'gui/tree/idostreeview.h'=''} },
     @{ Name='app_to_tree'; Exit=0; Files=@{'app/well/idoswelltreeprovider.cpp'='#include "idostreeprovider.h"'; 'core/tree/idostreeprovider.h'=''} },
     @{ Name='app_to_render'; Exit=0; Files=@{'render/idos_render.h'=''; 'app/window.cpp'='#include "idos_render.h"'} },
-    @{ Name='render_to_core'; Exit=0; Files=@{'core/idosdata.h'=''; 'render/view.cpp'='#include "idosdata.h"'} },
+    @{ Name='render_to_core'; Exit=1; Files=@{'core/idosdata.h'=''; 'render/view.cpp'='#include "idosdata.h"'} },
     @{ Name='core_to_render'; Exit=1; Files=@{'render/idosview.h'=''; 'core/data.cpp'='#include "idosview.h"'} },
     @{ Name='forward_declaration_is_not_definition'; Exit=0; Files=@{'core/idosdata.h'='class IDOSData {};'; 'app/render/private.h'='class IDOSData;'; 'render/provider.h'='class IDOSData;'} },
     @{ Name='same_module_render_header'; Exit=0; Files=@{'app/render/private.h'=''; 'app/window.cpp'='#include "private.h"'} },
@@ -44,10 +44,12 @@ $cases = @(
     @{ Name='well_display_public_header'; Exit=1; Files=@{'app/well/idoswellrenderprovider.h'=''; 'plugins/idossimulationplugin/idoswelldisplaywidget.h'='#include "well/idoswellrenderprovider.h"'} },
     @{ Name='other_plugin_grid_provider'; Exit=1; Files=@{'app/grid/idosgridrenderprovider.h'=''; 'plugins/example/plugin.cpp'='#include "grid/idosgridrenderprovider.h"'} },
     @{ Name='coloring_public_header_boundary'; Exit=1; Files=@{'app/grid/idosgridrenderprovider.h'=''; 'plugins/idossimulationplugin/idoscoloringwidget.h'='#include "grid/idosgridrenderprovider.h"'} },
+    @{ Name='plugin_render_factory'; Exit=0; Files=@{'app/render/idosrenderprovidermetadata.h'=''; 'plugins/example/metadata.h'='#include "render/idosrenderprovidermetadata.h"'} },
+    @{ Name='render_tools_public'; Exit=0; Files=@{'render/tools/idostool.h'=''; 'app/tool.cpp'='#include "tools/idostool.h"'} },
     @{ Name='plugin_sdk'; Exit=0; Files=@{'plugins/idosplugin.h'=''; 'main.cpp'='#include "idosplugin.h"'} },
     @{ Name='plugin_to_core'; Exit=0; Files=@{'plugins/example/data.cpp'='#include "idosdataobject.h"'; 'core/data/idosdataobject.h'=''} },
     @{ Name='plugin_to_render'; Exit=0; Files=@{'plugins/example/provider.cpp'='#include "idosrenderprovider.h"'; 'render/idosrenderprovider.h'=''} },
-    @{ Name='functional_public_data'; Exit=0; Files=@{'core/data/well/idoswell.h'=''; 'providers/load.cpp'='#include "idoswell.h"'} },
+    @{ Name='functional_public_data'; Exit=0; Files=@{'core/data/well/idoswellobject.h'=''; 'providers/load.cpp'='#include "idoswellobject.h"'} },
     @{ Name='functional_public_tree'; Exit=0; Files=@{'core/tree/idostree.h'=''; 'gui/tree/view.cpp'='#include "idostree.h"'} },
     @{ Name='traversal'; Exit=1; Files=@{'core/internal.cpp'='#include "../gui/view.h"'} },
     @{ Name='stale_header'; Exit=1; Files=@{'app/window.cpp'='#include "idosimportcoordinator.h"'} },

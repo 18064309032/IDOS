@@ -13,7 +13,7 @@ class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class IDOSInterface;
 class IDOSProject;
-class IDOSRenderRegistry;
+class IDOSRenderProviderRegistry;
 class IDOSTreeItemProviderRegistry;
 class QAction;
 class QTranslator;
@@ -37,6 +37,9 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
     static const QString* pluginIcon();
     static int pluginType();
 
+  public slots:
+    void onDeletePointSet(const QString& dataId, const QString& session);
+
   private slots:
     void onCreatePointSet();
     void onProjectChanged(IDOSProject* project);
@@ -45,7 +48,7 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
     QPointer<IDOSInterface> m_interface;
     QPointer<IDOSDataRegistry> m_dataRegistry;
     QPointer<IDOSTreeItemProviderRegistry> m_treeRegistry;
-    QPointer<IDOSRenderRegistry> m_renderRegistry;
+    QPointer<IDOSRenderProviderRegistry> m_renderRegistry;
     IDOSCommandRegistry* m_commandRegistry;
     QPointer<SARibbonCategory> m_category;
     QPointer<QAction> m_createAction;
@@ -58,4 +61,3 @@ class IDOS_PLUGIN_EXPORT IDOSExamplePlugin : public QObject, public IDOSPlugin
     bool m_deleteAdded;
 };
 #endif
-

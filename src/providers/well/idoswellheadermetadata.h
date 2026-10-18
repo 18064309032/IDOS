@@ -1,5 +1,5 @@
-#ifndef IDOS_WELL_HEADER_METADATA_H
-#define IDOS_WELL_HEADER_METADATA_H
+#ifndef IDOS_WELL_OBJECT_HEADER_METADATA_H
+#define IDOS_WELL_OBJECT_HEADER_METADATA_H
 
 #include <QObject>
 
@@ -22,7 +22,7 @@ class PROVIDERS_EXPORT IDOSWellHeaderMetadata : public IDOSDataProviderMetadata
 
     bool canHandle(const QString& filePath) const override;
 
-    std::unique_ptr<IDOSDataProvider> createProvider() const override;
+    std::unique_ptr<IDOSDataProvider> create() const override;
 };
 
-#endif // IDOS_WELL_HEADER_METADATA_H
+#endif // IDOS_WELL_OBJECT_HEADER_METADATA_H

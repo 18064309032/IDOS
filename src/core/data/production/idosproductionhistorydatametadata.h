@@ -1,7 +1,7 @@
 #ifndef IDOS_PRODUCTION_HISTORY_DATA_METADATA_H
 #define IDOS_PRODUCTION_HISTORY_DATA_METADATA_H
 
-#include "providers/idosdatametadata.h"
+#include "data/idosdatametadata.h"
 
 class CORE_EXPORT IDOSProductionHistoryDataMetadata : public IDOSDataMetadata
 {

@@ -2,6 +2,7 @@
 
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QObject>
 #include <QPointer>
 #include <QSet>
 #include <QSignalBlocker>
@@ -9,8 +10,8 @@
 #include <QUuid>
 
 #include "data/case/idossimulationcaseobject.h"
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/well/idoswell.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/well/idoswellobject.h"
 #include "idosproject.h"
 
 #include "idoscasereferencecommand.h"
@@ -71,8 +72,8 @@ bool IDOSCaseReferenceCommand::prepare(QHash<QString, QList<IDOSCaseItemRef>>& b
         const QString sourceId = item.value(QStringLiteral("sourceCaseId")).toString();
         const QString role = item.value(QStringLiteral("role")).toString();
         IDOSDataObject* object = project()->object(objectId);
-        if (!((role == QStringLiteral("case.well") && qobject_cast<IDOSWell*>(object) != nullptr) ||
-              (role == QStringLiteral("case.fluidRockTable") && qobject_cast<IDOSFluidRockTable*>(object) != nullptr)))
+        if (!((role == QStringLiteral("case.well") && qobject_cast<IDOSWellObject*>(object) != nullptr) ||
+              (role == QStringLiteral("case.fluidRockTable") && qobject_cast<IDOSFluidRockTableObject*>(object) != nullptr)))
         {
             error = QObject::tr("Only existing wells and fluid or rock tables can be referenced.");
             return false;
@@ -222,8 +223,8 @@ bool IDOSCaseReferenceCommand::supportsObject(const QJsonObject& item) const
 {
     IDOSDataObject* object = project()->object(item.value(QStringLiteral("objectId")).toString());
     const QString role = item.value(QStringLiteral("role")).toString();
-    return (role == QStringLiteral("case.well") && qobject_cast<IDOSWell*>(object) != nullptr) ||
-           (role == QStringLiteral("case.fluidRockTable") && qobject_cast<IDOSFluidRockTable*>(object) != nullptr);
+    return (role == QStringLiteral("case.well") && qobject_cast<IDOSWellObject*>(object) != nullptr) ||
+           (role == QStringLiteral("case.fluidRockTable") && qobject_cast<IDOSFluidRockTableObject*>(object) != nullptr);
 }
 
 bool IDOSCaseReferenceCommand::validateCommand(QString& error) const
@@ -341,4 +342,42 @@ QJsonObject IDOSCaseReferenceCommandMetadata::schema() const
 IDOSCommand* IDOSCaseReferenceCommandMetadata::create(const QJsonObject& arguments, IDOSProject* project) const
 {
     return new IDOSCaseReferenceCommand(project, m_operation, arguments);
+}
+
+IDOSAttachFluidRockTableCommandMetadata::IDOSAttachFluidRockTableCommandMetadata()
+    :
+    IDOSCommandMetadata(QStringLiteral("case.fluidRock.attach"),
+                          QObject::tr("Add fluid or rock table to case"),
+                          QObject::tr("Add a project fluid or rock table reference to a simulation case."),
+                          IDOSCommand::Type::Action)
+{
+}
+
+IDOSAttachFluidRockTableCommandMetadata::~IDOSAttachFluidRockTableCommandMetadata() = default;
+
+QJsonObject IDOSAttachFluidRockTableCommandMetadata::schema() const
+{
+    QJsonObject properties;
+    properties.insert(QStringLiteral("targetCaseId"),
+                      stringPropertySchema(
+                          QObject::tr("Object ID of the target simulation case.")));
+    properties.insert(QStringLiteral("tableId"),
+                      stringPropertySchema(
+                          QObject::tr("Object ID of the fluid or rock table.")));
+    QJsonArray required;
+    required.append(QStringLiteral("targetCaseId"));
+    required.append(QStringLiteral("tableId"));
+    return schemaWithProperties(properties, required);
+}
+
+IDOSCommand* IDOSAttachFluidRockTableCommandMetadata::create(const QJsonObject& arguments,
+                                                          IDOSProject* project) const
+{
+    QJsonObject item;
+    item.insert(QStringLiteral("objectId"), arguments.value(QStringLiteral("tableId")));
+    item.insert(QStringLiteral("role"), QStringLiteral("case.fluidRockTable"));
+    QJsonObject referenceArguments;
+    referenceArguments.insert(QStringLiteral("targetCaseId"), arguments.value(QStringLiteral("targetCaseId")));
+    referenceArguments.insert(QStringLiteral("items"), QJsonArray{item});
+    return new IDOSCaseReferenceCommand(project, QStringLiteral("copy"), referenceArguments);
 }

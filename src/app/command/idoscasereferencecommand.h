@@ -5,10 +5,10 @@
 #include <QJsonArray>
 #include <QList>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
 class APP_EXPORT IDOSCaseReferenceCommand : public IDOSCommand
 {
@@ -42,6 +42,17 @@ public:
     IDOSCommand* create(const QJsonObject& arguments, IDOSProject* project) const override;
 private:
     QString m_operation;
+};
+
+class APP_EXPORT IDOSAttachFluidRockTableCommandMetadata : public IDOSCommandMetadata
+{
+public:
+    IDOSAttachFluidRockTableCommandMetadata();
+    ~IDOSAttachFluidRockTableCommandMetadata() override;
+
+    QJsonObject schema() const override;
+    IDOSCommand* create(const QJsonObject& arguments,
+                        IDOSProject* project) const override;
 };
 
 #endif

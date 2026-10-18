@@ -1,7 +1,7 @@
 #ifndef IDOSSIMULATIONCASEMETADATA_H
 #define IDOSSIMULATIONCASEMETADATA_H
 
-#include "providers/idosdatametadata.h"
+#include "data/idosdatametadata.h"
 
 class CORE_EXPORT IDOSSimulationCaseMetadata : public IDOSDataMetadata
 {

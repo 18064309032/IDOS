@@ -5,8 +5,8 @@
 #include "data/case/idossimulationcasemetadata.h"
 #include "data/case/idossimulationsummaryresultsmetadata.h"
 #include "data/fluidrock/idosfluidrocktablemetadata.h"
-#include "data/fracture/idosfracturematerialcatalog.h"
 #include "data/fracture/idosfracturematerialcatalogdatametadata.h"
+#include "data/fracture/idosfracturematerialcatalogobject.h"
 #include "data/fracture/idosfracturescheduledatametadata.h"
 #include "data/fracture/idosnaturalfracturesetdatametadata.h"
 #include "data/grid/idosgridboundarydatametadata.h"
@@ -14,6 +14,7 @@
 #include "data/grid/idosgridmetadata.h"
 #include "data/grid/idosgridpropertymetadata.h"
 #include "data/grid/idosgridsurfacedatametadata.h"
+#include "data/idosdataregistry.h"
 #include "data/production/idosproductionhistorydatametadata.h"
 #include "data/seismic/idosmicroseismicdatametadata.h"
 #include "data/seismic/idosseismicvolumedatametadata.h"
@@ -29,7 +30,6 @@
 #include "logger/idoslogger.h"
 #include "production/idosproductionhistorymetadata.h"
 #include "providers/idosdataproviderregistry.h"
-#include "providers/idosdataregistry.h"
 #include "seismic/idosmicroseismicmetadata.h"
 #include "seismic/idossegyprovidermetadata.h"
 #include "well/idoswellcheckshotmetadata.h"
@@ -170,23 +170,23 @@ void IDOSApplication::initProviders()
 
 void IDOSApplication::initDataRegistry(IDOSDataRegistry* registry)
 {
-    registry->add(new IDOSWellMetadata());
-    registry->add(new IDOSGridMetadata());
-    registry->add(new IDOSGridPropertyMetadata());
-    registry->add(new IDOSGridFilterMetadata());
-    registry->add(new IDOSGridSurfaceDataMetadata());
-    registry->add(new IDOSGridBoundaryDataMetadata());
-    registry->add(new IDOSSimulationCaseMetadata());
-    registry->add(new IDOSSimulationSummaryResultsMetadata());
-    registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::Fluid));
-    registry->add(new IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category::RockPhysics));
-    registry->add(new IDOSMicroseismicDataMetadata());
-    registry->add(new IDOSSeismicVolumeDataMetadata());
-    registry->add(new IDOSFractureScheduleDataMetadata());
-    registry->add(new IDOSNaturalFractureSetDataMetadata());
-    registry->add(new IDOSProductionHistoryDataMetadata());
-    registry->add(new IDOSFractureMaterialCatalogDataMetadata(
-        IDOSFractureMaterialCatalog::Kind::Fluid));
-    registry->add(new IDOSFractureMaterialCatalogDataMetadata(
-        IDOSFractureMaterialCatalog::Kind::Proppant));
+    registry->registerMetadata(new IDOSWellMetadata());
+    registry->registerMetadata(new IDOSGridMetadata());
+    registry->registerMetadata(new IDOSGridPropertyMetadata());
+    registry->registerMetadata(new IDOSGridFilterMetadata());
+    registry->registerMetadata(new IDOSGridSurfaceDataMetadata());
+    registry->registerMetadata(new IDOSGridBoundaryDataMetadata());
+    registry->registerMetadata(new IDOSSimulationCaseMetadata());
+    registry->registerMetadata(new IDOSSimulationSummaryResultsMetadata());
+    registry->registerMetadata(new IDOSFluidRockTableMetadata(IDOSFluidRockTableObject::Category::Fluid));
+    registry->registerMetadata(new IDOSFluidRockTableMetadata(IDOSFluidRockTableObject::Category::RockPhysics));
+    registry->registerMetadata(new IDOSMicroseismicDataMetadata());
+    registry->registerMetadata(new IDOSSeismicVolumeDataMetadata());
+    registry->registerMetadata(new IDOSFractureScheduleDataMetadata());
+    registry->registerMetadata(new IDOSNaturalFractureSetDataMetadata());
+    registry->registerMetadata(new IDOSProductionHistoryDataMetadata());
+    registry->registerMetadata(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalogObject::Kind::Fluid));
+    registry->registerMetadata(new IDOSFractureMaterialCatalogDataMetadata(
+        IDOSFractureMaterialCatalogObject::Kind::Proppant));
 }

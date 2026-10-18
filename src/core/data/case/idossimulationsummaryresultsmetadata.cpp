@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idossimulationsummaryresults.h"
+#include "idossimulationsummaryresultsobject.h"
 
 #include "idossimulationsummaryresultsmetadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSSimulationSummaryResultsMetadata::displayName() const
 
 IDOSDataObject* IDOSSimulationSummaryResultsMetadata::create() const
 {
-    return new IDOSSimulationSummaryResults();
+    return new IDOSSimulationSummaryResultsObject();
 }

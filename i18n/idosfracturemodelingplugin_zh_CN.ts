@@ -93,7 +93,7 @@
     </message>
 </context>
 <context>
-    <name>IDOSFractureGeometryReportDialog</name>
+    <name>IDOSFractureCheckWidget</name>
     <message>
         <source>Fracture Geometry Check</source>
         <translation>裂缝几何检查</translation>

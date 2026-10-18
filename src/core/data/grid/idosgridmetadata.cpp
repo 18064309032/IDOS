@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosgrid.h"
+#include "idosgridobject.h"
 
 #include "idosgridmetadata.h"
 
@@ -24,5 +24,5 @@ QString IDOSGridMetadata::displayName() const
 
 IDOSDataObject* IDOSGridMetadata::create() const
 {
-    return new IDOSGrid();
+    return new IDOSGridObject();
 }

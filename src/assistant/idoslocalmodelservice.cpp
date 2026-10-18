@@ -6,7 +6,8 @@
 #include "idoslocalmodelservice.h"
 
 IDOSLocalModelService::IDOSLocalModelService(QObject* parent)
-    : QObject(parent)
+    :
+    QObject(parent)
     , m_networkManager(new QNetworkAccessManager(this))
     , m_baseUrl(QStringLiteral("http://127.0.0.1:18080"))
 {
@@ -26,24 +27,9 @@ QUrl IDOSLocalModelService::baseUrl() const
     return m_baseUrl;
 }
 
-QNetworkReply* IDOSLocalModelService::chat(const QString& message,
-                                           const QString& systemMessage,
+QNetworkReply* IDOSLocalModelService::chat(const QJsonArray& messages,
                                            const QJsonArray& tools)
 {
-    QJsonArray messages;
-    if (!systemMessage.isEmpty())
-    {
-        QJsonObject system;
-        system.insert(QStringLiteral("role"), QStringLiteral("system"));
-        system.insert(QStringLiteral("content"), systemMessage);
-        messages.append(system);
-    }
-
-    QJsonObject user;
-    user.insert(QStringLiteral("role"), QStringLiteral("user"));
-    user.insert(QStringLiteral("content"), message);
-    messages.append(user);
-
     QJsonObject requestObject;
     requestObject.insert(QStringLiteral("messages"), messages);
     requestObject.insert(QStringLiteral("stream"), false);
@@ -103,5 +89,6 @@ QNetworkRequest IDOSLocalModelService::makeRequest(const QUrl& url) const
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader,
                       QStringLiteral("application/json"));
+    request.setTransferTimeout(120000);
     return request;
 }

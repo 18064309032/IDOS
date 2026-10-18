@@ -5,12 +5,12 @@
 #include <QList>
 #include <QPointer>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
-class IDOSWell;
+class IDOSWellObject;
 
 /**
  * @brief Deletes a well and restores case references on undo.
@@ -34,7 +34,7 @@ private:
     void restoreCaseReferences();
 
     QString m_wellId;
-    QPointer<IDOSWell> m_well;
+    QPointer<IDOSWellObject> m_well;
     QHash<QString, QList<IDOSCaseItemRef>> m_caseReferences;
 };
 

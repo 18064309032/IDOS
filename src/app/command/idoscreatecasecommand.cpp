@@ -12,7 +12,8 @@
 IDOSCreateCaseCommand::IDOSCreateCaseCommand(
     IDOSProject* project,
     QString name)
-    : IDOSCommand(QStringLiteral("case.create"),
+    :
+    IDOSCommand(QStringLiteral("case.create"),
                   Type::Action,
                   project,
                   QObject::tr("Create case"))
@@ -70,6 +71,12 @@ QJsonObject IDOSCreateCaseCommand::buildPreview() const
 
 bool IDOSCreateCaseCommand::apply(QString& error)
 {
+    if (m_caseObject.isNull() && !result().isEmpty())
+    {
+        error = QObject::tr("The target case is unavailable.");
+        return false;
+    }
+
     IDOSProject* targetProject = project();
     if (targetProject == nullptr)
     {
@@ -90,7 +97,11 @@ bool IDOSCreateCaseCommand::apply(QString& error)
         return false;
     }
 
-    targetProject->add(m_caseObject.data());
+    if (!targetProject->add(m_caseObject.data()))
+    {
+        error = QObject::tr("The target case is unavailable.");
+        return false;
+    }
 
     QJsonObject commandResult;
     commandResult.insert(QStringLiteral("objectId"), m_caseObject->objectId());
@@ -103,7 +114,8 @@ bool IDOSCreateCaseCommand::apply(QString& error)
 bool IDOSCreateCaseCommand::revert(QString& error)
 {
     IDOSProject* targetProject = project();
-    if (targetProject == nullptr || m_caseObject.isNull())
+    if (targetProject == nullptr || m_caseObject.isNull() ||
+        targetProject->object(m_caseObject->objectId()) != m_caseObject.data())
     {
         error = QObject::tr("The target case is unavailable.");
         return false;
@@ -120,7 +132,8 @@ bool IDOSCreateCaseCommand::revert(QString& error)
 }
 
 IDOSCreateCaseCommandMetadata::IDOSCreateCaseCommandMetadata()
-    : IDOSCommandMetadata(QStringLiteral("case.create"),
+    :
+    IDOSCommandMetadata(QStringLiteral("case.create"),
                           QObject::tr("Create case"),
                           QObject::tr("Create a new simulation case in the current project."),
                           IDOSCommand::Type::Action)

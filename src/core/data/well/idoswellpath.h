@@ -10,7 +10,7 @@
 #include "idoswellspatialreference.h"
 
 /**
- * @brief Wellbore trajectory, owned by IDOSWell.
+ * @brief Wellbore trajectory, owned by IDOSWellObject.
  *
  * This class describes measured well geometry. It is distinct from an
  * IDOSWellSegment / WELSEGS simulation model.

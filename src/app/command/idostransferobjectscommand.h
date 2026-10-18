@@ -6,10 +6,10 @@
 #include <QList>
 #include <QPointer>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "data/case/idoscaseitemref.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
 class IDOSDataObject;
 

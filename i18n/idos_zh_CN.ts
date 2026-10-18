@@ -129,6 +129,46 @@
         <source>Tool</source>
         <translation>工具</translation>
     </message>
+    <message>
+        <source>The local assistant is already starting.</source>
+        <translation>本地助手正在启动。</translation>
+    </message>
+    <message>
+        <source>The local model service did not become ready.</source>
+        <translation>本地模型服务未能就绪。</translation>
+    </message>
+    <message>
+        <source>Execution stopped. Completed commands are kept and can be undone.</source>
+        <translation>执行已停止。已完成的命令会保留，可以撤销。</translation>
+    </message>
+    <message>
+        <source>The model returned an incomplete or invalid response. No commands from this response were executed.</source>
+        <translation>模型返回了不完整或无效的响应，此响应中的命令均未执行。</translation>
+    </message>
+    <message>
+        <source>The model returned invalid tool calls. No commands from this response were executed.</source>
+        <translation>模型返回了无效的工具调用，此响应中的命令均未执行。</translation>
+    </message>
+    <message>
+        <source>The command limit for this request was reached. Completed commands are kept.</source>
+        <translation>本次请求已达到命令执行上限，已完成的命令会保留。</translation>
+    </message>
+    <message>
+        <source>The model request failed: %1</source>
+        <translation>模型请求失败：%1</translation>
+    </message>
+    <message>
+        <source>Unable to send the model request.</source>
+        <translation>无法发送模型请求。</translation>
+    </message>
+    <message>
+        <source>Executing %1...</source>
+        <translation>正在执行 %1…</translation>
+    </message>
+    <message>
+        <source>The requested command is unavailable.</source>
+        <translation>请求的命令不可用。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSAssistantWidget</name>
@@ -183,6 +223,14 @@
     <message>
         <source>System</source>
         <translation>系统</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <source>Working</source>
+        <translation>正在处理</translation>
     </message>
 </context>
 <context>
@@ -342,6 +390,10 @@
         <source>Example points</source>
         <translation type="vanished">示例点集</translation>
     </message>
+    <message>
+        <source>Delete Point Set</source>
+        <translation>删除点集</translation>
+    </message>
 </context>
 
 <context>
@@ -431,7 +483,7 @@
     </message>
 </context>
 <context>
-    <name>IDOSGrid</name>
+    <name>IDOSGridObject</name>
     <message>
         <source>Stored grid dimensions are invalid.</source>
         <translation>存储的网格维度无效。</translation>
@@ -442,14 +494,14 @@
     </message>
 </context>
 <context>
-    <name>IDOSGridBoundary</name>
+    <name>IDOSGridBoundaryObject</name>
     <message>
         <source>Stored boundary coordinate arrays have inconsistent lengths.</source>
         <translation>存储的边界坐标数组长度不一致。</translation>
     </message>
 </context>
 <context>
-    <name>IDOSGridFilter</name>
+    <name>IDOSGridFilterObject</name>
     <message>
         <source>A stored filter has an invalid source grid.</source>
         <translation>存储的筛选关联了无效网格。</translation>
@@ -707,14 +759,14 @@
     </message>
 </context>
 <context>
-    <name>IDOSGridProperty</name>
+    <name>IDOSGridPropertyObject</name>
     <message>
-        <source>IDOSGridProperty::setValues: size mismatch for %1 - expected %2, got %3</source>
-        <translation>IDOSGridProperty::setValues：%1 的数据数量不匹配，预期 %2，实际 %3</translation>
+        <source>IDOSGridPropertyObject::setValues: size mismatch for %1 - expected %2, got %3</source>
+        <translation>IDOSGridPropertyObject::setValues：%1 的数据数量不匹配，预期 %2，实际 %3</translation>
     </message>
     <message>
-        <source>IDOSGridProperty::setValueAt: index out of range (%1, %2, %3)</source>
-        <translation>IDOSGridProperty::setValueAt：索引越界（%1，%2，%3）</translation>
+        <source>IDOSGridPropertyObject::setValueAt: index out of range (%1, %2, %3)</source>
+        <translation>IDOSGridPropertyObject::setValueAt：索引越界（%1，%2，%3）</translation>
     </message>
     <message>
         <source>A stored property has an invalid grid, dimensions or value array.</source>
@@ -933,7 +985,7 @@
     </message>
 </context>
 <context>
-    <name>IDOSGridSurface</name>
+    <name>IDOSGridSurfaceObject</name>
     <message>
         <source>Stored surface dimensions do not match its values.</source>
         <translation>存储的地层面维度与数值不一致。</translation>
@@ -2141,6 +2193,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>Simulation case:</source>
         <translation>模拟工况：</translation>
     </message>
+    <message>
+        <source>The saved render state could not be restored.</source>
+        <translation>无法恢复已保存的渲染状态。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSMultiscaleFracturePlugin</name>
@@ -2198,7 +2254,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
 </context>
 <context>
-    <name>IDOSNaturalFractureSet</name>
+    <name>IDOSNaturalFractureSetObject</name>
     <message>
         <source>At least three vertices are required.</source>
         <translation>至少需要三个顶点。</translation>
@@ -3101,7 +3157,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
 </context>
 <context>
-    <name>IDOSSeismicVolume</name>
+    <name>IDOSSeismicVolumeObject</name>
     <message>
         <source>Stored seismic trace arrays have inconsistent lengths.</source>
         <translation>存储的地震道数组长度不一致。</translation>
@@ -4437,7 +4493,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
 </context>
 <context>
-    <name>IDOSSimulationSummaryResults</name>
+    <name>IDOSSimulationSummaryResultsObject</name>
     <message>
         <source>Stored summary results have missing or invalid fields.</source>
         <translation type="vanished">已存储的汇总结果缺少字段或字段无效。</translation>
@@ -4663,7 +4719,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
 </context>
 <context>
-    <name>IDOSWell</name>
+    <name>IDOSWellObject</name>
     <message>
         <source>Stored well checkshot arrays have inconsistent lengths.</source>
         <translation>存储的井时深标定数组长度不一致。</translation>
@@ -6755,6 +6811,58 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>Delete imported data and its case references.</source>
         <translation>删除导入的数据及其工况引用。</translation>
     </message>
+    <message>
+        <source>The command has no target project.</source>
+        <translation>命令没有目标工程。</translation>
+    </message>
+    <message>
+        <source>List project objects</source>
+        <translation>查询工程数据</translation>
+    </message>
+    <message>
+        <source>Offset must be nonnegative and limit must be between 1 and 100.</source>
+        <translation>偏移量不能为负数，每页数量必须在 1 到 100 之间。</translation>
+    </message>
+    <message>
+        <source>The requested container is unavailable.</source>
+        <translation>请求的容器不可用。</translation>
+    </message>
+    <message>
+        <source>Read-only queries cannot be undone.</source>
+        <translation>只读查询不能撤销。</translation>
+    </message>
+    <message>
+        <source>REQUIRED for requests to list or find data in the current project. Execute this query and answer from its results; never tell the user to run this command. Lists object IDs, names, types and containers; supports name, type and container filters with pagination.</source>
+        <translation>查询或查找当前工程数据时必须调用此命令，根据查询结果作答，不要让用户自行运行命令。返回对象标识、名称、类型和所属容器，并支持按名称、类型、容器筛选及分页。</translation>
+    </message>
+    <message>
+        <source>Optional case-insensitive name substring.</source>
+        <translation>可选的名称片段，不区分大小写。</translation>
+    </message>
+    <message>
+        <source>Optional exact data type ID.</source>
+        <translation>可选的准确数据类型标识。</translation>
+    </message>
+    <message>
+        <source>Optional container object ID; this is not a case reference filter.</source>
+        <translation>可选的所属容器对象标识，不用于筛选工况引用。</translation>
+    </message>
+    <message>
+        <source>Inspect project object</source>
+        <translation>查看工程数据详情</translation>
+    </message>
+    <message>
+        <source>The requested object is unavailable.</source>
+        <translation>请求的对象不可用。</translation>
+    </message>
+    <message>
+        <source>Inspect an existing object by ID. Return identity and supported summary fields, including paginated case references. Does not return bulk grid values or log samples.</source>
+        <translation>根据标识查看已有对象，返回身份和支持的摘要字段，包括分页的工况引用。不返回完整网格数值或测井采样数据。</translation>
+    </message>
+    <message>
+        <source>Object ID returned by a project query.</source>
+        <translation>工程查询返回的对象标识。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSDataTreeMenuProvider</name>
@@ -7434,6 +7542,15 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>%1 (%2 materials)</source>
         <translation>%1（%2 种材料）</translation>
     </message>
+
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
 </context>
 <context>
     <name>IDOSFluidRockTableTreeProvider</name>
@@ -7490,6 +7607,19 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Simulation case:</source>
         <translation>模拟工况：</translation>
+    </message>
+
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
     </message>
 </context>
 <context>
@@ -7569,6 +7699,256 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Field Management Strategies</source>
         <translation>油田管理策略</translation>
+    </message>
+
+    <message>
+        <source>Delete Data...</source>
+        <translation>删除数据…</translation>
+    </message>
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSGridTreeProvider</name>
+    <message>
+        <source>Edit Filter...</source>
+        <translation>编辑筛选…</translation>
+    </message>
+    <message>
+        <source>Display Settings...</source>
+        <translation>显示设置…</translation>
+    </message>
+    <message>
+        <source>Rename Filter...</source>
+        <translation>重命名筛选…</translation>
+    </message>
+    <message>
+        <source>Delete Filter...</source>
+        <translation>删除筛选…</translation>
+    </message>
+    <message>
+        <source>New Filter...</source>
+        <translation>新建筛选…</translation>
+    </message>
+    <message>
+        <source>Import Dynamic Properties...</source>
+        <translation>导入动态属性…</translation>
+    </message>
+    <message>
+        <source>Import Property...</source>
+        <translation>导入属性…</translation>
+    </message>
+    <message>
+        <source>Import Region Properties...</source>
+        <translation>导入区域属性…</translation>
+    </message>
+    <message>
+        <source>Delete Property...</source>
+        <translation>删除属性…</translation>
+    </message>
+    <message>
+        <source>Delete Grid...</source>
+        <translation>删除网格…</translation>
+    </message>
+    <message>
+        <source>Display in Target View</source>
+        <translation>在目标视图中显示</translation>
+    </message>
+    <message>
+        <source>Color by</source>
+        <translation>着色依据</translation>
+    </message>
+    <message>
+        <source>Solid color</source>
+        <translation>单色</translation>
+    </message>
+
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSWellTreeProvider</name>
+    <message>
+        <source>Display Settings...</source>
+        <translation>显示设置…</translation>
+    </message>
+    <message>
+        <source>New Well...</source>
+        <translation>新建井…</translation>
+    </message>
+    <message>
+        <source>Import Well Data...</source>
+        <translation>导入井数据…</translation>
+    </message>
+    <message>
+        <source>Import Well Header...</source>
+        <translation>导入井头…</translation>
+    </message>
+    <message>
+        <source>View Well Data...</source>
+        <translation>查看井数据…</translation>
+    </message>
+    <message>
+        <source>View Trajectory Data...</source>
+        <translation>查看轨迹数据…</translation>
+    </message>
+    <message>
+        <source>Import or Replace Trajectory...</source>
+        <translation>导入／替换轨迹…</translation>
+    </message>
+    <message>
+        <source>Import Well Curves...</source>
+        <translation>导入井曲线…</translation>
+    </message>
+    <message>
+        <source>View Curve Data...</source>
+        <translation>查看曲线数据…</translation>
+    </message>
+    <message>
+        <source>Markers</source>
+        <translation>标志层</translation>
+    </message>
+    <message>
+        <source>Completions</source>
+        <translation>完井</translation>
+    </message>
+    <message>
+        <source>Checkshots</source>
+        <translation>校深</translation>
+    </message>
+    <message>
+        <source>Import %1 Data...</source>
+        <translation>导入%1数据…</translation>
+    </message>
+    <message>
+        <source>View %1 Data...</source>
+        <translation>查看%1数据…</translation>
+    </message>
+    <message>
+        <source>View Marker Data...</source>
+        <translation>查看标志层数据…</translation>
+    </message>
+    <message>
+        <source>Delete Well...</source>
+        <translation>删除井…</translation>
+    </message>
+
+    <message>
+        <source>Add to Case...</source>
+        <translation>添加到工况…</translation>
+    </message>
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSimulationCaseTreeProvider</name>
+    <message>
+        <source>Import Grid...</source>
+        <translation>导入网格…</translation>
+    </message>
+    <message>
+        <source>New Case...</source>
+        <translation>新建工况…</translation>
+    </message>
+    <message>
+        <source>Import Case...</source>
+        <translation>导入工况…</translation>
+    </message>
+    <message>
+        <source>Import Summary Results...</source>
+        <translation>导入汇总结果…</translation>
+    </message>
+    <message>
+        <source>View Summary Curves...</source>
+        <translation>查看汇总曲线…</translation>
+    </message>
+    <message>
+        <source>View Property Curves...</source>
+        <translation>查看属性曲线…</translation>
+    </message>
+    <message>
+        <source>Generate Simulation Input...</source>
+        <translation>生成模拟输入…</translation>
+    </message>
+    <message>
+        <source>Rename Case...</source>
+        <translation>重命名工况…</translation>
+    </message>
+    <message>
+        <source>Delete Case...</source>
+        <translation>删除工况…</translation>
+    </message>
+
+    <message>
+        <source>Rename...</source>
+        <translation>重命名…</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSTreeMenuProvider</name>
+    <message>
+        <source>Paste</source>
+        <translation>粘贴</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation>剪切</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPointZoomToolProvider</name>
+    <message>
+        <source>Point Zoom</source>
+        <translation>点选缩放</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSPointProbeToolProvider</name>
+    <message>
+        <source>Point Probe</source>
+        <translation>点探查</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSDistanceMeasurementToolProvider</name>
+    <message>
+        <source>Distance Measurement</source>
+        <translation>距离测量</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSelectionToolProvider</name>
+    <message>
+        <source>Select</source>
+        <translation>选择</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSClippingPlaneToolProvider</name>
+    <message>
+        <source>Clipping Plane</source>
+        <translation>裁剪平面</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSSliceByPointsToolProvider</name>
+    <message>
+        <source>Slice by Points</source>
+        <translation>按点切片</translation>
     </message>
 </context>
 </TS>

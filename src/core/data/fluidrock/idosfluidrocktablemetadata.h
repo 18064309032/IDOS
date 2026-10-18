@@ -1,13 +1,13 @@
 #ifndef IDOS_FLUID_ROCK_TABLE_METADATA_H
 #define IDOS_FLUID_ROCK_TABLE_METADATA_H
 
-#include "idosfluidrocktable.h"
-#include "providers/idosdatametadata.h"
+#include "data/idosdatametadata.h"
+#include "idosfluidrocktableobject.h"
 
 class CORE_EXPORT IDOSFluidRockTableMetadata : public IDOSDataMetadata
 {
   public:
-    explicit IDOSFluidRockTableMetadata(IDOSFluidRockTable::Category category);
+    explicit IDOSFluidRockTableMetadata(IDOSFluidRockTableObject::Category category);
     ~IDOSFluidRockTableMetadata() override;
 
     QString typeId() const override;
@@ -15,7 +15,7 @@ class CORE_EXPORT IDOSFluidRockTableMetadata : public IDOSDataMetadata
     IDOSDataObject* create() const override;
 
   private:
-    IDOSFluidRockTable::Category m_category;
+    IDOSFluidRockTableObject::Category m_category;
 };
 
 #endif

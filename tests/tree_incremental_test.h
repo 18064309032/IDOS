@@ -6,11 +6,11 @@
 #include <QObject>
 #include <QPoint>
 
-#include "idostool.h"
-#include "providers/idostoolmetadata.h"
-#include "providers/idostoolprovider.h"
+#include "tools/idostool.h"
+#include "tools/idostoolprovider.h"
+#include "tools/idostoolprovidermetadata.h"
 
-class IDOSToolRegistry;
+class IDOSToolProviderRegistry;
 class QMenu;
 
 class IDOSTestInputTool : public IDOSTool
@@ -25,7 +25,7 @@ public:
     int observations;
     int observedValue;
     QString group;
-    IDOSToolRegistry* registry;
+    IDOSToolProviderRegistry* registry;
     bool removalAccepted;
     bool stopOnInput;
 protected:
@@ -52,7 +52,7 @@ private:
     IDOSTestInputTool* m_tool;
 };
 
-class IDOSTestToolMetadata : public IDOSToolMetadata
+class IDOSTestToolMetadata : public IDOSToolProviderMetadata
 {
 public:
     explicit IDOSTestToolMetadata(const QString& id = QStringLiteral("test.input"));
@@ -82,6 +82,8 @@ class TreeIncrementalTest : public QObject
     void onRegistryLifecycle();
     void onTreeOwnership();
     void onMenuTargets();
+    void onMenuProviderDispatch();
+    void onDataProviderMenus();
     void onObjectClipboard();
     void onObjectDropValidation();
     void onToolRegistryAndWindows();

@@ -3,9 +3,9 @@
 
 #include <QPointer>
 
+#include "command/idoscommand.h"
+#include "command/idoscommandmetadata.h"
 #include "idos_app.h"
-#include "idoscommand.h"
-#include "idoscommandmetadata.h"
 
 class IDOSSimulationCaseObject;
 

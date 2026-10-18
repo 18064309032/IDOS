@@ -10,7 +10,7 @@
 #include <QTime>
 #include <QVariantMap>
 
-#include "data/case/idossimulationsummaryresults.h"
+#include "data/case/idossimulationsummaryresultsobject.h"
 #include "idosproject.h"
 
 #include "idoscurveevaluation.h"
@@ -194,7 +194,7 @@ bool IDOSCurveEvaluation::readSource(IDOSProject* project, const QJsonObject& ar
     {
         return readCsv(arguments, prefix, points, error);
     }
-    const IDOSSimulationSummaryResults* source = qobject_cast<IDOSSimulationSummaryResults*>(project->object(id));
+    const IDOSSimulationSummaryResultsObject* source = qobject_cast<IDOSSimulationSummaryResultsObject*>(project->object(id));
     const QJsonValue selected = arguments.value(prefix + QStringLiteral("Series"));
     if (source == nullptr || !selected.isDouble() || selected.toDouble() != selected.toInt(-1)
         || selected.toInt(-1) < 0 || selected.toInt() >= source->series().size())

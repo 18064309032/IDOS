@@ -21,9 +21,9 @@ class APP_EXPORT IDOSAppInterface : public IDOSInterface
     IDOSProject* project() const override;
     IDOSDataRegistry* dataRegistry() const override;
     IDOSTreeItemProviderRegistry* treeRegistry() const override;
-    IDOSRenderRegistry* renderRegistry() const override;
+    IDOSRenderProviderRegistry* renderRegistry() const override;
     IDOSRenderServer* renderServer() const override;
-    IDOSToolRegistry* toolRegistry() const override;
+    IDOSToolProviderRegistry* toolRegistry() const override;
     IDOSCommandRegistry* commandRegistry() const override;
     SARibbonCategory* addRibbonCategory(const QString& objectName,
                                         const QString& title) override;

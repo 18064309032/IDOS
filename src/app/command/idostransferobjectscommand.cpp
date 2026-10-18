@@ -8,11 +8,11 @@
 
 #include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridfilter.h"
-#include "data/grid/idosgridproperty.h"
-#include "data/well/idoswell.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/grid/idosgridfilterobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "data/well/idoswellobject.h"
 #include "idosdataobject.h"
 #include "idosproject.h"
 
@@ -48,7 +48,7 @@ bool IDOSTransferObjectsCommand::validateCommand(QString& error) const
     const QJsonArray items = m_arguments.value(QStringLiteral("items")).toArray();
     IDOSCaseObject* targetCase = qobject_cast<IDOSCaseObject*>(
         project()->object(m_arguments.value(QStringLiteral("targetCaseId")).toString()));
-    IDOSGrid* targetGrid = qobject_cast<IDOSGrid*>(
+    IDOSGridObject* targetGrid = qobject_cast<IDOSGridObject*>(
         project()->object(m_arguments.value(QStringLiteral("targetGridId")).toString()));
     if (items.isEmpty() || (m_operation != QStringLiteral("copy") && m_operation != QStringLiteral("move")))
     {
@@ -80,12 +80,12 @@ bool IDOSTransferObjectsCommand::validateCommand(QString& error) const
             error = QObject::tr("Select a complete data object.");
             return false;
         }
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
-        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(object);
-        IDOSGrid* grid = qobject_cast<IDOSGrid*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(object);
+        IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(object);
         IDOSCaseObject* caseObject = qobject_cast<IDOSCaseObject*>(object);
         if (targetCase != nullptr && caseObject == nullptr && grid == nullptr && property == nullptr && filter == nullptr &&
-            qobject_cast<IDOSWell*>(object) == nullptr && qobject_cast<IDOSFluidRockTable*>(object) == nullptr)
+            qobject_cast<IDOSWellObject*>(object) == nullptr && qobject_cast<IDOSFluidRockTableObject*>(object) == nullptr)
         {
             error = QObject::tr("This data type cannot be added to a simulation case.");
             return false;
@@ -138,13 +138,13 @@ bool IDOSTransferObjectsCommand::validateCommand(QString& error) const
                     movingNames.insert(name);
                     for (IDOSDataObject* candidate : project()->objects())
                     {
-                        IDOSGridFilter* dependent = qobject_cast<IDOSGridFilter*>(candidate);
-                        if (dependent != nullptr && IDOSGridFilter::propertyIds(dependent->criteria()).contains(id))
+                        IDOSGridFilterObject* dependent = qobject_cast<IDOSGridFilterObject*>(candidate);
+                        if (dependent != nullptr && IDOSGridFilterObject::propertyIds(dependent->criteria()).contains(id))
                         {
                             error = QObject::tr("A grid filter uses this property. Copy it instead of moving it.");
                             return false;
                         }
-                        IDOSGridProperty* existing = qobject_cast<IDOSGridProperty*>(candidate);
+                        IDOSGridPropertyObject* existing = qobject_cast<IDOSGridPropertyObject*>(candidate);
                         if (existing != nullptr && existing->gridId() == targetGrid->objectId() &&
                             existing->name().compare(property->name(), Qt::CaseInsensitive) == 0)
                         {
@@ -271,9 +271,9 @@ IDOSDataObject* IDOSTransferObjectsCommand::copyObject(
             {
                 return nullptr;
             }
-            IDOSFluidRockTable* sourceTable =
-                qobject_cast<IDOSFluidRockTable*>(project()->object(ref.objectId()));
-            IDOSFluidRockTable* copiedTable = qobject_cast<IDOSFluidRockTable*>(child);
+            IDOSFluidRockTableObject* sourceTable =
+                qobject_cast<IDOSFluidRockTableObject*>(project()->object(ref.objectId()));
+            IDOSFluidRockTableObject* copiedTable = qobject_cast<IDOSFluidRockTableObject*>(child);
             if (sourceTable != nullptr && copiedTable != nullptr)
             {
                 QVariantMap tableData = copiedTable->tableData();
@@ -283,7 +283,7 @@ IDOSDataObject* IDOSTransferObjectsCommand::copyObject(
                     copiedTable->setTableData(tableData);
                 }
             }
-            IDOSWell* sourceWell = qobject_cast<IDOSWell*>(project()->object(ref.objectId()));
+            IDOSWellObject* sourceWell = qobject_cast<IDOSWellObject*>(project()->object(ref.objectId()));
             if (sourceWell != nullptr)
             {
                 wellNames.insert(sourceWell->name(), child->name());
@@ -311,7 +311,7 @@ IDOSDataObject* IDOSTransferObjectsCommand::copyObject(
             simulation->setWellControlRows(rows);
         }
     }
-    if (qobject_cast<IDOSGrid*>(source) != nullptr)
+    if (qobject_cast<IDOSGridObject*>(source) != nullptr)
     {
         for (IDOSDataObject* child : project()->objects())
         {
@@ -324,8 +324,8 @@ IDOSDataObject* IDOSTransferObjectsCommand::copyObject(
             {
                 return nullptr;
             }
-            IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(childCopy);
-            IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(childCopy);
+            IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(childCopy);
+            IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(childCopy);
             if (property != nullptr)
             {
                 property->setGridId(copy->objectId());
@@ -345,7 +345,7 @@ void IDOSTransferObjectsCommand::remapFilters(const QHash<QString, QString>& ids
 {
     for (const QPointer<IDOSDataObject>& copy : m_copies)
     {
-        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(copy.data());
+        IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(copy.data());
         if (filter == nullptr)
         {
             continue;
@@ -386,8 +386,8 @@ bool IDOSTransferObjectsCommand::prepare(QString& error)
                 return false;
             }
         }
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
-        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(object);
         if (property != nullptr || filter != nullptr)
         {
             if (m_operation == QStringLiteral("copy"))
@@ -438,8 +438,8 @@ bool IDOSTransferObjectsCommand::prepare(QString& error)
         else
         {
             ref.setRefId(QUuid::createUuid().toString(QUuid::WithoutBraces));
-            ref.setRole(qobject_cast<IDOSGrid*>(object) != nullptr ? QStringLiteral("case.grid")
-                : qobject_cast<IDOSWell*>(object) != nullptr ? QStringLiteral("case.well") : QStringLiteral("case.fluidRockTable"));
+            ref.setRole(qobject_cast<IDOSGridObject*>(object) != nullptr ? QStringLiteral("case.grid")
+                : qobject_cast<IDOSWellObject*>(object) != nullptr ? QStringLiteral("case.well") : QStringLiteral("case.fluidRockTable"));
             ref.setObjectId(object->objectId());
         }
         m_afterRefs[targetCaseId].append(ref);
@@ -496,8 +496,8 @@ void IDOSTransferObjectsCommand::writeState(bool applied)
     const QHash<QString, QString>& containers = applied ? m_afterContainers : m_beforeContainers;
     for (QHash<QString, QString>::const_iterator it = containers.constBegin(); it != containers.constEnd(); ++it)
     {
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(project()->object(it.key()));
-        IDOSGridFilter* filter = qobject_cast<IDOSGridFilter*>(project()->object(it.key()));
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(project()->object(it.key()));
+        IDOSGridFilterObject* filter = qobject_cast<IDOSGridFilterObject*>(project()->object(it.key()));
         if (property != nullptr)
         {
             property->setGridId(it.value());

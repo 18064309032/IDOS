@@ -3,8 +3,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
-#include "data/well/idoswell.h"
 #include "data/well/idoswellgeometryresolver.h"
+#include "data/well/idoswellobject.h"
 #include "idosapplication.h"
 #include "providers/idosdataprovider.h"
 #include "providers/idosdataproviderregistry.h"
@@ -14,12 +14,12 @@
 void WellPathTest::onParseSample()
 {
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.well.path"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.path"));
     QVERIFY(reader != nullptr);
     QList<IDOSDataObject*> objects = reader->read(QFINDTESTDATA("data/A10.dev"));
     QCOMPARE(reader->lastError(), QString());
     QCOMPARE(objects.size(), 1);
-    IDOSWell* well = qobject_cast<IDOSWell*>(objects.first());
+    IDOSWellObject* well = qobject_cast<IDOSWellObject*>(objects.first());
     QCOMPARE(well->name(), QStringLiteral("A10"));
     QVERIFY(!well->hasWellHead());
     QCOMPARE(well->path().pointCount(), 3);
@@ -46,7 +46,7 @@ void WellPathTest::onParseSample()
             objects = reader->read(QDir(directory).filePath(files[i]));
             QCOMPARE(reader->lastError(), QString());
             QCOMPARE(objects.size(), 1);
-            well = qobject_cast<IDOSWell*>(objects.first());
+            well = qobject_cast<IDOSWellObject*>(objects.first());
             QCOMPARE(well->path().pointCount(), counts[i]);
             qDeleteAll(objects);
         }
@@ -64,11 +64,11 @@ void WellPathTest::onMultipleWellsAndExtraColumns()
                "WELL: Second\nMD X Y Z TVD\n10 3 4 -10 10\n20 3 4 -20 20\n");
     file.close();
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.well.path"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.path"));
     QList<IDOSDataObject*> objects = reader->read(path);
     QVERIFY2(objects.size() == 2, qPrintable(reader->lastError()));
-    const IDOSWell* first = qobject_cast<IDOSWell*>(objects.first());
-    const IDOSWell* second = qobject_cast<IDOSWell*>(objects.last());
+    const IDOSWellObject* first = qobject_cast<IDOSWellObject*>(objects.first());
+    const IDOSWellObject* second = qobject_cast<IDOSWellObject*>(objects.last());
     QVERIFY(first != nullptr);
     QVERIFY(second != nullptr);
     QCOMPARE(first->name(), QStringLiteral("First"));
@@ -84,7 +84,7 @@ void WellPathTest::onInvalidInput()
     QTemporaryDir directory;
     const QString filePath = directory.filePath(QStringLiteral("wrong-name.dev"));
     std::unique_ptr<IDOSDataProvider> reader =
-        IDOSDataProviderRegistry::instance().createProvider(QStringLiteral("idos.well.path"));
+        IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.well.path"));
     const QByteArray header("# WELL NAME: A10\nMD X Y Z TVD DX DY AZIM INCL\n");
     const QList<QByteArray> contents = {
         header + "10 1 2 -3 3 0 0 -90 10\n10 2 3 -4 4 1 1 -90 10\n",
@@ -111,7 +111,7 @@ void WellPathTest::onInvalidInput()
     QList<IDOSDataObject*> objects = reader->read(filePath);
     QCOMPARE(objects.size(), 1);
     QVERIFY(reader->lastError().isEmpty());
-    const IDOSWell* well = qobject_cast<IDOSWell*>(objects.first());
+    const IDOSWellObject* well = qobject_cast<IDOSWellObject*>(objects.first());
     QCOMPARE(well->name(), QStringLiteral("A10"));
     QCOMPARE(well->path().points().first().azimuth(), -90.0);
     QCOMPARE(well->path().points().last().md(), 11.0);

@@ -4,15 +4,15 @@
 #include <QSet>
 
 #include "data/case/idoscaseobject.h"
-#include "data/fluidrock/idosfluidrocktable.h"
-#include "data/fracture/idosfracturematerialcatalog.h"
-#include "data/fracture/idosfractureschedule.h"
-#include "data/fracture/idosnaturalfractureset.h"
-#include "data/grid/idosgridboundary.h"
-#include "data/grid/idosgridsurface.h"
-#include "data/production/idosproductionhistory.h"
-#include "data/seismic/idosmicroseismicset.h"
-#include "data/seismic/idosseismicvolume.h"
+#include "data/fluidrock/idosfluidrocktableobject.h"
+#include "data/fracture/idosfracturematerialcatalogobject.h"
+#include "data/fracture/idosfracturescheduleobject.h"
+#include "data/fracture/idosnaturalfracturesetobject.h"
+#include "data/grid/idosgridboundaryobject.h"
+#include "data/grid/idosgridsurfaceobject.h"
+#include "data/production/idosproductionhistoryobject.h"
+#include "data/seismic/idosmicroseismicsetobject.h"
+#include "data/seismic/idosseismicvolumeobject.h"
 #include "idosproject.h"
 
 #include "idosdeletedatacommand.h"
@@ -37,15 +37,15 @@ IDOSDeleteDataCommand::~IDOSDeleteDataCommand()
 
 bool IDOSDeleteDataCommand::supportsObject(const IDOSDataObject* object)
 {
-    return qobject_cast<const IDOSNaturalFractureSet*>(object) != nullptr
-        || qobject_cast<const IDOSMicroseismicSet*>(object) != nullptr
-        || qobject_cast<const IDOSSeismicVolume*>(object) != nullptr
-        || qobject_cast<const IDOSFractureSchedule*>(object) != nullptr
-        || qobject_cast<const IDOSFractureMaterialCatalog*>(object) != nullptr
-        || qobject_cast<const IDOSProductionHistory*>(object) != nullptr
-        || qobject_cast<const IDOSGridSurface*>(object) != nullptr
-        || qobject_cast<const IDOSGridBoundary*>(object) != nullptr
-        || qobject_cast<const IDOSFluidRockTable*>(object) != nullptr;
+    return qobject_cast<const IDOSNaturalFractureSetObject*>(object) != nullptr
+        || qobject_cast<const IDOSMicroseismicSetObject*>(object) != nullptr
+        || qobject_cast<const IDOSSeismicVolumeObject*>(object) != nullptr
+        || qobject_cast<const IDOSFractureScheduleObject*>(object) != nullptr
+        || qobject_cast<const IDOSFractureMaterialCatalogObject*>(object) != nullptr
+        || qobject_cast<const IDOSProductionHistoryObject*>(object) != nullptr
+        || qobject_cast<const IDOSGridSurfaceObject*>(object) != nullptr
+        || qobject_cast<const IDOSGridBoundaryObject*>(object) != nullptr
+        || qobject_cast<const IDOSFluidRockTableObject*>(object) != nullptr;
 }
 
 bool IDOSDeleteDataCommand::validateCommand(QString& error) const

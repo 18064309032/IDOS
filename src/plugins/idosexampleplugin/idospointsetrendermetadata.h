@@ -1,13 +1,13 @@
 #ifndef IDOS_POINT_SET_RENDER_METADATA_H
 #define IDOS_POINT_SET_RENDER_METADATA_H
 
-#include "providers/idosrendermetadata.h"
+#include "render/idosrenderprovidermetadata.h"
 
-class IDOSPointSetRenderMetadata : public IDOSRenderMetadata
+class IDOSPointSetRenderMetadata : public IDOSRenderProviderMetadata
 {
   public:
     QString typeId() const override;
-    IDOSRenderProvider* create(IDOSDataObject* data) const override;
+    IDOSRenderProvider* create(IDOSDataObject* data, const QList<IDOSDataObject*>& references) const override;
 };
 
 #endif

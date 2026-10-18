@@ -13,6 +13,10 @@ add_library(idos_gui SHARED
     idospythonconsolewidget.h
     idosruntimeinfowidget.cpp
     idosruntimeinfowidget.h
+    tree/idosdatatreeview.cpp
+    tree/idosdatatreeview.h
+    tree/idoscasetreeview.cpp
+    tree/idoscasetreeview.h
     tree/idostreeview.cpp
     tree/idostreeview.h
     tree/idostreemenuprovider.cpp

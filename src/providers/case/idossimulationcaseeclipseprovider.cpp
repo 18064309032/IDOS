@@ -38,11 +38,11 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Units/Dimension.hpp>
 
-#include "data/case/idossimulationcaseobject.h"
 #include "data/case/idoscaseitemref.h"
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
-#include "data/well/idoswell.h"
+#include "data/case/idossimulationcaseobject.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "data/well/idoswellobject.h"
 #include "idosproject.h"
 
 #include "idossimulationcaseeclipseprovider.h"
@@ -81,15 +81,15 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             return false;
         }
 
-        IDOSGrid* grid = nullptr;
-        QList<IDOSGridProperty*> properties;
-        QList<IDOSWell*> referencedWells;
+        IDOSGridObject* grid = nullptr;
+        QList<IDOSGridPropertyObject*> properties;
+        QList<IDOSWellObject*> referencedWells;
         for (const IDOSCaseItemRef& reference : simulationCase->itemRefs())
         {
             IDOSDataObject* object = project->object(reference.objectId());
             if (reference.role() == QStringLiteral("case.grid"))
             {
-                IDOSGrid* referencedGrid = qobject_cast<IDOSGrid*>(object);
+                IDOSGridObject* referencedGrid = qobject_cast<IDOSGridObject*>(object);
                 if (referencedGrid == nullptr || grid != nullptr)
                 {
                     *error = QObject::tr("The case must reference exactly one valid grid.");
@@ -99,7 +99,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             }
             else if (reference.role() == QStringLiteral("case.gridProperty"))
             {
-                IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+                IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
                 if (property == nullptr)
                 {
                     *error = QObject::tr("A referenced grid property is missing or invalid.");
@@ -109,7 +109,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             }
             else if (reference.role() == QStringLiteral("case.well"))
             {
-                IDOSWell* well = qobject_cast<IDOSWell*>(object);
+                IDOSWellObject* well = qobject_cast<IDOSWellObject*>(object);
                 if (well == nullptr)
                 {
                     *error = QObject::tr("A referenced case well is missing or invalid.");
@@ -118,7 +118,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
                 referencedWells.append(well);
             }
         }
-        if (grid == nullptr || grid->type() != IDOSGrid::Type::CornerPoint)
+        if (grid == nullptr || grid->type() != IDOSGridObject::Type::CornerPoint)
         {
             *error = QObject::tr("Memory DATA generation currently requires one corner-point grid.");
             return false;
@@ -128,9 +128,9 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
         {
             for (IDOSDataObject* object : project->objects())
             {
-                IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+                IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
                 if (property != nullptr && property->gridId() == grid->objectId() &&
-                    property->kind() == IDOSGridProperty::Kind::Static)
+                    property->kind() == IDOSGridPropertyObject::Kind::Static)
                 {
                     properties.append(property);
                 }
@@ -170,17 +170,17 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             QStringLiteral("SATNUM"), QStringLiteral("ROCKNUM"), QStringLiteral("PVTNUM"),
             QStringLiteral("EQLNUM"), QStringLiteral("FIPNUM")};
         const QStringList propertyKeywords = doubleKeywords + integerKeywords + QStringList{QStringLiteral("ACTNUM")};
-        QMap<QString, IDOSGridProperty*> propertiesByKeyword;
-        for (IDOSGridProperty* property : properties)
+        QMap<QString, IDOSGridPropertyObject*> propertiesByKeyword;
+        for (IDOSGridPropertyObject* property : properties)
         {
             const QString keyword = property->keyword().trimmed().toUpper();
-            if (property->valueUnits() != IDOSGridProperty::ValueUnits::SI)
+            if (property->valueUnits() != IDOSGridPropertyObject::ValueUnits::SI)
             {
                 *error = QObject::tr("The unit system of property %1 is unknown; it cannot be exported safely.")
                              .arg(keyword);
                 return false;
             }
-            if (property->kind() != IDOSGridProperty::Kind::Static || property->gridId() != grid->objectId() ||
+            if (property->kind() != IDOSGridPropertyObject::Kind::Static || property->gridId() != grid->objectId() ||
                 property->numX() != grid->nx() || property->numY() != grid->ny() ||
                 property->numZ() != grid->nz() || property->values().size() != cellCount ||
                 !propertyKeywords.contains(keyword) ||
@@ -228,7 +228,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             }
         }
         QStringList wellsMissingFromSource;
-        for (IDOSWell* well : referencedWells)
+        for (IDOSWellObject* well : referencedWells)
         {
             if (!sourceWellNames.contains(well->name().toCaseFolded()))
             {
@@ -319,7 +319,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
         Opm::DeckKeyword coordKeyword(parser.getKeyword("COORD"), coordValues, units, deck.getDefaultUnitSystem());
         Opm::DeckKeyword zcornKeyword(parser.getKeyword("ZCORN"), zcornValues, units, deck.getDefaultUnitSystem());
         std::vector<int> actnumValues = grid->actnum().toStdVector();
-        IDOSGridProperty* actnumProperty = propertiesByKeyword.value(QStringLiteral("ACTNUM"), nullptr);
+        IDOSGridPropertyObject* actnumProperty = propertiesByKeyword.value(QStringLiteral("ACTNUM"), nullptr);
         if (actnumProperty != nullptr)
         {
             actnumValues.clear();
@@ -354,7 +354,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
         QStringList familyKeywordNames;
         for (const QString& keyword : doubleKeywords)
         {
-            IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
+            IDOSGridPropertyObject* property = propertiesByKeyword.value(keyword, nullptr);
             if (property == nullptr)
             {
                 continue;
@@ -396,7 +396,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             ++insertionIndex;
             for (const QString& keyword : integerKeywords)
             {
-                IDOSGridProperty* property = propertiesByKeyword.value(keyword, nullptr);
+                IDOSGridPropertyObject* property = propertiesByKeyword.value(keyword, nullptr);
                 if (property == nullptr)
                 {
                     continue;
@@ -481,7 +481,7 @@ bool IDOSSimulationCaseEclipseProvider::writeMemoryData(const IDOSSimulationCase
             }
         }
         QStringList missingProperties;
-        for (QMap<QString, IDOSGridProperty*>::const_iterator iterator = propertiesByKeyword.constBegin();
+        for (QMap<QString, IDOSGridPropertyObject*>::const_iterator iterator = propertiesByKeyword.constBegin();
              iterator != propertiesByKeyword.constEnd(); ++iterator)
         {
             if (!generatedKeywords.contains(iterator.key()))
@@ -928,8 +928,8 @@ QVector<double> IDOSSimulationCaseEclipseProvider::intVectorToDoubleQVector(cons
 }
 
 void IDOSSimulationCaseEclipseProvider::appendDoubleProperty(QList<IDOSDataObject*>* result,
-                                                             const Opm::FieldPropsManager& fieldProps, IDOSGrid* grid,
-                                                             const QString& keyword, IDOSGridProperty::Kind kind) const
+                                                             const Opm::FieldPropsManager& fieldProps, IDOSGridObject* grid,
+                                                             const QString& keyword, IDOSGridPropertyObject::Kind kind) const
 {
     const std::string keywordText = keyword.toStdString();
     if (!fieldProps.has_double(keywordText))
@@ -938,7 +938,7 @@ void IDOSSimulationCaseEclipseProvider::appendDoubleProperty(QList<IDOSDataObjec
     }
 
     const std::vector<double> values = fieldProps.get_global_double(keywordText);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(keyword);
     property->setKeyword(keyword);
     property->setKind(kind);
@@ -953,7 +953,7 @@ void IDOSSimulationCaseEclipseProvider::appendDoubleProperty(QList<IDOSDataObjec
 }
 
 void IDOSSimulationCaseEclipseProvider::appendIntProperty(QList<IDOSDataObject*>* result,
-                                                          const Opm::FieldPropsManager& fieldProps, IDOSGrid* grid,
+                                                          const Opm::FieldPropsManager& fieldProps, IDOSGridObject* grid,
                                                           const QString& keyword) const
 {
     const std::string keywordText = keyword.toStdString();
@@ -963,10 +963,10 @@ void IDOSSimulationCaseEclipseProvider::appendIntProperty(QList<IDOSDataObject*>
     }
 
     const std::vector<int> values = fieldProps.get_global_int(keywordText);
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(keyword);
     property->setKeyword(keyword);
-    property->setKind(IDOSGridProperty::Kind::Static);
+    property->setKind(IDOSGridPropertyObject::Kind::Static);
     property->setGridId(grid->objectId());
     property->setDimensions(grid->nx(), grid->ny(), grid->nz());
     if (!property->setValues(intVectorToDoubleQVector(values)))
@@ -977,17 +977,17 @@ void IDOSSimulationCaseEclipseProvider::appendIntProperty(QList<IDOSDataObject*>
     result->append(property);
 }
 
-void IDOSSimulationCaseEclipseProvider::appendActnumProperty(QList<IDOSDataObject*>* result, IDOSGrid* grid) const
+void IDOSSimulationCaseEclipseProvider::appendActnumProperty(QList<IDOSDataObject*>* result, IDOSGridObject* grid) const
 {
     if (grid == nullptr || grid->actnum().isEmpty())
     {
         return;
     }
 
-    IDOSGridProperty* property = new IDOSGridProperty();
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
     property->setName(QStringLiteral("ACTNUM"));
     property->setKeyword(QStringLiteral("ACTNUM"));
-    property->setKind(IDOSGridProperty::Kind::Static);
+    property->setKind(IDOSGridPropertyObject::Kind::Static);
     property->setGridId(grid->objectId());
     property->setDimensions(grid->nx(), grid->ny(), grid->nz());
     QVector<double> values;
@@ -1025,7 +1025,7 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
         return;
     }
 
-    IDOSGrid* grid = new IDOSGrid();
+    IDOSGridObject* grid = new IDOSGridObject();
     grid->setName(QObject::tr("Main Grid"));
     grid->setCornerPointData(static_cast<int>(eclipseGrid.getNX()), static_cast<int>(eclipseGrid.getNY()),
                              static_cast<int>(eclipseGrid.getNZ()), coord, zcorn, actnum);
@@ -1040,7 +1040,7 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
         QStringLiteral("MULTX"), QStringLiteral("MULTY"),  QStringLiteral("MULTZ")};
     for (const QString& keyword : staticDoubleKeywords)
     {
-        appendDoubleProperty(result, fieldProps, grid, keyword, IDOSGridProperty::Kind::Static);
+        appendDoubleProperty(result, fieldProps, grid, keyword, IDOSGridPropertyObject::Kind::Static);
     }
 
     const QStringList regionKeywords = {QStringLiteral("SATNUM"), QStringLiteral("ROCKNUM"), QStringLiteral("PVTNUM"),
@@ -1052,7 +1052,7 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
 
     for (IDOSDataObject* object : *result)
     {
-        IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
         if (property != nullptr && property->gridId() == grid->objectId())
         {
             simulationCase->addItemRef(IDOSCaseItemRef(QStringLiteral("case.gridProperty"),

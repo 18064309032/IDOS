@@ -6,8 +6,8 @@
 #include <QObject>
 #include <QTextStream>
 
-#include "data/well/idoswell.h"
 #include "data/well/idoswellcheckshot.h"
+#include "data/well/idoswellobject.h"
 
 #include "idoswellcheckshotprovider.h"
 
@@ -167,7 +167,7 @@ QList<IDOSDataObject*> IDOSWellCheckshotProvider::read(const QString& filePath)
     QList<IDOSDataObject*> result;
     for (QMap<QString, IDOSWellCheckshot>::const_iterator iterator = samples.constBegin(); iterator != samples.constEnd(); ++iterator)
     {
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(iterator.key());
         well->setCheckshot(iterator.value());
         result.append(well);

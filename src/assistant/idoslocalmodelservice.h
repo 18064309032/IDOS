@@ -26,8 +26,7 @@ public:
     void setBaseUrl(const QUrl& baseUrl);
     QUrl baseUrl() const;
 
-    QNetworkReply* chat(const QString& message,
-                        const QString& systemMessage = QString(),
+    QNetworkReply* chat(const QJsonArray& messages,
                         const QJsonArray& tools = QJsonArray());
     void cancel(QNetworkReply* reply);
 

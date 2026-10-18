@@ -9,17 +9,18 @@
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
-#include "data/grid/idosgrid.h"
-#include "data/grid/idosgridproperty.h"
-#include "idoscommandmanager.h"
+#include "command/idoscommandmanager.h"
+#include "data/grid/idosgridobject.h"
+#include "data/grid/idosgridpropertyobject.h"
+#include "idosinterface.h"
 #include "idosproject.h"
 
 #include "idosfielddifferencewidget.h"
 
-IDOSFieldDifferenceWidget::IDOSFieldDifferenceWidget(IDOSProject* project, QWidget* parent)
+IDOSFieldDifferenceWidget::IDOSFieldDifferenceWidget(IDOSInterface* interface)
     :
-    QWidget(parent, Qt::Window)
-    , m_project(project)
+    QWidget(interface != nullptr ? interface->mainWindow() : nullptr, Qt::Window)
+    , m_project(interface != nullptr ? interface->project() : nullptr)
     , m_grid(new QComboBox(this))
     , m_before(new QComboBox(this))
     , m_after(new QComboBox(this))
@@ -29,6 +30,12 @@ IDOSFieldDifferenceWidget::IDOSFieldDifferenceWidget(IDOSProject* project, QWidg
     , m_confirm(new QCheckBox(tr("I confirm matching physical quantities and units for inputs with unknown or different metadata."), this))
     , m_result(new QLabel(this))
 {
+    IDOSProject* project = m_project.data();
+    if (interface != nullptr)
+    {
+        connect(interface, &IDOSInterface::projectChanged, this, &QWidget::close);
+        connect(interface, &QObject::destroyed, this, &QWidget::close);
+    }
     setObjectName(QStringLiteral("idosFieldDifferenceWidget"));
     setWindowTitle(tr("Three-Field Difference"));
     setAttribute(Qt::WA_DeleteOnClose);
@@ -92,7 +99,7 @@ void IDOSFieldDifferenceWidget::onRefresh()
     {
         for (IDOSDataObject* object : m_project->objects())
         {
-            if (qobject_cast<IDOSGrid*>(object) != nullptr)
+            if (qobject_cast<IDOSGridObject*>(object) != nullptr)
             {
                 m_grid->addItem(object->name(), object->objectId());
             }
@@ -118,7 +125,7 @@ void IDOSFieldDifferenceWidget::onGridChanged()
     {
         for (IDOSDataObject* object : m_project->objects())
         {
-            const IDOSGridProperty* property = qobject_cast<IDOSGridProperty*>(object);
+            const IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
             if (property != nullptr && property->gridId() == m_grid->currentData().toString())
             {
                 const QString label = property->name() + QStringLiteral(" [") + property->keyword() + QStringLiteral("]");
@@ -143,13 +150,13 @@ void IDOSFieldDifferenceWidget::populateSteps(QComboBox* propertyBox, QComboBox*
 {
     const QVariant previous = steps->currentData();
     steps->clear();
-    const IDOSGridProperty* property = !m_project.isNull()
-        ? qobject_cast<IDOSGridProperty*>(m_project->object(propertyBox->currentData().toString())) : nullptr;
+    const IDOSGridPropertyObject* property = !m_project.isNull()
+        ? qobject_cast<IDOSGridPropertyObject*>(m_project->object(propertyBox->currentData().toString())) : nullptr;
     if (property == nullptr)
     {
         return;
     }
-    if (property->kind() == IDOSGridProperty::Kind::Static)
+    if (property->kind() == IDOSGridPropertyObject::Kind::Static)
     {
         steps->addItem(tr("Static field"), -1);
     }

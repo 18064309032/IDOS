@@ -19,7 +19,7 @@ QStringList IDOSGridSurfaceMetadata::fileExtensions() const
     return {QStringLiteral("*"), QStringLiteral("*.zims"), QStringLiteral("*.ZIMS")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSGridSurfaceMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSGridSurfaceMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSGridSurfaceProvider());
 }

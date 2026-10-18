@@ -1,4 +1,4 @@
-# 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
+﻿# 检查真实头文件归属、模块依赖和公共 API 边界；不依赖旧目录名称猜测模块。
 # 公共边界以固定源码目录中的功能根目录为准。
 # 检查直接 include 和已知内部类型引用，不替代 C++ 编译器的语义分析。
 param([string]$SourceRoot = "")
@@ -13,34 +13,25 @@ $allowed = @{
     core = @()
     gui = @('core')
     providers = @('core')
-    render = @('core')
+    render = @()
     analysis = @('core')
     python = @('core')
     assistant = @('core')
     app = @('core','gui','providers','render','analysis','python','assistant')
     plugins = @('core','gui','render','providers')
 }
-# Physical GUI storage also contains explicitly app-owned UI source files.
-# Use the actual app target source list, not a blanket GUI-to-app exception.
-$platformUiFiles = @()
-$appBuildFile = Join-Path $root 'app/CMakeLists.txt'
-if (Test-Path -LiteralPath $appBuildFile) {
-    $appBuildText = [IO.File]::ReadAllText($appBuildFile)
-    $platformUiFiles = @([regex]::Matches($appBuildText, 'src/(gui/[^"\r\n]+\.(?:h|cpp))') | ForEach-Object { $_.Groups[1].Value })
-}
 function ModuleOf($rel) {
-    if ($rel -in $platformUiFiles) { return 'app' }
     return ($rel -split '/')[0]
 }
 function RelativePath($path) { $path.Substring($root.Length + 1).Replace('\','/') }
 function IsPublic($rel) {
-    if ($rel -in $platformUiFiles) { return $false }
     ($rel -split '/').Count -eq 2 -or
-    $rel -match '^core/(data|tree|providers|logger)/[^/]+\.h(pp)?$' -or
+    $rel -match '^core/(data|tree|providers|logger|command)/[^/]+\.h(pp)?$' -or
     $rel -match '^core/data/(well|grid|case|fluidrock|fracture|production|seismic)/[^/]+\.h(pp)?$' -or
     $rel -match '^gui/tree/[^/]+\.h(pp)?$' -or
-    $rel -match '^render/providers/[^/]+\.h(pp)?$' -or
+    $rel -match '^render/tools/[^/]+\.h(pp)?$' -or
     $rel -match '^providers/(well|las|grid|case|fluidrock|fracture|production|seismic)/[^/]+\.h(pp)?$' -or
+    $rel -match '^app/render/idosrender(provider(metadata|registry)|server)\.h$' -or
     $rel -match '^plugins/[^/]+/[^/]+\.h(pp)?$'
 }
 function WithoutComments($content) {
@@ -118,7 +109,9 @@ foreach ($file in $files) {
         if ($module -ne $targetModule) {
             if ($module -ne 'main.cpp' -and
                 (!$allowed.ContainsKey($module) -or $targetModule -notin $allowed[$module]) -and
-                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h')) {
+                !($module -eq 'app' -and $targetRel -eq 'plugins/idosplugin.h') -and
+                !($module -eq 'plugins' -and ($targetRel -eq 'app/idos_app.h' -or
+                    $targetRel -match '^app/render/idosrender(provider(metadata|registry)|server)\.h$'))) {
                 $violations.Add("${location}: $module 禁止依赖 $targetModule ($inc)")
             }
             if (!(IsPublic $targetRel)) { $violations.Add("${location}: 跨模块禁止包含内部头: $targetRel") }

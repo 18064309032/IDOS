@@ -1,6 +1,6 @@
 #include <QObject>
 
-#include "idosnaturalfractureset.h"
+#include "idosnaturalfracturesetobject.h"
 
 #include "idosnaturalfracturesetdatametadata.h"
 
@@ -16,5 +16,5 @@ QString IDOSNaturalFractureSetDataMetadata::displayName() const
 
 IDOSDataObject* IDOSNaturalFractureSetDataMetadata::create() const
 {
-    return new IDOSNaturalFractureSet();
+    return new IDOSNaturalFractureSetObject();
 }

@@ -12,10 +12,10 @@ class SARibbonPanel;
 class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class IDOSProject;
-class IDOSRenderRegistry;
+class IDOSRenderProviderRegistry;
 class IDOSRenderServer;
 class IDOSTreeItemProviderRegistry;
-class IDOSToolRegistry;
+class IDOSToolProviderRegistry;
 
 class GUI_EXPORT IDOSInterface : public QObject
 {
@@ -29,9 +29,9 @@ class GUI_EXPORT IDOSInterface : public QObject
     virtual IDOSProject* project() const = 0;
     virtual IDOSDataRegistry* dataRegistry() const = 0;
     virtual IDOSTreeItemProviderRegistry* treeRegistry() const = 0;
-    virtual IDOSRenderRegistry* renderRegistry() const = 0;
+    virtual IDOSRenderProviderRegistry* renderRegistry() const = 0;
     virtual IDOSRenderServer* renderServer() const = 0;
-    virtual IDOSToolRegistry* toolRegistry() const = 0;
+    virtual IDOSToolProviderRegistry* toolRegistry() const = 0;
     virtual IDOSCommandRegistry* commandRegistry() const = 0;
     virtual SARibbonCategory* addRibbonCategory(const QString& objectName,
                                                 const QString& title) = 0;

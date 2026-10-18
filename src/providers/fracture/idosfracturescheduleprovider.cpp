@@ -1,4 +1,5 @@
 #include <cmath>
+#include <xlsxdocument.h>
 
 #include <QDateTime>
 #include <QFile>
@@ -7,9 +8,7 @@
 #include <QTextStream>
 #include <QVariantMap>
 
-#include <xlsxdocument.h>
-
-#include "data/fracture/idosfractureschedule.h"
+#include "data/fracture/idosfracturescheduleobject.h"
 
 #include "idosfracturescheduleprovider.h"
 
@@ -143,7 +142,7 @@ QList<IDOSDataObject*> IDOSFractureScheduleProvider::readSpreadsheet(const QStri
         {
             continue;
         }
-        IDOSFractureSchedule* data = new IDOSFractureSchedule();
+        IDOSFractureScheduleObject* data = new IDOSFractureScheduleObject();
         data->setName(QFileInfo(filePath).completeBaseName() + QStringLiteral(" - ") + sheetName);
         data->setSourceFile(filePath);
         data->setColumns(columns);
@@ -236,7 +235,7 @@ QList<IDOSDataObject*> IDOSFractureScheduleProvider::read(const QString& filePat
         setLastError(QObject::tr("The fracture schedule contains no samples."));
         return result;
     }
-    IDOSFractureSchedule* data = new IDOSFractureSchedule();
+    IDOSFractureScheduleObject* data = new IDOSFractureScheduleObject();
     data->setName(QFileInfo(filePath).completeBaseName());
     data->setSourceFile(filePath);
     data->setColumns(columns);

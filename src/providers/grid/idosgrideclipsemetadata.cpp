@@ -2,7 +2,7 @@
 
 #include "idosgrideclipsemetadata.h"
 
-std::unique_ptr<IDOSDataProvider> IDOSGridEclipseMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSGridEclipseMetadata::create() const
 {
     return std::make_unique<IDOSGridEclipseProvider>();
 }

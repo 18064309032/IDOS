@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QWidget>
 
+class IDOSInterface;
 class IDOSProject;
 class QCheckBox;
 class QComboBox;
@@ -14,7 +15,7 @@ class IDOSFieldDifferenceWidget : public QWidget
 {
     Q_OBJECT
   public:
-    explicit IDOSFieldDifferenceWidget(IDOSProject* project, QWidget* parent = nullptr);
+    explicit IDOSFieldDifferenceWidget(IDOSInterface* interface);
 
   private slots:
     void onRefresh();

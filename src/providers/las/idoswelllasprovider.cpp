@@ -5,10 +5,10 @@
 #include <QRegularExpression>
 #include <QTextStream>
 
-#include "data/well/idoswell.h"
 #include "data/well/idoswellhead.h"
 #include "data/well/idoswelllogchannel.h"
 #include "data/well/idoswelllogset.h"
+#include "data/well/idoswellobject.h"
 
 #include "idoswelllasprovider.h"
 
@@ -242,7 +242,7 @@ QList<IDOSDataObject*> IDOSWellLasProvider::read(const QString& filePath)
         logs.addChannel(channel);
     }
 
-    IDOSWell* well = new IDOSWell();
+    IDOSWellObject* well = new IDOSWellObject();
     if (wellName.isEmpty())
     {
         const QFileInfo fileInfo(filePath);

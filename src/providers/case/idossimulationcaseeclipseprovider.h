@@ -10,11 +10,11 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include "data/grid/idosgridproperty.h"
+#include "data/grid/idosgridpropertyobject.h"
 #include "idos_providers.h"
 #include "providers/idosdataprovider.h"
 
-class IDOSGrid;
+class IDOSGridObject;
 class IDOSProject;
 class IDOSSimulationCaseObject;
 
@@ -63,11 +63,11 @@ class PROVIDERS_EXPORT IDOSSimulationCaseEclipseProvider : public IDOSDataProvid
                             QVector<int>* actnum, QString* error) const;
     QVector<double> doubleVectorToQVector(const std::vector<double>& values) const;
     QVector<double> intVectorToDoubleQVector(const std::vector<int>& values) const;
-    void appendDoubleProperty(QList<IDOSDataObject*>* result, const Opm::FieldPropsManager& fieldProps, IDOSGrid* grid,
-                              const QString& keyword, IDOSGridProperty::Kind kind) const;
-    void appendIntProperty(QList<IDOSDataObject*>* result, const Opm::FieldPropsManager& fieldProps, IDOSGrid* grid,
+    void appendDoubleProperty(QList<IDOSDataObject*>* result, const Opm::FieldPropsManager& fieldProps, IDOSGridObject* grid,
+                              const QString& keyword, IDOSGridPropertyObject::Kind kind) const;
+    void appendIntProperty(QList<IDOSDataObject*>* result, const Opm::FieldPropsManager& fieldProps, IDOSGridObject* grid,
                            const QString& keyword) const;
-    void appendActnumProperty(QList<IDOSDataObject*>* result, IDOSGrid* grid) const;
+    void appendActnumProperty(QList<IDOSDataObject*>* result, IDOSGridObject* grid) const;
     void appendGridObjects(QList<IDOSDataObject*>* result, IDOSSimulationCaseObject* simulationCase,
                            const Opm::Deck& deck) const;
 };

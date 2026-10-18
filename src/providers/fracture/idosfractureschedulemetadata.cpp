@@ -22,7 +22,7 @@ QStringList IDOSFractureScheduleMetadata::fileExtensions() const
                        QStringLiteral("*.XLSX")};
 }
 
-std::unique_ptr<IDOSDataProvider> IDOSFractureScheduleMetadata::createProvider() const
+std::unique_ptr<IDOSDataProvider> IDOSFractureScheduleMetadata::create() const
 {
     return std::unique_ptr<IDOSDataProvider>(new IDOSFractureScheduleProvider());
 }

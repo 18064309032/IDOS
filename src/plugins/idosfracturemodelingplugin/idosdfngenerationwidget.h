@@ -5,6 +5,7 @@
 #include <QString>
 #include <QWidget>
 
+class IDOSInterface;
 class IDOSProject;
 class QComboBox;
 class QDoubleSpinBox;
@@ -18,7 +19,7 @@ class IDOSDfnGenerationWidget : public QWidget
     Q_OBJECT
 
   public:
-    explicit IDOSDfnGenerationWidget(IDOSProject* project, QWidget* parent = nullptr);
+    explicit IDOSDfnGenerationWidget(IDOSInterface* interface);
 
   private slots:
     void onRefreshInputs();

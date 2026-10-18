@@ -1,6 +1,6 @@
 add_library(idosexampleplugin SHARED
     idosexampleplugin.h idosexampleplugin.cpp idosexampleplugin.def
-    idospointset.h idospointset.cpp
+    idospointsetobject.h idospointsetobject.cpp
     idospointsetmetadata.h idospointsetmetadata.cpp
     idospointsetcommands.h idospointsetcommands.cpp
     idospointsettreeprovider.h idospointsettreeprovider.cpp
@@ -10,7 +10,7 @@ add_library(idosexampleplugin SHARED
 )
 target_include_directories(idosexampleplugin PRIVATE "${PROJECT_SOURCE_DIR}/src/plugins")
 target_link_libraries(idosexampleplugin PRIVATE
-    idos_core idos_gui idos_render
+    idos_app idos_core idos_gui idos_render
     Qt5::Widgets SARibbon::SARibbonBar
     VTK::CommonCore VTK::CommonDataModel VTK::RenderingCore
 )

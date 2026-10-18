@@ -10,7 +10,7 @@
 /**
  * @brief LAS 2.0 / 3.0 well log provider.
  *
- * Parses LAS well metadata and curve samples into an IDOSWell. The first
+ * Parses LAS well metadata and curve samples into an IDOSWellObject. The first
  * curve is used as the depth index and every following curve becomes an
  * IDOSWellLogChannel.
  */

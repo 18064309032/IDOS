@@ -5,11 +5,11 @@
 #include <QFileInfo>
 #include <QObject>
 #include <QTextStream>
-#include <QtGlobal>
 #include <QTime>
 #include <QVariantMap>
+#include <QtGlobal>
 
-#include "data/seismic/idosmicroseismicset.h"
+#include "data/seismic/idosmicroseismicsetobject.h"
 
 #include "idosmicroseismicprovider.h"
 
@@ -145,7 +145,7 @@ QList<IDOSDataObject*> IDOSMicroseismicProvider::read(const QString& filePath)
         setLastError(QObject::tr("The microseismic file contains no events."));
         return result;
     }
-    IDOSMicroseismicSet* data = new IDOSMicroseismicSet();
+    IDOSMicroseismicSetObject* data = new IDOSMicroseismicSetObject();
     data->setName(QFileInfo(filePath).completeBaseName());
     data->setSourceFile(filePath);
     data->setEvents(events);

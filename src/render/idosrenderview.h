@@ -38,6 +38,9 @@ class vtkInteractorStyleTrackballCamera;
 class vtkOrientationMarkerWidget;
 class vtkRenderer;
 class vtkProp;
+class vtkProp3D;
+
+class IDOSRenderProvider;
 
 class RENDER_EXPORT IDOSRenderView : public QWidget
 {
@@ -49,8 +52,8 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
 
     // The view owns this scene for its entire lifetime.
     IDOSRenderScene* scene() const;
-    QVariantMap presentationState() const;
-    bool restorePresentationState(const QVariantMap& state);
+    QVariantMap saveState() const;
+    bool restoreState(const QVariantMap& state);
 
     QList<QString> selection() const;
     void setSelection(const QList<QString>& ids);
@@ -110,7 +113,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void activated(const QString& objectId);
     void toolEnabled(IDOSTool* tool);
     void toolDisabled(IDOSTool* tool);
-    void viewStateChanged();
+    void stateChanged();
     void viewModeChanged();
 
   protected:
@@ -164,7 +167,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkCubeAxesActor> m_boundsAxes;
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
-    QHash<vtkActor*, QString> m_actorObjectIds;
+    QHash<vtkProp*, QString> m_propObjectIds;
     QList<QString> m_selection;
     QHash<QString, bool> m_displayVisibilitySnapshot;
     IDOSOrientation m_orientation;
@@ -176,7 +179,7 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool m_legendVisible;
     bool m_boundsVisible;
     double m_zAxisScale;
-    QHash<vtkActor*, double> m_actorBaseZScales;
+    QHash<vtkProp3D*, double> m_propBaseZScales;
     QList<vtkProp*> m_legends;
 };
 

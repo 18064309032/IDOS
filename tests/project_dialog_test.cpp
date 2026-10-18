@@ -12,7 +12,7 @@
 #include <QTranslator>
 #include <QtTest>
 
-#include "data/well/idoswell.h"
+#include "data/well/idoswellobject.h"
 #include "idosmainwindow.h"
 #include "idosnewprojectdialog.h"
 #include "idosproject.h"
@@ -48,12 +48,12 @@ class ProjectDialogTest : public QObject
         QTimer::singleShot(0, this, &ProjectDialogTest::onSubmitWellName);
         menu->actions().first()->trigger();
         QCOMPARE(project->objects().size(), 1);
-        IDOSWell* well = qobject_cast<IDOSWell*>(project->objects().first());
+        IDOSWellObject* well = qobject_cast<IDOSWellObject*>(project->objects().first());
         QVERIFY(well != nullptr);
         QCOMPARE(well->name(), QStringLiteral("A10"));
         QVERIFY(!well->objectId().isEmpty());
         QCOMPARE(model->rowCount(wells), 1);
-        QCOMPARE(model->objectFromIndex(model->index(0, 0, wells)), well);
+        QCOMPARE(model->object(model->index(0, 0, wells)), well);
         QCOMPARE(model->rowCount(model->index(0, 0, wells)), 0);
         view->setCurrentIndex(model->index(0, 0, wells));
         QScopedPointer<QMenu> objectMenu(view->createContextMenu(view->currentIndex()));
@@ -135,15 +135,15 @@ class ProjectDialogTest : public QObject
     void onCreateCancelAndReplace()
     {
         IDOSMainWindow window;
-        QVERIFY(!window.dataTreeModel()->project());
+        QVERIFY(!window.project());
         QTimer::singleShot(0, this, &ProjectDialogTest::onRejectDialog);
         window.onNewProject();
         QCOMPARE(window.windowTitle(), QStringLiteral("IDOS"));
         QTimer::singleShot(0, this, &ProjectDialogTest::onAcceptFirstDialog);
         window.onNewProject();
-        IDOSProject* original = window.dataTreeModel()->project();
+        IDOSProject* original = window.project();
         QVERIFY(original);
-        QCOMPARE(window.caseTreeModel()->project(), original);
+        QCOMPARE(window.caseTreeModel()->sessionId(), window.dataTreeModel()->sessionId());
         QCOMPARE(window.windowTitle(), QStringLiteral("Project One*"));
         QVERIFY(window.isWindowModified());
         QCOMPARE(original->metadata().name(), QStringLiteral("Project One"));
@@ -156,7 +156,7 @@ class ProjectDialogTest : public QObject
         QCOMPARE(model->data(model->index(4, 0, wellGroup), Qt::DisplayRole).toString(), QStringLiteral("Wells"));
         window.setProject(original);
         QCOMPARE(model->rowCount(QModelIndex()), 14);
-        IDOSWell* well = new IDOSWell();
+        IDOSWellObject* well = new IDOSWellObject();
         well->setName(QStringLiteral("A10"));
         original->add(well);
         const QModelIndex wells = model->index(4, 0, model->index(0, 0, QModelIndex()));
@@ -168,14 +168,14 @@ class ProjectDialogTest : public QObject
         QCOMPARE(window.windowTitle(), QStringLiteral("Renamed Project*"));
         QTimer::singleShot(0, this, &ProjectDialogTest::onAcceptReplacementDialog);
         window.onNewProject();
-        QCOMPARE(window.dataTreeModel()->project(), original);
+        QCOMPARE(window.project(), original);
         original->remove(well->objectId());
         QCOMPARE(model->rowCount(QModelIndex()), 14);
         QCOMPARE(model->rowCount(model->index(4, 0, model->index(0, 0, QModelIndex()))), 0);
         delete original;
         QCOMPARE(model->rowCount(QModelIndex()), 0);
-        QVERIFY(!window.dataTreeModel()->project());
-        QVERIFY(!window.caseTreeModel()->project());
+        QVERIFY(!window.project());
+        QVERIFY(window.caseTreeModel()->sessionId().isEmpty());
         QCOMPARE(window.windowTitle(), QStringLiteral("IDOS"));
         QVERIFY(!window.isWindowModified());
     }
@@ -187,7 +187,7 @@ class ProjectDialogTest : public QObject
         for (int row = 0; row < model->rowCount(parent); ++row)
         {
             const QModelIndex index = model->index(row, 0, parent);
-            IDOSTreeItem* group = model->itemFromIndex(index);
+            IDOSTreeItem* group = model->item(index);
             if (group != nullptr && group->provider()->key() == key)
             {
                 return index;

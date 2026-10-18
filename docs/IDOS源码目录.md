@@ -9,8 +9,8 @@
 配套文档：[架构设计](IDOS架构设计.md)、[开发指南](开发指南.md)、[工作进度](工作进度-CJW.md)。
 
 - `core` 根部放对象、工程和命令；`core/data` 按业务保存数据及对应 DataMetadata，通用数据对象位于 core 根部。
-- `core/providers` 放 DataProvider、TreeProvider 及其 Metadata/Registry，同时保存通用 DataMetadata/Registry；`core/tree` 放 TreeItem、TreeModel 和 QObject 基类 TreeAccess；日志位于 `core/logger`。
-- `gui` 保留 tree、well、grid、simulation 业务目录；TreeView 与树菜单接口放在 tree。旧 TreeGuiProvider 在迁移完成前仍位于该目录。工程启动页、工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
+- `core/providers` 放 DataProvider、TreeProvider 及其 Metadata/Registry，同时保存通用 DataMetadata/Registry；`core/tree` 放 TreeItem、TreeModel、数据树/工况树专用 ItemModel 和 QObject 基类 TreeAccess；日志位于 `core/logger`。
+- `gui` 保留 tree、well、grid、simulation 业务目录；通用 TreeView、IDOSDataTreeView、IDOSCaseTreeView 与树菜单接口放在 tree。旧 TreeGuiProvider 在迁移完成前仍位于该目录。工程启动页、工况对话框、新建工程、调试信息、运行信息和 Python 控制台位于 gui 根部。公共平台接口 IDOSInterface 位于 gui 根部，使用 GUI_EXPORT 并由 idos_gui 编译。
 - `render` 根部放通用渲染框架、Registry 和交互工具；`render/providers` 放 RenderProvider、ToolProvider 及其 Metadata。
 - `app` 根部负责应用装配、模拟服务和插件 Metadata/Registry；`app/command` 放具体命令，`app/plugin` 放插件列表和管理界面，`app/providers` 按 well、grid、case、fluidrock、seismic、data 分组，集中同一业务的树、菜单、渲染实现和 Metadata；内置视图工具放 `app/providers/render`。
 - 顶层 `providers` 只放具体数据格式实现，按业务分类；其他模块及示例插件保留。
@@ -317,6 +317,10 @@ src/
 │   │   ├── idostreeaccess.h
 │   │   ├── idostreeitem.cpp
 │   │   ├── idostreeitem.h
+│   │   ├── idosdatatreeitemmodel.cpp
+│   │   ├── idosdatatreeitemmodel.h
+│   │   ├── idoscasetreeitemmodel.cpp
+│   │   ├── idoscasetreeitemmodel.h
 │   │   ├── idostreemodel.cpp
 │   │   └── idostreemodel.h
 │   ├── CMakeLists.txt
@@ -379,6 +383,10 @@ src/
 │   ├── tree/
 │   │   ├── idostreemenuprovider.cpp
 │   │   ├── idostreemenuprovider.h
+│   │   ├── idosdatatreeview.cpp
+│   │   ├── idosdatatreeview.h
+│   │   ├── idoscasetreeview.cpp
+│   │   ├── idoscasetreeview.h
 │   │   ├── idostreeview.cpp
 │   │   └── idostreeview.h
 │   ├── well/

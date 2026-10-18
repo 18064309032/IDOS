@@ -15,13 +15,13 @@ class DeckKeyword;
 }
 
 class IDOSDataObject;
-class IDOSGrid;
+class IDOSGridObject;
 
 class PROVIDERS_EXPORT IDOSGridPropertyEclipseProvider : public IDOSDataProvider
 {
   public:
     QList<IDOSDataObject*> read(const QString& filePath) override;
-    QList<IDOSDataObject*> readRestart(const QString& filePath, const IDOSGrid* grid);
+    QList<IDOSDataObject*> readRestart(const QString& filePath, const IDOSGridObject* grid);
     QList<int> restartReportSteps() const;
 
   private:
