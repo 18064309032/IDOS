@@ -100,6 +100,7 @@
         <file>simulation-initialize.svg</file>
         <file>simulation-preflight.svg</file>
         <file>simulation-report.svg</file>
+        <file>simulation-settings.svg</file>
         <file>simulation-stop.svg</file>
         <file>simulation-well-controls.svg</file>
         <file>simulation-workflow.svg</file>

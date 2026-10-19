@@ -382,7 +382,7 @@ bool IDOSProject::save(const QString& path, const IDOSDataRegistry* registry, QS
     }
     QVariantMap header;
     header.insert(QStringLiteral("format"), QStringLiteral("IDOS"));
-    header.insert(QStringLiteral("version"), 2);
+    header.insert(QStringLiteral("version"), 3);
     header.insert(QStringLiteral("metadata"), m_metadata.projectData());
     header.insert(QStringLiteral("currentCaseId"), m_currentCaseId);
     header.insert(QStringLiteral("currentObjectId"), m_currentObject != nullptr ? m_currentObject->objectId() : QString());
@@ -435,7 +435,15 @@ bool IDOSProject::save(const QString& path, const IDOSDataRegistry* registry, QS
         success = objectGroup >= 0;
         if (success)
         {
+            QElapsedTimer objectTiming;
+            objectTiming.start();
             success = registry->metadata(object->typeId())->writeProjectData(objectGroup, object, error);
+            const qint64 objectWriteMs = objectTiming.elapsed();
+            if (objectWriteMs >= 100)
+            {
+                qDebug().nospace() << "IDOS storage object save: type=" << object->typeId()
+                    << " name=" << object->name() << " elapsed=" << objectWriteMs << "ms";
+            }
             success = H5Gclose(objectGroup) >= 0 && success;
         }
     }
@@ -548,7 +556,8 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
     bool success = IDOSDataMetadata::readValue(file, "IDOS", value, error) && value.type() == QVariant::Map;
     const QVariantMap header = value.toMap();
     if (success && (header.value(QStringLiteral("format")).toString() != QStringLiteral("IDOS") ||
-        header.value(QStringLiteral("version")).type() != QVariant::Int || (header.value(QStringLiteral("version")).toInt() != 1 && header.value(QStringLiteral("version")).toInt() != 2)))
+        header.value(QStringLiteral("version")).type() != QVariant::Int || (header.value(QStringLiteral("version")).toInt() != 1 &&
+            header.value(QStringLiteral("version")).toInt() != 2 && header.value(QStringLiteral("version")).toInt() != 3)))
     {
         error = tr("This project format or version is not supported.");
         success = false;
@@ -592,6 +601,8 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
             break;
         }
         const QByteArray name = QByteArray::number(position);
+        QElapsedTimer objectTiming;
+        objectTiming.start();
         hid_t objectGroup = -1;
         H5E_BEGIN_TRY
         {
@@ -602,9 +613,16 @@ IDOSProject* IDOSProject::load(const QString& path, const IDOSDataRegistry* regi
         }
         H5E_END_TRY
         IDOSDataObject* object = objectGroup >= 0 ? dataMetadata->readProjectData(objectGroup, error) : nullptr;
+        const qint64 objectReadMs = objectTiming.elapsed();
         if (objectGroup >= 0)
         {
             H5Gclose(objectGroup);
+        }
+        if (objectReadMs >= 100)
+        {
+            qDebug().nospace() << "IDOS storage object load: type=" << type
+                << " name=" << entry.value(QStringLiteral("name")).toString()
+                << " elapsed=" << objectReadMs << "ms";
         }
         if (object == nullptr)
         {

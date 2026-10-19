@@ -1,4 +1,5 @@
 #include <climits>
+#include <utility>
 
 #include <QObject>
 
@@ -141,6 +142,11 @@ const QVector<double>& IDOSGridPropertyObject::values() const
     return m_values;
 }
 
+const QVector<double>& IDOSGridPropertyObject::baseValues() const
+{
+    return m_values;
+}
+
 QList<int> IDOSGridPropertyObject::reportSteps() const
 {
     return m_reportStepValues.keys();
@@ -193,7 +199,7 @@ bool IDOSGridPropertyObject::setCurrentReportStep(int reportStep)
     return true;
 }
 
-bool IDOSGridPropertyObject::setValues(const QVector<double>& values)
+bool IDOSGridPropertyObject::setValues(QVector<double> values)
 {
     const int expected = totalCellCount();
     if (values.size() != expected)
@@ -205,7 +211,7 @@ bool IDOSGridPropertyObject::setValues(const QVector<double>& values)
         return false;
     }
 
-    m_values = values;
+    m_values = std::move(values);
     emit valuesChanged();
     emit dataChanged();
     return true;

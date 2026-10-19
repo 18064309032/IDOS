@@ -183,3 +183,11 @@ if(WIN32)
         COMMENT "Copying Qt ADS DLL to exe directory..."
     )
 endif()
+
+add_custom_command(TARGET idos POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<IF:$<CONFIG:Debug>,${PROJECT_SOURCE_DIR}/thirdparty/opm/bin/fmtd.dll,${PROJECT_SOURCE_DIR}/thirdparty/opm/bin/fmt.dll>"
+        "$<TARGET_FILE_DIR:idos>"
+    COMMENT "Deploying OPM fmt runtime..."
+    VERBATIM
+)

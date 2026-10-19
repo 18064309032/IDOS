@@ -221,6 +221,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_startPage(nullptr)
     , m_renderPage(nullptr)
     , m_outputDock(nullptr)
+    , m_simulationDock(nullptr)
     , m_debugDock(nullptr)
     , m_pythonConsoleDock(nullptr)
     , m_assistantDock(nullptr)
@@ -255,6 +256,11 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     }
     m_defaultViewState = activeView()->saveState();
     restoreWindowPreferences(true);
+    if (m_simulationDock != nullptr)
+    {
+        m_simulationDock->toggleView(true);
+        m_simulationDock->setAsCurrentTab();
+    }
     m_restoringPresentation = false;
     if (!qEnvironmentVariableIsSet("IDOS_DISABLE_ASSISTANT_AUTOSTART"))
     {
@@ -497,6 +503,57 @@ void IDOSMainWindow::initDockWidgets()
     outputArea->setCurrentDockWidget(m_outputDock);
 }
 
+void IDOSMainWindow::setSimulationWorkspaceWidget(QWidget* widget)
+{
+    if (widget == nullptr || m_dockManager == nullptr || m_renderDock == nullptr)
+    {
+        return;
+    }
+    if (m_simulationDock == nullptr)
+    {
+        m_simulationDock = new ads::CDockWidget(m_dockManager, tr("Simulation Run"));
+        m_simulationDock->setObjectName(QStringLiteral("simulationWorkspaceDock"));
+        m_simulationDock->setIcon(QIcon(QStringLiteral(":/images/simulation-workflow.svg")));
+        m_simulationDock->setFeatures(ads::CDockWidget::DockWidgetClosable
+                                      | ads::CDockWidget::DockWidgetMovable
+                                      | ads::CDockWidget::DockWidgetFloatable);
+        m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_simulationDock,
+                                     m_renderDock->dockAreaWidget());
+        connect(m_simulationDock,
+                &ads::CDockWidget::viewToggled,
+                this,
+                &IDOSMainWindow::simulationWorkspaceVisibilityChanged,
+                Qt::UniqueConnection);
+    }
+    m_simulationDock->setWidget(widget, ads::CDockWidget::ForceNoScrollArea);
+    m_simulationDock->setMinimumWidth(320);
+    m_simulationDock->setMinimumHeight(400);
+}
+
+void IDOSMainWindow::setSimulationWorkspaceVisible(bool visible)
+{
+    if (m_simulationDock == nullptr)
+    {
+        return;
+    }
+    m_simulationDock->toggleView(visible);
+}
+
+bool IDOSMainWindow::simulationWorkspaceVisible() const
+{
+    return m_simulationDock != nullptr && !m_simulationDock->isClosed();
+}
+
+void IDOSMainWindow::showSimulationWorkspace()
+{
+    if (m_simulationDock == nullptr)
+    {
+        return;
+    }
+    setSimulationWorkspaceVisible(true);
+    m_dockManager->setDockWidgetFocused(m_simulationDock);
+}
+
 void IDOSMainWindow::initPluginManager()
 {
     m_pluginRegistry = IDOSPluginRegistry::instance();
@@ -657,6 +714,8 @@ void IDOSMainWindow::initRibbonAction()
 
     SARibbonPanel* simulationPanel = projectPage->addPanel(tr("Simulation"));
     simulationPanel->setObjectName(QStringLiteral("idosHomePanel_simulation"));
+    SARibbonPanel* caseViewPanel = projectPage->addPanel(tr("Case View"));
+    caseViewPanel->setObjectName(QStringLiteral("idosHomePanel_caseView"));
     SARibbonPanel* resultsPanel = projectPage->addPanel(tr("Results"));
     resultsPanel->setObjectName(QStringLiteral("idosHomePanel_results"));
     SARibbonPanel* outputPanel = projectPage->addPanel(tr("Output"));
@@ -2209,6 +2268,11 @@ void IDOSMainWindow::restoreProjectPresentation(const QVariantMap& state)
         applyWindowLayout(m_currentWindowLayout);
         restoreWindowPreferences(false);
     }
+    if (m_simulationDock != nullptr)
+    {
+        m_simulationDock->toggleView(true);
+        m_simulationDock->setAsCurrentTab();
+    }
 }
 
 QString IDOSMainWindow::windowSettingsPath()
@@ -3624,7 +3688,7 @@ bool IDOSMainWindow::caseImportGrid(IDOSTreeView* view, const QString& targetCas
     }
     const QString file = QFileDialog::getOpenFileName(
         view, tr("Import Grid"), QString(),
-        tr("ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)"));
+        tr("ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid *.GRDECL *.grdecl);;All Files (*.*)"));
     if (file.isEmpty() || target.isNull())
     {
         return false;

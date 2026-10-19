@@ -1,0 +1,228 @@
+[2026-10-19 14:16:40.771]	[INFO]	main.cpp:33	int __cdecl main(int,char *[])	已加载应用翻译。
+[2026-10-19 14:16:40.771]	[INFO]	:0		应用正在启动。
+[2026-10-19 14:16:41.318]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:16:41.430]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:16:41.464]	[INFO]	:0		应用程序已启动。
+[2026-10-19 14:16:41.474]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosexampleplugin 的 initGui：实例=0x2d367c83580，动态库=0x2d367abf940
+[2026-10-19 14:16:41.476]	[DEBUG]	idosappinterface.cpp:75	class SARibbonCategory *__cdecl IDOSAppInterface::addRibbonCategory(const class QString &,const class QString &)	Ribbon 页已创建：对象名称=idosExampleCategory，标题=示例，页面=0x2d367882ba0，父对象=0x2d35e1f9da0
+[2026-10-19 14:16:41.478]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosexampleplugin，实例=0x2d367c83580，动态库=0x2d367abf940
+[2026-10-19 14:16:41.479]	[INFO]	:0		插件 Example 已成功加载。
+[2026-10-19 14:16:41.480]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosfracturemodelingplugin 的 initGui：实例=0x2d36755ba10，动态库=0x2d367aaa0a0
+[2026-10-19 14:16:41.481]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x2d367883920，父对象=0x2d35e1f9da0
+[2026-10-19 14:16:41.486]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosfracturemodelingplugin，实例=0x2d36755ba10，动态库=0x2d367aaa0a0
+[2026-10-19 14:16:41.487]	[INFO]	:0		插件 Fracture Modeling 已成功加载。
+[2026-10-19 14:16:41.488]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosgeomechanicsplugin 的 initGui：实例=0x2d367718cd0，动态库=0x2d367e88ae0
+[2026-10-19 14:16:41.489]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x2d3678b2120，父对象=0x2d35e1f9da0
+[2026-10-19 14:16:41.494]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosgeomechanicsplugin，实例=0x2d367718cd0，动态库=0x2d367e88ae0
+[2026-10-19 14:16:41.495]	[INFO]	:0		插件 Geomechanics 已成功加载。
+[2026-10-19 14:16:41.496]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosmultiscalefractureplugin 的 initGui：实例=0x2d36755c0a0，动态库=0x2d367e8ed20
+[2026-10-19 14:16:41.498]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x2d3678815a0，父对象=0x2d35e1f9da0
+[2026-10-19 14:16:41.504]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosmultiscalefractureplugin，实例=0x2d36755c0a0，动态库=0x2d367e8ed20
+[2026-10-19 14:16:41.505]	[INFO]	:0		插件 Multiscale Fractures 已成功加载。
+[2026-10-19 14:16:41.980]	[INFO]	:0		AI 助手已启动。
+[2026-10-19 14:18:17.311]	[INFO]	main.cpp:33	int __cdecl main(int,char *[])	已加载应用翻译。
+[2026-10-19 14:18:17.312]	[INFO]	:0		应用正在启动。
+[2026-10-19 14:18:18.145]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:18:18.262]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:18:18.300]	[INFO]	:0		应用程序已启动。
+[2026-10-19 14:18:18.315]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosexampleplugin 的 initGui：实例=0x1bad926cfb0，动态库=0x1bad90946a0
+[2026-10-19 14:18:18.318]	[DEBUG]	idosappinterface.cpp:75	class SARibbonCategory *__cdecl IDOSAppInterface::addRibbonCategory(const class QString &,const class QString &)	Ribbon 页已创建：对象名称=idosExampleCategory，标题=示例，页面=0x1bad8e4c090，父对象=0x1ba8f5fc230
+[2026-10-19 14:18:18.320]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosexampleplugin，实例=0x1bad926cfb0，动态库=0x1bad90946a0
+[2026-10-19 14:18:18.321]	[INFO]	:0		插件 Example 已成功加载。
+[2026-10-19 14:18:18.322]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosfracturemodelingplugin 的 initGui：实例=0x1bad8ae91f0，动态库=0x1bad909a9a0
+[2026-10-19 14:18:18.324]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x1bad8e4ae90，父对象=0x1ba8f5fc230
+[2026-10-19 14:18:18.329]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosfracturemodelingplugin，实例=0x1bad8ae91f0，动态库=0x1bad909a9a0
+[2026-10-19 14:18:18.330]	[INFO]	:0		插件 Fracture Modeling 已成功加载。
+[2026-10-19 14:18:18.331]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosgeomechanicsplugin 的 initGui：实例=0x1bad8cd4560，动态库=0x1ba8ff7b810
+[2026-10-19 14:18:18.333]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x1bad8e4c990，父对象=0x1ba8f5fc230
+[2026-10-19 14:18:18.337]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosgeomechanicsplugin，实例=0x1bad8cd4560，动态库=0x1ba8ff7b810
+[2026-10-19 14:18:18.338]	[INFO]	:0		插件 Geomechanics 已成功加载。
+[2026-10-19 14:18:18.339]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosmultiscalefractureplugin 的 initGui：实例=0x1bad8aea870，动态库=0x1bad982a710
+[2026-10-19 14:18:18.342]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x1bad8e4b210，父对象=0x1ba8f5fc230
+[2026-10-19 14:18:18.350]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosmultiscalefractureplugin，实例=0x1bad8aea870，动态库=0x1bad982a710
+[2026-10-19 14:18:18.351]	[INFO]	:0		插件 Multiscale Fractures 已成功加载。
+[2026-10-19 14:18:18.896]	[INFO]	:0		AI 助手已启动。
+[2026-10-19 14:22:39.411]	[DEBUG]	idosproject.cpp:671	class IDOSProject *__cdecl IDOSProject::load(const class QString &,const class IDOSDataRegistry *,class QString &,class QObject *)	IDOS storage load: header=61ms restore=2344ms validate=0ms total=2405ms
+[2026-10-19 14:22:39.412]	[DEBUG]	idosmainwindow.cpp:846	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	正在切换当前工程：原工程=0x0，新工程=0x1bad9107240
+[2026-10-19 14:22:39.890]	[INFO]	idosmainwindow.cpp:900	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	当前工程已切换。
+[2026-10-19 14:22:39.910]	[INFO]	:0		DATA 源文件: 通过 - D:/QtCoder/IDOS/data/UPSCALE_GASWATER_ECL/UPSCALE_GASWATER_ECL.DATA
+[2026-10-19 14:22:39.911]	[INFO]	:0		输入解析摘要: 通过 - 此工况导入时已解析 DATA 文件。
+[2026-10-19 14:22:39.912]	[INFO]	:0		必需分段：RUNSPEC: 通过 - 找到 1 个分段。
+[2026-10-19 14:22:39.914]	[INFO]	:0		必需分段：GRID: 通过 - 找到 1 个分段。
+[2026-10-19 14:22:39.914]	[INFO]	:0		必需分段：PROPS: 通过 - 找到 1 个分段。
+[2026-10-19 14:22:39.915]	[INFO]	:0		必需分段：SOLUTION: 通过 - 找到 1 个分段。
+[2026-10-19 14:22:39.916]	[INFO]	:0		必需分段：SCHEDULE: 通过 - 找到 1 个分段。
+[2026-10-19 14:22:39.918]	[INFO]	:0		已导入网格: 通过 - 此工况已关联网格。
+[2026-10-19 14:22:39.919]	[WARN]	:0		井定义: 警告 - 没有找到 WELSPECS 记录。
+[2026-10-19 14:22:39.920]	[WARN]	:0		井控: 警告 - 没有找到 WCONPROD 或 WCONINJE 记录。
+[2026-10-19 14:22:39.922]	[INFO]	:0		引用的输入文件: 通过 - 17 个已索引来源文件均存在。
+[2026-10-19 14:22:39.975]	[DEBUG]	idosmainwindow.cpp:1995	bool __cdecl IDOSMainWindow::openProject(const class QString &,bool)	工程显示重建耗时 563 毫秒。
+[2026-10-19 14:22:39.976]	[INFO]	:0		工程已打开：C:/Users/Administrator/Desktop/123.idos
+[2026-10-19 14:24:07.251]	[DEBUG]	idosmainwindow.cpp:1641	void __cdecl IDOSMainWindow::closeEvent(class QCloseEvent *)	已收到主窗口关闭事件。
+[2026-10-19 14:24:07.252]	[WARN]	qwidget.cpp:11250	void __cdecl QWidgetPrivate::setWindowModified_helper(void)	QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+[2026-10-19 14:24:08.368]	[INFO]	idosmainwindow.cpp:1649	void __cdecl IDOSMainWindow::closeEvent(class QCloseEvent *)	主窗口关闭请求已接受。
+[2026-10-19 14:24:08.374]	[INFO]	main.cpp:45	int __cdecl main(int,char *[])	应用事件循环已结束，退出代码为 0。
+[2026-10-19 14:24:08.382]	[DEBUG]	idosmainwindow.cpp:761	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	主窗口开始析构：Ribbon 工具栏=0x1ba8f5fc630，页面数=5
+[2026-10-19 14:24:08.383]	[DEBUG]	idosmainwindow.cpp:771	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	插件卸载前的 Ribbon 页：序号=0，对象名称=idosHomeCategory，标题=主页，页面=0x1bad8e68f10，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.384]	[DEBUG]	idosmainwindow.cpp:771	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	插件卸载前的 Ribbon 页：序号=1，对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x1bad8e4c990，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.384]	[DEBUG]	idosmainwindow.cpp:771	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	插件卸载前的 Ribbon 页：序号=2，对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x1bad8e4ae90，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.385]	[DEBUG]	idosmainwindow.cpp:771	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	插件卸载前的 Ribbon 页：序号=3，对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x1bad8e4b210，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.386]	[DEBUG]	idosmainwindow.cpp:771	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	插件卸载前的 Ribbon 页：序号=4，对象名称=idosExampleCategory，标题=示例，页面=0x1bad8e4c090，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.386]	[DEBUG]	idosmainwindow.cpp:775	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	主窗口析构期间正在卸载所有插件。
+[2026-10-19 14:24:08.388]	[DEBUG]	idospluginregistry.cpp:406	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	开始卸载插件：标识=idosexampleplugin，实例=0x1bad926cfb0，动态库=0x1bad90946a0
+[2026-10-19 14:24:08.389]	[DEBUG]	idospluginregistry.cpp:646	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在调用插件 unload()：实例=0x1bad926cfb0
+[2026-10-19 14:24:08.389]	[DEBUG]	idosappinterface.cpp:215	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在从 Ribbon 分离页面：对象名称=idosExampleCategory，页面=0x1bad8e4c090，父对象=0x1ba8f5fc230，堆叠窗口=0x1ba8f5fc230
+[2026-10-19 14:24:08.390]	[DEBUG]	idosappinterface.cpp:228	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在插件卸载前销毁已分离的 Ribbon 页：对象名称=idosExampleCategory，页面=0x1bad8e4c090，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.391]	[DEBUG]	idosappinterface.cpp:231	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	已销毁分离的 Ribbon 页：对象名称=idosExampleCategory，页面=0x1bad8e4c090
+[2026-10-19 14:24:08.406]	[DEBUG]	idospluginregistry.cpp:649	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件 unload() 已返回：实例=0x1bad926cfb0
+[2026-10-19 14:24:08.407]	[DEBUG]	idospluginregistry.cpp:662	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在销毁插件对象：实例=0x1bad926cfb0
+[2026-10-19 14:24:08.407]	[DEBUG]	idospluginregistry.cpp:665	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件对象已销毁：实例=0x1bad926cfb0
+[2026-10-19 14:24:08.408]	[DEBUG]	idospluginregistry.cpp:409	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	插件实例已销毁：标识=idosexampleplugin，动态库=0x1bad90946a0
+[2026-10-19 14:24:08.408]	[DEBUG]	idospluginregistry.cpp:406	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	开始卸载插件：标识=idosfracturemodelingplugin，实例=0x1bad8ae91f0，动态库=0x1bad909a9a0
+[2026-10-19 14:24:08.408]	[DEBUG]	idospluginregistry.cpp:646	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在调用插件 unload()：实例=0x1bad8ae91f0
+[2026-10-19 14:24:08.410]	[DEBUG]	idosappinterface.cpp:215	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在从 Ribbon 分离页面：对象名称=idosfractureModelingCategory，页面=0x1bad8e4ae90，父对象=0x1ba8f5fc230，堆叠窗口=0x1ba8f5fc230
+[2026-10-19 14:24:08.410]	[DEBUG]	idosappinterface.cpp:228	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在插件卸载前销毁已分离的 Ribbon 页：对象名称=idosfractureModelingCategory，页面=0x1bad8e4ae90，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.412]	[DEBUG]	idosappinterface.cpp:231	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	已销毁分离的 Ribbon 页：对象名称=idosfractureModelingCategory，页面=0x1bad8e4ae90
+[2026-10-19 14:24:08.413]	[DEBUG]	idospluginregistry.cpp:649	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件 unload() 已返回：实例=0x1bad8ae91f0
+[2026-10-19 14:24:08.414]	[DEBUG]	idospluginregistry.cpp:662	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在销毁插件对象：实例=0x1bad8ae91f0
+[2026-10-19 14:24:08.414]	[DEBUG]	idospluginregistry.cpp:665	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件对象已销毁：实例=0x1bad8ae91f0
+[2026-10-19 14:24:08.415]	[DEBUG]	idospluginregistry.cpp:409	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	插件实例已销毁：标识=idosfracturemodelingplugin，动态库=0x1bad909a9a0
+[2026-10-19 14:24:08.415]	[DEBUG]	idospluginregistry.cpp:406	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	开始卸载插件：标识=idosgeomechanicsplugin，实例=0x1bad8cd4560，动态库=0x1ba8ff7b810
+[2026-10-19 14:24:08.416]	[DEBUG]	idospluginregistry.cpp:646	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在调用插件 unload()：实例=0x1bad8cd4560
+[2026-10-19 14:24:08.416]	[DEBUG]	idosappinterface.cpp:215	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在从 Ribbon 分离页面：对象名称=idosgeomechanicsCategory，页面=0x1bad8e4c990，父对象=0x1ba8f5fc230，堆叠窗口=0x1ba8f5fc230
+[2026-10-19 14:24:08.416]	[DEBUG]	idosappinterface.cpp:228	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在插件卸载前销毁已分离的 Ribbon 页：对象名称=idosgeomechanicsCategory，页面=0x1bad8e4c990，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.419]	[DEBUG]	idosappinterface.cpp:231	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	已销毁分离的 Ribbon 页：对象名称=idosgeomechanicsCategory，页面=0x1bad8e4c990
+[2026-10-19 14:24:08.419]	[DEBUG]	idospluginregistry.cpp:649	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件 unload() 已返回：实例=0x1bad8cd4560
+[2026-10-19 14:24:08.420]	[DEBUG]	idospluginregistry.cpp:662	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在销毁插件对象：实例=0x1bad8cd4560
+[2026-10-19 14:24:08.420]	[DEBUG]	idospluginregistry.cpp:665	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件对象已销毁：实例=0x1bad8cd4560
+[2026-10-19 14:24:08.420]	[DEBUG]	idospluginregistry.cpp:409	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	插件实例已销毁：标识=idosgeomechanicsplugin，动态库=0x1ba8ff7b810
+[2026-10-19 14:24:08.421]	[DEBUG]	idospluginregistry.cpp:406	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	开始卸载插件：标识=idosmultiscalefractureplugin，实例=0x1bad8aea870，动态库=0x1bad982a710
+[2026-10-19 14:24:08.421]	[DEBUG]	idospluginregistry.cpp:646	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在调用插件 unload()：实例=0x1bad8aea870
+[2026-10-19 14:24:08.422]	[DEBUG]	idosappinterface.cpp:215	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在从 Ribbon 分离页面：对象名称=idosmultiscaleFractureCategory，页面=0x1bad8e4b210，父对象=0x1ba8f5fc230，堆叠窗口=0x1ba8f5fc230
+[2026-10-19 14:24:08.423]	[DEBUG]	idosappinterface.cpp:228	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	正在插件卸载前销毁已分离的 Ribbon 页：对象名称=idosmultiscaleFractureCategory，页面=0x1bad8e4b210，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.425]	[DEBUG]	idosappinterface.cpp:231	void __cdecl IDOSAppInterface::removeRibbonCategory(class SARibbonCategory *)	已销毁分离的 Ribbon 页：对象名称=idosmultiscaleFractureCategory，页面=0x1bad8e4b210
+[2026-10-19 14:24:08.425]	[DEBUG]	idospluginregistry.cpp:649	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件 unload() 已返回：实例=0x1bad8aea870
+[2026-10-19 14:24:08.425]	[DEBUG]	idospluginregistry.cpp:662	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	正在销毁插件对象：实例=0x1bad8aea870
+[2026-10-19 14:24:08.426]	[DEBUG]	idospluginregistry.cpp:665	void __cdecl IDOSPluginRegistry::destroyPluginInstance(class IDOSPlugin *)	插件对象已销毁：实例=0x1bad8aea870
+[2026-10-19 14:24:08.426]	[DEBUG]	idospluginregistry.cpp:409	void __cdecl IDOSPluginRegistry::unloadPluginByKey(const class QString &,bool,bool)	插件实例已销毁：标识=idosmultiscalefractureplugin，动态库=0x1bad982a710
+[2026-10-19 14:24:08.426]	[DEBUG]	idosmainwindow.cpp:781	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	主窗口析构期间插件卸载完成：剩余 Ribbon 页=1
+[2026-10-19 14:24:08.426]	[DEBUG]	idosmainwindow.cpp:791	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	基类析构前的 Ribbon 页：序号=0，对象名称=idosHomeCategory，标题=主页，页面=0x1bad8e68f10，父对象=0x1ba8f5fc230
+[2026-10-19 14:24:08.566]	[DEBUG]	idosmainwindow.cpp:824	__cdecl IDOSMainWindow::~IDOSMainWindow(void)	主窗口析构函数主体执行完成。
+[2026-10-19 14:24:12.240]	[ERROR]	:0		AI 助手运行出错：Process crashed
+[2026-10-19 14:24:12.295]	[INFO]	idosapplication.cpp:60	__cdecl IDOSApplication::~IDOSApplication(void)	应用程序正在完成关闭。
+[2026-10-19 14:26:29.530]	[INFO]	main.cpp:33	int __cdecl main(int,char *[])	已加载应用翻译。
+[2026-10-19 14:26:29.530]	[INFO]	:0		应用正在启动。
+[2026-10-19 14:26:30.335]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:26:30.489]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:26:30.543]	[INFO]	:0		应用程序已启动。
+[2026-10-19 14:26:30.552]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosexampleplugin 的 initGui：实例=0x269d3ccd380，动态库=0x269d3d9e8c0
+[2026-10-19 14:26:30.554]	[DEBUG]	idosappinterface.cpp:75	class SARibbonCategory *__cdecl IDOSAppInterface::addRibbonCategory(const class QString &,const class QString &)	Ribbon 页已创建：对象名称=idosExampleCategory，标题=示例，页面=0x269d3884a90，父对象=0x269ca20bbf0
+[2026-10-19 14:26:30.556]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosexampleplugin，实例=0x269d3ccd380，动态库=0x269d3d9e8c0
+[2026-10-19 14:26:30.557]	[INFO]	:0		插件 Example 已成功加载。
+[2026-10-19 14:26:30.558]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosfracturemodelingplugin 的 initGui：实例=0x269d3587fd0，动态库=0x269d3d83500
+[2026-10-19 14:26:30.559]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x269d3889c10，父对象=0x269ca20bbf0
+[2026-10-19 14:26:30.564]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosfracturemodelingplugin，实例=0x269d3587fd0，动态库=0x269d3d83500
+[2026-10-19 14:26:30.565]	[INFO]	:0		插件 Fracture Modeling 已成功加载。
+[2026-10-19 14:26:30.566]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosgeomechanicsplugin 的 initGui：实例=0x269d3736ba0，动态库=0x269d3b1d060
+[2026-10-19 14:26:30.568]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x269d3898310，父对象=0x269ca20bbf0
+[2026-10-19 14:26:30.572]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosgeomechanicsplugin，实例=0x269d3736ba0，动态库=0x269d3b1d060
+[2026-10-19 14:26:30.573]	[INFO]	:0		插件 Geomechanics 已成功加载。
+[2026-10-19 14:26:30.574]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosmultiscalefractureplugin 的 initGui：实例=0x269d3588cf0，动态库=0x269d3b101c0
+[2026-10-19 14:26:30.576]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x269d3875810，父对象=0x269ca20bbf0
+[2026-10-19 14:26:30.583]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosmultiscalefractureplugin，实例=0x269d3588cf0，动态库=0x269d3b101c0
+[2026-10-19 14:26:30.583]	[INFO]	:0		插件 Multiscale Fractures 已成功加载。
+[2026-10-19 14:26:31.086]	[INFO]	:0		AI 助手已启动。
+[2026-10-19 14:26:39.883]	[DEBUG]	idosproject.cpp:671	class IDOSProject *__cdecl IDOSProject::load(const class QString &,const class IDOSDataRegistry *,class QString &,class QObject *)	IDOS storage load: header=11ms restore=2347ms validate=1ms total=2359ms
+[2026-10-19 14:26:39.884]	[DEBUG]	idosmainwindow.cpp:846	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	正在切换当前工程：原工程=0x0，新工程=0x269d3bdd810
+[2026-10-19 14:26:40.366]	[INFO]	idosmainwindow.cpp:900	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	当前工程已切换。
+[2026-10-19 14:26:40.385]	[INFO]	:0		DATA 源文件: 通过 - D:/QtCoder/IDOS/data/UPSCALE_GASWATER_ECL/UPSCALE_GASWATER_ECL.DATA
+[2026-10-19 14:26:40.386]	[INFO]	:0		输入解析摘要: 通过 - 此工况导入时已解析 DATA 文件。
+[2026-10-19 14:26:40.387]	[INFO]	:0		必需分段：RUNSPEC: 通过 - 找到 1 个分段。
+[2026-10-19 14:26:40.388]	[INFO]	:0		必需分段：GRID: 通过 - 找到 1 个分段。
+[2026-10-19 14:26:40.389]	[INFO]	:0		必需分段：PROPS: 通过 - 找到 1 个分段。
+[2026-10-19 14:26:40.390]	[INFO]	:0		必需分段：SOLUTION: 通过 - 找到 1 个分段。
+[2026-10-19 14:26:40.391]	[INFO]	:0		必需分段：SCHEDULE: 通过 - 找到 1 个分段。
+[2026-10-19 14:26:40.392]	[INFO]	:0		已导入网格: 通过 - 此工况已关联网格。
+[2026-10-19 14:26:40.393]	[WARN]	:0		井定义: 警告 - 没有找到 WELSPECS 记录。
+[2026-10-19 14:26:40.395]	[WARN]	:0		井控: 警告 - 没有找到 WCONPROD 或 WCONINJE 记录。
+[2026-10-19 14:26:40.397]	[INFO]	:0		引用的输入文件: 通过 - 17 个已索引来源文件均存在。
+[2026-10-19 14:26:40.465]	[DEBUG]	idosmainwindow.cpp:1995	bool __cdecl IDOSMainWindow::openProject(const class QString &,bool)	工程显示重建耗时 580 毫秒。
+[2026-10-19 14:26:40.466]	[INFO]	:0		工程已打开：C:/Users/Administrator/Desktop/123.idos
+[2026-10-19 14:30:22.628]	[INFO]	main.cpp:33	int __cdecl main(int,char *[])	已加载应用翻译。
+[2026-10-19 14:30:22.628]	[INFO]	:0		应用正在启动。
+[2026-10-19 14:30:23.422]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:30:23.588]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:30:23.640]	[INFO]	:0		应用程序已启动。
+[2026-10-19 14:30:23.650]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosexampleplugin 的 initGui：实例=0x26dee4a9790，动态库=0x26dee5566c0
+[2026-10-19 14:30:23.652]	[DEBUG]	idosappinterface.cpp:75	class SARibbonCategory *__cdecl IDOSAppInterface::addRibbonCategory(const class QString &,const class QString &)	Ribbon 页已创建：对象名称=idosExampleCategory，标题=示例，页面=0x26dee05bb90，父对象=0x26de4a7c250
+[2026-10-19 14:30:23.654]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosexampleplugin，实例=0x26dee4a9790，动态库=0x26dee5566c0
+[2026-10-19 14:30:23.655]	[INFO]	:0		插件 Example 已成功加载。
+[2026-10-19 14:30:23.656]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosfracturemodelingplugin 的 initGui：实例=0x26dedd39e50，动态库=0x26dee5583a0
+[2026-10-19 14:30:23.658]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x26dee05ee90，父对象=0x26de4a7c250
+[2026-10-19 14:30:23.663]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosfracturemodelingplugin，实例=0x26dedd39e50，动态库=0x26dee5583a0
+[2026-10-19 14:30:23.663]	[INFO]	:0		插件 Fracture Modeling 已成功加载。
+[2026-10-19 14:30:23.664]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosgeomechanicsplugin 的 initGui：实例=0x26dedead790，动态库=0x26dee14dec0
+[2026-10-19 14:30:23.666]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x26ded2e5e10，父对象=0x26de4a7c250
+[2026-10-19 14:30:23.671]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosgeomechanicsplugin，实例=0x26dedead790，动态库=0x26dee14dec0
+[2026-10-19 14:30:23.672]	[INFO]	:0		插件 Geomechanics 已成功加载。
+[2026-10-19 14:30:23.673]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosmultiscalefractureplugin 的 initGui：实例=0x26dedd3c790，动态库=0x26dee1353e0
+[2026-10-19 14:30:23.674]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x26dee05c910，父对象=0x26de4a7c250
+[2026-10-19 14:30:23.683]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosmultiscalefractureplugin，实例=0x26dedd3c790，动态库=0x26dee1353e0
+[2026-10-19 14:30:23.684]	[INFO]	:0		插件 Multiscale Fractures 已成功加载。
+[2026-10-19 14:30:24.266]	[INFO]	:0		AI 助手已启动。
+[2026-10-19 14:34:27.083]	[DEBUG]	idosproject.cpp:671	class IDOSProject *__cdecl IDOSProject::load(const class QString &,const class IDOSDataRegistry *,class QString &,class QObject *)	IDOS storage load: header=57ms restore=2268ms validate=1ms total=2326ms
+[2026-10-19 14:34:27.084]	[DEBUG]	idosmainwindow.cpp:846	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	正在切换当前工程：原工程=0x0，新工程=0x26dee624d00
+[2026-10-19 14:34:27.591]	[INFO]	idosmainwindow.cpp:900	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	当前工程已切换。
+[2026-10-19 14:34:27.628]	[INFO]	:0		DATA 源文件: 通过 - D:/QtCoder/IDOS/data/UPSCALE_GASWATER_ECL/UPSCALE_GASWATER_ECL.DATA
+[2026-10-19 14:34:27.629]	[INFO]	:0		输入解析摘要: 通过 - 此工况导入时已解析 DATA 文件。
+[2026-10-19 14:34:27.630]	[INFO]	:0		必需分段：RUNSPEC: 通过 - 找到 1 个分段。
+[2026-10-19 14:34:27.632]	[INFO]	:0		必需分段：GRID: 通过 - 找到 1 个分段。
+[2026-10-19 14:34:27.632]	[INFO]	:0		必需分段：PROPS: 通过 - 找到 1 个分段。
+[2026-10-19 14:34:27.633]	[INFO]	:0		必需分段：SOLUTION: 通过 - 找到 1 个分段。
+[2026-10-19 14:34:27.634]	[INFO]	:0		必需分段：SCHEDULE: 通过 - 找到 1 个分段。
+[2026-10-19 14:34:27.635]	[INFO]	:0		已导入网格: 通过 - 此工况已关联网格。
+[2026-10-19 14:34:27.637]	[WARN]	:0		井定义: 警告 - 没有找到 WELSPECS 记录。
+[2026-10-19 14:34:27.638]	[WARN]	:0		井控: 警告 - 没有找到 WCONPROD 或 WCONINJE 记录。
+[2026-10-19 14:34:27.640]	[INFO]	:0		引用的输入文件: 通过 - 17 个已索引来源文件均存在。
+[2026-10-19 14:34:27.708]	[DEBUG]	idosmainwindow.cpp:1995	bool __cdecl IDOSMainWindow::openProject(const class QString &,bool)	工程显示重建耗时 623 毫秒。
+[2026-10-19 14:34:27.708]	[INFO]	:0		工程已打开：C:/Users/Administrator/Desktop/123.idos
+[2026-10-19 14:38:02.492]	[INFO]	main.cpp:33	int __cdecl main(int,char *[])	已加载应用翻译。
+[2026-10-19 14:38:02.493]	[INFO]	:0		应用正在启动。
+[2026-10-19 14:38:03.349]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:38:03.565]	[ERROR]	:0		模拟工况: 阻断 - 未选择模拟工况。
+[2026-10-19 14:38:03.624]	[INFO]	:0		应用程序已启动。
+[2026-10-19 14:38:03.632]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosexampleplugin 的 initGui：实例=0x19cd2e13a20，动态库=0x19cd2aaf160
+[2026-10-19 14:38:03.634]	[DEBUG]	idosappinterface.cpp:75	class SARibbonCategory *__cdecl IDOSAppInterface::addRibbonCategory(const class QString &,const class QString &)	Ribbon 页已创建：对象名称=idosExampleCategory，标题=示例，页面=0x19cd299f310，父对象=0x19cc9a757b0
+[2026-10-19 14:38:03.636]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosexampleplugin，实例=0x19cd2e13a20，动态库=0x19cd2aaf160
+[2026-10-19 14:38:03.637]	[INFO]	:0		插件 Example 已成功加载。
+[2026-10-19 14:38:03.638]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosfracturemodelingplugin 的 initGui：实例=0x19cd26b3020，动态库=0x19cd2abd200
+[2026-10-19 14:38:03.640]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosfractureModelingCategory，标题=裂缝建模，页面=0x19cd29a3e90，父对象=0x19cc9a757b0
+[2026-10-19 14:38:03.645]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosfracturemodelingplugin，实例=0x19cd26b3020，动态库=0x19cd2abd200
+[2026-10-19 14:38:03.646]	[INFO]	:0		插件 Fracture Modeling 已成功加载。
+[2026-10-19 14:38:03.647]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosgeomechanicsplugin 的 initGui：实例=0x19cd2867490，动态库=0x19cd2c37f00
+[2026-10-19 14:38:03.649]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosgeomechanicsCategory，标题=地质力学，页面=0x19cd1c97900，父对象=0x19cc9a757b0
+[2026-10-19 14:38:03.653]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosgeomechanicsplugin，实例=0x19cd2867490，动态库=0x19cd2c37f00
+[2026-10-19 14:38:03.654]	[INFO]	:0		插件 Geomechanics 已成功加载。
+[2026-10-19 14:38:03.655]	[DEBUG]	idospluginregistry.cpp:240	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	正在调用插件 idosmultiscalefractureplugin 的 initGui：实例=0x19cd26b60e0，动态库=0x19cd2c48040
+[2026-10-19 14:38:03.657]	[DEBUG]	idosappinterface.cpp:123	class SARibbonCategory *__cdecl IDOSAppInterface::insertCategoryPage(const class QString &,const class QString &,int)	Ribbon 页已创建：对象名称=idosmultiscaleFractureCategory，标题=多尺度裂缝，页面=0x19cd3451ea0，父对象=0x19cc9a757b0
+[2026-10-19 14:38:03.664]	[DEBUG]	idospluginregistry.cpp:303	void __cdecl IDOSPluginRegistry::loadCppPlugin(const class QString &)	插件 initGui 已完成：标识=idosmultiscalefractureplugin，实例=0x19cd26b60e0，动态库=0x19cd2c48040
+[2026-10-19 14:38:03.664]	[INFO]	:0		插件 Multiscale Fractures 已成功加载。
+[2026-10-19 14:38:04.265]	[INFO]	:0		AI 助手已启动。
+[2026-10-19 14:38:28.157]	[DEBUG]	idosproject.cpp:671	class IDOSProject *__cdecl IDOSProject::load(const class QString &,const class IDOSDataRegistry *,class QString &,class QObject *)	IDOS storage load: header=52ms restore=2589ms validate=0ms total=2641ms
+[2026-10-19 14:38:28.158]	[DEBUG]	idosmainwindow.cpp:846	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	正在切换当前工程：原工程=0x0，新工程=0x19cd2d14f00
+[2026-10-19 14:38:28.751]	[INFO]	idosmainwindow.cpp:900	void __cdecl IDOSMainWindow::setProject(class IDOSProject *)	当前工程已切换。
+[2026-10-19 14:38:28.795]	[INFO]	:0		DATA 源文件: 通过 - D:/QtCoder/IDOS/data/UPSCALE_GASWATER_ECL/UPSCALE_GASWATER_ECL.DATA
+[2026-10-19 14:38:28.797]	[INFO]	:0		输入解析摘要: 通过 - 此工况导入时已解析 DATA 文件。
+[2026-10-19 14:38:28.798]	[INFO]	:0		必需分段：RUNSPEC: 通过 - 找到 1 个分段。
+[2026-10-19 14:38:28.799]	[INFO]	:0		必需分段：GRID: 通过 - 找到 1 个分段。
+[2026-10-19 14:38:28.800]	[INFO]	:0		必需分段：PROPS: 通过 - 找到 1 个分段。
+[2026-10-19 14:38:28.801]	[INFO]	:0		必需分段：SOLUTION: 通过 - 找到 1 个分段。
+[2026-10-19 14:38:28.802]	[INFO]	:0		必需分段：SCHEDULE: 通过 - 找到 1 个分段。
+[2026-10-19 14:38:28.803]	[INFO]	:0		已导入网格: 通过 - 此工况已关联网格。
+[2026-10-19 14:38:28.804]	[WARN]	:0		井定义: 警告 - 没有找到 WELSPECS 记录。
+[2026-10-19 14:38:28.806]	[WARN]	:0		井控: 警告 - 没有找到 WCONPROD 或 WCONINJE 记录。
+[2026-10-19 14:38:28.808]	[INFO]	:0		引用的输入文件: 通过 - 17 个已索引来源文件均存在。
+[2026-10-19 14:38:28.904]	[DEBUG]	idosmainwindow.cpp:1995	bool __cdecl IDOSMainWindow::openProject(const class QString &,bool)	工程显示重建耗时 745 毫秒。
+[2026-10-19 14:38:28.904]	[INFO]	:0		工程已打开：C:/Users/Administrator/Desktop/123.idos
+[2026-10-19 14:38:45.107]	[INFO]	:0		正在显示 BG 的报告步 0。
+[2026-10-19 14:38:45.108]	[WARN]	qwidget.cpp:11250	void __cdecl QWidgetPrivate::setWindowModified_helper(void)	QWidget::setWindowModified: The window title does not contain a '[*]' placeholder

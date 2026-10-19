@@ -19,15 +19,13 @@
 
 IDOSSimulationPreflightWidget::IDOSSimulationPreflightWidget(IDOSSimulationCaseObject* simulationCase, QWidget* parent)
     :
-    QWidget(parent, Qt::Window)
+    QWidget(parent)
     , m_summaryLabel(nullptr)
     , m_resultsTable(nullptr)
     , m_blockingCount(0)
     , m_warningCount(0)
 {
-    setAttribute(Qt::WA_DeleteOnClose);
-    setObjectName(QStringLiteral("simulationRunPreflightWindow"));
-    setWindowTitle(tr("Run Preflight — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
+    setObjectName(QStringLiteral("simulationRunPreflightPage"));
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     m_summaryLabel = new QLabel(this);
@@ -44,7 +42,6 @@ IDOSSimulationPreflightWidget::IDOSSimulationPreflightWidget(IDOSSimulationCaseO
     layout->addWidget(m_resultsTable);
 
     runChecks(simulationCase);
-    resize(900, 560);
 }
 
 bool IDOSSimulationPreflightWidget::hasBlockingIssues() const

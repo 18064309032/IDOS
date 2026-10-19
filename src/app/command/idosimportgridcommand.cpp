@@ -227,17 +227,11 @@ bool IDOSImportGridCommand::revert(QString& error)
 
 bool IDOSImportGridCommand::loadObjects(QString& error)
 {
-    IDOSDataProviderMetadata* metadata = nullptr;
+    IDOSDataProviderMetadata* metadata = IDOSDataProviderRegistry::instance().metadata(QStringLiteral("idos.grid.eclipse"));
     std::unique_ptr<IDOSDataProvider> provider;
-    const QList<IDOSDataProviderMetadata*> metadataList =
-        IDOSDataProviderRegistry::instance().metadataForFile(m_filePath);
-    if (!metadataList.isEmpty())
-    {
-        metadata = metadataList.first();
-    }
     if (metadata == nullptr)
     {
-        error = QObject::tr("No provider matches file: %1").arg(m_filePath);
+        error = QObject::tr("The ECLIPSE grid provider is unavailable.");
         return false;
     }
     provider = metadata->create();

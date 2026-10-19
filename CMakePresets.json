@@ -22,7 +22,12 @@
         {
             "name": "win-x64-release",
             "displayName": "Windows x64 Release",
-            "inherits": "win-x64-debug",
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/../IDOS-Build",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": { "type": "STRING", "value": "Release" }
             }

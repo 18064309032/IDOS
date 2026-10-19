@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Simulation run settings</title>
+  <g fill="none" stroke="#3566B8" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 5h7m4 0h7M3 12h3m4 0h11M3 19h11m4 0h3"/>
+    <circle cx="12" cy="5" r="2" fill="#fff"/>
+    <circle cx="8" cy="12" r="2" fill="#fff"/>
+    <circle cx="16" cy="19" r="2" fill="#fff"/>
+  </g>
+</svg>

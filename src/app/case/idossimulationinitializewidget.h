@@ -1,45 +1,40 @@
 #ifndef IDOS_SIMULATION_INITIALIZE_WIDGET_H
 #define IDOS_SIMULATION_INITIALIZE_WIDGET_H
 
+#include <QObject>
 #include <QPointer>
+#include <QString>
 #include <QStringList>
-#include <QWidget>
+#include <QVariantMap>
 
 #include "idos_app.h"
 #include "logger/idosloglevel.h"
 
 class IDOSSimulationCaseObject;
-class QLineEdit;
-class QPlainTextEdit;
-class QPushButton;
-class QTableWidget;
 
-class APP_EXPORT IDOSSimulationInitializeWidget : public QWidget
+class APP_EXPORT IDOSSimulationInitializeWidget : public QObject
 {
     Q_OBJECT
 
   public:
     explicit IDOSSimulationInitializeWidget(IDOSSimulationCaseObject* simulationCase,
-                                            QWidget* parent = nullptr);
-
-  private slots:
-    void onBrowseDirectoryTriggered();
-    void onInitializeTriggered();
+                                            QObject* parent = nullptr);
+    void setRunDirectory(const QString& directory);
+    void setGeneratedDataFile(const QString& filePath);
+    bool prepareRunDirectory();
+    QVariantMap preparedRunInfo() const;
 
   private:
     void showOutput(const QString& message, IDOSLogLevel level = IDOSLogLevel::Error);
     QStringList inputFiles(IDOSSimulationCaseObject* simulationCase) const;
     QString relativeInputPath(const QString& inputFile) const;
     bool validateInputs(QStringList* messages) const;
-    void updateInputTable();
 
     QString m_sourceFile;
     QStringList m_inputFiles;
     QPointer<IDOSSimulationCaseObject> m_simulationCase;
-    QLineEdit* m_directoryEdit;
-    QTableWidget* m_inputTable;
-    QPlainTextEdit* m_outputEdit;
-    QPushButton* m_initializeButton;
+    QString m_runDirectory;
+    QVariantMap m_preparedRunInfo;
 };
 
 #endif // IDOS_SIMULATION_INITIALIZE_WIDGET_H

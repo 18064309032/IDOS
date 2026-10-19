@@ -85,6 +85,7 @@ class CORE_EXPORT IDOSGridPropertyObject : public IDOSDataObject
 
     /** 属性值数组（Eclipse natural order，长度 nx*ny*nz）。 */
     const QVector<double>& values() const;
+    const QVector<double>& baseValues() const;
 
     /** Report steps stored for a dynamic result property. */
     QList<int> reportSteps() const;
@@ -97,7 +98,7 @@ class CORE_EXPORT IDOSGridPropertyObject : public IDOSDataObject
      * @brief 一次性设置属性数组（导入时调用）。
      * @return true 成功；false 尺寸与维度不符，未写入。
      */
-    bool setValues(const QVector<double>& values);
+    bool setValues(QVector<double> values);
 
     /** 按单元索引取值。 */
     double valueAt(int i, int j, int k) const;

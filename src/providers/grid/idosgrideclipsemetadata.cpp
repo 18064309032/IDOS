@@ -19,5 +19,5 @@ QString IDOSGridEclipseMetadata::displayName() const
 
 QStringList IDOSGridEclipseMetadata::fileExtensions() const
 {
-    return QStringList{QStringLiteral("*.GRID"), QStringLiteral("*.EGRID")};
+    return QStringList{QStringLiteral("*.GRID"), QStringLiteral("*.EGRID"), QStringLiteral("*.GRDECL")};
 }

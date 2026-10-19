@@ -157,12 +157,8 @@ add_library(idos_app SHARED
     case/idossimulationcurvecomparisonwidget.h
     case/idossimulationdatagenerationwidget.cpp
     case/idossimulationdatagenerationwidget.h
-    case/idossimulationdeckbrowserwidget.cpp
-    case/idossimulationdeckbrowserwidget.h
     case/idossimulationinitializewidget.cpp
     case/idossimulationinitializewidget.h
-    case/idossimulationparsesummarywidget.cpp
-    case/idossimulationparsesummarywidget.h
     case/idossimulationpreflightwidget.cpp
     case/idossimulationpreflightwidget.h
     case/idossimulationpropertycurvewidget.cpp
@@ -179,8 +175,6 @@ add_library(idos_app SHARED
     case/idossimulationrunstatuswidget.h
     case/idossimulationwellcontrolswidget.cpp
     case/idossimulationwellcontrolswidget.h
-    case/idossimulationworkflowwidget.cpp
-    case/idossimulationworkflowwidget.h
     well/idoswelldisplaywidget.cpp
     well/idoswelldisplaywidget.h
     well/idoswelllogtrackview.cpp

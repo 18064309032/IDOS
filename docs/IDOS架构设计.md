@@ -1501,8 +1501,9 @@ IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何�
 - IDOSProject::save / load 负责工程级流程、版本、身份、文件路径和未保存状态。load 返回独立临时工程，所有对象读完后调用具体数据校验关系，再由 MainWindow 切换。原工程不参与加载修改。
 - IDOSDataRegistry 按 typeId 查找 IDOSDataMetadata。Metadata 的 writeProjectData / readProjectData 负责 HDF5 分发；具体对象和组合值类型通过 projectData / restoreProjectData 明确列出字段。未知或未实现的类型保存失败，不静默跳过。
 - IDOSObject 只授予 Project 恢复原 ID 的友元权限，正常创建继续生成新 ID。新增具体 IDOSGridPropertyMetadata，补齐属性恢复的类型注册。
-- 文件 /IDOS 保存格式 ID、版本 2、工程元信息、当前选择和对象索引；/Objects/<序号>/Data 保存具体对象数据。对象索引包含稳定 ID、typeId、name 和 visible。当前只写版本 2，兼容读取版本 1。
-- 版本 2 的复合数据使用 Kind 21：Metadata 保存固定 Qt_5_15、小端 QDataStream 元数据，魔数为 0x49444f32；原生数组独立放入 A0、A1 等数据集。相同字段的记录列表按列编码，数值列直接作为原生数组，避免逐记录、逐字段创建 HDF5 对象。版本 1 的 Kind 子分组读取继续保留。解码限定内置标量类型，并校验深度、计数和数组引用。
+- 文件 /IDOS 保存格式 ID、版本 3、工程元信息、当前选择和对象索引；/Objects/<序号>/Data 保存通用对象字段，专用大型数组可在对象组的其他数据集中保存。对象索引包含稳定 ID、typeId、name 和 visible。新保存使用版本 3，兼容读取版本 1、2、3。
+- 版本 2/3 的通用复合数据使用 Kind 21：Metadata 保存固定 Qt_5_15、小端 QDataStream 元数据，魔数为 0x49444f32；原生数组独立放入 A0、A1 等数据集。相同字段的记录列表按列编码，数值列直接作为原生数组，避免逐记录、逐字段创建 HDF5 对象。版本 1 的 Kind 子分组读取继续保留。解码限定内置标量类型，并校验深度、计数和数组引用。
+- 版本 3 的网格属性由其 Metadata 单独保存：固定属性值存入 Values，报告步编号存入 ReportSteps，所有动态值按报告步行排列到 ReportStepValues 二维数据集，避免为每个报告步创建独立 HDF5 组和数据集。读取版本 1/2 网格属性仍使用旧布局。
 - 浮点／整型数组直接保存为 HDF5 原生数据集，固定小端格式；达到 1024 项时分块、Deflate 1 压缩并带 Fletcher32 校验。Qt 容器不按 C++ 内存布局转储，不使用 JSON 或 ZIP 包装。
 - 网格保留 COORD/ZCORN/ACTNUM，属性保留静态数值及全部动态报告步；井保留井头存在标记、空间参考、轨迹、曲线、层位、时深、完井、模拟井控及扩展字段；地震保存实际采样数组。HDF5 作为工程容器；当前没有生成标准 /VTKHDF 数据集或提供 ParaView 直接读取，后续互通另按 VTKHDF 标准实现，不能将两者混称为已完成。
 - 保存先生成同目录临时 HDF5 文件，确认关闭成功后原子替换目标；正常磁盘路径不再完整复制临时文件。Windows 使用 MoveFileExW，Qt 临时文件先释放底层句柄；失败保留原目标。中文路径下，窄字符 HDF5 库无法打开时使用 Qt 文件读写与 HDF5 内存映像兼容，内存回退通过 QSaveFile 提交，仍受 QByteArray 的 2 GB 大小限制且额外占用内存。
@@ -1513,7 +1514,7 @@ IDOSGridFilterRenderProvider 继承现有 GridRenderProvider 复用网格几何�
 
 ## 20. 工程 UI 状态与本机窗口设置
 
-- IDOSProject 的 presentationState 为可选 QVariantMap，复用 .idos 版本 2 容器；UI 子版本为 1。兼容没有该字段的版本 1/2 工程，不新增存储管理类。工程数据先完成读取与校验，MainWindow 再装配视图集合，RenderServer 统一收集和恢复渲染状态。
+- IDOSProject 的 presentationState 为可选 QVariantMap，复用 .idos 版本 3 容器；UI 子版本为 1。兼容没有该字段的版本 1/2/3 工程，不新增存储管理类。工程数据先完成读取与校验，MainWindow 再装配视图集合，RenderServer 统一收集和恢复渲染状态。
 - RenderServer 按稳定视图 ID、数据 ID、数据 typeId 定位，恢复时不使用重新生成的 RenderObject ID。RenderProvider 的 presentationState/restorePresentationState 提供通用显隐、不透明度和显示模式；具体井、网格和地震 Provider 扩展各自参数。Server 负责再次绑定属性等非拥有依赖，再更新展示；Metadata 不同步工程。
 - RenderView 保存 2D/3D 模式、背景、方向、坐标轴、图例、光标跟踪、活动与主页相机、工具栏位置和显隐。联动在所有独立相机恢复后建立，并保留解除联动时的独立相机。相机数值和正尺度校验，异常 UI 条目回退默认或前一状态，不影响业务数据加载。
 - TreeServer 提供由稳定 key 组成的路径，不持久化树节点临时 ID；TreeView 保存展开、多选、当前项及滚动位置，MainWindow 协调恢复，不向 core 引入 QWidget。树和渲染模块继续互不依赖。测井曲线窗口由现有 App 界面保存井 ID、通道和深度范围，切换工程时清理旧窗口再恢复。

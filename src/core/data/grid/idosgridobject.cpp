@@ -1,4 +1,5 @@
 #include <climits>
+#include <utility>
 
 #include <QObject>
 
@@ -170,15 +171,15 @@ int IDOSGridObject::activeCellCount() const
     return count;
 }
 
-void IDOSGridObject::setCornerPointData(int nx, int ny, int nz, const QVector<double>& coord, const QVector<double>& zcorn,
-                                  const QVector<int>& actnum)
+void IDOSGridObject::setCornerPointData(int nx, int ny, int nz, QVector<double> coord, QVector<double> zcorn,
+                                        QVector<int> actnum)
 {
     m_nx = nx;
     m_ny = ny;
     m_nz = nz;
-    m_coord = coord;
-    m_zcorn = zcorn;
-    m_actnum = actnum;
+    m_coord = std::move(coord);
+    m_zcorn = std::move(zcorn);
+    m_actnum = std::move(actnum);
     emit dimensionsChanged(m_nx, m_ny, m_nz);
     emit gridDataChanged();
     emit dataChanged();

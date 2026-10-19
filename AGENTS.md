@@ -39,5 +39,5 @@
 
 # 编译目录
 
-- 后续所有 CMake 配置、编译和构建测试统一使用 `E:\CJW-Archive\IDOS-Build` 作为唯一构建目录。
+- 后续所有 CMake 配置、编译和构建测试统一使用 `D:\CMakeCoder\IDOS-Build` 作为唯一构建目录，与 `CMakePresets.json` 中 `${sourceDir}/../IDOS-Build` 一致。
 - 禁止在源码目录 `D:\CMakeCoder\IDOS` 及其子目录中执行源码内构建或创建构建目录；不再使用源码目录中已有的 `build` 或 `out` 子目录进行编译。

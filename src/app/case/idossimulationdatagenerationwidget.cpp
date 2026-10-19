@@ -22,7 +22,7 @@
 IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(IDOSSimulationCaseObject* simulationCase,
                                                                        QWidget* parent)
     :
-    QWidget(parent, Qt::Window)
+    QWidget(parent)
     , m_caseName(simulationCase != nullptr ? simulationCase->name() : QString())
     , m_sourceFile(simulationCase != nullptr ? simulationCase->sourceFile() : QString())
     , m_simulationCase(simulationCase)
@@ -30,11 +30,15 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(IDOSSimul
     , m_dataEditor(nullptr)
     , m_outputEdit(nullptr)
 {
-    setAttribute(Qt::WA_DeleteOnClose);
-    setObjectName(QStringLiteral("simulationDataGenerationWindow"));
-    setWindowTitle(tr("Generate DATA — %1").arg(m_caseName));
+    setObjectName(QStringLiteral("simulationDataGenerationPage"));
+    setStyleSheet(QStringLiteral(
+        "QPlainTextEdit { border: 1px solid #d8e0e9; border-radius: 3px; background: #fbfcfe; }"
+        "QLineEdit { min-height: 26px; }"
+        "QPushButton { min-height: 28px; padding: 2px 10px; }"));
 
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(7);
     QLabel* descriptionLabel = new QLabel(
         tr("Generate a standalone DATA file from the case's current in-memory grid and static properties. "
            "Other simulator settings are retained from the source DATA file."),
@@ -67,7 +71,6 @@ IDOSSimulationDataGenerationWidget::IDOSSimulationDataGenerationWidget(IDOSSimul
     layout->addWidget(generateButton);
     connect(generateButton, &QPushButton::clicked, this,
             &IDOSSimulationDataGenerationWidget::onGeneratePackageTriggered);
-    resize(1000, 760);
 }
 
 void IDOSSimulationDataGenerationWidget::onBrowseParentDirectoryTriggered()

@@ -1,0 +1,184 @@
+name: Windows Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: [ self-hosted, windows, x64, idos ]
+
+    env:
+      GITEA_SERVER_URL: ${{ gitea.server_url }}
+      GITEA_REPOSITORY: ${{ gitea.repository }}
+      GITEA_REF: ${{ gitea.ref }}
+      GITEA_REF_NAME: ${{ gitea.ref_name }}
+      GITEA_SHA: ${{ gitea.sha }}
+      GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+      GITEA_PACKAGE_USER: ${{ secrets.PACKAGE_USER }}
+      GITEA_PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+      GITEA_PACKAGE_OWNER: root
+      QT_DIR: D:\Qt\Qt5.15.2\5.15.2\msvc2019_64
+      BUILD_DIR: C:\gitea-runner\build\IDOS-Next
+      ASSISTANT_RESOURCES_DIR: C:\gitea-runner\dependencies\IDOS\resources\assistant
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - name: Prepare runner resources
+        shell: powershell
+        run: |
+          $assistantSource = $env:ASSISTANT_RESOURCES_DIR
+          $assistantDestination = Join-Path $env:GITHUB_WORKSPACE 'resources\assistant'
+          $requiredFiles = @(
+            'local-ai.json',
+            'models\qwen2.5-coder-7b-instruct-q4_k_m.gguf'
+          )
+
+          if (!(Test-Path -LiteralPath $assistantSource)) {
+            throw "Assistant resources were not found at '$assistantSource'. Provision resources/assistant outside Git because the model is excluded from the repository."
+          }
+          foreach ($requiredFile in $requiredFiles) {
+            if (!(Test-Path -LiteralPath (Join-Path $assistantSource $requiredFile))) {
+              throw "Required assistant resource is missing: $(Join-Path $assistantSource $requiredFile)"
+            }
+          }
+
+          Copy-Item -LiteralPath $assistantSource -Destination $assistantDestination -Recurse -Force
+
+          if (!(Test-Path -LiteralPath "$env:QT_DIR\bin\windeployqt.exe")) {
+            throw "Qt 5.15.2 was not found under QT_DIR=$env:QT_DIR"
+          }
+          if (!(Test-Path -LiteralPath "$env:QT_DIR\lib\cmake\Qt5\Qt5Config.cmake")) {
+            throw "Qt CMake package was not found under QT_DIR=$env:QT_DIR"
+          }
+          if (!(Get-Command cmake -ErrorAction SilentlyContinue)) {
+            throw 'CMake was not found on PATH.'
+          }
+          if (!(Get-Command ctest -ErrorAction SilentlyContinue)) {
+            throw 'CTest was not found on PATH.'
+          }
+
+      - name: Configure Release
+        shell: powershell
+        run: |
+          cmake -S "$env:GITHUB_WORKSPACE" -B "$env:BUILD_DIR" `
+            -G "Visual Studio 17 2022" -A x64 `
+            "-DIDOS_QT_DIR=$env:QT_DIR" `
+            -DIDOS_ENABLE_RENDER=ON `
+            -DIDOS_BUILD_TESTS=ON
+          if ($LASTEXITCODE -ne 0) {
+            throw "CMake configure failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Build Release
+        shell: powershell
+        run: |
+          cmake --build "$env:BUILD_DIR" --config Release --parallel 6
+          if ($LASTEXITCODE -ne 0) {
+            throw "CMake build failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Run tests
+        shell: powershell
+        run: |
+          ctest --test-dir "$env:BUILD_DIR" -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) {
+            throw "CTest failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Package
+        shell: powershell
+        run: |
+          $version = $env:GITEA_REF_NAME
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -eq 'main' -or $version -eq 'master') {
+            $version = 'dev-' + $env:GITEA_SHA.Substring(0, 7)
+          }
+
+          $applicationDirectory = Join-Path $env:BUILD_DIR 'bin\Release'
+          $executable = Join-Path $applicationDirectory 'idos.exe'
+          if (!(Test-Path -LiteralPath $executable)) {
+            throw "Release executable was not found: $executable"
+          }
+
+          $artifactsDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          New-Item -ItemType Directory -Force -Path $artifactsDirectory | Out-Null
+          $archive = Join-Path $artifactsDirectory "IDOS-windows-x64-$version.zip"
+          Compress-Archive -Path (Join-Path $applicationDirectory '*') -DestinationPath $archive -CompressionLevel Optimal -Force
+          Write-Host "Created $archive"
+
+      - name: Verify package
+        shell: powershell
+        run: |
+          $archive = Join-Path $env:GITHUB_WORKSPACE "artifacts\IDOS-windows-x64-$env:GITEA_REF_NAME.zip"
+          if (!(Test-Path -LiteralPath $archive)) {
+            $archive = Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE 'artifacts') -Filter 'IDOS-windows-x64-*.zip' | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ([string]::IsNullOrWhiteSpace($archive) -or !(Test-Path -LiteralPath $archive)) {
+            throw 'Windows release archive was not created.'
+          }
+
+          $zipArchive = [System.IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            $entries = @($zipArchive.Entries)
+            $requiredEntries = @(
+              'idos.exe',
+              'i18n/idos_zh_CN.qm',
+              'opm/extra-keywords.json'
+            )
+            foreach ($requiredEntry in $requiredEntries) {
+              if (!($entries | Where-Object { $_.FullName -eq $requiredEntry })) {
+                throw "Package is missing required file '$requiredEntry'."
+              }
+            }
+          } finally {
+            $zipArchive.Dispose()
+          }
+
+      - name: Upload package to Gitea
+        shell: powershell
+        run: |
+          $server = $env:GITEA_SERVER_URL
+          $repository = $env:GITEA_REPOSITORY
+          $authUser = $env:GITEA_PACKAGE_USER
+          $packageOwner = $env:GITEA_PACKAGE_OWNER
+          $token = $env:GITEA_PACKAGE_TOKEN
+          if ([string]::IsNullOrWhiteSpace($authUser) -or [string]::IsNullOrWhiteSpace($token)) {
+            Write-Host 'PACKAGE_USER or PACKAGE_TOKEN is not configured; skipping package upload.'
+            exit 0
+          }
+          if ([string]::IsNullOrWhiteSpace($server) -or [string]::IsNullOrWhiteSpace($repository)) {
+            throw 'Gitea server or repository context is missing.'
+          }
+
+          $version = $env:GITEA_REF_NAME
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -eq 'main' -or $version -eq 'master') {
+            $version = 'dev-' + $env:GITEA_SHA.Substring(0, 7)
+          }
+          $archive = Join-Path $env:GITHUB_WORKSPACE "artifacts\IDOS-windows-x64-$version.zip"
+          if (!(Test-Path -LiteralPath $archive)) {
+            throw "Release archive was not found: $archive"
+          }
+
+          $basicToken = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("${authUser}:$token"))
+          $headers = @{ Authorization = "Basic $basicToken" }
+          $encodedName = [System.Uri]::EscapeDataString([System.IO.Path]::GetFileName($archive))
+          $uri = "$($server.TrimEnd('/'))/api/packages/$packageOwner/generic/IDOS-windows-x64/$version/$encodedName"
+          Invoke-WebRequest -UseBasicParsing -Method Put -Uri $uri -Headers $headers -InFile $archive -ContentType 'application/octet-stream'
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: IDOS-windows-x64-${{ gitea.ref_name }}
+          path: artifacts/IDOS-windows-x64-*.zip
+          if-no-files-found: error

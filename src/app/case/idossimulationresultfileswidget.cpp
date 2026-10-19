@@ -28,19 +28,23 @@
 IDOSSimulationResultFilesWidget::IDOSSimulationResultFilesWidget(IDOSSimulationCaseObject* simulationCase,
                                                                  QWidget* parent)
     :
-    QWidget(parent, Qt::Window)
+    QWidget(parent)
     , m_runDirectory()
+    , m_inputFiles()
     , m_gridId()
     , m_project(nullptr)
     , m_summaryLabel(nullptr)
     , m_filesTable(nullptr)
     , m_importButton(nullptr)
 {
-    setAttribute(Qt::WA_DeleteOnClose);
-    setObjectName(QStringLiteral("simulationResultFilesWindow"));
-    setWindowTitle(tr("Result Files — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
+    setObjectName(QStringLiteral("simulationResultFilesPage"));
+    setStyleSheet(QStringLiteral(
+        "QTableWidget { border: 1px solid #d8e0e9; border-radius: 3px; background: #fbfcfe; }"
+        "QPushButton { min-height: 28px; padding: 2px 10px; }"));
 
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(8);
     m_summaryLabel = new QLabel(this);
     m_summaryLabel->setWordWrap(true);
     layout->addWidget(m_summaryLabel);
@@ -71,7 +75,6 @@ IDOSSimulationResultFilesWidget::IDOSSimulationResultFilesWidget(IDOSSimulationC
             &IDOSSimulationResultFilesWidget::onImportDynamicPropertiesTriggered);
 
     loadResultFiles(simulationCase);
-    resize(820, 520);
 }
 
 void IDOSSimulationResultFilesWidget::loadResultFiles(IDOSSimulationCaseObject* simulationCase)
@@ -104,21 +107,40 @@ void IDOSSimulationResultFilesWidget::loadResultFiles(IDOSSimulationCaseObject* 
     }
 
     const QVariantMap runInfo = simulationCase->runInfo();
-    m_runDirectory = runInfo.value(QStringLiteral("runDirectory")).toString();
+    m_inputFiles = runInfo.value(QStringLiteral("files")).toStringList();
+    const QString latestOutputDirectory = runInfo.value(QStringLiteral("outputDirectory")).toString();
+    m_runDirectory = QFileInfo(latestOutputDirectory).isDir()
+        ? latestOutputDirectory
+        : runInfo.value(QStringLiteral("runDirectory")).toString();
     if (m_runDirectory.isEmpty() || !QFileInfo(m_runDirectory).isDir())
     {
-        m_summaryLabel->setText(tr("This case has no initialized run directory. Run Initialize first."));
+        m_summaryLabel->setText(tr("No run output is available for this case yet."));
         return;
     }
 
-    const QStringList inputFiles = runInfo.value(QStringLiteral("files")).toStringList();
+    populateResultFiles(m_runDirectory == latestOutputDirectory ? QStringList() : m_inputFiles);
+}
+
+void IDOSSimulationResultFilesWidget::showRunDirectory(const QString& runDirectory)
+{
+    if (!QFileInfo(runDirectory).isDir())
+    {
+        return;
+    }
+    m_runDirectory = QDir::cleanPath(QFileInfo(runDirectory).absoluteFilePath());
+    populateResultFiles(QStringList());
+}
+
+void IDOSSimulationResultFilesWidget::populateResultFiles(const QStringList& excludedInputFiles)
+{
+    m_filesTable->setRowCount(0);
     QStringList resultFiles;
     QDirIterator iterator(m_runDirectory, QDir::Files, QDirIterator::Subdirectories);
     while (iterator.hasNext())
     {
         const QString filePath = iterator.next();
         const QString relativePath = QDir::fromNativeSeparators(QDir(m_runDirectory).relativeFilePath(filePath));
-        if (!inputFiles.contains(relativePath, Qt::CaseInsensitive))
+        if (!excludedInputFiles.contains(relativePath, Qt::CaseInsensitive))
         {
             resultFiles.append(relativePath);
         }
@@ -127,8 +149,7 @@ void IDOSSimulationResultFilesWidget::loadResultFiles(IDOSSimulationCaseObject* 
 
     if (resultFiles.isEmpty())
     {
-        m_summaryLabel->setText(
-            tr("No result files found. A simulator run has not produced output in this directory."));
+        m_summaryLabel->setText(tr("No result files were found in this run directory."));
         return;
     }
 

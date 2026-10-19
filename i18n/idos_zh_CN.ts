@@ -1018,6 +1018,14 @@
 <context>
     <name>IDOSMainWindow</name>
     <message>
+        <source>Simulation Run</source>
+        <translation>模拟运行</translation>
+    </message>
+    <message>
+        <source>No simulation case selected</source>
+        <translation>未选择模拟工况</translation>
+    </message>
+    <message>
         <source>No Project</source>
         <translation>无工程</translation>
     </message>
@@ -1070,6 +1078,10 @@
     <message>
         <source>Simulation</source>
         <translation>模拟</translation>
+    </message>
+    <message>
+        <source>Case View</source>
+        <translation>工况查看</translation>
     </message>
     <message>
         <source>Orientation Marker</source>
@@ -2028,8 +2040,8 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 导入新网格将删除旧网格及其 %3 个属性，是否继续？</translation>
     </message>
     <message>
-        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid);;All Files (*.*)</source>
-        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid);;所有文件 (*.*)</translation>
+        <source>ECLIPSE Grids (*.EGRID *.egrid *.GRID *.grid *.GRDECL *.grdecl);;All Files (*.*)</source>
+        <translation>ECLIPSE 网格 (*.EGRID *.egrid *.GRID *.grid *.GRDECL *.grdecl);;所有文件 (*.*)</translation>
     </message>
     <message>
         <source>Select Inline Section...</source>
@@ -3170,8 +3182,140 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>IDOSSimulation</name>
     <message>
+        <source>Configure run directory rules, WSL, Flow and CPU settings.</source>
+        <translation>配置运行目录规则、WSL、Flow 和 CPU 参数。</translation>
+    </message>
+    <message>
+        <source>Check the selected case, prepare a run directory and start Flow.</source>
+        <translation>检查当前工况、准备运行目录并启动 Flow。</translation>
+    </message>
+    <message>
+        <source>Set a shared parent folder for run directories and configure Flow execution. Leave the folder empty to create runs beside the case input files.</source>
+        <translation>设置运行目录的公共上级文件夹并配置 Flow 执行参数。留空时，将在工况输入文件旁创建运行目录。</translation>
+    </message>
+    <message>
+        <source>Default: a folder beside the case input files</source>
+        <translation>默认：工况输入文件旁的文件夹</translation>
+    </message>
+    <message>
+        <source>Run directory parent</source>
+        <translation>运行目录上级文件夹</translation>
+    </message>
+    <message>
+        <source>Enter an absolute run directory parent when set, a Linux distribution, and an absolute Flow executable path.</source>
+        <translation>如需设置运行目录上级文件夹，请填写绝对路径；同时填写 Linux 发行版和 Flow 可执行程序的绝对路径。</translation>
+    </message>
+    <message>
+        <source>Input checks found blocking issues. Review the Output panel for details.</source>
+        <translation>输入检查发现阻止运行的问题。请查看输出面板中的详细信息。</translation>
+    </message>
+    <message>
+        <source>The run preparation service is unavailable.</source>
+        <translation>运行准备服务不可用。</translation>
+    </message>
+    <message>
+        <source>Run preparation failed. Review the Output panel for details.</source>
+        <translation>运行准备失败。请查看输出面板中的详细信息。</translation>
+    </message>
+    <message>
+        <source>Run Settings</source>
+        <translation>运行设置</translation>
+    </message>
+    <message>
+        <source>Set the run directory and Flow execution options used for this case. The directory is fixed after initialization.</source>
+        <translation>设置此工况的运行目录和 Flow 执行参数。初始化后，运行目录将固定。</translation>
+    </message>
+    <message>
+        <source>Run directory</source>
+        <translation>运行目录</translation>
+    </message>
+    <message>
+        <source>Browse…</source>
+        <translation>浏览…</translation>
+    </message>
+    <message>
+        <source>Select run directory parent</source>
+        <translation>选择运行目录的上级目录</translation>
+    </message>
+    <message>
+        <source>Run settings cannot be changed while Flow is running.</source>
+        <translation>Flow 正在运行时无法更改运行设置。</translation>
+    </message>
+    <message>
+        <source>Enter a run directory, a Linux distribution, and an absolute Flow executable path.</source>
+        <translation>请填写运行目录、Linux 发行版和 Flow 可执行程序的绝对路径。</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>应用</translation>
+    </message>
+    <message>
         <source>The required Home ribbon groups are unavailable.</source>
         <translation>主页所需的功能分组不可用。</translation>
+    </message>
+    <message>
+        <source>Simulation Workspace</source>
+        <translation type="vanished">模拟工作区</translation>
+    </message>
+    <message>
+        <source>Workspace</source>
+        <translation>工作区</translation>
+    </message>
+    <message>
+        <source>DATA Browser</source>
+        <translation>DATA 浏览</translation>
+    </message>
+    <message>
+        <source>Select a simulation case to view input files.</source>
+        <translation>请选择模拟工况以查看输入文件。</translation>
+    </message>
+    <message>
+        <source>Configure the WSL2 distribution and Flow executable, then start the simulator.</source>
+        <translation>配置 WSL2 发行版和 Flow 可执行文件，然后启动模拟器。</translation>
+    </message>
+    <message>
+        <source>Open Run Controls</source>
+        <translation>打开运行控制</translation>
+    </message>
+    <message>
+        <source>Run Flow</source>
+        <translation>运行 Flow</translation>
+    </message>
+    <message>
+        <source>Show the docked case workflow and DATA input workspace.</source>
+        <translation type="vanished">显示停靠的工况流程与 DATA 输入工作区。</translation>
+    </message>
+    <message>
+        <source>Open the full simulation workbench page.</source>
+        <translation>打开完整的模拟工作台页面。</translation>
+    </message>
+    <message>
+        <source>Select a simulation case in the Case tree.</source>
+        <translation>请在工况树中选择一个模拟工况。</translation>
+    </message>
+    <message>
+        <source>Select a simulation case to inspect or generate DATA input.</source>
+        <translation>请选择模拟工况以查看或生成 DATA 输入。</translation>
+    </message>
+    <message>
+        <source>Active run DATA (%1): %2\nSource DATA: %3</source>
+        <translation>当前运行 DATA（%1）：%2\n来源 DATA：%3</translation>
+    </message>
+    <message>
+        <source>Not selected</source>
+        <translation>未选择</translation>
+    </message>
+    <message>
+        <source>Not available</source>
+        <translation>不可用</translation>
+    </message>
+    <message>
+        <source>Generated DATA</source>
+        <translation>生成的 DATA</translation>
+    </message>
+    <message>
+        <source>Source DATA</source>
+        <translation>来源 DATA</translation>
     </message>
     <message>
         <source>Numerical Simulation</source>
@@ -3179,7 +3323,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Case</source>
-        <translation type="vanished">工况</translation>
+        <translation>工况</translation>
     </message>
     <message>
         <source>New Case</source>
@@ -3195,7 +3339,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Input</source>
-        <translation type="vanished">输入</translation>
+        <translation>输入</translation>
     </message>
     <message>
         <source>Deck Browser</source>
@@ -3227,7 +3371,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Run</source>
-        <translation type="vanished">运行</translation>
+        <translation>运行</translation>
     </message>
     <message>
         <source>Run Preflight</source>
@@ -3247,7 +3391,7 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Results</source>
-        <translation type="vanished">结果</translation>
+        <translation>结果</translation>
     </message>
     <message>
         <source>Result Files</source>
@@ -3400,6 +3544,42 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Stop the simulation task before unloading this plugin.</source>
         <translation type="vanished">请先停止模拟任务，再卸载此插件。</translation>
+    </message>
+    <message>
+        <source>Unable to create a temporary DATA directory.</source>
+        <translation>无法创建临时 DATA 目录。</translation>
+    </message>
+    <message>
+        <source>DATA generation failed: %1</source>
+        <translation>DATA 生成失败：%1</translation>
+    </message>
+    <message>
+        <source>DATA generation failed. Review the Output panel for details.</source>
+        <translation>DATA 生成失败。请在输出面板查看详细信息。</translation>
+    </message>
+    <message>
+        <source>Generated temporary DATA file: %1</source>
+        <translation>已生成临时 DATA 文件：%1</translation>
+    </message>
+    <message>
+        <source>Generate Simulation Input</source>
+        <translation>生成模拟输入</translation>
+    </message>
+    <message>
+        <source>Run History and Status</source>
+        <translation>运行状态与历史记录</translation>
+    </message>
+    <message>
+        <source>Run Output Files</source>
+        <translation>运行输出文件</translation>
+    </message>
+    <message>
+        <source>Simulation Run</source>
+        <translation>模拟运行</translation>
+    </message>
+    <message>
+        <source>Show or hide the simulation run workspace with run status, history and result files.</source>
+        <translation>显示或隐藏模拟运行工作区，可在其中查看运行状态、历史记录和结果文件。</translation>
     </message>
 </context>
 <context>
@@ -3789,6 +3969,10 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>IDOSSimulationInitializeWidget</name>
     <message>
+        <source>Run Settings…</source>
+        <translation>运行设置…</translation>
+    </message>
+    <message>
         <source>Initialize — %1</source>
         <translation>初始化 — %1</translation>
     </message>
@@ -4085,6 +4269,14 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>IDOSSimulationResultFilesWidget</name>
     <message>
+        <source>No run output is available for this case yet.</source>
+        <translation>此工况尚无运行输出。</translation>
+    </message>
+    <message>
+        <source>No result files were found in this run directory.</source>
+        <translation>此运行目录中没有结果文件。</translation>
+    </message>
+    <message>
         <source>Result Files — %1</source>
         <translation>结果文件 — %1</translation>
     </message>
@@ -4326,6 +4518,58 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>IDOSSimulationRunStatusWidget</name>
     <message>
+        <source>Double-click a run to inspect its output files.</source>
+        <translation>双击运行记录可查看对应的输出文件。</translation>
+    </message>
+    <message>
+        <source>Running</source>
+        <translation>运行中</translation>
+    </message>
+    <message>
+        <source>Succeeded</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <source>Failed</source>
+        <translation>失败</translation>
+    </message>
+    <message>
+        <source>Import failed</source>
+        <translation>导入失败</translation>
+    </message>
+    <message>
+        <source>Cancelled</source>
+        <translation>已取消</translation>
+    </message>
+    <message>
+        <source>Run History</source>
+        <translation>运行历史</translation>
+    </message>
+    <message>
+        <source>Started</source>
+        <translation>开始时间</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>输出目录</translation>
+    </message>
+    <message>
+        <source>Run folder: %1 · WSL: %2 · Flow: %3 · %4 threads</source>
+        <translation>运行文件夹：%1 · WSL：%2 · Flow：%3 · %4 线程</translation>
+    </message>
+    <message>
+        <source>Beside case input</source>
+        <translation>工况输入文件旁</translation>
+    </message>
+    <message>
+        <source>Select a case and click Run to check inputs and start Flow.</source>
+        <translation>选择工况后点击“运行”，系统将检查输入并启动 Flow。</translation>
+    </message>
+    <message>
+        <source>WSL: %1 · Flow: %2 · %3 threads</source>
+        <translation>WSL：%1 · Flow：%2 · %3 线程</translation>
+    </message>
+    <message>
         <source>Run Status — %1</source>
         <translation>运行状态 — %1</translation>
     </message>
@@ -4395,11 +4639,11 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     </message>
     <message>
         <source>Initialize the case and configure a Linux distribution and absolute Flow path first.</source>
-        <translation>请先初始化工况，并配置 Linux 发行版和 Flow 的绝对路径。</translation>
+        <translation type="vanished">请先初始化工况，并配置 Linux 发行版和 Flow 的绝对路径。</translation>
     </message>
     <message>
         <source>An initialized input file is missing: %1</source>
-        <translation>初始化输入文件缺失：%1</translation>
+        <translation type="vanished">初始化输入文件缺失：%1</translation>
     </message>
     <message>
         <source>The target grid is unavailable.</source>
@@ -4452,6 +4696,14 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Importing Flow results: %1</source>
         <translation>正在导入 Flow 结果：%1</translation>
+    </message>
+    <message>
+        <source>Configure a Linux distribution and absolute Flow executable path in Run Settings first.</source>
+        <translation>请先在运行设置中配置 Linux 发行版和 Flow 可执行文件绝对路径。</translation>
+    </message>
+    <message>
+        <source>A prepared run input file is missing: %1</source>
+        <translation>运行目录中缺少已准备的输入文件：%1</translation>
     </message>
 </context>
 <context>
@@ -4596,6 +4848,18 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>DATA 输入</translation>
     </message>
     <message>
+        <source>%1: %2</source>
+        <translation>%1：%2</translation>
+    </message>
+    <message>
+        <source>Generated DATA</source>
+        <translation>生成的 DATA</translation>
+    </message>
+    <message>
+        <source>Source DATA</source>
+        <translation>来源 DATA</translation>
+    </message>
+    <message>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
@@ -4682,6 +4946,414 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Open Run Status to configure and start Flow through WSL2.</source>
         <translation>打开“运行状态”，配置并通过 WSL2 启动 Flow。</translation>
+    </message>
+    <message>
+        <source>Simulation Workbench</source>
+        <translation>模拟工作台</translation>
+    </message>
+    <message>
+        <source>Generate DATA</source>
+        <translation>生成 DATA</translation>
+    </message>
+    <message>
+        <source>Run Flow</source>
+        <translation>运行 Flow</translation>
+    </message>
+    <message>
+        <source>Parse Summary</source>
+        <translation>解析摘要</translation>
+    </message>
+    <message>
+        <source>Simulation sequence</source>
+        <translation>模拟流程</translation>
+    </message>
+    <message>
+        <source>01  Input DATA</source>
+        <translation>01  输入 DATA</translation>
+    </message>
+    <message>
+        <source>Select the active deck and review its indexed content.</source>
+        <translation>选择当前使用的 DATA 文件并查看已索引内容。</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>浏览</translation>
+    </message>
+    <message>
+        <source>02  Run Preflight</source>
+        <translation>02  运行预检</translation>
+    </message>
+    <message>
+        <source>Check required input files and simulator settings.</source>
+        <translation>检查所需输入文件和模拟器设置。</translation>
+    </message>
+    <message>
+        <source>Inspect Checks</source>
+        <translation>查看检查项</translation>
+    </message>
+    <message>
+        <source>03  Prepare Run</source>
+        <translation>03  准备运行</translation>
+    </message>
+    <message>
+        <source>Copy inputs into an isolated run directory.</source>
+        <translation>将输入文件复制到独立的运行目录。</translation>
+    </message>
+    <message>
+        <source>Prepare Directory</source>
+        <translation>准备运行目录</translation>
+    </message>
+    <message>
+        <source>04  Run Flow</source>
+        <translation>04  运行 Flow</translation>
+    </message>
+    <message>
+        <source>Configure WSL2 and start the simulator.</source>
+        <translation>配置 WSL2 并启动模拟器。</translation>
+    </message>
+    <message>
+        <source>Open Run Controls</source>
+        <translation>打开运行控制</translation>
+    </message>
+    <message>
+        <source>05  Review Results</source>
+        <translation>05  查看结果</translation>
+    </message>
+    <message>
+        <source>Inspect files produced by the current run.</source>
+        <translation>查看当前运行生成的文件。</translation>
+    </message>
+    <message>
+        <source>View Run Files</source>
+        <translation>查看运行文件</translation>
+    </message>
+    <message>
+        <source>Input package</source>
+        <translation>输入文件</translation>
+    </message>
+    <message>
+        <source>Current run</source>
+        <translation>当前运行</translation>
+    </message>
+    <message>
+        <source>No simulation case selected. Select a case from the Case tree.</source>
+        <translation>未选择模拟工况，请在工况树中选择。</translation>
+    </message>
+    <message>
+        <source>No active case</source>
+        <translation>没有活动工况</translation>
+    </message>
+    <message>
+        <source>No input DATA</source>
+        <translation>没有输入 DATA</translation>
+    </message>
+    <message>
+        <source>Waiting for case</source>
+        <translation>等待选择工况</translation>
+    </message>
+    <message>
+        <source>Not prepared</source>
+        <translation>尚未准备</translation>
+    </message>
+    <message>
+        <source>Waiting for run setup</source>
+        <translation>等待准备运行目录</translation>
+    </message>
+    <message>
+        <source>No run results</source>
+        <translation>没有运行结果</translation>
+    </message>
+    <message>
+        <source>Active DATA: not available</source>
+        <translation>当前 DATA：不可用</translation>
+    </message>
+    <message>
+        <source>Source DATA: not available</source>
+        <translation>来源 DATA：不可用</translation>
+    </message>
+    <message>
+        <source>No parsed keyword index</source>
+        <translation>没有已解析的关键字索引</translation>
+    </message>
+    <message>
+        <source>Run directory: not prepared</source>
+        <translation>运行目录：尚未准备</translation>
+    </message>
+    <message>
+        <source>Result files: 0</source>
+        <translation>结果文件：0</translation>
+    </message>
+    <message>
+        <source>Active case  ·  %1</source>
+        <translation>当前工况  ·  %1</translation>
+    </message>
+    <message>
+        <source>Ready for preflight</source>
+        <translation>可以运行预检</translation>
+    </message>
+    <message>
+        <source>Input needs attention</source>
+        <translation>输入需要处理</translation>
+    </message>
+    <message>
+        <source>DATA source available</source>
+        <translation>DATA 源文件可用</translation>
+    </message>
+    <message>
+        <source>DATA source unavailable</source>
+        <translation>DATA 源文件不可用</translation>
+    </message>
+    <message>
+        <source>Blocking checks found</source>
+        <translation>发现阻断项</translation>
+    </message>
+    <message>
+        <source>Run directory ready</source>
+        <translation>运行目录已准备</translation>
+    </message>
+    <message>
+        <source>Ready to start Flow</source>
+        <translation>可以启动 Flow</translation>
+    </message>
+    <message>
+        <source>%1 result file(s)</source>
+        <translation>%1 个结果文件</translation>
+    </message>
+    <message>
+        <source>Waiting for simulator output</source>
+        <translation>等待模拟器输出</translation>
+    </message>
+    <message>
+        <source>Active DATA: %1 (%2)</source>
+        <translation>当前 DATA：%1（%2）</translation>
+    </message>
+    <message>
+        <source>not selected</source>
+        <translation>未选择</translation>
+    </message>
+    <message>
+        <source>Generated</source>
+        <translation>生成文件</translation>
+    </message>
+    <message>
+        <source>Source</source>
+        <translation>源文件</translation>
+    </message>
+    <message>
+        <source>Original source: %1</source>
+        <translation>原始来源：%1</translation>
+    </message>
+    <message>
+        <source>not available</source>
+        <translation>不可用</translation>
+    </message>
+    <message>
+        <source>Indexed keywords: %1    ·    Run input files: %2</source>
+        <translation>已索引关键字：%1    ·    运行输入文件：%2</translation>
+    </message>
+    <message>
+        <source>Run directory: %1</source>
+        <translation>运行目录：%1</translation>
+    </message>
+    <message>
+        <source>Prepared time: not available</source>
+        <translation>准备时间：不可用</translation>
+    </message>
+    <message>
+        <source>Prepared time (UTC): %1</source>
+        <translation>准备时间（UTC）：%1</translation>
+    </message>
+    <message>
+        <source>Result files: %1</source>
+        <translation>结果文件：%1</translation>
+    </message>
+    <message>
+        <source>Current case</source>
+        <translation>当前工况</translation>
+    </message>
+    <message>
+        <source>Case name</source>
+        <translation>工况名称</translation>
+    </message>
+    <message>
+        <source>Description</source>
+        <translation>说明</translation>
+    </message>
+    <message>
+        <source>DATA file</source>
+        <translation>DATA 文件</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <source>Simulation workflow</source>
+        <translation>模拟流程</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation>查看</translation>
+    </message>
+    <message>
+        <source>Run Simulation</source>
+        <translation>运行模拟</translation>
+    </message>
+    <message>
+        <source>Run</source>
+        <translation>运行</translation>
+    </message>
+    <message>
+        <source>Results Analysis</source>
+        <translation>结果分析</translation>
+    </message>
+    <message>
+        <source>No simulation case selected.</source>
+        <translation>未选择模拟工况。</translation>
+    </message>
+    <message>
+        <source>No DATA source is selected.</source>
+        <translation>未选择 DATA 源文件。</translation>
+    </message>
+    <message>
+        <source>Not generated</source>
+        <translation>尚未生成</translation>
+    </message>
+    <message>
+        <source>No generated DATA file is associated with this case.</source>
+        <translation>此工况尚未关联生成的 DATA 文件。</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>等待检查</translation>
+    </message>
+    <message>
+        <source>Run the checks before preparing the simulator.</source>
+        <translation>准备模拟器前请先运行检查。</translation>
+    </message>
+    <message>
+        <source>No run directory is prepared.</source>
+        <translation>尚未准备运行目录。</translation>
+    </message>
+    <message>
+        <source>Not started</source>
+        <translation>尚未启动</translation>
+    </message>
+    <message>
+        <source>Initialize this case before starting Flow.</source>
+        <translation>启动 Flow 前请先初始化此工况。</translation>
+    </message>
+    <message>
+        <source>Waiting for run</source>
+        <translation>等待运行</translation>
+    </message>
+    <message>
+        <source>Results will appear after the simulator finishes.</source>
+        <translation>模拟器运行完成后将在此处显示结果。</translation>
+    </message>
+    <message>
+        <source>No DATA description available.</source>
+        <translation>没有可用的 DATA 说明。</translation>
+    </message>
+    <message>
+        <source>File status: selected\nSource: %1</source>
+        <translation>文件状态：已选择\n来源：%1</translation>
+    </message>
+    <message>
+        <source>The source DATA file is missing or has not been parsed.</source>
+        <translation>DATA 源文件不存在或尚未解析。</translation>
+    </message>
+    <message>
+        <source>Active run input</source>
+        <translation>当前运行输入</translation>
+    </message>
+    <message>
+        <source>Source input</source>
+        <translation>源输入</translation>
+    </message>
+    <message>
+        <source>Selected</source>
+        <translation>已选择</translation>
+    </message>
+    <message>
+        <source>Output: %1\nTime: %2</source>
+        <translation>输出：%1\n时间：%2</translation>
+    </message>
+    <message>
+        <source>Passed</source>
+        <translation>已通过</translation>
+    </message>
+    <message>
+        <source>Review the blocking checks before initialization.</source>
+        <translation>初始化前请查看所有阻断检查项。</translation>
+    </message>
+    <message>
+        <source>No blocking errors found.</source>
+        <translation>未发现阻断错误。</translation>
+    </message>
+    <message>
+        <source>Directory: %1\nPrepared: %2</source>
+        <translation>目录：%1\n准备时间：%2</translation>
+    </message>
+    <message>
+        <source>Prepare an isolated run directory for this case.</source>
+        <translation>为此工况准备独立的运行目录。</translation>
+    </message>
+    <message>
+        <source>Running</source>
+        <translation>运行中</translation>
+    </message>
+    <message>
+        <source>Flow is running in the current run directory.</source>
+        <translation>Flow 正在当前运行目录中运行。</translation>
+    </message>
+    <message>
+        <source>Run directory is ready; simulator has not started.</source>
+        <translation>运行目录已准备，但模拟器尚未启动。</translation>
+    </message>
+    <message>
+        <source>Results available</source>
+        <translation>结果可用</translation>
+    </message>
+    <message>
+        <source>Waiting for results</source>
+        <translation>等待结果</translation>
+    </message>
+    <message>
+        <source>Available files: %1</source>
+        <translation>可用文件：%1</translation>
+    </message>
+    <message>
+        <source>Simulation input</source>
+        <translation>模拟输入</translation>
+    </message>
+    <message>
+        <source>No simulation case selected</source>
+        <translation>未选择模拟工况</translation>
+    </message>
+    <message>
+        <source>Select a case in the left case tree to review its run input.</source>
+        <translation>请在左侧工况树中选择工况以查看运行输入。</translation>
+    </message>
+    <message>
+        <source>Active run DATA</source>
+        <translation>当前运行 DATA</translation>
+    </message>
+    <message>
+        <source>Original source</source>
+        <translation>原始来源</translation>
+    </message>
+    <message>
+        <source>Not selected</source>
+        <translation>未选择</translation>
+    </message>
+    <message>
+        <source>Simulation case input</source>
+        <translation>模拟工况输入</translation>
+    </message>
+    <message>
+        <source>Browse source DATA</source>
+        <translation>浏览原始 DATA</translation>
     </message>
 </context>
 <context>
@@ -5984,6 +6656,18 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>导入文件不包含支持的数据对象。</translation>
     </message>
     <message>
+        <source>The ECLIPSE grid provider is unavailable.</source>
+        <translation>ECLIPSE 网格读取器不可用。</translation>
+    </message>
+    <message>
+        <source>OPM could not parse the GRDECL grid file: %1</source>
+        <translation>OPM 无法解析 GRDECL 网格文件：%1</translation>
+    </message>
+    <message>
+        <source>The GRDECL ACTNUM keyword must contain integer values.</source>
+        <translation>GRDECL 文件中的 ACTNUM 关键字必须包含整数值。</translation>
+    </message>
+    <message>
         <source>Path of the file to import.</source>
         <translation>要导入的文件路径。</translation>
     </message>
@@ -6780,12 +7464,28 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <translation>配套 INIT 属性与网格维度不匹配。</translation>
     </message>
     <message>
+        <source>Skipping incompatible companion file %1: grid is %2 x %3 x %4 with %5 active cells, while INIT is %6 x %7 x %8 with %9 active cells.</source>
+        <translation>已跳过不兼容的配套文件 %1：网格为 %2 × %3 × %4，含 %5 个活跃单元；INIT 为 %6 × %7 × %8，含 %9 个活跃单元。</translation>
+    </message>
+    <message>
+        <source>Skipping companion file %1 because it could not be imported: %2</source>
+        <translation>无法导入配套文件 %1，已跳过：%2</translation>
+    </message>
+    <message>
+        <source>Skipping INIT properties from %1 because their array sizes do not match the grid dimensions.</source>
+        <translation>文件 %1 中的 INIT 属性数组长度与网格维度不匹配，已跳过。</translation>
+    </message>
+    <message>
         <source>Unable to import companion file %1: %2</source>
         <translation>无法导入配套文件 %1：%2</translation>
     </message>
     <message>
         <source>The companion UNSMRY file requires a matching SMSPEC file.</source>
         <translation>配套 UNSMRY 文件需要同名的 SMSPEC 文件。</translation>
+    </message>
+    <message>
+        <source>Skipping companion UNSMRY file because no matching SMSPEC file was found.</source>
+        <translation>未找到匹配的 SMSPEC 文件，已跳过配套 UNSMRY 文件。</translation>
     </message>
     <message>
         <source>The restart property %1 does not match the grid dimensions.</source>

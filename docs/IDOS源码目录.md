@@ -356,12 +356,8 @@ src/
 │   │   ├── idossimulationcurvecomparisonwidget.h
 │   │   ├── idossimulationdatagenerationwidget.cpp
 │   │   ├── idossimulationdatagenerationwidget.h
-│   │   ├── idossimulationdeckbrowserwidget.cpp
-│   │   ├── idossimulationdeckbrowserwidget.h
 │   │   ├── idossimulationinitializewidget.cpp
 │   │   ├── idossimulationinitializewidget.h
-│   │   ├── idossimulationparsesummarywidget.cpp
-│   │   ├── idossimulationparsesummarywidget.h
 │   │   ├── idossimulationpreflightwidget.cpp
 │   │   ├── idossimulationpreflightwidget.h
 │   │   ├── idossimulationpropertycurvewidget.cpp
@@ -377,9 +373,7 @@ src/
 │   │   ├── idossimulationrunstatuswidget.cpp
 │   │   ├── idossimulationrunstatuswidget.h
 │   │   ├── idossimulationwellcontrolswidget.cpp
-│   │   ├── idossimulationwellcontrolswidget.h
-│   │   ├── idossimulationworkflowwidget.cpp
-│   │   └── idossimulationworkflowwidget.h
+│   │   └── idossimulationwellcontrolswidget.h
 │   ├── tree/
 │   │   ├── idostreemenuprovider.cpp
 │   │   ├── idostreemenuprovider.h

@@ -82,8 +82,8 @@ class CORE_EXPORT IDOSGridObject : public IDOSDataObject
      * @param zcorn 每单元连续八个深度值，角点采用 VTK 环绕顺序，单元按 i、j、k 排列
      * @param actnum ACTNUM 数组，nx*ny*nz 个 int（0=不活跃）
      */
-    void setCornerPointData(int nx, int ny, int nz, const QVector<double>& coord, const QVector<double>& zcorn,
-                            const QVector<int>& actnum);
+    void setCornerPointData(int nx, int ny, int nz, QVector<double> coord, QVector<double> zcorn,
+                            QVector<int> actnum);
 
     /** COORD 原始数组（只读访问，用于导出/调试）。 */
     const QVector<double>& coord() const;

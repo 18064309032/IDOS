@@ -140,9 +140,14 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSCommandRegistry* commandRegistry() const;
     IDOSRenderServer* renderServer() const;
     SARibbonPanel* homeRibbonPanel(const QString& groupId) const;
+    void setSimulationWorkspaceWidget(QWidget* widget);
+    void setSimulationWorkspaceVisible(bool visible);
+    bool simulationWorkspaceVisible() const;
+    void showSimulationWorkspace();
 
   signals:
     void projectChanged(IDOSProject* project);
+    void simulationWorkspaceVisibilityChanged(bool visible);
 
   public slots:
     void onNewProject();
@@ -304,6 +309,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     IDOSProjectStartWidget* m_startPage;
     QWidget* m_renderPage;
     ads::CDockWidget* m_outputDock;
+    ads::CDockWidget* m_simulationDock;
     ads::CDockWidget* m_debugDock;
     ads::CDockWidget* m_pythonConsoleDock;
     ads::CDockWidget* m_assistantDock;

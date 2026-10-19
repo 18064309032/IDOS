@@ -1,27 +1,21 @@
-#include <QCloseEvent>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QFormLayout>
-#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QJsonObject>
 #include <QLabel>
-#include <QLineEdit>
 #include <QPlainTextEdit>
-#include <QPushButton>
 #include <QSettings>
-#include <QSpinBox>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextCursor>
 #include <QTimer>
 #include <QUuid>
-#include <QVBoxLayout>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QVBoxLayout>
 
 #include "command/idoscommandmanager.h"
 #include "data/case/idoscaseitemref.h"
@@ -34,12 +28,13 @@
 
 IDOSSimulationRunStatusWidget::IDOSSimulationRunStatusWidget(IDOSSimulationCaseObject* simulationCase, QWidget* parent)
     :
-    QWidget(parent, Qt::Window)
+    QWidget(parent)
     , m_case(simulationCase)
     , m_project(simulationCase != nullptr ? qobject_cast<IDOSProject*>(simulationCase->parent()) : nullptr)
     , m_caseId(simulationCase != nullptr ? simulationCase->objectId() : QString())
     , m_gridId()
     , m_outputDirectory()
+    , m_currentRunId()
     , m_pendingOutput()
     , m_cancelled(false)
     , m_invalidated(false)
@@ -47,73 +42,53 @@ IDOSSimulationRunStatusWidget::IDOSSimulationRunStatusWidget(IDOSSimulationCaseO
     , m_process(new QProcess(this))
     , m_stopProcess(new QProcess(this))
     , m_stopTimer(new QTimer(this))
-    , m_distributionEdit(nullptr)
-    , m_executableEdit(nullptr)
-    , m_threadsSpin(nullptr)
-    , m_startButton(nullptr)
-    , m_stopButton(nullptr)
+    , m_settingsSummaryLabel(nullptr)
     , m_outputEdit(nullptr)
     , m_statusLabel(nullptr)
-    , m_directoryLabel(nullptr)
-    , m_initializedAtLabel(nullptr)
-    , m_filesTable(nullptr)
+    , m_historyTable(nullptr)
 {
-    setObjectName(QStringLiteral("simulationRunStatusWindow"));
-    setWindowTitle(tr("Run Status — %1").arg(simulationCase != nullptr ? simulationCase->name() : QString()));
-
+    setObjectName(QStringLiteral("simulationRunStatusPage"));
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(8);
     m_statusLabel = new QLabel(this);
     m_statusLabel->setWordWrap(true);
     layout->addWidget(m_statusLabel);
 
-    m_directoryLabel = new QLabel(this);
-    m_directoryLabel->setWordWrap(true);
-    m_directoryLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    layout->addWidget(m_directoryLabel);
+    m_settingsSummaryLabel = new QLabel(this);
+    m_settingsSummaryLabel->setWordWrap(true);
+    layout->addWidget(m_settingsSummaryLabel);
+    updateSettingsSummary();
 
-    m_initializedAtLabel = new QLabel(this);
-    m_initializedAtLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    layout->addWidget(m_initializedAtLabel);
+    QLabel* historyTitle = new QLabel(tr("Run History"), this);
+    historyTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #26374a;"));
+    layout->addWidget(historyTitle);
+    m_historyTable = new QTableWidget(this);
+    m_historyTable->setObjectName(QStringLiteral("simulationRunHistoryTable"));
+    m_historyTable->setColumnCount(3);
+    m_historyTable->setHorizontalHeaderLabels(QStringList() << tr("Started") << tr("Status") << tr("Output"));
+    m_historyTable->setEditTriggers(QTableWidget::NoEditTriggers);
+    m_historyTable->setSelectionBehavior(QTableWidget::SelectRows);
+    m_historyTable->setSelectionMode(QTableWidget::SingleSelection);
+    m_historyTable->setAlternatingRowColors(true);
+    m_historyTable->setToolTip(tr("Double-click a run to inspect its output files."));
+    m_historyTable->horizontalHeader()->setStretchLastSection(true);
+    m_historyTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    m_historyTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    m_historyTable->setMaximumHeight(170);
+    layout->addWidget(m_historyTable);
 
-    m_filesTable = new QTableWidget(this);
-    m_filesTable->setColumnCount(2);
-    m_filesTable->setHorizontalHeaderLabels(QStringList() << tr("Input file") << tr("Status"));
-    m_filesTable->setEditTriggers(QTableWidget::NoEditTriggers);
-    m_filesTable->setSelectionBehavior(QTableWidget::SelectRows);
-    m_filesTable->horizontalHeader()->setStretchLastSection(true);
-    layout->addWidget(m_filesTable, 1);
-
-    loadStatus(simulationCase);
-    QSettings settings;
-    QFormLayout* configuration = new QFormLayout();
-    m_distributionEdit = new QLineEdit(
-        settings.value(QStringLiteral("simulation/distribution"), QStringLiteral("Ubuntu-24.04")).toString(), this);
-    m_distributionEdit->setObjectName(QStringLiteral("flowDistributionEdit"));
-    m_executableEdit = new QLineEdit(
-        settings.value(QStringLiteral("simulation/executable"), QStringLiteral("/usr/bin/flow")).toString(), this);
-    m_executableEdit->setObjectName(QStringLiteral("flowExecutableEdit"));
-    m_threadsSpin = new QSpinBox(this);
-    m_threadsSpin->setRange(1, 256);
-    m_threadsSpin->setValue(settings.value(QStringLiteral("simulation/threads"), 2).toInt());
-    configuration->addRow(tr("Linux distribution"), m_distributionEdit);
-    configuration->addRow(tr("Flow executable"), m_executableEdit);
-    configuration->addRow(tr("CPU threads"), m_threadsSpin);
-    layout->addLayout(configuration);
-    QHBoxLayout* buttons = new QHBoxLayout();
-    m_startButton = new QPushButton(tr("Start Flow"), this);
-    m_startButton->setObjectName(QStringLiteral("flowStartButton"));
-    m_stopButton = new QPushButton(tr("Stop Task"), this);
-    m_stopButton->setEnabled(false);
-    buttons->addWidget(m_startButton);
-    buttons->addWidget(m_stopButton);
-    layout->addLayout(buttons);
     m_outputEdit = new QPlainTextEdit(this);
+    m_outputEdit->setObjectName(QStringLiteral("simulationRunOutput"));
     m_outputEdit->setReadOnly(true);
     m_outputEdit->setMaximumBlockCount(5000);
-    layout->addWidget(m_outputEdit, 2);
+    m_outputEdit->setMaximumHeight(150);
+    layout->addWidget(m_outputEdit);
+    loadStatus(simulationCase);
+    refreshRunHistory();
     m_process->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_startButton, &QPushButton::clicked, this, &IDOSSimulationRunStatusWidget::onStartTriggered);
-    connect(m_stopButton, &QPushButton::clicked, this, &IDOSSimulationRunStatusWidget::onStopTriggered);
+    connect(m_historyTable, &QTableWidget::cellDoubleClicked, this,
+            &IDOSSimulationRunStatusWidget::onHistoryRowDoubleClicked);
     connect(m_process, &QProcess::readyReadStandardOutput, this, &IDOSSimulationRunStatusWidget::onOutputReady);
     connect(m_process, static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished), this,
             &IDOSSimulationRunStatusWidget::onFinished);
@@ -125,7 +100,95 @@ IDOSSimulationRunStatusWidget::IDOSSimulationRunStatusWidget(IDOSSimulationCaseO
                 &IDOSSimulationRunStatusWidget::onObjectRemoving);
         connect(m_project, &QObject::destroyed, this, &IDOSSimulationRunStatusWidget::onProjectDestroyed);
     }
-    resize(900, 720);
+}
+
+void IDOSSimulationRunStatusWidget::refreshSettingsSummary()
+{
+    updateSettingsSummary();
+}
+
+void IDOSSimulationRunStatusWidget::refreshRunHistory()
+{
+    m_historyTable->setRowCount(0);
+    if (m_case.isNull())
+    {
+        return;
+    }
+
+    const QVariantList history = m_case->runInfo().value(QStringLiteral("history")).toList();
+    for (int historyIndex = history.size() - 1; historyIndex >= 0; --historyIndex)
+    {
+        const QVariantMap record = history.at(historyIndex).toMap();
+        const int row = m_historyTable->rowCount();
+        m_historyTable->insertRow(row);
+        const QDateTime startedAt = QDateTime::fromString(record.value(QStringLiteral("startedAt")).toString(),
+                                                          Qt::ISODate);
+        const QString startedText = startedAt.isValid()
+            ? startedAt.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))
+            : record.value(QStringLiteral("startedAt")).toString();
+        const QString status = record.value(QStringLiteral("status")).toString();
+        QString statusText = status;
+        if (status == QStringLiteral("running"))
+        {
+            statusText = tr("Running");
+        }
+        else if (status == QStringLiteral("succeeded"))
+        {
+            statusText = tr("Succeeded");
+        }
+        else if (status == QStringLiteral("failed"))
+        {
+            statusText = tr("Failed");
+        }
+        else if (status == QStringLiteral("importFailed"))
+        {
+            statusText = tr("Import failed");
+        }
+        else if (status == QStringLiteral("cancelled"))
+        {
+            statusText = tr("Cancelled");
+        }
+        const QString outputDirectory = record.value(QStringLiteral("outputDirectory")).toString();
+        QTableWidgetItem* startedItem = new QTableWidgetItem(startedText);
+        startedItem->setData(Qt::UserRole, record.value(QStringLiteral("runId")).toString());
+        QTableWidgetItem* statusItem = new QTableWidgetItem(statusText);
+        statusItem->setToolTip(record.value(QStringLiteral("message")).toString());
+        QTableWidgetItem* outputItem = new QTableWidgetItem(outputDirectory);
+        outputItem->setToolTip(outputDirectory);
+        outputItem->setData(Qt::UserRole, outputDirectory);
+        m_historyTable->setItem(row, 0, startedItem);
+        m_historyTable->setItem(row, 1, statusItem);
+        m_historyTable->setItem(row, 2, outputItem);
+    }
+    m_historyTable->horizontalHeader()->setStretchLastSection(true);
+}
+
+void IDOSSimulationRunStatusWidget::startFlow()
+{
+    onStartTriggered();
+}
+
+void IDOSSimulationRunStatusWidget::reportRunRequestFailure(const QString& message)
+{
+    setStatus(QStringLiteral("rejected"), message);
+}
+
+void IDOSSimulationRunStatusWidget::updateSettingsSummary()
+{
+    QSettings settings;
+    const QString runDirectoryRoot =
+        settings.value(QStringLiteral("simulation/runDirectoryRoot")).toString().trimmed();
+    const QString directorySummary = runDirectoryRoot.isEmpty()
+        ? tr("Beside case input")
+        : runDirectoryRoot;
+    const QString distribution =
+        settings.value(QStringLiteral("simulation/distribution"), QStringLiteral("Ubuntu-24.04")).toString();
+    const QString executable =
+        settings.value(QStringLiteral("simulation/executable"), QStringLiteral("/usr/bin/flow")).toString();
+    const int threads = settings.value(QStringLiteral("simulation/threads"), 2).toInt();
+    m_settingsSummaryLabel->setText(tr("Run folder: %1 · WSL: %2 · Flow: %3 · %4 threads")
+                                        .arg(directorySummary, distribution, executable)
+                                        .arg(threads));
 }
 
 IDOSSimulationRunStatusWidget::~IDOSSimulationRunStatusWidget()
@@ -152,10 +215,9 @@ bool IDOSSimulationRunStatusWidget::isRunning() const
     return m_process->state() != QProcess::NotRunning || m_stopProcess->state() != QProcess::NotRunning;
 }
 
-void IDOSSimulationRunStatusWidget::closeEvent(QCloseEvent* event)
+bool IDOSSimulationRunStatusWidget::isForCase(const QString& caseId) const
 {
-    hide();
-    event->ignore();
+    return m_caseId == caseId;
 }
 
 QString IDOSSimulationRunStatusWidget::linuxPath(const QString& path) const
@@ -192,7 +254,27 @@ void IDOSSimulationRunStatusWidget::setStatus(const QString& status, const QStri
         info.insert(QStringLiteral("status"), status);
         info.insert(QStringLiteral("message"), message);
         info.insert(QStringLiteral("outputDirectory"), m_outputDirectory);
+        QVariantList history = info.value(QStringLiteral("history")).toList();
+        for (int historyIndex = history.size() - 1; historyIndex >= 0; --historyIndex)
+        {
+            QVariantMap record = history.at(historyIndex).toMap();
+            if (record.value(QStringLiteral("runId")).toString() == m_currentRunId)
+            {
+                record.insert(QStringLiteral("status"), status);
+                record.insert(QStringLiteral("message"), message);
+                record.insert(QStringLiteral("outputDirectory"), m_outputDirectory);
+                if (status == QStringLiteral("succeeded") || status == QStringLiteral("failed") ||
+                    status == QStringLiteral("importFailed") || status == QStringLiteral("cancelled"))
+                {
+                    record.insert(QStringLiteral("finishedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+                }
+                history[historyIndex] = record;
+                break;
+            }
+        }
+        info.insert(QStringLiteral("history"), history);
         m_case->setRunInfo(info);
+        refreshRunHistory();
     }
     emit runningChanged();
 }
@@ -204,14 +286,20 @@ void IDOSSimulationRunStatusWidget::onStartTriggered()
     {
         return;
     }
+    QSettings settings;
+    const QString distribution =
+        settings.value(QStringLiteral("simulation/distribution"), QStringLiteral("Ubuntu-24.04")).toString().trimmed();
+    const QString executable =
+        settings.value(QStringLiteral("simulation/executable"), QStringLiteral("/usr/bin/flow")).toString();
+    const int threads = settings.value(QStringLiteral("simulation/threads"), 2).toInt();
     const QVariantMap info = m_case->runInfo();
     const QString directory = info.value(QStringLiteral("runDirectory")).toString();
     const QString dataFile = QDir(directory).absoluteFilePath(info.value(QStringLiteral("dataFile")).toString());
     if (directory.isEmpty() || !QFileInfo(dataFile).isFile() || linuxPath(directory).isEmpty() ||
-        m_distributionEdit->text().trimmed().isEmpty() || !m_executableEdit->text().startsWith(QLatin1Char('/')))
+        distribution.isEmpty() || !executable.startsWith(QLatin1Char('/')))
     {
         setStatus(QStringLiteral("rejected"),
-                  tr("Initialize the case and configure a Linux distribution and absolute Flow path first."));
+                  tr("Configure a Linux distribution and absolute Flow executable path in Run Settings first."));
         return;
     }
     const QStringList inputs = info.value(QStringLiteral("files")).toStringList();
@@ -219,7 +307,7 @@ void IDOSSimulationRunStatusWidget::onStartTriggered()
     {
         if (!QFileInfo(QDir(directory).absoluteFilePath(input)).isFile())
         {
-            setStatus(QStringLiteral("rejected"), tr("An initialized input file is missing: %1").arg(input));
+            setStatus(QStringLiteral("rejected"), tr("A prepared run input file is missing: %1").arg(input));
             return;
         }
     }
@@ -238,36 +326,43 @@ void IDOSSimulationRunStatusWidget::onStartTriggered()
         setStatus(QStringLiteral("rejected"), tr("The target grid is unavailable."));
         return;
     }
-    m_outputDirectory = QDir(directory).absoluteFilePath(QStringLiteral("results-") +
-                                                         QUuid::createUuid().toString(QUuid::WithoutBraces));
+    m_currentRunId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_outputDirectory = QDir(directory).absoluteFilePath(QStringLiteral("results-") + m_currentRunId);
     if (!QDir().mkpath(m_outputDirectory))
     {
         setStatus(QStringLiteral("rejected"), tr("Cannot create the simulation output directory."));
         return;
     }
-    QSettings settings;
-    settings.setValue(QStringLiteral("simulation/distribution"), m_distributionEdit->text().trimmed());
-    settings.setValue(QStringLiteral("simulation/executable"), m_executableEdit->text());
-    settings.setValue(QStringLiteral("simulation/threads"), m_threadsSpin->value());
     m_outputEdit->clear();
     m_pendingOutput.clear();
+    QVariantMap runInfo = m_case->runInfo();
+    QVariantMap runRecord;
+    runRecord.insert(QStringLiteral("runId"), m_currentRunId);
+    runRecord.insert(QStringLiteral("startedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    runRecord.insert(QStringLiteral("status"), QStringLiteral("running"));
+    runRecord.insert(QStringLiteral("runDirectory"), directory);
+    runRecord.insert(QStringLiteral("outputDirectory"), m_outputDirectory);
+    runRecord.insert(QStringLiteral("distribution"), distribution);
+    runRecord.insert(QStringLiteral("executable"), executable);
+    runRecord.insert(QStringLiteral("threads"), threads);
+    QVariantList history = runInfo.value(QStringLiteral("history")).toList();
+    history.append(runRecord);
+    runInfo.insert(QStringLiteral("history"), history);
+    runInfo.insert(QStringLiteral("outputDirectory"), m_outputDirectory);
+    m_case->setRunInfo(runInfo);
+    refreshRunHistory();
     m_cancelled = false;
     m_stopAttempts = 0;
-    m_startButton->setEnabled(false);
-    m_stopButton->setEnabled(true);
     emit runningChanged();
-    m_distributionEdit->setEnabled(false);
-    m_executableEdit->setEnabled(false);
-    m_threadsSpin->setEnabled(false);
     QStringList arguments;
-    arguments << QStringLiteral("-d") << m_distributionEdit->text().trimmed() << QStringLiteral("--cd")
+    arguments << QStringLiteral("-d") << distribution << QStringLiteral("--cd")
               << linuxPath(directory) << QStringLiteral("--exec") << QStringLiteral("/usr/bin/setsid")
               << QStringLiteral("--wait") << QStringLiteral("/bin/sh") << QStringLiteral("-c")
               << QStringLiteral("echo $$ > \"$1\"; shift; exec \"$@\"") << QStringLiteral("idos-flow")
               << linuxPath(QDir(m_outputDirectory).absoluteFilePath(QStringLiteral("flow.pid")))
-              << m_executableEdit->text() << linuxPath(dataFile)
+              << executable << linuxPath(dataFile)
               << QStringLiteral("--output-dir=") + linuxPath(m_outputDirectory)
-              << QStringLiteral("--threads-per-process=%1").arg(m_threadsSpin->value());
+              << QStringLiteral("--threads-per-process=%1").arg(threads);
     m_process->start(QStringLiteral("wsl.exe"), arguments);
     setStatus(QStringLiteral("running"), tr("Flow is starting. Output directory: %1").arg(m_outputDirectory));
 }
@@ -344,16 +439,10 @@ void IDOSSimulationRunStatusWidget::stop()
         return;
     }
     m_cancelled = true;
-    m_stopButton->setEnabled(false);
     setStatus(QStringLiteral("stopping"), tr("Stopping Flow..."));
     m_stopTimer->start(1000);
     onStopTimer();
     emit runningChanged();
-}
-
-void IDOSSimulationRunStatusWidget::onStopTriggered()
-{
-    stop();
 }
 
 void IDOSSimulationRunStatusWidget::onProjectDestroyed()
@@ -365,7 +454,6 @@ void IDOSSimulationRunStatusWidget::cancel()
 {
     m_invalidated = true;
     m_cancelled = true;
-    m_startButton->setEnabled(false);
     stop();
 }
 
@@ -401,7 +489,10 @@ void IDOSSimulationRunStatusWidget::onStopTimer()
     }
     ++m_stopAttempts;
     QStringList arguments;
-    arguments << QStringLiteral("-d") << m_distributionEdit->text().trimmed() << QStringLiteral("--exec")
+    QSettings settings;
+    const QString distribution =
+        settings.value(QStringLiteral("simulation/distribution"), QStringLiteral("Ubuntu-24.04")).toString().trimmed();
+    arguments << QStringLiteral("-d") << distribution << QStringLiteral("--exec")
               << QStringLiteral("/bin/kill") << (m_stopAttempts < 5 ? QStringLiteral("-TERM") : QStringLiteral("-KILL"))
               << QStringLiteral("--") << QStringLiteral("-%1").arg(pid);
     m_stopProcess->start(QStringLiteral("wsl.exe"), arguments);
@@ -420,11 +511,6 @@ void IDOSSimulationRunStatusWidget::onFinished(int exitCode, QProcess::ExitStatu
     onOutputReady();
     forwardOutput(true);
     m_stopTimer->stop();
-    m_stopButton->setEnabled(false);
-    m_startButton->setEnabled(!m_invalidated);
-    m_distributionEdit->setEnabled(true);
-    m_executableEdit->setEnabled(true);
-    m_threadsSpin->setEnabled(true);
     emit runningChanged();
     if (m_case != nullptr && m_project != nullptr && m_project->object(m_caseId) == m_case.data())
     {
@@ -436,26 +522,28 @@ void IDOSSimulationRunStatusWidget::onFinished(int exitCode, QProcess::ExitStatu
     if (m_cancelled)
     {
         setStatus(QStringLiteral("cancelled"), tr("The simulation was cancelled. Results were not imported."));
+        emit runFinished(false);
     }
     else if (exitStatus != QProcess::NormalExit || exitCode != 0)
     {
         setStatus(QStringLiteral("failed"),
                   tr("Flow failed (exit code %1): %2").arg(exitCode).arg(m_process->errorString()));
+        emit runFinished(false);
     }
     else
     {
-        importResults();
+        emit runFinished(importResults());
     }
 }
 
-void IDOSSimulationRunStatusWidget::importResults()
+bool IDOSSimulationRunStatusWidget::importResults()
 {
     if (m_project == nullptr || m_case == nullptr || m_project->object(m_caseId) != m_case.data() ||
         qobject_cast<IDOSGridObject*>(m_project->object(m_gridId)) == nullptr)
     {
         setStatus(QStringLiteral("importFailed"),
                   tr("The project or target grid is unavailable. Results were not imported."));
-        return;
+        return false;
     }
     bool hasTargetReference = false;
     for (const IDOSCaseItemRef& reference : m_case->itemRefs())
@@ -469,7 +557,7 @@ void IDOSSimulationRunStatusWidget::importResults()
     if (!hasTargetReference)
     {
         setStatus(QStringLiteral("importFailed"), tr("The case grid reference changed. Results were not imported."));
-        return;
+        return false;
     }
     const QStringList restartFiles =
         QDir(m_outputDirectory)
@@ -477,7 +565,7 @@ void IDOSSimulationRunStatusWidget::importResults()
     if (restartFiles.size() != 1)
     {
         setStatus(QStringLiteral("importFailed"), tr("Flow finished, but exactly one UNRST result file is required."));
-        return;
+        return false;
     }
     IDOSCommandManager* manager = m_project->commandManager();
     IDOS_MESSAGE(tr("Importing Flow results: %1").arg(restartFiles.first()), IDOSLogLevel::Info);
@@ -491,10 +579,25 @@ void IDOSSimulationRunStatusWidget::importResults()
         setStatus(QStringLiteral("importFailed"),
                   tr("Flow finished, but result import failed: %1")
                       .arg(manager != nullptr ? manager->error() : tr("The command manager is unavailable.")));
-        return;
+        return false;
     }
+    QVariantMap runInfo = m_case->runInfo();
+    QVariantList history = runInfo.value(QStringLiteral("history")).toList();
+    for (int historyIndex = history.size() - 1; historyIndex >= 0; --historyIndex)
+    {
+        QVariantMap record = history.at(historyIndex).toMap();
+        if (record.value(QStringLiteral("runId")).toString() == m_currentRunId)
+        {
+            record.insert(QStringLiteral("resultFile"), QDir(m_outputDirectory).absoluteFilePath(restartFiles.first()));
+            history[historyIndex] = record;
+            break;
+        }
+    }
+    runInfo.insert(QStringLiteral("history"), history);
+    m_case->setRunInfo(runInfo);
     setStatus(QStringLiteral("succeeded"),
               tr("Flow completed and dynamic properties were imported. You can undo the import."));
+    return true;
 }
 
 void IDOSSimulationRunStatusWidget::loadStatus(IDOSSimulationCaseObject* simulationCase)
@@ -502,59 +605,35 @@ void IDOSSimulationRunStatusWidget::loadStatus(IDOSSimulationCaseObject* simulat
     if (simulationCase == nullptr)
     {
         m_statusLabel->setText(tr("No simulation case is selected."));
-        m_directoryLabel->clear();
-        m_initializedAtLabel->clear();
         return;
     }
 
     const QVariantMap runInfo = simulationCase->runInfo();
-    if (runInfo.isEmpty())
+    if (runInfo.value(QStringLiteral("status")).toString() == QStringLiteral("succeeded"))
     {
-        m_statusLabel->setText(tr("Not initialized. Run Initialize to prepare this case."));
-        m_directoryLabel->clear();
-        m_initializedAtLabel->clear();
-        m_filesTable->setRowCount(0);
+        m_statusLabel->setText(runInfo.value(QStringLiteral("message")).toString());
         return;
     }
+    const QString message = runInfo.value(QStringLiteral("message")).toString();
+    if (!message.isEmpty())
+    {
+        m_statusLabel->setText(message);
+        return;
+    }
+    m_statusLabel->setText(tr("Select a case and click Run to check inputs and start Flow."));
+}
 
-    const QString status = runInfo.value(QStringLiteral("status")).toString();
-    const QString runDirectory = runInfo.value(QStringLiteral("runDirectory")).toString();
-    const QString dataFile = runInfo.value(QStringLiteral("dataFile")).toString();
-    const QStringList files = runInfo.value(QStringLiteral("files")).toStringList();
-    const QString initializedAt = runInfo.value(QStringLiteral("initializedAt")).toString();
-    if (status == QStringLiteral("initialized"))
+void IDOSSimulationRunStatusWidget::onHistoryRowDoubleClicked(int row, int column)
+{
+    Q_UNUSED(column);
+    QTableWidgetItem* item = m_historyTable->item(row, 2);
+    if (item == nullptr)
     {
-        m_statusLabel->setText(tr("Initialized. The simulator has not been started."));
+        return;
     }
-    else
+    const QString outputDirectory = item->data(Qt::UserRole).toString();
+    if (!outputDirectory.isEmpty() && QFileInfo(outputDirectory).isDir())
     {
-        m_statusLabel->setText(runInfo.value(QStringLiteral("message"), tr("Run status: %1").arg(status)).toString());
-    }
-    m_directoryLabel->setText(tr("Run directory: %1").arg(runDirectory));
-    m_initializedAtLabel->setText(tr("Initialized at (UTC): %1").arg(initializedAt));
-
-    QStringList filesToShow = files;
-    if (!filesToShow.contains(dataFile, Qt::CaseInsensitive))
-    {
-        filesToShow.prepend(dataFile);
-    }
-    m_filesTable->setRowCount(filesToShow.size());
-    int availableCount = 0;
-    for (int row = 0; row < filesToShow.size(); ++row)
-    {
-        const QString relativePath = filesToShow.at(row);
-        const QFileInfo fileInfo(QDir(runDirectory).absoluteFilePath(relativePath));
-        const bool exists = fileInfo.exists() && fileInfo.isFile();
-        if (exists)
-        {
-            ++availableCount;
-        }
-        m_filesTable->setItem(row, 0, new QTableWidgetItem(relativePath));
-        m_filesTable->setItem(row, 1, new QTableWidgetItem(exists ? tr("Available") : tr("Missing")));
-    }
-    m_filesTable->resizeColumnsToContents();
-    if (availableCount != filesToShow.size())
-    {
-        m_statusLabel->setText(tr("Initialized input files are missing. The simulator has not been started."));
+        emit historyEntryActivated(outputDirectory);
     }
 }

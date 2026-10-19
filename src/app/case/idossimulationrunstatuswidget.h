@@ -11,12 +11,8 @@
 
 class IDOSProject;
 class IDOSSimulationCaseObject;
-class QCloseEvent;
 class QLabel;
-class QLineEdit;
 class QPlainTextEdit;
-class QPushButton;
-class QSpinBox;
 class QTableWidget;
 class QTimer;
 
@@ -26,32 +22,37 @@ class APP_EXPORT IDOSSimulationRunStatusWidget : public QWidget
 
   signals:
     void runningChanged();
+    void runFinished(bool succeeded);
+    void historyEntryActivated(const QString& outputDirectory);
 
   public:
     explicit IDOSSimulationRunStatusWidget(IDOSSimulationCaseObject* simulationCase, QWidget* parent = nullptr);
     ~IDOSSimulationRunStatusWidget() override;
     bool isRunning() const;
+    bool isForCase(const QString& caseId) const;
     void stop();
     void cancel();
-
-  protected:
-    void closeEvent(QCloseEvent* event) override;
+    void startFlow();
+    void refreshSettingsSummary();
+    void refreshRunHistory();
+    void reportRunRequestFailure(const QString& message);
 
   private slots:
     void onStartTriggered();
-    void onStopTriggered();
     void onProjectDestroyed();
     void onOutputReady();
     void onFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void onProcessError(QProcess::ProcessError error);
     void onStopTimer();
     void onObjectRemoving(const QString& objectId);
+    void onHistoryRowDoubleClicked(int row, int column);
 
   private:
     void loadStatus(IDOSSimulationCaseObject* simulationCase);
     QString linuxPath(const QString& path) const;
     void setStatus(const QString& status, const QString& message);
-    void importResults();
+    void updateSettingsSummary();
+    bool importResults();
     void forwardOutput(bool flush);
 
     QPointer<IDOSSimulationCaseObject> m_case;
@@ -59,6 +60,7 @@ class APP_EXPORT IDOSSimulationRunStatusWidget : public QWidget
     QString m_caseId;
     QString m_gridId;
     QString m_outputDirectory;
+    QString m_currentRunId;
     QByteArray m_pendingOutput;
     bool m_cancelled;
     bool m_invalidated;
@@ -66,16 +68,10 @@ class APP_EXPORT IDOSSimulationRunStatusWidget : public QWidget
     QProcess* m_process;
     QProcess* m_stopProcess;
     QTimer* m_stopTimer;
-    QLineEdit* m_distributionEdit;
-    QLineEdit* m_executableEdit;
-    QSpinBox* m_threadsSpin;
-    QPushButton* m_startButton;
-    QPushButton* m_stopButton;
+    QLabel* m_settingsSummaryLabel;
     QPlainTextEdit* m_outputEdit;
     QLabel* m_statusLabel;
-    QLabel* m_directoryLabel;
-    QLabel* m_initializedAtLabel;
-    QTableWidget* m_filesTable;
+    QTableWidget* m_historyTable;
 };
 
 #endif // IDOS_SIMULATION_RUN_STATUS_WIDGET_H

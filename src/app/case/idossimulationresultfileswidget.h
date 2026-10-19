@@ -3,6 +3,7 @@
 
 #include <QPointer>
 #include <QString>
+#include <QStringList>
 #include <QWidget>
 
 #include "idos_app.h"
@@ -20,6 +21,7 @@ class APP_EXPORT IDOSSimulationResultFilesWidget : public QWidget
   public:
     explicit IDOSSimulationResultFilesWidget(IDOSSimulationCaseObject* simulationCase,
                                              QWidget* parent = nullptr);
+    void showRunDirectory(const QString& runDirectory);
 
   private slots:
     void onOpenRunDirectoryTriggered();
@@ -29,8 +31,10 @@ class APP_EXPORT IDOSSimulationResultFilesWidget : public QWidget
 
   private:
     void loadResultFiles(IDOSSimulationCaseObject* simulationCase);
+    void populateResultFiles(const QStringList& excludedInputFiles);
 
     QString m_runDirectory;
+    QStringList m_inputFiles;
     QString m_gridId;
     QPointer<IDOSProject> m_project;
     QLabel* m_summaryLabel;

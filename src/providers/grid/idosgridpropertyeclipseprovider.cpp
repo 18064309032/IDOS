@@ -3,6 +3,7 @@
 #include <exception>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <QByteArray>
@@ -38,11 +39,89 @@ QStringList IDOSGridPropertyEclipseProvider::propertyKeywords() const
         QStringLiteral("PORO"), QStringLiteral("PERMX"), QStringLiteral("PERMY"),
         QStringLiteral("PERMZ"), QStringLiteral("MULTPV"), QStringLiteral("SIGMAV"),
         QStringLiteral("MULTX"), QStringLiteral("MULTY"), QStringLiteral("MULTZ"),
-        QStringLiteral("SATNUM"), QStringLiteral("ROCKNUM"), QStringLiteral("PVTNUM"),
-        QStringLiteral("EQLNUM"), QStringLiteral("FIPNUM")};
+        QStringLiteral("PRESSURE"), QStringLiteral("SATNUM"), QStringLiteral("ROCKNUM"),
+        QStringLiteral("PVTNUM"), QStringLiteral("EQLNUM"), QStringLiteral("FIPNUM")};
 }
 
-QVector<double> IDOSGridPropertyEclipseProvider::values(const Opm::DeckKeyword& keyword) const
+QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readGridProperties(
+    const Opm::Deck& deck, const QString& gridId, int nx, int ny, int nz,
+    const std::vector<int>& activeCells)
+{
+    setLastError(QString());
+    QList<IDOSDataObject*> result;
+    const int totalCellCount = nx * ny * nz;
+    if (gridId.isEmpty() || nx <= 0 || ny <= 0 || nz <= 0 || totalCellCount <= 0)
+    {
+        return result;
+    }
+
+    int activeCellCount = 0;
+    for (int activeCell : activeCells)
+    {
+        if (activeCell != 0)
+        {
+            ++activeCellCount;
+        }
+    }
+    if (activeCells.empty())
+    {
+        activeCellCount = totalCellCount;
+    }
+    for (const QString& propertyKeyword : propertyKeywords())
+    {
+        const std::vector<const Opm::DeckKeyword*> matches =
+            deck.getKeywordList(propertyKeyword.toStdString());
+        if (matches.empty())
+        {
+            continue;
+        }
+
+        QVector<double> propertyValues;
+        for (const Opm::DeckKeyword* match : matches)
+        {
+            if (match != nullptr)
+            {
+                propertyValues = values(*match, false);
+            }
+        }
+        if (propertyValues.size() == activeCellCount && activeCellCount != totalCellCount)
+        {
+            QVector<double> expandedValues(totalCellCount, 0.0);
+            int activeIndex = 0;
+            for (int cellIndex = 0; cellIndex < totalCellCount; ++cellIndex)
+            {
+                if (activeCells.empty() || activeCells.at(static_cast<std::size_t>(cellIndex)) != 0)
+                {
+                    expandedValues[cellIndex] = propertyValues.at(activeIndex);
+                    ++activeIndex;
+                }
+            }
+            propertyValues = expandedValues;
+        }
+        if (propertyValues.size() != totalCellCount)
+        {
+            continue;
+        }
+
+        IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
+        property->setName(propertyKeyword);
+        property->setKeyword(propertyKeyword);
+        property->setGridId(gridId);
+        property->setKind(IDOSGridPropertyObject::Kind::Static);
+        property->setValueUnits(IDOSGridPropertyObject::ValueUnits::Unknown);
+        property->setDimensions(nx, ny, nz);
+        if (!property->setValues(std::move(propertyValues)))
+        {
+            delete property;
+            continue;
+        }
+        result.append(property);
+    }
+    return result;
+}
+
+QVector<double> IDOSGridPropertyEclipseProvider::values(const Opm::DeckKeyword& keyword,
+                                                       bool convertToSi) const
 {
     QVector<double> result;
     for (std::size_t recordIndex = 0; recordIndex < keyword.size(); ++recordIndex)
@@ -63,7 +142,7 @@ QVector<double> IDOSGridPropertyEclipseProvider::values(const Opm::DeckKeyword& 
                 }
                 else if (item.getType() == Opm::get_type<double>())
                 {
-                    if (item.getActiveDimensions().empty())
+                    if (!convertToSi || item.getActiveDimensions().empty())
                     {
                         result.append(item.get<double>(valueIndex));
                     }
