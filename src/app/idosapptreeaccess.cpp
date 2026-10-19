@@ -334,11 +334,7 @@ void IDOSAppTreeAccess::onCheckStateChanged(IDOSTreeItem* item, Qt::CheckState s
         applyChecked(item, state);
         if (m_targetView != nullptr)
         {
-            m_targetView->scene()->endUpdate();
-            if (state == Qt::Checked)
-            {
-                m_targetView->resetCamera();
-            }
+            m_targetView->endSceneUpdate(state == Qt::Checked);
         }
         m_applying = false;
         m_targetView.clear();

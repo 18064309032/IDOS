@@ -71,6 +71,7 @@
 #include "command/idoscommandmanager.h"
 #include "command/idoscommandmetadata.h"
 #include "command/idoscommandregistry.h"
+#include "command/idosconvertcoordinatescommand.h"
 #include "command/idoscreatecasecommand.h"
 #include "command/idoscreategridfiltercommand.h"
 #include "command/idoscreatewellcommand.h"
@@ -93,6 +94,7 @@
 #include "command/idosrenameobjectcommand.h"
 #include "command/idostransferobjectscommand.h"
 #include "command/idosupdategridfiltercommand.h"
+#include "command/idosupdateprojectmetadatacommand.h"
 #include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
 #include "data/case/idossimulationsummaryresultsobject.h"
@@ -127,6 +129,7 @@
 #include "idosproject.h"
 #include "idosprojectmetadata.h"
 #include "idosprojectstartwidget.h"
+#include "idoswaitingdialog.h"
 #include "idospythonconsolewidget.h"
 #include "idosrenderobject.h"
 #include "idosrenderprovider.h"
@@ -228,6 +231,7 @@ IDOSMainWindow::IDOSMainWindow(QWidget* parent)
     , m_viewCaseIds()
     , m_nextViewIndex(1)
     , m_currentWindowLayout(QStringLiteral("single"))
+    , m_dataImportActive(false)
     , m_syncingTreeSelection(false)
     , m_restoringPresentation(true)
 {
@@ -472,6 +476,8 @@ void IDOSMainWindow::initDockWidgets()
         commandRegistry->registerMetadata(new IDOSImportGridCommandMetadata());
         commandRegistry->registerMetadata(new IDOSImportGridPropertyCommandMetadata());
         commandRegistry->registerMetadata(new IDOSImportWellDataCommandMetadata());
+        commandRegistry->registerMetadata(new IDOSUpdateProjectMetadataCommandMetadata());
+        commandRegistry->registerMetadata(new IDOSConvertCoordinatesCommandMetadata());
         commandRegistry->registerMetadata(new IDOSImportFluidRockTablesCommandMetadata());
         commandRegistry->registerMetadata(new IDOSAttachFluidRockTableCommandMetadata());
         commandRegistry->registerMetadata(new IDOSImportDataCommandMetadata());
@@ -742,6 +748,8 @@ void IDOSMainWindow::initRibbonAction()
 
     connect(m_actionNewProject, &QAction::triggered,
             this, &IDOSMainWindow::onNewProject);
+    connect(m_actionProjectSettings, &QAction::triggered,
+            this, &IDOSMainWindow::onProjectSettings);
     connect(m_actionPluginManager, &QAction::triggered,
             this, &IDOSMainWindow::onPluginManagerTriggered);
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
@@ -1659,6 +1667,11 @@ IDOSWellLogTrackView* IDOSMainWindow::findOrCreateWellLogTrackView(IDOSWellObjec
 
 void IDOSMainWindow::closeEvent(QCloseEvent* event)
 {
+    if (m_dataImportActive)
+    {
+        event->ignore();
+        return;
+    }
     IDOS_DEBUG(tr("Main window close event received."));
     if (!confirmDiscardProject())
     {
@@ -1900,6 +1913,7 @@ SARibbonPanel* IDOSMainWindow::homeRibbonPanel(const QString& groupId) const
 }
 void IDOSMainWindow::onProjectModified()
 {
+    m_actionProjectSettings->setEnabled(m_project != nullptr);
     m_actionSaveProject->setEnabled(m_project != nullptr);
     m_actionSaveProjectAs->setEnabled(m_project != nullptr);
     m_actionCloseProject->setEnabled(m_project != nullptr);
@@ -1913,6 +1927,28 @@ void IDOSMainWindow::onProjectModified()
     setWindowTitle(title);
     setWindowModified(modified);
     updateStatusBarIndicators();
+}
+
+void IDOSMainWindow::onProjectSettings()
+{
+    QPointer<IDOSProject> target(m_project);
+    if (target == nullptr || target->commandManager() == nullptr)
+    {
+        return;
+    }
+    IDOSNewProjectDialog dialog(this);
+    dialog.setProjectMetadata(target->metadata());
+    if (dialog.exec() != QDialog::Accepted || target == nullptr || target != m_project)
+    {
+        return;
+    }
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("metadata"), QJsonObject::fromVariantMap(dialog.projectMetadata().projectData()));
+    IDOSCommandManager* manager = target->commandManager();
+    if (!manager->execute(new IDOSUpdateProjectMetadataCommand(target, arguments)))
+    {
+        QMessageBox::warning(this, tr("Project Settings"), manager->error());
+    }
 }
 
 void IDOSMainWindow::updateStatusBarIndicators()
@@ -2750,7 +2786,7 @@ bool IDOSMainWindow::dataImportProperty(IDOSTreeView* view, const QString& targe
     arguments.insert(QStringLiteral("targetCaseId"), targetCaseId);
     IDOSImportGridPropertyCommand* command =
         new IDOSImportGridPropertyCommand(target, arguments);
-    const bool success = commandManager->execute(command);
+    const bool success = executeDataImport(commandManager, command, file);
     if (!success)
     {
         QMessageBox::warning(view, tr("Import Grid Property"), commandManager->error());
@@ -2760,6 +2796,23 @@ bool IDOSMainWindow::dataImportProperty(IDOSTreeView* view, const QString& targe
     const int importedCount = commandManager->result().value(QStringLiteral("objectCount")).toInt();
     dataReportGridImportSuccess(view, tr("Imported %1 properties.").arg(importedCount));
     return true;
+}
+
+bool IDOSMainWindow::executeDataImport(IDOSCommandManager* manager, IDOSCommand* command,
+                                     const QString& filePath)
+{
+    const QScopedValueRollback<bool> importing(m_dataImportActive, true);
+    IDOSWaitingDialog loading(this);
+    loading.setObjectName(QStringLiteral("dataLoadingDialog"));
+    loading.begin(tr("Importing Data"), tr("Reading data and updating the project…"), QFileInfo(filePath).fileName());
+    QElapsedTimer timer;
+    timer.start();
+    const bool success = manager->execute(command);
+    if (qEnvironmentVariableIsSet("IDOS_IMPORT_PROFILE"))
+    {
+        qInfo("IMPORT_PROFILE phase=command-total elapsed_ms=%.3f", timer.nsecsElapsed() / 1000000.0);
+    }
+    return success;
 }
 
 bool IDOSMainWindow::dataImportDynamicProperties(IDOSTreeView* view, const QString& targetGridId)
@@ -2783,8 +2836,8 @@ bool IDOSMainWindow::dataImportDynamicProperties(IDOSTreeView* view, const QStri
         return false;
     }
 
-    const bool success = commandManager->execute(
-        new IDOSImportRestartResultsCommand(target, targetGridId, file));
+    const bool success = executeDataImport(commandManager,
+        new IDOSImportRestartResultsCommand(target, targetGridId, file), file);
     if (!success)
     {
         QMessageBox::warning(view, tr("Import Dynamic Properties"), commandManager->error());
@@ -3152,7 +3205,7 @@ int IDOSMainWindow::dataImportWellData(IDOSProject* project, QWidget* parent)
         QJsonObject arguments;
         arguments.insert(QStringLiteral("filePath"), file);
         IDOSCommandManager* manager = target->commandManager();
-        if (manager->execute(new IDOSImportWellDataCommand(target.data(), arguments)))
+        if (executeDataImport(manager, new IDOSImportWellDataCommand(target.data(), arguments), file))
         {
             ++imported;
         }
@@ -3186,7 +3239,7 @@ int IDOSMainWindow::dataImportWellData(IDOSProject* project, const QString& targ
     arguments.insert(QStringLiteral("filePath"), file);
     arguments.insert(QStringLiteral("targetWellId"), targetWellId);
     IDOSCommandManager* manager = target->commandManager();
-    if (!manager->execute(new IDOSImportWellDataCommand(target.data(), arguments)))
+    if (!executeDataImport(manager, new IDOSImportWellDataCommand(target.data(), arguments), file))
     {
         QMessageBox::warning(parent, tr("Import Well Data"), manager->error());
         return 0;
@@ -3331,7 +3384,7 @@ void IDOSMainWindow::onCaseImportSummaryResults(IDOSTreeView* sourceView, const 
     arguments.insert(QStringLiteral("filePath"), filePath);
     arguments.insert(QStringLiteral("targetCaseId"), caseId);
     IDOSCommandManager* manager = m_project->commandManager();
-    if (manager == nullptr || !manager->execute(new IDOSImportSummaryResultsCommand(m_project, arguments)))
+    if (manager == nullptr || !executeDataImport(manager, new IDOSImportSummaryResultsCommand(m_project, arguments), filePath))
     {
         QMessageBox::warning(view, tr("Import Summary Results"),
                              manager != nullptr ? manager->error()
@@ -3549,7 +3602,12 @@ bool IDOSMainWindow::caseImportCase(IDOSTreeView* view)
         QMessageBox::warning(view, tr("Import Case"), tr("The simulation case reader is unavailable."));
         return false;
     }
-    QList<IDOSDataObject*> objects = reader->read(file);
+    std::unique_ptr<IDOSWaitingDialog> loading(new IDOSWaitingDialog(this));
+    loading->setObjectName(QStringLiteral("dataLoadingDialog"));
+    loading->begin(tr("Loading Case"), tr("Reading the case and preparing its data…"), QFileInfo(file).fileName());
+    const QScopedValueRollback<bool> importing(m_dataImportActive, true);
+    QList<IDOSDataObject*> objects = reader->readInBackground(file);
+    loading.reset();
     IDOSSimulationCaseObject* simulationCase = nullptr;
     for (IDOSDataObject* object : objects)
     {
@@ -3559,6 +3617,11 @@ bool IDOSMainWindow::caseImportCase(IDOSTreeView* view)
             simulationCase = candidate;
             break;
         }
+    }
+    if (target.isNull())
+    {
+        qDeleteAll(objects);
+        return false;
     }
     if (simulationCase == nullptr)
     {
@@ -3583,11 +3646,10 @@ bool IDOSMainWindow::caseImportCase(IDOSTreeView* view)
         QMessageBox::warning(view, tr("Import Case"), tr("A case with this name already exists."));
         return false;
     }
-    qDeleteAll(objects);
-
     IDOSCommandManager* commandManager = target->commandManager();
     if (commandManager == nullptr)
     {
+        qDeleteAll(objects);
         return false;
     }
 
@@ -3596,7 +3658,13 @@ bool IDOSMainWindow::caseImportCase(IDOSTreeView* view)
     arguments.insert(QStringLiteral("caseName"), dialog.caseName());
     IDOSImportCaseCommand* command =
         new IDOSImportCaseCommand(target, arguments);
-    const bool success = commandManager->execute(command);
+    if (!command->adoptParsedObjects(objects))
+    {
+        delete command;
+        qDeleteAll(objects);
+        return false;
+    }
+    const bool success = executeDataImport(commandManager, command, file);
     if (!success)
     {
         QMessageBox::warning(view, tr("Import Case"), commandManager->error());
@@ -3706,7 +3774,7 @@ bool IDOSMainWindow::caseImportGrid(IDOSTreeView* view, const QString& targetCas
     arguments.insert(QStringLiteral("replaceExistingGrid"), replacing);
     IDOSImportGridCommand* command =
         new IDOSImportGridCommand(target, arguments);
-    const bool success = commandManager->execute(command);
+    const bool success = executeDataImport(commandManager, command, file);
     if (!success)
     {
         QMessageBox::warning(view, tr("Import Grid"), commandManager->error());
@@ -3926,7 +3994,7 @@ void IDOSMainWindow::onNodeImportDataset(IDOSTreeView* view, const QString& requ
         commandArguments.insert(QStringLiteral("providerId"), requestedProviderId);
         commandArguments.insert(QStringLiteral("dataTypeId"), requestedDataTypeId);
         IDOSCommandManager* manager = project->commandManager();
-        if (!manager->execute(new IDOSImportDataCommand(project.data(), commandArguments)))
+        if (!executeDataImport(manager, new IDOSImportDataCommand(project.data(), commandArguments), file))
         {
             failures.append(
                 tr("Failed to import %1:\n%2").arg(file, manager->error()));
@@ -4012,7 +4080,7 @@ void IDOSMainWindow::onNodeImportFluidRockTables(IDOSTreeView* view, const QStri
     commandArguments.insert(QStringLiteral("filePath"), file);
     commandArguments.insert(QStringLiteral("category"), category);
     IDOSCommandManager* manager = project->commandManager();
-    if (!manager->execute(new IDOSImportFluidRockTablesCommand(project.data(), commandArguments)))
+    if (!executeDataImport(manager, new IDOSImportFluidRockTablesCommand(project.data(), commandArguments), file))
     {
         QMessageBox::warning(view, title, manager->error());
     }
@@ -4090,7 +4158,7 @@ void IDOSMainWindow::dataImportWellPart(IDOSTreeView* view, const QString& id, c
     arguments.insert(QStringLiteral("filePath"), file);
     arguments.insert(QStringLiteral("targetWellId"), id);
     IDOSCommandManager* manager = project->commandManager();
-    if (manager == nullptr || !manager->execute(new IDOSImportWellDataCommand(project.data(), arguments)))
+    if (manager == nullptr || !executeDataImport(manager, new IDOSImportWellDataCommand(project.data(), arguments), file))
     {
         if (manager != nullptr)
         {

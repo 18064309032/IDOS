@@ -44,6 +44,20 @@ endif()
 
 find_package(Qt5 COMPONENTS Core Gui Widgets Network LinguistTools REQUIRED)
 
+# Independently built with tools/BuildProj.ps1; no system paths are embedded.
+add_library(PROJ::proj SHARED IMPORTED GLOBAL)
+set_target_properties(PROJ::proj PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/thirdparty/proj/include"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/thirdparty/proj/bin/proj_9.dll"
+    IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/thirdparty/proj/lib/proj.lib"
+    IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/proj/bin/proj_9.dll"
+    IMPORTED_IMPLIB_RELEASE "${CMAKE_SOURCE_DIR}/thirdparty/proj/lib/proj.lib"
+    IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/proj/bin/proj_9_d.dll"
+    IMPORTED_IMPLIB_DEBUG "${CMAKE_SOURCE_DIR}/thirdparty/proj/lib/proj_d.lib"
+    MAP_IMPORTED_CONFIG_MINSIZEREL Release
+    MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+)
+
 # ---------------------------------------------------------------------
 # SARibbon 第三方库（仅 include/lib/bin 三段式布局，无 CMake config 文件）
 # 通过 IMPORTED target 暴露：include 路径 + 链接库 + Debug/Release 自动切换

@@ -312,6 +312,7 @@ void IDOSRenderToolProvider::onGridXrayToggled(bool enabled)
     }
 
     const QList<IDOSRenderObject*> objects = renderView->scene()->objects();
+    renderView->scene()->beginUpdate();
     if (enabled)
     {
         bool changed = false;
@@ -349,6 +350,7 @@ void IDOSRenderToolProvider::onGridXrayToggled(bool enabled)
         }
         m_gridXrayEnabled = false;
     }
+    renderView->scene()->endUpdate();
     updateState();
 }
 

@@ -2,6 +2,10 @@ find_package(Qt5 COMPONENTS Test REQUIRED)
 
 # Compile platform and example extension headers independently.
 set(_idos_render_headers
+    "${CMAKE_SOURCE_DIR}/src/core/idosprojectmetadata.h"
+    "${CMAKE_SOURCE_DIR}/src/gui/idosnewprojectdialog.h"
+    "${CMAKE_SOURCE_DIR}/src/app/command/idosconvertcoordinatescommand.h"
+    "${CMAKE_SOURCE_DIR}/src/app/command/idosupdateprojectmetadatacommand.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idosfielddifferencecommand.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idosfielddifferencewidget.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idosmultiscalefractureplugin/idoscurveevaluation.h"
@@ -243,6 +247,7 @@ list(APPEND _idos_render_headers
     "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngeneratecommand.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngenerationwidget.h"
     "${CMAKE_SOURCE_DIR}/src/plugins/idosfracturemodelingplugin/idosdfngenerator.h"
+    "${CMAKE_SOURCE_DIR}/src/gui/idoswaitingdialog.h"
     "${CMAKE_SOURCE_DIR}/src/app/command/idosdeletedatacommand.h"
 )
 set(_idos_render_header_sources)
@@ -312,7 +317,11 @@ set_tests_properties(seismic_import PROPERTIES
 
 add_executable(idos_case_tests case_workflow_test.h case_workflow_test.cpp)
 target_link_libraries(idos_case_tests PRIVATE idos_app Qt5::Test OPM::opmcommon)
+if(WIN32)
+    target_link_libraries(idos_case_tests PRIVATE Psapi)
+endif()
 target_link_libraries(idos_case_tests PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::RenderingCore)
+target_link_libraries(idos_case_tests PRIVATE VTK::FiltersCore VTK::GUISupportQt)
 add_dependencies(idos_case_tests idos_project_tests)
 add_dependencies(idos_case_tests idosexampleplugin)
 add_dependencies(idos_case_tests idosfracturemodelingplugin idosmultiscalefractureplugin)

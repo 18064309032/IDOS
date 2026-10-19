@@ -504,6 +504,7 @@ void IDOSRenderInteractionTool::updateClippingPlane()
 
 void IDOSRenderInteractionTool::clearClippingPlane()
 {
+    const bool hadClipping = !m_clippedMappers.isEmpty() || m_clipObserverTag != 0;
     if (m_clipWidget != nullptr)
     {
         m_clipWidget->SetEnabled(0);
@@ -523,7 +524,7 @@ void IDOSRenderInteractionTool::clearClippingPlane()
     }
     m_clippedMappers.clear();
     m_clipObjectId.clear();
-    if (view() != nullptr)
+    if (hadClipping && view() != nullptr)
     {
         view()->render();
     }
@@ -545,21 +546,7 @@ bool IDOSRenderInteractionTool::pickSelectedObjectWorldPosition(const QPoint& po
     }
     vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
     picker->SetTolerance(0.005);
-    picker->PickFromListOn();
-    for (vtkActor* actor : actors(object->provider()))
-    {
-        if (actor != nullptr && actor->GetVisibility() != 0)
-        {
-            picker->AddPickList(actor);
-        }
-    }
-    vtkRenderWindow* window = renderView->vtkWidget()->renderWindow();
-    const int* size = window->GetSize();
-    const double x = static_cast<double>(position.x()) * size[0] / renderView->vtkWidget()->width();
-    const double y = size[1] - 1.0 - static_cast<double>(position.y()) * size[1] /
-        renderView->vtkWidget()->height();
-    vtkRenderer* renderer = window->GetRenderers()->GetFirstRenderer();
-    if (renderer == nullptr || picker->Pick(x, y, 0.0, renderer) == 0)
+    if (!renderView->pickCell(position, picker, m_sliceObjectId))
     {
         return false;
     }
@@ -746,6 +733,11 @@ void IDOSRenderInteractionTool::executeSlice()
             accumulatedDistance += length;
         }
     }
+    if (append->GetNumberOfInputConnections(0) == 0)
+    {
+        showPrompt(tr("No slice geometry was found along the selected path."));
+        return;
+    }
     append->Update();
     vtkSmartPointer<vtkPolyData> profile = vtkSmartPointer<vtkPolyData>::New();
     profile->DeepCopy(append->GetOutput());
@@ -907,13 +899,16 @@ QString IDOSRenderInteractionTool::probeAttributes(vtkDataSetAttributes* attribu
     return lines.join(QStringLiteral("\n"));
 }
 
-void IDOSRenderInteractionTool::clearProbe()
+void IDOSRenderInteractionTool::clearProbe(bool redraw)
 {
     if (m_probeActor != nullptr && view() != nullptr)
     {
         vtkRenderer* renderer = view()->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
         renderer->RemoveViewProp(m_probeActor);
-        view()->render();
+        if (redraw)
+        {
+            view()->render();
+        }
     }
     m_probeActor = nullptr;
 }
@@ -925,27 +920,16 @@ void IDOSRenderInteractionTool::performProbe(const QPoint& position)
     {
         return;
     }
-    clearProbe();
+    clearProbe(false);
     m_promptLabel->hide();
     vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
     picker->SetTolerance(0.005);
-    picker->PickFromListOn();
-    for (IDOSRenderObject* object : renderView->scene()->objects())
-    {
-        if (object->isVisible() && object->provider() != nullptr)
-        {
-            for (vtkActor* actor : actors(object->provider()))
-            {
-                picker->AddPickList(actor);
-            }
-        }
-    }
     vtkRenderWindow* window = renderView->vtkWidget()->renderWindow();
     vtkRenderer* renderer = window->GetRenderers()->GetFirstRenderer();
     const int* size = window->GetSize();
     const double x = static_cast<double>(position.x()) * size[0] / renderView->vtkWidget()->width();
     const double y = size[1] - 1.0 - static_cast<double>(position.y()) * size[1] / renderView->vtkWidget()->height();
-    picker->Pick(x, y, 0.0, renderer);
+    renderView->pickCell(position, picker);
     vtkDataSet* data = picker->GetDataSet();
     vtkActor* pickedActor = picker->GetActor();
     vtkIdType cellId = picker->GetCellId();
@@ -969,6 +953,7 @@ void IDOSRenderInteractionTool::performProbe(const QPoint& position)
         }
         if (!pointPicker->Pick(x, y, 0.0, renderer) || pointPicker->GetDataSet() == nullptr || pointPicker->GetPointId() < 0)
         {
+            renderView->render();
             showPrompt(tr("No model point or cell was picked."));
             return;
         }

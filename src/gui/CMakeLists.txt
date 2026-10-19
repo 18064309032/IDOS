@@ -1,6 +1,8 @@
 # idos_gui: user interface features
 add_library(idos_gui SHARED
     idos_gui.h
+    idoswaitingdialog.cpp
+    idoswaitingdialog.h
     idosinterface.cpp
     idosinterface.h
     idosdebuginfowidget.cpp

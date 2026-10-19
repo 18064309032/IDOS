@@ -1,0 +1,60 @@
+{
+  "synthetic": true,
+  "dimensions": [
+    50,
+    40,
+    20
+  ],
+  "cells": 40000,
+  "activeCells": 39520,
+  "units": {
+    "length": "m",
+    "permeability": "mD",
+    "porosity": "fraction"
+  },
+  "coordinateSystem": "Local Cartesian; X east, Y north, Z depth positive down; no assigned CRS",
+  "wells": [
+    {
+      "name": "PROD_V1",
+      "trajectory": "wells/PROD_V1.dev",
+      "stations": 121,
+      "measuredDepth": 2000,
+      "reservoirStations": 12
+    },
+    {
+      "name": "INJ_V1",
+      "trajectory": "wells/INJ_V1.dev",
+      "stations": 121,
+      "measuredDepth": 2000,
+      "reservoirStations": 12
+    },
+    {
+      "name": "PROD_D1",
+      "trajectory": "wells/PROD_D1.dev",
+      "stations": 121,
+      "measuredDepth": 2032.849817,
+      "reservoirStations": 12
+    },
+    {
+      "name": "INJ_D1",
+      "trajectory": "wells/INJ_D1.dev",
+      "stations": 121,
+      "measuredDepth": 2031.813095,
+      "reservoirStations": 12
+    },
+    {
+      "name": "PROD_H1",
+      "trajectory": "wells/PROD_H1.dev",
+      "stations": 121,
+      "measuredDepth": 2768.311366,
+      "reservoirStations": 25
+    },
+    {
+      "name": "PROD_H2",
+      "trajectory": "wells/PROD_H2.dev",
+      "stations": 121,
+      "measuredDepth": 2590.670272,
+      "reservoirStations": 24
+    }
+  ]
+}

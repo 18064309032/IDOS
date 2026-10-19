@@ -1,6 +1,6 @@
 # IDOS 源码目录
 
-更新日期：2026-10-16。
+更新日期：2026-10-19。
 
 > 下节“目标目录草案”对应 2026-10-16 的新设计，尚未整体移动源码；其后的文件树记录实际布局。树的新框架不设 TreeServer，工程同步由一个 AppTreeAccess 对接两个 TreeModel；新旧接口迁移状态见工作进度。
 
@@ -396,6 +396,8 @@ src/
 │   ├── idosdebuginfowidget.h
 │   ├── idosinterface.cpp
 │   ├── idosinterface.h
+│   ├── idoswaitingdialog.cpp
+│   ├── idoswaitingdialog.h
 │   ├── idosnewprojectdialog.cpp
 │   ├── idosnewprojectdialog.h
 │   ├── idosprojectstartwidget.cpp
@@ -605,3 +607,11 @@ src/
 - `idoscurveevaluationcommand`：只读评价命令及 Metadata。
 
 `src/core/data/grid/idosgridproperty` 增加指定报告步的只读数值访问；不包含插件计算或界面逻辑。
+
+
+## 2026-10-20 工程坐标增量
+
+- core 根部现有 idosprojectmetadata.h/.cpp 承载工程坐标声明、验证及显式转换；不新增目录或服务类。
+- gui 根部现有 idosnewprojectdialog.h/.cpp 同时用于新建工程和工程设置。
+- app/command/idosupdateprojectmetadatacommand.h/.cpp 与 idosconvertcoordinatescommand.h/.cpp 分别实现设置动作与转换查询，并在主窗口注册 Metadata。
+- thirdparty/proj 沿用独立 include/lib/bin 布局，仅保留源码 SHA256 清单及来源说明，不附带源码归档；运行数据库及配置统一放在 resources/proj；cmake/sqlite 是仅供第三方依赖构建的工程描述，所有构建输出均在源码兄弟 IDOS-Build 中。

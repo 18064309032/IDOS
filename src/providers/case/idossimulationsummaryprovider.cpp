@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QObject>
 #include <QVariantMap>
@@ -31,6 +32,8 @@ QList<IDOSDataObject*> IDOSSimulationSummaryProvider::read(const QString& filePa
 
     try
     {
+        QElapsedTimer phase;
+        phase.start();
         Opm::EclIO::ESmry summary(QFileInfo(filePath).absoluteFilePath().toStdString());
         if (!summary.all_steps_available())
         {
@@ -38,6 +41,12 @@ QList<IDOSDataObject*> IDOSSimulationSummaryProvider::read(const QString& filePa
             return {};
         }
 
+        reportReadPhase(QStringLiteral("summary-open-index"), phase.nsecsElapsed());
+        phase.restart();
+        // All series are imported: load them in one pass rather than one disk scan per key.
+        summary.loadData();
+        reportReadPhase(QStringLiteral("summary-bulk-read"), phase.nsecsElapsed());
+        phase.restart();
         const std::vector<Opm::time_point> dates = summary.dates();
         const std::vector<Opm::EclIO::SummaryNode>& nodes = summary.summaryNodeList();
         if (dates.empty() || nodes.empty())
@@ -82,6 +91,7 @@ QList<IDOSDataObject*> IDOSSimulationSummaryProvider::read(const QString& filePa
             return {};
         }
 
+        reportReadPhase(QStringLiteral("summary-conversion"), phase.nsecsElapsed());
         IDOSSimulationSummaryResultsObject* results = new IDOSSimulationSummaryResultsObject();
         results->setName(QFileInfo(filePath).completeBaseName());
         results->setSourceFile(QFileInfo(filePath).absoluteFilePath());

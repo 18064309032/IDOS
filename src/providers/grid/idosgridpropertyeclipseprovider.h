@@ -35,6 +35,9 @@ class PROVIDERS_EXPORT IDOSGridPropertyEclipseProvider : public IDOSDataProvider
     QVector<double> values(const Opm::DeckKeyword& keyword, bool convertToSi = true) const;
     void appendProperty(QList<IDOSDataObject*>* result, const QString& keyword,
                         const QVector<double>& values) const;
+    template<typename Value>
+    static bool expandRestartValues(const std::vector<Value>& source, const QVector<int>& activeCells,
+                                    int totalCellCount, int activeCellCount, QVector<double>* values);
     bool isSupportedRestartKeyword(const QString& keyword) const;
     QList<int> m_restartReportSteps;
 };

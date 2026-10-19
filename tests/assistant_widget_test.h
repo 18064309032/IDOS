@@ -22,8 +22,12 @@ class AssistantWidgetTest : public QObject
     Q_OBJECT
 public:
     AssistantWidgetTest();
+    static int runProcessHelper();
 
 private slots:
+    void onProcessLifetime_data();
+    void onProcessLifetime();
+    void onProcessRestartAfterFailure();
     void onToolCallCreatesWell();
     void onTextDoesNotExecute();
     void onInvalidToolArgumentsDoNotCreateCommand();

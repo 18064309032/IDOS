@@ -8,12 +8,15 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
+#include <QVector>
 #include <QtCore/qnamespace.h>
 
 #ifdef IDOS_ENABLE_RENDER
 #include <vtkActor.h>
 #endif
 #include <vtkSmartPointer.h>
+#include <vtkType.h>
+#include <vtkUnstructuredGrid.h>
 
 #include "idos_app.h"
 #include "idosrenderprovider.h"
@@ -96,6 +99,13 @@ class APP_EXPORT IDOSGridRenderProvider : public IDOSRenderProvider
     QMap<QString, QPointer<IDOSGridPropertyObject>> m_filterProperties;
     QString m_filterError;
     int m_filteredCellCount;
+    vtkSmartPointer<vtkUnstructuredGrid> m_geometry;
+    QVector<double> m_geometryCoord;
+    QVector<double> m_geometryCorners;
+    QVector<int> m_geometryActive;
+    QVector<quint8> m_geometrySelection;
+    QList<int> m_geometryDimensions;
+    vtkMTimeType m_geometryTime;
 };
 
 #endif

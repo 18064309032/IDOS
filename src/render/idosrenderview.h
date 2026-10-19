@@ -26,11 +26,14 @@ class QFrame;
 class QGraphicsOpacityEffect;
 class QLabel;
 class QPropertyAnimation;
+class QTimer;
 class QVTKOpenGLNativeWidget;
 class vtkActor;
 class vtkAxesActor;
 class vtkCamera;
+class vtkCellPicker;
 class vtkCubeAxesActor;
+class vtkDataSet;
 class vtkObject;
 class vtkGenericOpenGLRenderWindow;
 class vtkInteractorStyleImage;
@@ -39,6 +42,7 @@ class vtkOrientationMarkerWidget;
 class vtkRenderer;
 class vtkProp;
 class vtkProp3D;
+class vtkStaticCellLocator;
 
 class IDOSRenderProvider;
 
@@ -59,9 +63,11 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void setSelection(const QList<QString>& ids);
     void render();
     bool pickWorldPosition(const QPoint& position, double worldPosition[3]) const;
+    bool pickCell(const QPoint& position, vtkCellPicker* picker, const QString& objectId = QString()) const;
     QString objectIdAt(const QPoint& position) const;
     void zoomToWorldPosition(const double worldPosition[3]);
     void resetCamera();
+    void endSceneUpdate(bool fitCamera = false);
     bool fitSelection();
     void rotateView(bool clockwise);
     void saveHomeView();
@@ -128,7 +134,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     void onToolCallbackFinished(bool consumed);
     void onToolBarLayoutChanged();
     void onLinkedCameraModified(vtkObject* source, unsigned long eventId, void* callData);
+    void onLinkedCameraTimeout();
     void onCameraInteraction();
+    void onCursorTrackingTimeout();
 
   private:
     bool toolsBusy() const;
@@ -145,6 +153,8 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     bool m_toolsChanging;
     void configureVtkOutputWindow();
     void rebuildActors();
+    void updateBoundsAxes();
+    void prunePickingLocators() const;
     IDOSRenderObject* pick(const QPoint& position) const;
     void updateActiveBorder();
 
@@ -152,6 +162,9 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     QFrame* m_activeBorder;
     QWidget* m_flashOverlay;
     QLabel* m_cursorCoordinates;
+    QTimer* m_cursorTrackingTimer;
+    QTimer* m_linkedCameraTimer;
+    QPoint m_cursorPosition;
     QGraphicsOpacityEffect* m_flashOpacityEffect;
     QPropertyAnimation* m_flashAnimation;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> m_renderWindow;
@@ -168,6 +181,12 @@ class RENDER_EXPORT IDOSRenderView : public QWidget
     vtkSmartPointer<vtkOrientationMarkerWidget> m_orientationMarker;
     IDOSRenderScene* m_scene;
     QHash<vtkProp*, QString> m_propObjectIds;
+    mutable vtkSmartPointer<vtkCellPicker> m_worldPicker;
+    mutable QHash<vtkDataSet*, vtkSmartPointer<vtkStaticCellLocator>> m_pickLocators;
+    double m_displayBounds[6];
+    double m_logicalBounds[6];
+    bool m_hasVisibleBounds;
+    bool m_fitCameraOnRebuild;
     QList<QString> m_selection;
     QHash<QString, bool> m_displayVisibilitySnapshot;
     IDOSOrientation m_orientation;

@@ -246,6 +246,7 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::read(const QString& file
                 {
                     importedProperty->setValueUnits(IDOSGridPropertyObject::ValueUnits::Unknown);
                 }
+                initFile.clearData();
             }
         }
         else
@@ -341,16 +342,16 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QStrin
         QHash<QString, IDOSGridPropertyObject*> propertiesByKeyword;
         const QVector<int>& activeCells = grid->actnum();
         const int totalCellCount = grid->totalCellCount();
+        const int activeCellCount = grid->activeCellCount();
 
         for (const int reportStep : reportSteps)
         {
-            restartFile.loadReportStepNumber(reportStep);
             if (restartFile.hasArray("INTEHEAD", reportStep))
             {
                 const std::vector<int>& header = restartFile.getRestartData<int>("INTEHEAD", reportStep);
                 if (header.size() < 12 || header[8] != grid->nx()
                     || header[9] != grid->ny() || header[10] != grid->nz()
-                    || header[11] != grid->activeCellCount())
+                    || header[11] != activeCellCount)
                 {
                     setLastError(QObject::tr("The restart property %1 does not match the grid dimensions.")
                                      .arg(QStringLiteral("INTEHEAD")));
@@ -369,56 +370,34 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QStrin
                     continue;
                 }
 
-                QVector<double> rawValues;
+                QVector<double> values;
+                bool validValues = false;
                 const Opm::EclIO::eclArrType arrayType = std::get<1>(entry);
                 if (arrayType == Opm::EclIO::REAL)
                 {
                     const std::vector<float>& sourceValues =
                         restartFile.getRestartData<float>(keyword.toStdString(), reportStep);
-                    rawValues.reserve(static_cast<int>(sourceValues.size()));
-                    for (float value : sourceValues)
+                    if (sourceValues.empty())
                     {
-                        rawValues.append(static_cast<double>(value));
+                        continue;
                     }
+                    validValues = expandRestartValues(sourceValues, activeCells, totalCellCount, activeCellCount, &values);
                 }
                 else if (arrayType == Opm::EclIO::DOUB)
                 {
                     const std::vector<double>& sourceValues =
                         restartFile.getRestartData<double>(keyword.toStdString(), reportStep);
-                    rawValues.reserve(static_cast<int>(sourceValues.size()));
-                    for (double value : sourceValues)
+                    if (sourceValues.empty())
                     {
-                        rawValues.append(value);
+                        continue;
                     }
+                    validValues = expandRestartValues(sourceValues, activeCells, totalCellCount, activeCellCount, &values);
                 }
                 else
                 {
                     continue;
                 }
-
-                if (rawValues.isEmpty())
-                {
-                    continue;
-                }
-
-                QVector<double> values(totalCellCount, 0.0);
-                if (rawValues.size() == totalCellCount)
-                {
-                    values = rawValues;
-                }
-                else if (rawValues.size() == grid->activeCellCount())
-                {
-                    int activeIndex = 0;
-                    for (int cellIndex = 0; cellIndex < totalCellCount; ++cellIndex)
-                    {
-                        if (activeCells.isEmpty() || activeCells.at(cellIndex) != 0)
-                        {
-                            values[cellIndex] = rawValues.at(activeIndex);
-                            ++activeIndex;
-                        }
-                    }
-                }
-                else
+                if (!validValues)
                 {
                     error = QObject::tr("The restart property %1 does not match the grid dimensions.").arg(keyword);
                     setLastError(error);
@@ -451,6 +430,8 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readRestart(const QStrin
                 }
                 importedAtReportStep.insert(keyword);
             }
+            // Final Qt arrays own the converted values; retain only the OPM file index.
+            restartFile.clearData();
         }
 
         if (result.isEmpty())
@@ -486,4 +467,37 @@ bool IDOSGridPropertyEclipseProvider::isSupportedRestartKeyword(const QString& k
 QList<int> IDOSGridPropertyEclipseProvider::restartReportSteps() const
 {
     return m_restartReportSteps;
+}
+
+template<typename Value>
+bool IDOSGridPropertyEclipseProvider::expandRestartValues(const std::vector<Value>& source,
+                                                         const QVector<int>& activeCells,
+                                                         int totalCellCount, int activeCellCount,
+                                                         QVector<double>* values)
+{
+    const bool full = source.size() == static_cast<std::size_t>(totalCellCount);
+    if (!full && source.size() != static_cast<std::size_t>(activeCellCount))
+    {
+        return false;
+    }
+    // Allocate the final size exactly; resize() may otherwise over-allocate large arrays.
+    *values = QVector<double>(totalCellCount);
+    double* target = values->data();
+    if (full)
+    {
+        for (int index = 0; index < totalCellCount; ++index)
+        {
+            target[index] = static_cast<double>(source[static_cast<std::size_t>(index)]);
+        }
+    }
+    else
+    {
+        std::size_t activeIndex = 0;
+        for (int index = 0; index < totalCellCount; ++index)
+        {
+            target[index] = activeCells.isEmpty() || activeCells.at(index) != 0
+                ? static_cast<double>(source[activeIndex++]) : 0.0;
+        }
+    }
+    return true;
 }

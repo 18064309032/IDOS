@@ -10,6 +10,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QMap>
@@ -881,6 +882,8 @@ bool IDOSSimulationCaseEclipseProvider::convertEclipseGrid(const Opm::EclipseGri
         return false;
     }
     zcorn->resize(static_cast<int>(opmZcorn.size()));
+    double* targetCorners = zcorn->data();
+    const double* sourceCorners = opmZcorn.data();
     const Opm::ZcornMapper mapper = eclipseGrid.zcornMapper();
     const int opmCorners[8] = {0, 1, 3, 2, 4, 5, 7, 6};
     for (std::size_t k = 0; k < nz; ++k)
@@ -892,7 +895,7 @@ bool IDOSSimulationCaseEclipseProvider::convertEclipseGrid(const Opm::EclipseGri
                 const std::size_t base = (i + j * nx + k * cellsPerLayer) * 8;
                 for (int c = 0; c < 8; ++c)
                 {
-                    (*zcorn)[static_cast<int>(base + c)] = opmZcorn[mapper.index(i, j, k, opmCorners[c])];
+                    targetCorners[base + c] = sourceCorners[mapper.index(i, j, k, opmCorners[c])];
                 }
             }
         }
@@ -1014,7 +1017,11 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
         return;
     }
 
+    QElapsedTimer phase;
+    phase.start();
     Opm::EclipseState state(deck);
+    reportReadPhase(QStringLiteral("case-opm-state"), phase.nsecsElapsed());
+    phase.restart();
     const Opm::EclipseGrid& eclipseGrid = state.getInputGrid();
     QVector<double> coord;
     QVector<double> zcorn;
@@ -1033,6 +1040,8 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
     result->append(grid);
     appendActnumProperty(result, grid);
 
+    reportReadPhase(QStringLiteral("case-grid-conversion"), phase.nsecsElapsed());
+    phase.restart();
     const Opm::FieldPropsManager& fieldProps = state.globalFieldProps();
     const QStringList staticDoubleKeywords = {
         QStringLiteral("PORO"),  QStringLiteral("PERMX"),  QStringLiteral("PERMY"),
@@ -1050,6 +1059,7 @@ void IDOSSimulationCaseEclipseProvider::appendGridObjects(QList<IDOSDataObject*>
         appendIntProperty(result, fieldProps, grid, keyword);
     }
 
+    reportReadPhase(QStringLiteral("case-grid-properties"), phase.nsecsElapsed());
     for (IDOSDataObject* object : *result)
     {
         IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
@@ -1135,7 +1145,7 @@ bool IDOSSimulationCaseEclipseProvider::configureParser(Opm::Parser* parser, QSt
     }
 
     const QString keywordFilePath = QDir(QCoreApplication::applicationDirPath())
-                                        .filePath(QStringLiteral("opm/extra-keywords.json"));
+                                        .filePath(QStringLiteral("resources/opm/extra-keywords.json"));
     if (!QFileInfo::exists(keywordFilePath))
     {
         return true;
@@ -1301,6 +1311,8 @@ void IDOSSimulationCaseEclipseProvider::removeTemporaryParserFile(const QString&
 
 QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& filePath)
 {
+    QElapsedTimer phase;
+    phase.start();
     setLastError(QString());
     QList<IDOSDataObject*> result;
 
@@ -1314,6 +1326,8 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
             setLastError(QObject::tr("OPM parse .DATA failed: %1").arg(parseError));
             return result;
         }
+        reportReadPhase(QStringLiteral("case-deck-parse"), phase.nsecsElapsed());
+        phase.restart();
         const Opm::Deck& deck = *parsedDeck;
         if (!deck.hasKeyword("RUNSPEC") || !deck.hasKeyword("SCHEDULE"))
         {
@@ -1380,6 +1394,7 @@ QList<IDOSDataObject*> IDOSSimulationCaseEclipseProvider::read(const QString& fi
         simulationCase->setCurveTables(buildRelativePermeabilityTables(deck));
         simulationCase->setWellControlRows(buildWellControlRows(deck));
 
+        reportReadPhase(QStringLiteral("case-metadata"), phase.nsecsElapsed());
         result.append(simulationCase.release());
         appendGridObjects(&result, qobject_cast<IDOSSimulationCaseObject*>(result.first()), deck);
     }

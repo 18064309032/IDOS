@@ -93,6 +93,11 @@ bool IDOSProject::setCurrentCaseId(const QString& caseId)
 
 bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
 {
+    QString coordinateError;
+    if (!metadata.validateCoordinates(coordinateError))
+    {
+        return false;
+    }
     if (metadata.name().trimmed().isEmpty())
     {
         return false;
@@ -105,7 +110,7 @@ bool IDOSProject::setMetadata(const IDOSProjectMetadata& metadata)
     m_metadata.setName(metadata.name().trimmed());
     m_metadata.setFieldBlock(metadata.fieldBlock().trimmed());
     m_metadata.setDescription(metadata.description().trimmed());
-    m_metadata.setCoordinateReference(metadata.coordinateType() == IDOSProjectMetadata::CoordinateType::Custom
+    m_metadata.setCoordinateReference(metadata.coordinateType() != IDOSProjectMetadata::CoordinateType::Unspecified
                                       ? metadata.coordinateReference().trimmed()
                                       :
                                       QString());

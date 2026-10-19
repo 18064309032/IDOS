@@ -153,6 +153,16 @@ add_library(idos_core SHARED
 target_include_directories(idos_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(idos_core PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
 target_link_libraries(idos_core PRIVATE VTK::hdf5)
+target_link_libraries(idos_core PRIVATE PROJ::proj)
+add_custom_command(TARGET idos_core POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:PROJ::proj>" "$<TARGET_FILE_DIR:idos_core>"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:idos_core>/resources/proj"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${PROJECT_SOURCE_DIR}/resources/proj"
+        "$<TARGET_FILE_DIR:idos_core>/resources/proj"
+    VERBATIM
+)
 
 target_compile_definitions(idos_core PRIVATE IDOS_CORE_LIB)
 

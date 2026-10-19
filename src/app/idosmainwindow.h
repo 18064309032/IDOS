@@ -23,10 +23,12 @@ class IDOSWellDisplayWidget;
 class IDOSRenderObject;
 class IDOSCaseObject;
 class IDOSProjectMetadata;
+class IDOSCommand;
 class IDOSCommandRegistry;
 class IDOSDataRegistry;
 class QAction;
 class QCloseEvent;
+class QDialog;
 class QLabel;
 class QModelIndex;
 class QTreeView;
@@ -151,6 +153,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
 
   public slots:
     void onNewProject();
+    void onProjectSettings();
     void onOpenProject();
     void onSaveProject();
     void onSaveProjectAs();
@@ -195,6 +198,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     void closeEvent(QCloseEvent* event) override;
 
   private:
+    bool executeDataImport(IDOSCommandManager* manager, IDOSCommand* command, const QString& filePath);
     void dataImportWellPart(IDOSTreeView* view, const QString& id, const QString& providerPrefix);
     void clearTreeDialogs();
     IDOSRenderObject* dataGridRenderObject(const QString& gridId, IDOSRenderView* view) const;
@@ -317,6 +321,7 @@ class APP_EXPORT IDOSMainWindow : public SARibbonMainWindow
     QMap<QString, QString> m_viewCaseIds;
     int m_nextViewIndex;
     QString m_currentWindowLayout;
+    bool m_dataImportActive;
     bool m_syncingTreeSelection;
     bool m_restoringPresentation;
     QVariantMap m_defaultViewState;

@@ -1,4 +1,5 @@
 #include <array>
+#include <cstring>
 #include <exception>
 #include <memory>
 #include <string>
@@ -6,6 +7,7 @@
 #include <vector>
 
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QMap>
 #include <QObject>
@@ -34,6 +36,8 @@
 
 QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
 {
+    QElapsedTimer phase;
+    phase.start();
     QList<IDOSDataObject*> result;
     setLastError(QString());
 
@@ -59,6 +63,8 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
                 errors.clear();
                 return result;
             }
+            reportReadPhase(QStringLiteral("grid-grdecl-parse"), phase.nsecsElapsed());
+            phase.restart();
             std::vector<int> actnumValues;
             const std::vector<const Opm::DeckKeyword*> actnumKeywords = grdeclDeck->getKeywordList("ACTNUM");
             for (const Opm::DeckKeyword* keyword : actnumKeywords)
@@ -94,6 +100,8 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
             eclipseGrid = std::make_unique<Opm::EclipseGrid>(dataFile);
         }
 
+        reportReadPhase(QStringLiteral("grid-opm-construction"), phase.nsecsElapsed());
+        phase.restart();
         const std::size_t nx = eclipseGrid->getNX();
         const std::size_t ny = eclipseGrid->getNY();
         const std::size_t nz = eclipseGrid->getNZ();
@@ -119,11 +127,10 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
             return result;
         }
 
-        QVector<double> coord;
-        coord.reserve(static_cast<int>(opmCoord.size()));
-        for (double value : opmCoord)
+        QVector<double> coord(static_cast<int>(opmCoord.size()));
+        if (!opmCoord.empty())
         {
-            coord.append(value);
+            std::memcpy(coord.data(), opmCoord.data(), opmCoord.size() * sizeof(double));
         }
         const std::size_t cellsPerLayer = nx * ny;
         if (opmZcorn.size() != 8ULL * cellsPerLayer * nz)
@@ -137,6 +144,8 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
         IDOSGridObject* grid = new IDOSGridObject();
         grid->setName(fi.completeBaseName());
         result.append(grid);
+        reportReadPhase(QStringLiteral("grid-coordinate-copy"), phase.nsecsElapsed());
+        phase.restart();
         if (grdeclDeck != nullptr)
         {
             IDOSGridPropertyEclipseProvider propertyProvider;
@@ -146,7 +155,11 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
             grdeclDeck.reset();
         }
 
+        reportReadPhase(QStringLiteral("grid-deck-properties"), phase.nsecsElapsed());
+        phase.restart();
         QVector<double> zcorn(static_cast<int>(opmZcorn.size()));
+        double* targetCorners = zcorn.data();
+        const double* sourceCorners = opmZcorn.data();
         const Opm::ZcornMapper mapper = eclipseGrid->zcornMapper();
         const int opmCorners[8] = {0, 1, 3, 2, 4, 5, 7, 6};
         for (std::size_t k = 0; k < nz; ++k)
@@ -158,25 +171,29 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
                     const std::size_t base = (i + j * nx + k * cellsPerLayer) * 8;
                     for (int c = 0; c < 8; ++c)
                     {
-                        zcorn[static_cast<int>(base + c)] = opmZcorn[mapper.index(i, j, k, opmCorners[c])];
+                        targetCorners[base + c] = sourceCorners[mapper.index(i, j, k, opmCorners[c])];
                     }
                 }
             }
         }
-        QVector<int> actnum;
-        actnum.reserve(static_cast<int>(opmActnum.size()));
-        for (int value : opmActnum)
+        QVector<int> actnum(static_cast<int>(opmActnum.size()));
+        if (!opmActnum.empty())
         {
-            actnum.append(value);
+            std::memcpy(actnum.data(), opmActnum.data(), opmActnum.size() * sizeof(int));
         }
         grid->setCornerPointData(static_cast<int>(nx), static_cast<int>(ny), static_cast<int>(nz),
                                  std::move(coord), std::move(zcorn), std::move(actnum));
+        reportReadPhase(QStringLiteral("grid-array-conversion"), phase.nsecsElapsed());
+        phase.restart();
         eclipseGrid.reset();
+        reportReadPhase(QStringLiteral("grid-opm-release"), phase.nsecsElapsed());
+        phase.restart();
         if (!readCompanionFiles(filePath, &result))
         {
             qDeleteAll(result);
             result.clear();
         }
+        reportReadPhase(QStringLiteral("grid-companions-total"), phase.nsecsElapsed());
     }
     catch (const std::exception& e)
     {
@@ -216,6 +233,8 @@ bool IDOSGridEclipseProvider::readCompanionFiles(const QString& filePath,
         {
             continue;
         }
+        QElapsedTimer companionTimer;
+        companionTimer.start();
         const QString companionPath = companions.value(suffix);
         QList<IDOSDataObject*> imported;
         QString error;
@@ -255,6 +274,7 @@ bool IDOSGridEclipseProvider::readCompanionFiles(const QString& filePath,
             }
             error = provider.lastError();
         }
+        reportReadPhase(QStringLiteral("companion-read-") + suffix, companionTimer.nsecsElapsed());
         if (!error.isEmpty())
         {
             qDeleteAll(imported);
@@ -262,6 +282,7 @@ bool IDOSGridEclipseProvider::readCompanionFiles(const QString& filePath,
                            .arg(companionPath, error));
             continue;
         }
+        reportReadPhase(QStringLiteral("companion-") + suffix, companionTimer.nsecsElapsed());
         if (suffix == QStringLiteral("INIT"))
         {
             bool propertiesMatchGrid = true;

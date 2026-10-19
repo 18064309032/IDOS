@@ -54,6 +54,10 @@ bool IDOSRenderObject::isVisible() const
 
 void IDOSRenderObject::setVisible(bool visible)
 {
+    if (isVisible() == visible)
+    {
+        return;
+    }
     QVariantMap state = m_provider != nullptr ? m_provider->saveState() : QVariantMap();
     state.insert(QStringLiteral("visible"), visible);
     if (m_provider != nullptr)

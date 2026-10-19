@@ -1,0 +1,17 @@
+VERSION 1
+BEGIN HEADER
+1, Name
+2, Surface X
+3, Surface Y
+4, Well symbol
+5, Well datum name
+6, Well datum value
+7, TD (MD)
+8, Description
+END HEADER
+"PROD_V1" 500500 3300500 1 "KB" 0 2000.000000 "Synthetic demonstration well"
+"INJ_V1" 501540 3301180 1 "KB" 0 2000.000000 "Synthetic demonstration well"
+"PROD_D1" 500620 3301020 1 "KB" 0 2032.849817 "Synthetic demonstration well"
+"INJ_D1" 501420 3300500 1 "KB" 0 2031.813095 "Synthetic demonstration well"
+"PROD_H1" 500380 3300780 1 "KB" 0 2768.311366 "Synthetic demonstration well"
+"PROD_H2" 501580 3301060 1 "KB" 0 2590.670272 "Synthetic demonstration well"

@@ -1018,6 +1018,32 @@
 <context>
     <name>IDOSMainWindow</name>
     <message>
+        <source>Importing Data</source>
+        <translation>正在导入数据</translation>
+    </message>
+    <message>
+        <source>Reading data and updating the project…</source>
+        <translation>正在读取数据并更新工程…</translation>
+    </message>
+    <message>
+        <source>Loading Case</source>
+        <translation>正在加载工况</translation>
+    </message>
+    <message>
+        <source>Reading the case and preparing its data…</source>
+        <translation>正在读取工况并准备数据…</translation>
+    </message>
+    <message>
+        <source>Loading Data</source>
+        <translation>正在加载数据</translation>
+    </message>
+    <message>
+        <source>Loading %1...
+Please wait until loading finishes.</source>
+        <translation>正在加载 %1…
+请等待加载完成。</translation>
+    </message>
+    <message>
         <source>Simulation Run</source>
         <translation>模拟运行</translation>
     </message>
@@ -2421,6 +2447,98 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Please enter the custom coordinate system name or EPSG code.</source>
         <translation>请填写自定义坐标系的名称或 EPSG 编码。</translation>
+    </message>
+    <message>
+        <source>Metres</source>
+        <translation>米</translation>
+    </message>
+    <message>
+        <source>International feet</source>
+        <translation>国际英尺</translation>
+    </message>
+    <message>
+        <source>US survey feet</source>
+        <translation>美国测量英尺</translation>
+    </message>
+    <message>
+        <source>Local XY / vertical units</source>
+        <translation>局部平面 / 垂向长度单位</translation>
+    </message>
+    <message>
+        <source>Elevation positive up</source>
+        <translation>高程向上为正</translation>
+    </message>
+    <message>
+        <source>Depth positive down</source>
+        <translation>深度向下为正</translation>
+    </message>
+    <message>
+        <source>Z direction</source>
+        <translation>Z 轴正方向</translation>
+    </message>
+    <message>
+        <source>Local origin X (m)</source>
+        <translation>局部原点 X（米）</translation>
+    </message>
+    <message>
+        <source>Local origin Y (m)</source>
+        <translation>局部原点 Y（米）</translation>
+    </message>
+    <message>
+        <source>Vertical reference elevation (m)</source>
+        <translation>垂直参考面高程（米）</translation>
+    </message>
+    <message>
+        <source>Local rotation, counterclockwise (deg)</source>
+        <translation>局部逆时针旋转角（度）</translation>
+    </message>
+    <message>
+        <source>Local horizontal scale</source>
+        <translation>局部平面比例</translation>
+    </message>
+    <message>
+        <source>Projected XY uses CRS units; geographic XY uses degrees. Local origins use metres in the anchor CRS. Settings do not move existing data.</source>
+        <translation>投影平面坐标使用坐标系单位；经纬度使用度。局部原点在锚定坐标系中以米表示。修改设置不会移动已有数据。</translation>
+    </message>
+    <message>
+        <source>Project Settings</source>
+        <translation>工程设置</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <source>X, Y, Z (source XY units, elevation in metres)</source>
+        <translation>X、Y、Z（平面使用源坐标系单位，高程为米）</translation>
+    </message>
+    <message>
+        <source>Conversion source CRS</source>
+        <translation>转换源坐标系</translation>
+    </message>
+    <message>
+        <source>Source XYZ</source>
+        <translation>源 XYZ 坐标</translation>
+    </message>
+    <message>
+        <source>Convert to project coordinates</source>
+        <translation>转换为工程坐标</translation>
+    </message>
+    <message>
+        <source>Preview only. Input Z must already use the project's vertical datum. This does not modify imported objects.</source>
+        <translation>仅预览。输入 Z 须已采用工程的垂直基准；不会修改已导入对象。</translation>
+    </message>
+    <message>
+        <source>Enter three numeric coordinates.</source>
+        <translation>请输入三个数值坐标。</translation>
+    </message>
+    <message>
+        <source>Result XYZ: %1, %2, %3</source>
+        <translation>转换后 XYZ：%1，%2，%3</translation>
+    </message>
+    <message>
+        <source>Unspecified (set before conversion)</source>
+        <translation>未指定（转换前设置）</translation>
     </message>
 </context>
 <context>
@@ -5728,6 +5846,14 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
 <context>
     <name>QObject</name>
     <message>
+        <source>Data reading failed: %1</source>
+        <translation>数据读取失败：%1</translation>
+    </message>
+    <message>
+        <source>Data reading failed with an unknown error.</source>
+        <translation>数据读取失败，发生未知错误。</translation>
+    </message>
+    <message>
         <source>%1 (%2 events)</source>
         <translation>%1（%2 个事件）</translation>
     </message>
@@ -7563,6 +7689,98 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
         <source>Object ID returned by a project query.</source>
         <translation>工程查询返回的对象标识。</translation>
     </message>
+    <message>
+        <source>Cannot initialize the coordinate conversion library.</source>
+        <translation>无法初始化坐标转换库。</translation>
+    </message>
+    <message>
+        <source>A local coordinate anchor must be a projected CRS in metres.</source>
+        <translation>局部坐标的锚定坐标系必须是以米为单位的投影坐标系。</translation>
+    </message>
+    <message>
+        <source>Invalid coordinate reference system: %1.</source>
+        <translation>无效的坐标参考系：%1。</translation>
+    </message>
+    <message>
+        <source>Invalid coordinate units, direction or scale.</source>
+        <translation>坐标单位、正方向或比例无效。</translation>
+    </message>
+    <message>
+        <source>Invalid coordinate setting: %1.</source>
+        <translation>无效的坐标设置：%1。</translation>
+    </message>
+    <message>
+        <source>Coordinates must contain finite XYZ triples and a valid epoch.</source>
+        <translation>坐标须由有限数值组成的 XYZ 三元组表示，并提供有效历元。</translation>
+    </message>
+    <message>
+        <source>Coordinate conversion failed; check CRS definitions, coverage and required grids: %1</source>
+        <translation>坐标转换失败；请检查坐标系定义、适用范围和所需格网：%1</translation>
+    </message>
+    <message>
+        <source>Specify both source and project coordinate systems before converting data.</source>
+        <translation>转换数据前请先指定源坐标系和工程坐标系。</translation>
+    </message>
+    <message>
+        <source>Vertical datums differ. Supply an explicit vertical CRS transformation first.</source>
+        <translation>垂直基准不同，请先提供明确的垂直坐标转换。</translation>
+    </message>
+    <message>
+        <source>A local coordinate system needs an anchor CRS before geographic conversion.</source>
+        <translation>局部坐标系需要设置锚定坐标系才能进行地理坐标转换。</translation>
+    </message>
+    <message>
+        <source>Coordinate conversion overflowed.</source>
+        <translation>坐标转换结果溢出。</translation>
+    </message>
+    <message>
+        <source>Engineering coordinates require a 2D horizontal CRS. Use explicit CRS conversion for 3D or vertical operations.</source>
+        <translation>工程坐标转换需要二维平面坐标系；三维或垂直坐标请使用显式坐标系转换。</translation>
+    </message>
+    <message>
+        <source>Update project settings</source>
+        <translation>更新工程设置</translation>
+    </message>
+    <message>
+        <source>The project or project name is unavailable.</source>
+        <translation>工程或工程名称不可用。</translation>
+    </message>
+    <message>
+        <source>The project settings could not be applied.</source>
+        <translation>无法应用工程设置。</translation>
+    </message>
+    <message>
+        <source>The project settings could not be restored.</source>
+        <translation>无法恢复工程设置。</translation>
+    </message>
+    <message>
+        <source>Update project metadata and coordinate settings without moving existing data.</source>
+        <translation>更新工程元信息及坐标设置，不移动已有数据。</translation>
+    </message>
+    <message>
+        <source>Convert coordinates</source>
+        <translation>坐标转换</translation>
+    </message>
+    <message>
+        <source>Specify source CRS, target CRS and XYZ triples.</source>
+        <translation>请指定源坐标系、目标坐标系及 XYZ 三元组。</translation>
+    </message>
+    <message>
+        <source>Coordinate conversion queries do not modify project data.</source>
+        <translation>坐标转换查询不会修改工程数据。</translation>
+    </message>
+    <message>
+        <source>Convert XYZ coordinates between explicit reference systems using offline PROJ resources.</source>
+        <translation>使用离线 PROJ 资源在明确指定的坐标参考系之间转换 XYZ 坐标。</translation>
+    </message>
+    <message>
+        <source>A decimal-year epoch is required for dynamic reference frames.</source>
+        <translation>动态参考框架需要提供以十进制年份表示的历元。</translation>
+    </message>
+    <message>
+        <source>Specify source and project coordinate systems and Z directions before converting data.</source>
+        <translation>转换数据前请先指定源坐标系、工程坐标系及双方的 Z 轴正方向。</translation>
+    </message>
 </context>
 <context>
     <name>IDOSDataTreeMenuProvider</name>
@@ -8649,6 +8867,44 @@ Importing a new grid will delete it along with %3 propert(ies). Continue?</sourc
     <message>
         <source>Slice by Points</source>
         <translation>按点切片</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSWaitingDialog</name>
+    <message>
+        <source>Current operation</source>
+        <translation>当前操作</translation>
+    </message>
+    <message>
+        <source>Operation progress</source>
+        <translation>操作进度</translation>
+    </message>
+    <message>
+        <source>Please wait…</source>
+        <translation>请稍候…</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 秒</translation>
+    </message>
+    <message>
+        <source>%1 min %2 s</source>
+        <translation>%1 分 %2 秒</translation>
+    </message>
+    <message>
+        <source>Elapsed %1</source>
+        <translation>已用时 %1</translation>
+    </message>
+</context>
+<context>
+    <name>IDOSLocalModelProcess</name>
+    <message>
+        <source>Unable to configure assistant process cleanup (Windows error %1).</source>
+        <translation>无法配置助手进程退出清理（Windows 错误 %1）。</translation>
+    </message>
+    <message>
+        <source>Unable to allocate assistant process startup attributes.</source>
+        <translation>无法分配助手进程启动属性。</translation>
     </message>
 </context>
 </TS>

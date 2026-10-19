@@ -8,6 +8,7 @@
 #include "idos_core.h"
 
 class IDOSDataObject;
+class QThread;
 
 /**
  * @brief 数据解析行为基类。
@@ -39,6 +40,9 @@ class CORE_EXPORT IDOSDataProvider
      */
     virtual QList<IDOSDataObject*> read(const QString& filePath) = 0;
 
+    // Waits with painting/timers enabled; transfers returned objects to the calling thread.
+    QList<IDOSDataObject*> readInBackground(const QString& filePath);
+
     // ===== 错误 =====
 
     /** 最近一次 read() 的错误信息；无错误返回空。 */
@@ -47,9 +51,12 @@ class CORE_EXPORT IDOSDataProvider
   protected:
     /** 设置错误信息（子类解析失败时调用）。 */
     void setLastError(const QString& msg);
+    void reportReadPhase(const QString& phase, qint64 nanoseconds) const;
     QStringList splitTextFields(const QString& line, bool& valid) const;
 
   private:
+    static void readWorker(IDOSDataProvider* provider, const QString& filePath,
+                           QThread* targetThread, QList<IDOSDataObject*>* objects);
     QString m_lastError;
 };
 

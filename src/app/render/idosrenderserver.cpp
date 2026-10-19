@@ -183,8 +183,11 @@ void IDOSRenderServer::setChecked(const QString& dataId, Qt::CheckState state, I
     for (const QString& id : objectIds(view, dataId))
     {
         IDOSRenderObject* object = view->scene()->object(id);
-        object->setVisible(state == Qt::Checked);
-        view->scene()->notifyChanged(id);
+        if (object->isVisible() != (state == Qt::Checked))
+        {
+            object->setVisible(state == Qt::Checked);
+            view->scene()->notifyChanged(id);
+        }
     }
 }
 

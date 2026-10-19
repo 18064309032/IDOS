@@ -3,6 +3,9 @@
 
 #include <QProcess>
 #include <QString>
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#endif
 
 #include "idos_assistant.h"
 
@@ -39,6 +42,14 @@ private:
                            QString& workingDirectory,
                            QString& error) const;
     void setError(const QString& error);
+#ifdef Q_OS_WIN
+    bool prepareProcessJob(QString& error);
+    void releaseProcessJob();
+    void modifyProcessArguments(QProcess::CreateProcessArguments* arguments);
+
+    HANDLE m_jobHandle;
+    STARTUPINFOEXW m_startupInfo;
+#endif
 
     QProcess* m_process;
     QString m_baseUrl;

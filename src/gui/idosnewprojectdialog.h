@@ -12,6 +12,7 @@ class QComboBox;
 class QLabel;
 class QPushButton;
 class QToolButton;
+class QDoubleSpinBox;
 
 class GUI_EXPORT IDOSNewProjectDialog : public QDialog
 {
@@ -19,6 +20,7 @@ class GUI_EXPORT IDOSNewProjectDialog : public QDialog
   public:
     explicit IDOSNewProjectDialog(QWidget* parent = nullptr);
     IDOSProjectMetadata projectMetadata() const;
+    void setProjectMetadata(const IDOSProjectMetadata& metadata);
 
   public slots:
     void onAccepted();
@@ -28,6 +30,7 @@ class GUI_EXPORT IDOSNewProjectDialog : public QDialog
     void onInputChanged();
     void onAdvancedToggled(bool expanded);
     void onCoordinateTypeChanged();
+    void onConvertCoordinates();
 
   private:
     QToolButton* m_advancedToggle;
@@ -39,6 +42,16 @@ class GUI_EXPORT IDOSNewProjectDialog : public QDialog
     QComboBox* m_coordinates;
     QLineEdit* m_coordinateReference;
     QLineEdit* m_verticalDatum;
+    QComboBox* m_lengthUnit;
+    QComboBox* m_zDirection;
+    QDoubleSpinBox* m_originX;
+    QDoubleSpinBox* m_originY;
+    QDoubleSpinBox* m_originZ;
+    QDoubleSpinBox* m_rotation;
+    QDoubleSpinBox* m_scale;
+    QLineEdit* m_sourceCrs;
+    QLineEdit* m_inputCoordinates;
+    QLabel* m_convertedCoordinates;
     QLabel* m_validation;
     QPushButton* m_create;
 };

@@ -17,6 +17,8 @@ class APP_EXPORT IDOSImportCaseCommand : public IDOSCommand
 public:
     IDOSImportCaseCommand(IDOSProject* project, const QJsonObject& arguments);
     ~IDOSImportCaseCommand() override;
+    // Transfers parsed parentless objects on success; otherwise ownership stays with the caller.
+    bool adoptParsedObjects(QList<IDOSDataObject*>& objects);
 
 protected:
     bool validateCommand(QString& error) const override;

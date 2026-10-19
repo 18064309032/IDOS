@@ -1,5 +1,189 @@
 # IDOS 工作进度（CJW）
 
+## AI 助手异常退出进程清理（2026-10-20）
+
+- IDOSLocalModelProcess 在 Windows 下为模型创建独立 Job，设置 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE；句柄不继承，生命周期由本程序实例持有。使用 QProcess 创建参数和 PROC_THREAD_ATTRIBUTE_JOB_LIST，在进程创建阶段归组，避免运行后再绑定的空隙；保护配置失败时拒绝启动并给出中文错误。
+- 正常退出保留 terminate/超时 kill 流程，再释放 Job 清理后代；VS 强制停止、程序崩溃或被结束时由 Windows 回收句柄，终止模型及其后代。覆盖启动失败、重复启停和析构；不操作外部同名服务，也不会接管更新前遗留进程。要求 Windows 10 / Server 2016 或以上。
+- 验证：Release、Debug 主程序与助手测试构建通过；Release 全部助手回归 19 项通过，Debug 进程专项 6 项通过（均含初始化、清理）。轻量子进程树分别覆盖正常退出、强制终止（模拟 VS 停止）及 fail-fast 异常，逐一等待模型和孙进程句柄确认退出；另覆盖无效可执行文件失败后恢复及两次启停。未在 VS 界面内点击停止，也未用真实大模型做显存压力测试。
+- 中文翻译生成完成，XML、改动空白检查及独立头文件编译通过。回归报告位于 IDOS-Build/tests/assistant-job-*.txt；开发指南同步进程管理机制及验收方式。
+
+## PROJ 源码包精简（2026-10-20）
+
+- 按用户要求移除 thirdparty/proj/sources 中 PROJ 及 SQLite、curl、TIFF、zlib 五个源码压缩包，减少约 17.7 MiB；保留 include/lib/bin、resources/proj、SHA256 清单及第三方许可。下方早期记录中的“保留源码归档”已由本次调整替代。
+- BuildProj.ps1 改为按需从固定上游地址下载至源码兄弟 IDOS-Build/thirdparty-proj/downloads，下载后校验 SHA256，缓存完整后可离线重建；正常编译 IDOS 无需下载。开发、架构、源码目录及依赖说明同步更新。
+- 验证：重建脚本 PowerShell 语法及五项 SHA256 清单检查通过；本次未重新下载或重建依赖，预编译库和运行资源未修改。
+
+## PROJ 基础转换与工程坐标设置（2026-10-20）
+
+- 资源目录修正：源码中的 PROJ 数据库、配置及配套数据统一迁至 resources/proj；thirdparty/proj 保留依赖头文件、库、工具、源码归档与许可。部署从源码 resources/proj 复制到程序旁 resources/proj，BuildProj.ps1 也将运行数据直接安装至源码资源目录，避免重建后恢复旧位置。Release core 构建、第三方数据安装路径验证、坐标回归通过（含初始化和清理共 3 项）；16 个资源文件与 Debug/Release 部署逐一校验一致。
+- 完整接入独立 PROJ 9.9.0，沿用 thirdparty/proj 的 include/lib/bin 组织；SQLite 3.50.4、curl 8.17.0、libtiff 4.7.1、zlib 1.3.1 静态链接进 PROJ DLL，启用 TIFF 格网及网络能力。Debug/Release 分别源码构建并验证；官方源码归档、SHA256、可复用 BuildProj.ps1 均已保留，构建位置为源码兄弟 IDOS-Build/thirdparty-proj。
+- core 私有链接 PROJ，运行 DLL 放可执行文件目录，基础数据库及配置部署到 resources/proj；基础 Release DLL+数据库约 16 MB。转换上下文明确定向可执行文件旁资源，默认禁网，不使用 ballpark 回退，缺少最佳操作所需格网时失败并保留原输入。独立目录的离线 DLL/数据库运行验证通过。
+- 复用 IDOSProjectMetadata 增加坐标长度单位（米/国际英尺/美国测量英尺）、Z 方向（未指定/高程向上/深度向下）、局部米制原点 XYZ、逆时针旋转角、正平面比例；保留现有 CRS、垂直基准说明及独立业务单位制。旧工程缺失字段使用中性原点/比例，Z 方向未指定，不能自动推断。
+- 显式转换接口覆盖二维投影正反算、三维地心坐标、米/英尺与 Z 正方向、局部平移旋转比例；局部地理配准要求米制投影锚定 CRS，不同垂直基准须走明确的垂直/三维转换。常见动态参考框架要求历元。查询 coordinates.transform 支持源/目标 CRS、XYZ 数组及 decimalYear；不修改对象或命令历史。
+- 复用 IDOSNewProjectDialog 补齐新建及现有工程设置，接通主窗口 Project Settings 动作；新增 project.settings.update 命令及 Metadata，支持撤销/重做。高级设置可预览转换结果，明确输入 Z 已采用工程垂直基准且为米制高程；界面完整中文翻译，高级内容可滚动，按钮与结果已截图检查。
+- 验证：完整 Release 构建（含全部测试可执行文件）及独立头文件检查通过；完整 Debug idos（含 GUI、APP、插件）及 PROJ 依赖构建、部署通过。坐标/工程设置/导入/等待框回归 6 项通过，存储/旧格式/失败保护/历史回归 7 项通过，新建工程界面回归 6 项通过（均含初始化和清理），0 失败；模块依赖检查 505 个源文件通过，git diff --check 通过。报告与截图位于 IDOS-Build/tests/proj-*。
+- 范围说明：工程坐标设置和查询已可使用，但本次不重写已导入对象坐标；尚未接入逐文件源坐标确认、源坐标在业务对象上的持久化及导入自动转换，也未改变渲染公共原点。高精度区域格网按项目提供；现有网格/井无法仅靠设置名称自动配准。相关架构、目录、使用及开发文档已同步。
+
+## 实际网格与井头共同显示的坐标排查（2026-10-19）
+
+- 用户指定 `D:/QtCoder/IDOS/data/UPSCALE_GASWATER_ECL/UPSCALE_GASWATER_ECL.DATA` 与 `D:/QtCoder/IDOS/data/input/Wellheader/Wellheader.txt`。检查 DATA 的 METRIC 和 INCLUDE：几何来自 `UPSCALE_GASWATER_GRID.GRDECL`，柱线 X=0～25000、Y=0～4200，ZCORN 深度=4555.96～5940.23 m；未找到 MAPAXES/MAPUNITS 地理定位定义。
+- 井头文件含 15 井，X=451503.8373～458003.1334、Y=6781579.733～6788724.749；文件未声明 CRS/单位。按当前直接使用原始数值的显示方式，两组平面包围盒中心相距约 6797454 个坐标单位（若均为米则约 6797 km），并非可直接叠合的数据。全局缩放时一组会变小，聚焦一组时另一组可能离开视野；不应通过分别居中数据伪造对齐。
+- 此 Wellheader 只有井口与顶底深度等信息，不包含真实轨迹，当前读取器不根据顶底深度生成井身；独立井口缺少高程时按 Z=0 显示。正确配准需要确认数据归属、坐标系、局部到工程坐标变换及垂直基准，单纯平移渲染公共原点不能消除数据本身的偏移。此次仅检查输入及现有代码，未修改原始数据或实施猜测性坐标变换。
+
+## 井与网格配套合成数据（2026-10-19）
+
+- 新增 `examples/synthetic-reservoir`：50×40×20 角点网格，40,000 单元、39,520 活动单元，内嵌 PORO/PERMX/PERMY/PERMZ/SATNUM 五项属性；配套六井井头及每井 121 站轨迹，含直井、斜井、水平井，各井穿入储层。
+- 所有数据由 `tools/generate-demo-data.cjs` 确定性生成，无真实资料；附单位、坐标与导入说明、manifest。为匹配当前直接使用 Z 的渲染，合成轨迹 Z/TVD 与网格均采用深度向下为正；明确区别于常见 Petrel 负高程 Z，未改动现有坐标处理。
+- Release `idos_case_tests` 构建通过；`onSyntheticDemoData` 实际调用三类读取器，校验网格尺寸与活动数、五项完整属性、井名与井口坐标一致、轨迹站数及 MD 递增，3 项通过（含初始化/清理）、0 失败。报告在数据目录 `import-validation.txt`。数据用于导入与显示验证，不是可直接运行的模拟算例。
+
+
+## 树勾选渲染耗时定位与重复勾选优化（2026-10-19）
+
+- 链路为 TreeModel::setData(CheckStateRole) → AppTreeAccess::onCheckStateChanged → RenderServer::setChecked / 所属 GridRenderProvider::setDataChecked → Scene changed → RenderView 重建展示列表并绘制。勾选使用已载入的领域数据，不重新调用文件读取或 OPM 解析。
+- 增加 onTreeCheckRendering，创建真实工况树网格与属性引用，显示窗口后通过 Model 的勾选入口逐次执行首次勾选、隐藏、恢复、属性开启/关闭以及再次隐藏/恢复，记录完整同步耗时、VTK 帧数，并校验 Actor 和完整体网格复用。
+- 基线（80 万规则单元、本机 Release）：首次 450.53 ms；恢复显示 210.53 / 211.24 ms；属性开启 228.84 ms、关闭 220.44 ms。每次勾选原先两帧：Scene 更新后绘制，再 resetCamera 绘制。取消勾选将 Actor 移出 renderer；裸网格隐藏还重复执行 setProperty(nullptr)，使无变化的数据被重新更新。
+- RenderObject 可见性相同即返回，RenderServer 对相同显示状态不通知；裸网格隐藏只在实际选有属性时清除属性。RenderView 在更新场景时保留已附着且 Visibility=0 的非图例 prop，重复显示复用 VTK 图形资源；隐藏仍排除边界、图例、拾取与 Locator 缓存。真正删除对象时移除所有所属 prop，并释放 Provider、Mapper/数据。此处保留隐藏对象的图形缓存是交互速度与显存驻留的取舍，不是新增几何副本。
+- RenderView::endSceneUpdate(fitCamera) 合并场景更新和相机适应：在最终绘制前适应相机，保留原勾选时适应全部可见对象的行为，避免额外一帧。没有产生场景变化时走原相机更新兜底，待处理标记不留到下一次操作。AppTreeAccess 仅调用该通用接口，不实现具体渲染算法。
+- 第一轮复测：首次约 444 ms、裸网格恢复显示 1.18 / 1.09 ms、隐藏约 1.1～1.4 ms；全部操作一帧。属性开启约 233 ms、关闭约 219 ms，仍是当前 VTK 数据属性变化后的表面更新成本，不能将裸网格恢复显示的加速套用于属性切换或首次显示。后续若继续优化这一部分，应缓存表面拓扑并处理属性转发，同时保持完整体网格供拾取、裁剪和剖面使用，不能简单换成只有外表面的输入。
+- 相关生命周期、拾取、共享拓扑、显示状态、图例初轮回归共 8 passed、0 failed（含初始化/清理）。最终补充断言：每次勾选一帧、隐藏后 Actor 仍附着但不可见/不可拾取、重复相同 Server 状态零帧、删除后 Actor 和网格的弱引用释放。最终 80 万单元复测：首次 434.96 ms、恢复显示 2.25 / 1.87 ms、属性开启/关闭 229.86 / 213.70 ms，全部一次绘制；9 项功能与初始化/清理共 11 passed、0 failed，覆盖分组勾选和全部工具。Release 构建、独立头编译、501 文件 include 与 diff 空白检查通过。报告在源码上一级 IDOS-Build/tests/check-render-baseline.txt、check-render-verified.txt。
+- 删除释放回归额外发现 vtkRenderer 的惰性 Actors 集合会保留已移除 Actor 的一个引用。通过只读 GetActors 刷新后引用归零确认来源；现在实际移除 props 时刷新 Actors/Volumes 集合缓存，测试不再额外清理，直接断言 Actor 和体网格弱引用均为空。隐藏时仍保留有用缓存，真实删除时释放，避免把重复显示加速变成删除后内存滞留。
+
+
+## 结果读取峰值内存优化（2026-10-19）
+
+- 首轮聚焦已确认的重启结果临时内存。原链路由 OPM ERst 缓存已读过的时间步数组，同时存在活跃单元临时 double 数组和最终完整单元数组。现直接从 OPM float/double 数组转换到最终布局，保留原有效性校验、非活跃单元填零和全部时间步；每步转换完成后调用 clearData() 释放 OPM 原始缓存，保留文件索引供下一步读取。
+- INIT 每个属性转为 Qt 数据并交给对象后释放 OPM 原始数组缓存，避免与所有最终属性同时驻留。对含 float、double、int 的多属性 INIT 做连续读取验证，确认清缓存未破坏文件索引。
+- 最终数组用精确长度构造，避免 QVector::resize 增长策略额外预留容量；不误把 Qt 隐式共享当作深复制。活跃单元数量只计算一次，转换仍保持原 double 精度、原单元顺序和属性引用。未改持久化格式或引入时间步丢弃策略。
+- 诊断在现有 CaseWorkflowTest 内实现，不增加框架类。Windows 用 GetProcessMemoryInfo 的 PrivateUsage，以主线程 1 ms 定时采样；在独立进程中读取同一合成 UNRST，包含 80 万单元、12 个时间步、3 个属性，50% 活跃单元，混合 REAL/DOUB 和完整/活跃数组。生成文件后才开始记录读取峰值，文件生成、VTK 显示及 GPU 内存不计入该读取阶段基准。
+
+| 进程私有内存（MiB） | 优化前 | 优化后 |
+|---|---:|---:|
+| 读取前 | 13.64 | 13.65 |
+| 读取峰值 | 331.93 | 241.63 |
+| 读取完成、保留全部结果 | 234.08 | 233.99 |
+| 删除全部结果后 | 13.72 | 13.71 |
+
+- 峰值降低约 90.3 MiB（27.2%）；峰值相对加载完成值的临时占用由约 97.9 MiB 降为 7.6 MiB。读取约 310 → 258 ms，但此轮主要目标为内存。复测峰值 241.61 MiB、加载完成 233.96 MiB、删除后 13.69 MiB，与首测一致。全部 2880 万个单元值逐值比对通过；QPointer 验证结果对象删除后不再存在。仅说明所测链路，不能据此断言整个应用没有泄漏或所有模型均降低相同比例。
+- onRestartMemory 默认使用小数据运行；设置 IDOS_MEMORY_PROFILE=1 运行上述规模。测试支持其他平台编译，但进程私有内存诊断目前只在 Windows 返回有效数据。测试目标在 Windows 私有链接 Psapi。
+- 多属性 INIT、有效/无效配套文件、后台导入、维度、共享拓扑和拾取缓存合计 8 passed、0 failed（含初始化/清理）；等待控件等补充回归也通过。报告在源码上一级 IDOS-Build/tests/memory-restart-baseline.txt、memory-restart-final.txt、memory-validation-final.txt。最终 Release 构建、公共头独立编译、501 文件 include 边界及 diff 空白检查通过；最后构建的重启/配套烟雾测试 4 passed、0 failed（含初始化/清理）。
+- 本轮改善读取峰值，保留所有时间步的常驻结果大小基本相同；进一步减少常驻占用需继续实施按需时间步及有界缓存，并同时处理项目持久化和撤销/重做语义。尚未改变这部分行为，也不通过强制清空撤销历史来减小内存。
+
+
+## 通用等待控件与导入等待界面美化（2026-10-19）
+
+- 按用户要求将等待框封装为通用 IDOSWaitingDialog，.h/.cpp 同置 src/gui 根部，由 idos_gui 导出；不依赖 app、Provider、Project 或 render，不负责线程和数据读取。已同步架构与固定源码目录文档。
+- 提供 begin(title, message, detail)、setMessage、setDetail、setBusy、setProgress、finish 及运行状态查询，支持再次使用时重置计时与进度。调用方在 GUI 线程更新状态；未知进度使用原生不确定动画，只有已知工作量时才设置确定进度，不模拟百分比。
+- 外观为圆角卡片、轻阴影、加载图标、清晰的标题/状态层级、细进度条和已用时间，颜色取自当前应用调色板；Windows 使用 Microsoft YaHei UI 并支持系统 DPI 缩放。长详情居中省略并保留完整悬停提示，纯文本展示避免将文件名解析为富文本。补齐中文翻译并验证中文浅色、深色实际截图。
+- 删除 MainWindow 中 createDataLoadingDialog 的临时控件拼装，通用导入等待及工况预读取均改用该控件；保留现有后台读取与命令链，入口仍提供导入/工况状态，不把 OPM 的未报告进度伪装为精确阶段。当前任务未支持中断，因此运行时拒绝 Escape、accept/reject、窗口关闭，finish 后关闭；所有权由调用方栈对象或 unique_ptr 管理，作用域退出清理计时器和窗口。
+- onWaitingDialog 验证模态状态、计时推进、关闭保护、进度边界、详情隐藏及提示、finish 后复用、纯文本和中文翻译；结合 onCreateAndImport、onBackgroundImport 共 5 passed、0 failed（含初始化/清理）。Release 构建及 idos_render_header_checks 通过，include 边界与 diff 空白检查通过。报告位于源码上一级 IDOS-Build/tests/waiting-regression-final.txt，预览 waiting-dialog-zh.png、waiting-dialog-dark.png。
+
+
+## 数据导入后台读取及重复 I/O 优化（2026-10-19）
+
+- 在现有 DataProvider 中增加 readInBackground：使用 QThread 执行解析和数据转换，调用线程保留事件循环处理绘制与定时器，等待期间排除用户输入；读取结束在工作线程内将返回的无 parent 数据对象及其子对象迁回调用线程，等待线程结束后才接管、入库。未增加新 Worker 类或额外适配层。Provider 工厂仍在调用线程创建，Project、引用解析、命令历史及 VTK 显示仍在主线程。
+- 网格导入、工况命令导入、网格属性导入及工况对话框预读取已接入；本轮没有将所有专用读取入口改为后台，手动重启结果导入及其他领域专用读取仍待逐项迁移。命令在后台返回后重取/校验工程与目标。主窗口导入期间忽略关闭请求，等待框增加不确定进度动画。此处为读取等待交互，不承诺精确百分比、分阶段 UI 或中断 OPM 解析。
+- 工况原先完整读取用于对话框，确认后又由命令完整读取。现在通过 ImportCaseCommand::adoptParsedObjects 接管第一次已解析结果，准备曲线表、应用名称、入库及撤销/重做均走原命令。接管校验 parent、重复指针及线程归属；失败由调用方清理。测试用不存在的第二次源文件验证提交和 redo 均不再解析源文件。
+- 增加 IDOS_IMPORT_PROFILE 环境开关，记录 GRDECL 解析、OPM 网格/状态构建、坐标复制、ZCORN 转换、属性提取、配套文件及工程提交等阶段；默认不输出诊断。QVector 连续数组采用预分配及安全的同类型 memcpy，ZCORN 保留原 OPM 映射并使用预取的数据指针写入。
+- 实测瓶颈主要为配套结果 I/O。SummaryProvider 原先逐条 get 曲线触发多轮读取，现先调用 OPM ESmry::loadData() 一次批量加载再转换；RestartProvider 不再在尺寸校验前加载整个时间步，只按原列表获取需要的 INTEHEAD 和受支持单元属性，保留时间步、属性及有效性校验。
+
+| 同一实际 UPSCALE_GASWATER_ECL.EGRID 连现有配套文件 | 优化前 | 优化后 |
+|---|---:|---:|
+| 完整 Provider 读取及转换 | 1707 ms | 84 ms |
+| SMSPEC/UNSMRY 汇总读取 | 971 ms | 44 ms |
+| 主线程 1 ms 心跳次数 | 1693 | 84 |
+
+- 上表为本机单次诊断，受文件缓存影响，不能代表所有模型固定倍数。样本 INIT、UNRST 与该 EGRID 不兼容，仍按既定规则跳过；优化前后均返回网格与汇总两个对象，未通过删减有效数据提速。验证批量读取的 403 条曲线、1167 时间点、所有值及单位与 OPM 逐条读取完全一致。实际 DATA 工况单次解析约 1200 ms，其中 Deck 解析约 1048 ms、EclipseState 约 132 ms；复用结果直接消除确认后的第二轮解析。
+- 合成 80 万单元：EGRID 约 108 ms，压缩重复值 GRDECL 约 166 ms；数组转换约 20 ms。两种格式 COORD、ZCORN、ACTNUM 完全一致，GRDECL 属性及 gridId 关联正确；这里不是几十/几百 MB 非压缩文本的速度基准。
+- 修正 onGridCompanionFiles 中三处陈旧断言以符合已有可选配套文件政策：不兼容 INIT、读取报错的 UNRST、孤立 UNSMRY 跳过，同时验证有效数据及撤销后引用无残留；未改为强制导入。损坏 INIT 的构造异常仍按现有失败路径处理，本轮未统一该历史差异。
+- 最终 8 项功能回归及初始化/清理共 10 passed、0 failed；真实 EGRID 曲线逐值核验和真实 DATA 读取各 3 passed、0 failed。Release 构建、既有公共头独立编译目标 idos_render_header_checks、499 文件 include 边界及 diff 空白检查通过。测试报告：源码上一级 IDOS-Build/tests/import-regression-final.txt、import-actual-egrid-baseline.txt、import-actual-egrid-optimized.txt、import-actual-case.txt。
+- 后续重点：真实大型 GRDECL 的解析对比、所有专用入口后台迁移、时间步按需读取、先显示网格后补结果，以及有 INCLUDE/配套文件失效校验的二进制缓存。当前仍完整导入所支持的时间步和曲线，尚未引入磁盘缓存。
+
+
+## 悬浮渲染工具完整测试及优化（2026-10-19）
+
+- 新增现有 CaseWorkflowTest 类中的 onToolbarTools，使用打开工程后的真实可见 VTK 视图及非退化角点网格，逐项触发七个标准视角、复位、适应选中/全部、双向旋转、正交投影、坐标轴、图例、坐标跟踪、包围盒、透视、隐藏/恢复、缩放、Z 比例、背景色、截图以及联动按钮；参数弹窗通过具名回调确认，截图验证后恢复剪贴板图像。
+- 六种交互工具均执行激活、实际模型两次点击和 Escape 退出；路径剖面用俯视内部路径生成结果窗口。验证指定对象拾取、二维工具限制、联动相机多次修改合并及解除联动后取消待处理绘制。截图/弹窗为端到端测试，弹窗耗时含测试主动等待的 100 ms，不能当作渲染耗时。
+- RenderView 用所属单次定时器合并同一事件循环内相机 ModifiedEvent 的跟随视图重绘，解除联动时取消待处理任务；相机仍为共享实时状态。
+- 路径剖面改用 RenderView 的 Locator 缓存，并通过明确 objectId 限制拾取目标，避免误取其他对象。点探针替换标记时合并擦除和新增两次重绘；拾取失败仍刷新擦除结果。工具清理仅在存在真实裁剪状态时请求裁剪恢复重绘。空剖面不再调用无输入的 vtkAppendPolyData，保留已有用户提示。
+- 80 万单元规则网格、RTX 4060、Release：标准视角/适应/旋转约 1～7 ms，透视开/关 7.57/2.90 ms，截图 5.66 ms；点放大两次点击 75.73 ms（包含首次 Locator 构建），探针 9.96 ms、测距 5.21 ms、选择 4.20 ms、裁剪 16.60 ms、路径两次选点 4.68 ms。上述为单次诊断，包含实时绘制，不代表所有模型的固定上限。
+- 最终工具及七项相关回归合计 10 passed、0 failed，工具注册/窗口、输入生命周期和观察者注销合计 5 passed、0 failed（均含初始化/清理）。最终剖面生成连同窗口创建为 71.63 ms；联动同轮三次相机修改验证为 0 次立即绘制、事件循环合并后 1 次绘制，解除联动后无延迟残留。报告位于源码上一级 IDOS-Build/tests/render-all-tools-800k-final.txt、render-tools-input-final.txt。Release 构建、render 公共头独立编译、499 文件 include 检查及 diff 空白检查通过。既有 onGridFilters 基线失败不计入本次通过范围。
+
+## 网格内部面、透视及探针拾取继续优化（2026-10-19）
+
+- 用户要求继续优化。GridRenderProvider 在现有角点网格构建阶段直接以“逻辑角点编号 + 原始双精度 ZCORN”查找并共享顶点；同一逻辑角点对应同一 COORD 柱线，相同原始深度才共享，不使用距离容差。断层错移、部分不重合面、低于 float 精度的原始间隙、非相邻重叠单元和零厚度层不被强制焊接。完整体单元、顺序、GlobalIndex、I/J/K 和单元属性保持，VTK 表面提取可消除完整重合的内部面；切片/裁剪仍能使用完整体网格。
+- 采用构建时共享及容量预分配，未保留先生成重复点再运行 Clean 的第二条生产链路。先前 Clean 原型虽然减小表面数，但 80 万单元几何准备约 685 ms；最终直接构建为 226 ms，降低了临时内存及整理成本。
+- 增加所属 Provider 内的几何缓存，按源数组快照、维度、筛选命中单元和 VTK MeshMTime 校验。色带和属性值变化且命中单元不变时复用体网格、Actor 和 Mapper；源几何、活跃单元、筛选命中或外部 VTK 点/拓扑变化时重建。不变几何再次更新约 3.51 ms（80 万单元）。
+- RenderView 增加明确的 `pickCell(position, picker)` 接口，坐标拾取与点探针共用既有按数据集缓存的 Locator；点探针不再单独走无加速的网格扫描，仍返回真实输入数据集、Actor 及体单元 ID。索引桶大小对照为 10/64/256：构建约 101/65/57 ms，单次查询均为亚毫秒，最终取 64，降低首次等待并控制查询代价。
+
+| 相同 80 万单元规则网格、RTX 4060、Release | 上一阶段 | 本轮最终 |
+|---|---:|---:|
+| 顶点数 | 6,400,000 | 848,421 |
+| 实际表面单元数 | 4,800,000 | 96,000 |
+| 透视开启 / 关闭 | 151.45 / 132.91 ms | 9.08 / 3.50 ms |
+| 首次建立索引并拾取 | 104.48 ms | 68.65 ms |
+| 后续坐标拾取 | 0.037–0.051 ms | 0.158–0.174 ms |
+| 点探针查询 | 原路径未复用 Locator | 0.161–0.165 ms |
+| 首次几何准备 + 场景绘制 | 144 + 687 ms | 226 + 214 ms |
+
+- 桶大小调整是首次构建与热查询之间的取舍，不能描述为所有拾取指标都变快；热查询仍为亚毫秒。首次索引依旧在界面线程建立，有约 69 ms 的一次性开销。以上为本机墙钟测量，不能直接推广到任意断层网格或 GPU。
+- 实际 UPSCALE EGRID（65,625 总单元、14,965 活跃单元）：顶点 24,842、表面 20,862（原表面 89,790），透视开/关 4.97/2.37 ms；首次拾取 1.16 ms，热查询 0.057–0.068 ms，探针查询 0.060–0.064 ms。不变几何更新 0.37 ms。文件在临时目录隔离解析，未修改原始文件。
+- 验证：源码兄弟目录 `../IDOS-Build` 的 Release 应用及 `idos_case_tests` 构建/部署、`idos_render_header_checks` 公共头独立编译通过；依赖检查通过（499 个源文件），`git diff --check` 通过。新增 `onGridSurfaceTopology` 覆盖两单元外表面数、原始单元/属性映射、探针命中、完整及部分断层、亚 float 间隙、非活跃边界、筛选切面、重叠单元、零厚度层、色带/属性更新的几何复用和清除着色。连同前轮缓存、显示、裁剪恢复、生命周期等共 9 个用例通过；实际 EGRID 性能诊断与它们合并执行为 12 passed、0 failed（含初始化/清理）。
+- 原始记录：`../IDOS-Build/tests/render-profile-200-topology-final.txt`、`render-topology-regression-final.txt`、`render-topology-egrid-final.txt`。本轮未重跑全套 CTest，上一轮已确认的 `onGridFilters` 既有业务断言不在本轮修复范围；大型用户工程、多视图及切片/裁剪的完整手动场景仍待验收。
+
+## 拾取缓存与局部显示更新优化（2026-10-19）
+
+- 用户确认实施首批优化。RenderView 复用 `vtkCellPicker`，按 mapper 输入数据集缓存 `vtkStaticCellLocator`，以 `GetMeshMTime()` / locator 构建时间判断几何失效；相机、Actor 变换及纯标量变化不主动重建索引。对象隐藏、删除、数据集替换时清除不再使用的拾取引用及索引，避免缓存阻止旧几何释放。
+- 坐标追踪改为 40 ms 单次定时器合并鼠标移动，只取最近位置；鼠标按键拖动、工具捕获、离开窗口、失焦、窗口隐藏及关闭追踪时停止等待中的拾取。点击定位/测量等显式拾取仍即时执行，不经过该定时器。
+- RenderView 更新场景时保留仍存在的模型 Actor，只增删实际变化的 prop；包围框使用缓存的显示/逻辑包围盒，仅更新坐标框，不再移除并重新装入全部模型。删除对象仅移除其自身模型 prop；图例继续刷新。透视切换通过 Scene 批量通知合并，多个网格只绘制一次。没有改动业务网格拓扑、断层或属性映射。
+
+| 80 万活跃单元、相同本机 Release 诊断 | 优化前 | 优化后 |
+|---|---:|---:|
+| 单次拾取 | 623–628 ms | 首次建立索引并拾取 104.48 ms，随后 0.037–0.051 ms |
+| 包围框开启 / 关闭 | 238.35 / 213.66 ms | 26.24 / 1.61 ms |
+| 透视开启 / 关闭 | 236.32 / 218.91 ms | 151.45 / 132.91 ms |
+
+- 实际 UPSCALE EGRID 的拾取从 11.9–12.1 ms 降为首次 1.60 ms、后续 0.066–0.073 ms。首次显示仍约 0.69 秒（原约 0.66 秒），本轮不宣称改善加载和首次几何上传；透视仍有约 0.13–0.15 秒开销，后续应独立验证并优化内部面表示。索引首次构建和内存成本仍存在，不保证任意工程的相同加速比例。
+- 验证：源码上一级 `../IDOS-Build` 的 Release `idos_case_tests` 构建和应用部署通过；公共头独立编译目标 `idos_render_header_checks` 通过，依赖检查通过（499 个源文件）。新增缓存回归涵盖与未加速拾取的位置对照、原地修改几何、Z 缩放、隐藏/恢复、几何替换和删除后资源释放、20 次鼠标移动合并、禁用后取消、拖动暂停，以及多对象透视一次绘制。连同既有显示、状态恢复、裁剪、生命周期、架构、网格设置和筛选条件检查共 8 个用例通过（含初始化/清理共 10 passed、0 failed）。80 万单元与实际 EGRID 性能诊断均通过。
+- 扩大回归发现 `onGridFilters` 在“保存筛选后应立即存在可见结果对象”的断言失败。对优化前 RenderView 做受控基线编译，使用相同测试及其他模块运行，得到同一失败；随后已恢复优化源码并重新构建。这是已有问题，本轮没有改变筛选显示业务或宣称全套测试通过。原始报告：`../IDOS-Build/tests/render-cache-regression-final.txt`、`render-profile-200-after.txt`、`render-profile-egrid-after.txt`，以及基线 `render-gridfilters-baseline.txt`。实际大型用户工程中的多视图手动交互仍待验收。
+
+## VTK 工具耗时实测排查（2026-10-19）
+
+- 在现有 `CaseWorkflowTest` 中增加可选 `onRenderPerformance` 诊断，默认跳过。通过真实 QAction 触发适配、旋转、投影、坐标轴、包围框和透视，记录同步动作墙钟耗时、RenderWindow StartEvent/EndEvent 范围耗时、绘制次数、事件处理、工具条刷新和拾取；附带仅在测试中合并重复顶点的对照。没有修改应用渲染算法或启用后台绘制。
+- 在源码兄弟目录 `../IDOS-Build` 配置并构建 Release `idos_case_tests` 通过，四次诊断均通过（每次 3 passed、0 failed）。依赖检查通过（499 个源文件），`git diff --check` 通过。测试环境为 Windows、Qt 5.15.2、VTK 9.6、NVIDIA RTX 4060/OpenGL 4.6。以下均为本机墙钟测量，不是 GPU 硬件分析器数据。
+
+| 输入 | Provider 几何构建 | 场景首次绘制及适配 | 单次 CellPicker 拾取 | 包围框切换 | 透视切换 |
+|---|---:|---:|---:|---:|---:|
+| 3.2 万活跃单元规则网格 | 6.34 ms | 30.18 ms | 26.6–27.5 ms | 8.4–32.5 ms | 9.2–61.3 ms |
+| 20 万活跃单元规则网格 | 37.35 ms | 169.79 ms | 156–158 ms | 45–69 ms | 47–53 ms |
+| 80 万活跃单元规则网格 | 146.84 ms | 660.44 ms | 623–628 ms | 214–238 ms | 219–236 ms |
+| 实际 UPSCALE EGRID（65,625 总单元、14,965 活跃单元） | 3.36 ms | 16.01 ms | 11.9–12.1 ms | 4.9–31.7 ms | 4.9–8.5 ms |
+
+- **已确认的热点一：拾取。** `RenderView::pickWorldPosition` 每次新建 `vtkCellPicker`，没有缓存空间加速器；坐标追踪在每次 MouseMove 调用该路径。80 万单元的单次拾取超过 0.6 秒，足以阻塞交互。这里测试的是该拾取函数，不能把结果描述为所有工具均在执行拾取。
+- **已确认的热点二：重复顶点和内部面。** 每个活跃单元单独建立 8 点；实测 80 万单元输入 640 万点、生成 480 万个表面单元，而规则网格外表面应为 9.6 万个。测试内以零容差合并同坐标点后，点数为 848,421，表面数降为 96,000；首次更新仍约 230 ms，后续旋转为 0.57–0.76 ms。此对照说明冗余表示确实存在，不代表可以不验证断层、筛选、属性及拾取映射就把合并直接用于业务。
+- **绘制范围耗时：** 80 万单元包围框切换总耗时 214–238 ms，其中 RenderWindow 范围为 203–226 ms；透视切换总耗时 219–236 ms，其中绘制范围为 209–225 ms。包围框本身会调用 `rebuildActors`，透视会改变不透明度及边线并通知场景重建。
+- **目前排除的主因及边界：** 工具条状态刷新 100 次约 1.05–1.20 ms，稳定事件处理与工具条显示叠加通常只有数毫秒；首次工具条事件处理曾出现约 114–121 ms 的一次性开销。实测单次动作通常触发 1 次绘制；普通旋转/投影/适配按钮约 0.6–6.6 ms，未在本机单对象场景复现“全部 VTK 工具持续卡顿”。重复信号连接虽存在，但不能据此认定为主要耗时。大工程多对象、多视图和用户当时显示模式仍需对照。
+- 实际 EGRID 单文件读取为 38.04 ms。测试先复制到临时目录，隔离同名配套文件，原始数据不变；此数据只用于区分加载和交互，不代表大型 GRDECL 或 UNRST 的读取性能。原始报告位于 `../IDOS-Build/tests/render-profile-40.txt`、`render-profile-100.txt`、`render-profile-200.txt` 和 `render-profile-egrid.txt`。
+- 复现：从源码根目录构建 Release `idos_case_tests`，设置 `IDOS_RENDER_PROFILE_SIDE=40/100/200` 后运行 `../IDOS-Build/bin/Release/idos_case_tests.exe onRenderPerformance`。也可设置 `IDOS_RENDER_PROFILE_GRID` 为实际网格路径（仅复制所选文件，不复制 INCLUDE/配套文件）；通过 `-o <report>,txt` 保存结果。建议同时设置 `IDOS_DISABLE_ASSISTANT_AUTOSTART=1` 和 `IDOS_DISABLE_UI_SETTINGS=1`。
+
+## 构建目录按源码相对位置确定（2026-10-19）
+
+- 用户明确构建目录为源码根目录上一级的 `IDOS-Build`，即 `${sourceDir}/../IDOS-Build`，不绑定 `D:\CMakeCoder` 或其他机器路径。本条更正此前“校正唯一构建目录”记录中的绝对路径约定；历史构建记录的路径仅表示当时实际使用位置。
+- `CMakePresets.json` 的 Debug/Release 配置已经使用该相对源码规则，无需修改。同步更正 AGENTS、README 和开发指南，命令示例使用 `../IDOS-Build` 或仓库预设。源码迁移后重新配置对应兄弟目录，不复用旧 CMake 缓存。
+- 资源部署继续基于 `$<TARGET_FILE_DIR:idos>`，运行时基于程序所在目录定位 `resources`，不依赖源码或构建目录的固定盘符。本轮仅修改规范及文档，不迁移旧构建产物，不执行重新配置、编译或测试。
+
+## 运行资源统一放入 resources（2026-10-19）
+
+- 按用户要求，助手运行时、模型和配置部署至程序目录 `resources/assistant/`，OPM 自定义关键字部署至 `resources/opm/extra-keywords.json`；同时修改 AssistantWidget 和工况解析器的读取路径，不保留旧路径回退。
+- 构建部署前迁移当前配置产物目录内旧 `assistant`、`opm` 文件夹，保留已有关键字配置并避免重新复制大型模型；目标已存在时不覆盖旧目录，明确记录警告。迁移脚本校验真实路径位于程序目录内。插件、DLL 和翻译目录不在本次调整范围。
+- 唯一构建目录 `D:\CMakeCoder\IDOS-Build` 的 Debug、Release `idos` 构建和部署均通过；两种配置均核实 4,683,073,536 字节模型、配置、运行程序和 OPM 关键字位于各自的 `resources` 目录，旧 `assistant`、`opm` 目录不再存在。依赖边界检查通过（499 个源文件），`git diff --check` 通过。未运行 C++ 测试；助手真实模型启动和实际 DATA 自定义关键字解析尚未验收。
+
+## 数据导入等待反馈（2026-10-19）
+
+- 主窗口的数据导入入口增加应用模态等待窗口，显示当前文件名、“正在加载数据”和等待提示，使用等待光标；命令结束或失败后由局部所有权自动销毁窗口，再显示原有结果或错误提示。
+- 覆盖网格（EGRID/GRDECL 及其配套文件）、静态/动态属性、井数据、通用数据、流体岩石表和汇总结果导入；工况的前置解析与最终导入分别提供等待提示。沿用既有 CommandManager 和撤销历史，不新增数据加载类或第二条业务链路。
+- 当前仍为界面线程同步加载，等待提示是静态反馈，不提供百分比、动画持续刷新或取消，也不代表已改善加载耗时；助手、插件自行发起的导入及工程打开不属于本次主窗口入口覆盖范围。后台解析及真实阶段进度仍待后续设计。
+- 验证：唯一构建目录 `D:\CMakeCoder\IDOS-Build` 的 Debug `idos` 构建及部署通过；依赖边界检查通过（499 个源文件），翻译生成通过（1928 项、0 unfinished），`git diff --check` 通过。构建出现旧路径增量依赖、QXlsx 缺少 PDB 和 `VCINSTALLDIR` 未设置警告，未阻断构建。未运行 C++ 测试，尚未完成 GUI 实际大文件验收。
+
 ## 修复 EGRID 与配套 INIT 维度不一致导致网格导入失败（2026-10-19）
 
 - 排查 `D:\QtCoder\IDOS\data\UPSCALE_GASWATER_ECL\UPSCALE_GASWATER_ECL.EGRID` 时确认，EGRID 网格维度为 125×21×25，而同名前缀 INIT 的 INTEHEAD 记录为 125×21×50，活跃单元数也不一致。此前导入逻辑把配套 INIT 不匹配视为整个网格导入失败，导致有效 EGRID 几何也被丢弃。

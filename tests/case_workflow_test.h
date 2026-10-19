@@ -1,6 +1,7 @@
 #ifndef CASE_WORKFLOW_TEST_H
 #define CASE_WORKFLOW_TEST_H
 
+#include <QElapsedTimer>
 #include <QList>
 #include <QObject>
 #include <QSettings>
@@ -14,7 +15,13 @@ class IDOSRenderView;
 class IDOSRenderServer;
 class QTemporaryDir;
 
+class IDOSGridObject;
+class IDOSGridPropertyEclipseProvider;
+class QThread;
+class IDOSDataObject;
+
 class vtkActor;
+class vtkObject;
 
 class vtkProp;
 
@@ -45,12 +52,30 @@ class CaseWorkflowTest : public QObject
     void onGridFilters();
     void onGridFilterCriteria();
     void onWellInputMenus();
+    void onDataTreeImportMenus();
+    void onDismissImportDialog();
+    void onChooseImportMenu();
     void onWellDisplaySettings();
     void onWellSymbolsAndStatusColors();
     void onRenderLifecycle();
     void onRenderStateAndUndo();
     void onRenderRestoreClipping();
     void onRenderArchitecture();
+    void onRenderPerformance();
+    void onRenderPickingCache();
+    void onGridSurfaceTopology();
+    void onToolbarTools();
+    void onBackgroundImport();
+    void onWaitingDialog();
+    void onRestartMemory();
+    void onTreeCheckRendering();
+    void onMemorySample();
+    void onImportPerformance();
+    void onSyntheticDemoData();
+    void onProjectCoordinates();
+    void onSubmitProjectCoordinates();
+    void onImportHeartbeat();
+    void onAcceptToolDialog();
     void onExamplePlugin();
     void onExamplePluginMenu();
     void onCreateAndImport();
@@ -61,6 +86,17 @@ class CaseWorkflowTest : public QObject
     void onFlowOutputFraming();
 
   private:
+    void onProfileRenderStarted(vtkObject* source, unsigned long eventId, void* callData);
+    void onProfileRenderEnded(vtkObject* source, unsigned long eventId, void* callData);
+    static quint64 processPrivateBytes();
+    static void readRestartForMemory(IDOSGridPropertyEclipseProvider* provider, const QString& path,
+                                     const IDOSGridObject* grid, QThread* targetThread,
+                                     QList<IDOSDataObject*>* objects);
+    quint64 m_memoryPeak;
+    int m_importHeartbeatCount;
+    QElapsedTimer m_profileFrameTimer;
+    qint64 m_profileRenderNanoseconds;
+    int m_profileRenderCount;
     static QList<vtkProp*> legends(const IDOSRenderProvider* provider);
     static QList<vtkActor*> actors(const IDOSRenderProvider* provider);
     QVariantMap fracture(const QVector<double>& coordinates, int id) const;

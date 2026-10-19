@@ -1535,3 +1535,20 @@ DFN 生成的 IDOSDfnGenerationWidget、IDOSDfnGenerator、IDOSDfnGenerateComman
 用户确认的三场差异、生产曲线拟合评价分别使用插件内独立 Widget，菜单动作仅负责打开窗口。差异计算通过 `analysis.field.difference` Action 命令修改工程，生成平台普通网格属性，按命令历史撤销/重做；评价通过 `analysis.curve.evaluate` Query 命令返回指标及配对样本，不修改工程、不进入撤销历史。曲线读取和数值评价属于插件算法类。Core 只提供报告步的只读访问，不依赖插件。
 
 插件持有窗口弱引用，工程切换和卸载时清理窗口，卸载前注销命令 Metadata；仍存活的命令（含撤销/重做历史）或文件对话框阻止 DLL 卸载，避免悬空调用。差异结果通过平台 `IDOSGridPropertyMetadata::create()` 创建，避免 MSVC 在插件内直接构造导入类时生成指向插件的局部虚函数表。结果为平台数据类型，清空历史并卸载插件后可继续显示、保存及关闭工程。
+
+
+## 通用等待控件（2026-10-19）
+
+按用户要求新增 IDOSWaitingDialog，头文件与实现位于 src/gui 根部，由 idos_gui 导出。该控件只负责等待状态的展示和窗口生命周期，提供标题、说明、详情、不确定/确定进度及已用时间，执行中阻止关闭，结束后由调用方关闭或复用；不持有 Project、Provider、命令或渲染对象，不负责启动线程或读取数据。MainWindow 在导入入口创建控件并提供状态文字，替代原本在 MainWindow 内临时拼装 QDialog 的实现。
+
+
+## 2026-10-20 工程坐标与 PROJ 接入
+
+- 复用 core 根部 IDOSProjectMetadata，保存独立 LengthUnit、ZDirection（未指定/向上/向下）、局部原点 XYZ（米）、逆时针旋转角（度）、正平面比例及现有 CRS/垂直基准；不增加坐标 Provider、Context 或框架适配层。Project 单位制仍是业务偏好，不等同坐标单位。
+- IDOSProjectMetadata::transformCrs 提供明确源/目标 CRS 的 XYZ 批量转换与可选十进制年份历元，轴顺序规范为可视化 XY（经度、纬度），投影/地心坐标单位依 CRS 定义，经纬度统一使用度；三维/垂直转换交由 PROJ。失败时原数组不变。动态参考框架需要明确历元，缺失最佳操作所需格网或只能做 ballpark 转换时报告失败。
+- transformCoordinates 提供工程二维平面坐标与独立垂向的显式转换：局部 XY 先按长度单位换为米、缩放、逆时针旋转，再加米制原点；局部锚定 CRS 须是米制投影坐标系。Z 按方向换成向上为正的米制高程，加参考面高程；目标执行逆过程。未指定 CRS/Z 方向、缺少锚定 CRS、垂直基准说明不同均拒绝自动推测；不同垂直基准须使用明确的三维/垂直 CRS 转换。
+- 通用 GUI 复用 IDOSNewProjectDialog，新增 setProjectMetadata 和工程坐标预览；仍由 idos_gui 编译，仅依赖 core。新建工程与工程设置共用同一组字段及验证。预览输入的 Z 已处于工程垂直基准、以米制高程表示，不执行 KB 或海拔基准猜测。
+- app/command 新增 IDOSUpdateProjectMetadataCommand/Metadata（project.settings.update，Action）和 IDOSConvertCoordinatesCommand/Metadata（coordinates.transform，Query）。主窗口工程设置通过命令提交，支持撤销重做；查询返回转换后的坐标，不修改工程对象，不进入撤销历史。
+- PROJ 是 core 的私有第三方依赖，不经由 VTK 的内部 PROJ。源码压缩包不随工程分发，SHA256 清单存于 thirdparty/proj/sha256.json；重建时按需下载至源码兄弟构建目录；tools/BuildProj.ps1 在源码兄弟 IDOS-Build/thirdparty-proj 独立构建，头文件、库和工具安装至 thirdparty/proj，运行数据安装至 resources/proj。SQLite、curl、TIFF、zlib 静态链接进 PROJ DLL，Debug/Release 分离。
+- 运行数据在源码中统一归档于 resources/proj，构建时复制到可执行程序旁 resources/proj；thirdparty/proj 仅存放依赖代码、库、工具及许可等。显式设置上下文搜索路径、默认禁网，不依赖工作目录或系统 PROJ_DATA。PROJ 功能不裁剪；全球高精度格网不随基础包全量部署。
+- 本次不批量变更已有对象坐标，也未把设置当作已有井/网格的源坐标声明；后续导入源坐标确认、数据对象源坐标持久化及业务命令转换须沿现有 Provider → 命令 → Project 链路实施。

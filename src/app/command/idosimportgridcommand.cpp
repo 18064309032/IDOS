@@ -1,5 +1,7 @@
 #include <memory>
 
+#include <QDebug>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QObject>
@@ -115,6 +117,12 @@ bool IDOSImportGridCommand::apply(QString& error)
     {
         return false;
     }
+    targetProject = project();
+    if (targetProject == nullptr || !validateCommand(error))
+    {
+        error = error.isEmpty() ? QObject::tr("The target project is unavailable.") : error;
+        return false;
+    }
 
     if (m_replaceExistingGrid)
     {
@@ -142,6 +150,8 @@ bool IDOSImportGridCommand::apply(QString& error)
         }
     }
 
+    QElapsedTimer commitTimer;
+    commitTimer.start();
     targetProject->beginUpdate();
     if (m_replaceExistingGrid)
     {
@@ -177,6 +187,10 @@ bool IDOSImportGridCommand::apply(QString& error)
     commandResult.insert(QStringLiteral("objectIds"), ids);
     setResult(commandResult);
     targetProject->endUpdate();
+    if (qEnvironmentVariableIsSet("IDOS_IMPORT_PROFILE"))
+    {
+        qInfo("IMPORT_PROFILE phase=project-commit elapsed_ms=%.3f", commitTimer.nsecsElapsed() / 1000000.0);
+    }
     return true;
 }
 
@@ -241,8 +255,8 @@ bool IDOSImportGridCommand::loadObjects(QString& error)
         return false;
     }
 
-    QList<IDOSDataObject*> objects = provider->read(m_filePath);
-    if (objects.isEmpty() || !provider->lastError().isEmpty())
+    QList<IDOSDataObject*> objects = provider->readInBackground(m_filePath);
+    if (project() == nullptr || objects.isEmpty() || !provider->lastError().isEmpty())
     {
         error = provider->lastError().isEmpty()
             ? QObject::tr("The import file did not contain supported objects.")

@@ -1,3 +1,8 @@
+#if defined(_WIN32)
+#include <windows.h>
+#include <psapi.h>
+#endif
+
 #include <cmath>
 #include <limits>
 #include <memory>
@@ -8,6 +13,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QColor>
 #include <QColorDialog>
 #include <QComboBox>
@@ -17,7 +23,9 @@
 #include <QDialog>
 #include <QDir>
 #include <QDoubleSpinBox>
+#include <QElapsedTimer>
 #include <QEvent>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -32,11 +40,16 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPixmap>
+#include <QPointF>
 #include <QPlainTextEdit>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScopedPointer>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSettings>
 #include <QSignalSpy>
 #include <QSize>
@@ -45,6 +58,8 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTemporaryDir>
+#include <QTextStream>
+#include <QThread>
 #include <QTimer>
 #include <QToolButton>
 #include <QTranslator>
@@ -57,16 +72,25 @@
 #include <vtkActor.h>
 #include <vtkCamera.h>
 #include <vtkCellData.h>
+#include <vtkCellPicker.h>
+#include <vtkCommand.h>
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
+#include <vtkDataSetMapper.h>
 #include <vtkLookupTable.h>
 #include <vtkMapper.h>
+#include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkProperty.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
+#include <vtkSmartPointer.h>
+#include <vtkStaticCellLocator.h>
+#include <vtkStaticCleanUnstructuredGrid.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkWeakPointer.h>
 
 #include <SARibbonBar.h>
 #include <SARibbonCategory.h>
@@ -78,6 +102,7 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 #include <opm/io/eclipse/EclOutput.hpp>
+#include <opm/io/eclipse/ESmry.hpp>
 
 #include "case/idoscasedialog.h"
 #include "case/idossimulationinitializewidget.h"
@@ -89,9 +114,11 @@
 #include "command/idosdeletedatacommand.h"
 #include "command/idosdeletegridcommand.h"
 #include "command/idosdeletegridfiltercommand.h"
+#include "command/idosimportcasecommand.h"
 #include "command/idosimportrestartresultscommand.h"
 #include "command/idosupdategridfiltercommand.h"
 #include "data/case/idoscaseitemref.h"
+#include "data/case/idoscaseobject.h"
 #include "data/case/idossimulationcaseobject.h"
 #include "data/case/idossimulationsummaryresultsobject.h"
 #include "data/fluidrock/idosfluidrocktableobject.h"
@@ -111,12 +138,16 @@
 #include "data/well/idoswellpath.h"
 #include "data/well/idoswellpathpoint.h"
 #include "grid/idosgridfilterwidget.h"
+#include "grid/idosgridpropertyeclipseprovider.h"
 #include "grid/idosgridrendermetadata.h"
 #include "grid/idosgridrenderprovider.h"
 #include "grid/idosgridsettingwidget.h"
 #include "idosapplication.h"
 #include "idosmainwindow.h"
+#include "idosnewprojectdialog.h"
+#include "idoswaitingdialog.h"
 #include "idosproject.h"
+#include "idosprojectmetadata.h"
 #include "idosrenderobject.h"
 #include "idosrenderprovider.h"
 #include "idosrenderscene.h"
@@ -127,7 +158,9 @@
 #include "providers/idosdataprovider.h"
 #include "providers/idosdataproviderregistry.h"
 #include "render/idosrenderproviderregistry.h"
+#include "render/idosrendertoolmetadata.h"
 #include "render/idosrenderserver.h"
+#include "tools/idostoolbar.h"
 #include "tools/idostoolproviderregistry.h"
 #include "tree/idostreeitem.h"
 #include "tree/idostreeitemproviderregistry.h"
@@ -1273,8 +1306,11 @@ void CaseWorkflowTest::onGridCompanionFiles()
         output.write("INTEHEAD", wrongHeader);
         output.write("PORO", std::vector<float>{0.25f});
     }
-    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
-                 .value(QStringLiteral("success")).toBool());
+    // Incompatible optional INIT data is skipped while the valid grid is imported.
+    QVERIFY(manager->execute(QStringLiteral("grid.import"), arguments)
+                .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 2);
+    manager->undo();
     QCOMPARE(project->objects().size(), 1);
     QVERIFY(manager->canRedo());
     QVERIFY(QFile::remove(base + QStringLiteral(".INIT")));
@@ -1287,8 +1323,11 @@ void CaseWorkflowTest::onGridCompanionFiles()
     QVERIFY(brokenRestart.open(QIODevice::WriteOnly));
     brokenRestart.write("invalid restart after valid INIT");
     brokenRestart.close();
-    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
-                 .value(QStringLiteral("success")).toBool());
+    // An unreadable optional restart does not discard the grid and valid INIT property.
+    QVERIFY(manager->execute(QStringLiteral("grid.import"), arguments)
+                .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 3);
+    manager->undo();
     QCOMPARE(project->objects().size(), 1);
     QVERIFY(caseObject->itemRefs().isEmpty());
     QVERIFY(manager->canRedo());
@@ -1298,8 +1337,11 @@ void CaseWorkflowTest::onGridCompanionFiles()
     QVERIFY(brokenSummary.open(QIODevice::WriteOnly));
     brokenSummary.write("missing specification");
     brokenSummary.close();
-    QVERIFY(!manager->execute(QStringLiteral("grid.import"), arguments)
-                 .value(QStringLiteral("success")).toBool());
+    // Orphan UNSMRY cannot be read without SMSPEC and is skipped.
+    QVERIFY(manager->execute(QStringLiteral("grid.import"), arguments)
+                .value(QStringLiteral("success")).toBool());
+    QCOMPARE(project->objects().size(), 2);
+    manager->undo();
     QCOMPARE(project->objects().size(), 1);
     QVERIFY(manager->canRedo());
     QVERIFY(QFile::remove(brokenSummary.fileName()));
@@ -1857,6 +1899,87 @@ void CaseWorkflowTest::onPlatformSimulation()
     {
         settings.remove(settingKey);
     }
+}
+
+void CaseWorkflowTest::onDismissImportDialog()
+{
+    for (QWidget* widget : QApplication::topLevelWidgets())
+    {
+        QFileDialog* dialog = qobject_cast<QFileDialog*>(widget);
+        if (dialog != nullptr && dialog->isVisible())
+        {
+            setProperty("importDialogs", property("importDialogs").toInt() + 1);
+            dialog->reject();
+        }
+    }
+}
+
+void CaseWorkflowTest::onChooseImportMenu()
+{
+    QMenu* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+    if (menu != nullptr)
+    {
+        QAction* action = qobject_cast<QAction*>(menu->property("testImportAction").value<QObject*>());
+        if (action != nullptr)
+        {
+            QTest::mouseClick(menu, Qt::LeftButton, Qt::NoModifier, menu->actionGeometry(action).center());
+        }
+    }
+}
+
+void CaseWorkflowTest::onDataTreeImportMenus()
+{
+    const bool nativeDisabled = QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, !qEnvironmentVariableIsSet("IDOS_TEST_NATIVE_DIALOGS"));
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    const QString savedProject = qEnvironmentVariable("IDOS_TEST_MENU_PROJECT");
+    if (!savedProject.isEmpty())
+    {
+        QVERIFY(window.openProject(savedProject, false));
+    }
+    window.show();
+    QTest::qWait(50);
+    IDOSDataTreeItemModel* model = window.dataTreeModel();
+    const QStringList keys{QStringLiteral("data.wells"), QStringLiteral("data.microseismic"),
+        QStringLiteral("data.seismic"), QStringLiteral("data.surfaceProperties"),
+        QStringLiteral("data.boundaries"), QStringLiteral("data.naturalFractures"),
+        QStringLiteral("data.hydraulicFractures"), QStringLiteral("data.fluids"),
+        QStringLiteral("data.rockPhysics"), QStringLiteral("data.production")};
+    QTimer dismiss;
+    dismiss.setInterval(20);
+    connect(&dismiss, &QTimer::timeout, this, &CaseWorkflowTest::onDismissImportDialog);
+    int tested = 0;
+    for (const QString& key : keys)
+    {
+        IDOSTreeItem* item = model->find(key);
+        QVERIFY(item != nullptr);
+        QScopedPointer<QMenu> menu(window.dataTreeView()->createContextMenu(model->index(item)));
+        QVERIFY(menu != nullptr);
+        for (QAction* action : menu->actions())
+        {
+            if (!action->objectName().startsWith(QStringLiteral("import")) &&
+                action->property("fileFilter").toString().isEmpty())
+            {
+                continue;
+            }
+            setProperty("importDialogs", 0);
+            dismiss.start();
+            menu->setProperty("testImportAction", QVariant::fromValue(static_cast<QObject*>(action)));
+            QTimer::singleShot(100, this, &CaseWorkflowTest::onChooseImportMenu);
+            QTimer::singleShot(5000, menu.data(), &QMenu::close);
+            menu->exec(window.mapToGlobal(QPoint(100, 100)));
+            dismiss.stop();
+            qInfo("IMPORT_MENU key=%s action=%s dialogs=%d", qPrintable(key), qPrintable(action->text()),
+                  property("importDialogs").toInt());
+            QCOMPARE(property("importDialogs").toInt(), 1);
+            ++tested;
+        }
+    }
+    QVERIFY(tested >= 12);
+    window.setProject(nullptr);
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, nativeDisabled);
 }
 
 void CaseWorkflowTest::onWellInputMenus()
@@ -3250,11 +3373,1394 @@ IDOSRenderObject* CaseWorkflowTest::findRenderObject(IDOSRenderServer* server, I
     return nullptr;
 }
 
+void CaseWorkflowTest::onProfileRenderStarted(vtkObject* source, unsigned long eventId, void* callData)
+{
+    Q_UNUSED(source)
+    Q_UNUSED(eventId)
+    Q_UNUSED(callData)
+    m_profileFrameTimer.start();
+    ++m_profileRenderCount;
+}
+
+void CaseWorkflowTest::onProfileRenderEnded(vtkObject* source, unsigned long eventId, void* callData)
+{
+    Q_UNUSED(source)
+    Q_UNUSED(eventId)
+    Q_UNUSED(callData)
+    m_profileRenderNanoseconds += m_profileFrameTimer.nsecsElapsed();
+}
+
+void CaseWorkflowTest::onRenderPickingCache()
+{
+    IDOSGridObject grid;
+    QVector<double> coord;
+    for (int j = 0; j <= 1; ++j)
+    {
+        for (int i = 0; i <= 1; ++i)
+        {
+            coord << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << 10.0;
+        }
+    }
+    grid.setCornerPointData(1, 1, 1, coord, {0, 0, 0, 0, 10, 10, 10, 10}, {1});
+    IDOSToolProviderRegistry tools;
+    QVERIFY(tools.registerMetadata(new IDOSRenderToolMetadata()));
+    IDOSRenderView view;
+    view.resize(640, 480);
+    view.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&view));
+    IDOSGridRenderProvider* provider = new IDOSGridRenderProvider(&grid);
+    provider->update();
+    IDOSRenderObject* object = new IDOSRenderObject(provider);
+    object->setVisible(true);
+    QVERIFY(view.scene()->add(object));
+    view.resetCamera();
+    vtkRenderWindow* window = view.vtkWidget()->renderWindow();
+    vtkRenderer* renderer = window->GetRenderers()->GetFirstRenderer();
+    const QPoint center(view.vtkWidget()->width() / 2, view.vtkWidget()->height() / 2);
+    double cached[3];
+    QVERIFY(view.pickWorldPosition(center, cached));
+    vtkSmartPointer<vtkCellPicker> reference = vtkSmartPointer<vtkCellPicker>::New();
+    reference->SetTolerance(0.005);
+    const int* size = window->GetSize();
+    QVERIFY(reference->Pick(static_cast<double>(center.x()) * size[0] / view.vtkWidget()->width(),
+                            size[1] - 1.0 - static_cast<double>(center.y()) * size[1] / view.vtkWidget()->height(),
+                            0.0, renderer));
+    double expected[3];
+    reference->GetPickPosition(expected);
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        QVERIFY(qAbs(cached[axis] - expected[axis]) < 1.0e-6);
+    }
+    reference = nullptr;
+    view.setCursorTrackingEnabled(true);
+    QTimer* trackingTimer = view.findChild<QTimer*>(QStringLiteral("cursorTrackingTimer"));
+    QVERIFY(trackingTimer != nullptr);
+    QSignalSpy trackingSpy(trackingTimer, &QTimer::timeout);
+    QMouseEvent movement(QEvent::MouseMove, QPointF(center), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+    for (int repeat = 0; repeat < 20; ++repeat)
+    {
+        QCoreApplication::sendEvent(view.vtkWidget(), &movement);
+    }
+    QTRY_COMPARE(trackingSpy.count(), 1);
+    QCoreApplication::sendEvent(view.vtkWidget(), &movement);
+    QVERIFY(trackingTimer->isActive());
+    view.setCursorTrackingEnabled(false);
+    QVERIFY(!trackingTimer->isActive());
+    QTest::qWait(60);
+    QCOMPARE(trackingSpy.count(), 1);
+    view.setCursorTrackingEnabled(true);
+    QMouseEvent dragging(QEvent::MouseMove, QPointF(center), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(view.vtkWidget(), &dragging);
+    QVERIFY(!trackingTimer->isActive());
+    view.setCursorTrackingEnabled(false);
+    vtkActor* actor = actors(provider).first();
+    vtkUnstructuredGrid* data = vtkUnstructuredGrid::SafeDownCast(actor->GetMapper()->GetInput());
+    QVERIFY(data != nullptr);
+    vtkWeakPointer<vtkDataSet> oldData = data;
+    view.setBoundsVisible(true);
+    QCOMPARE(actors(provider).first(), actor);
+    QVERIFY(renderer->HasViewProp(actor));
+    view.setBoundsVisible(false);
+    for (vtkIdType index = 0; index < data->GetNumberOfPoints(); ++index)
+    {
+        double position[3];
+        data->GetPoint(index, position);
+        position[2] += 20.0;
+        data->GetPoints()->SetPoint(index, position);
+    }
+    data->GetPoints()->Modified();
+    data->Modified();
+    view.scene()->notifyChanged(object->id());
+    view.resetCamera();
+    QVERIFY(view.pickWorldPosition(center, cached));
+    QVERIFY(qAbs(cached[2] - expected[2] - 20.0) < 1.0e-5);
+    view.setZAxisScale(2.0);
+    QVERIFY(view.pickWorldPosition(center, cached));
+    QVERIFY(qAbs(cached[2] - (expected[2] + 20.0) * 2.0) < 1.0e-5);
+    object->setVisible(false);
+    view.scene()->notifyChanged(object->id());
+    QVERIFY(!view.pickWorldPosition(center, cached));
+    object->setVisible(true);
+    view.scene()->notifyChanged(object->id());
+    QVERIFY(view.pickWorldPosition(center, cached));
+    provider->update();
+    view.scene()->notifyChanged(object->id());
+    QVERIFY(oldData == nullptr);
+    view.resetCamera();
+    QVERIFY(view.pickWorldPosition(center, cached));
+    IDOSGridRenderProvider* secondProvider = new IDOSGridRenderProvider(&grid);
+    secondProvider->update();
+    secondProvider->setVisible(true);
+    QVERIFY(view.scene()->add(new IDOSRenderObject(secondProvider)));
+    IDOSToolBar* toolbar = new IDOSToolBar();
+    QVERIFY(view.setToolBar(toolbar));
+    QVERIFY(toolbar->setRegistry(&tools));
+    QAction* xray = toolbar->findChild<QAction*>(QStringLiteral("viewToolGridXrayAction"));
+    QVERIFY(xray != nullptr);
+    const unsigned long startTag = window->AddObserver(vtkCommand::StartEvent, this, &CaseWorkflowTest::onProfileRenderStarted);
+    m_profileRenderCount = 0;
+    xray->trigger();
+    QCOMPARE(m_profileRenderCount, 1);
+    xray->trigger();
+    QCOMPARE(m_profileRenderCount, 2);
+    window->RemoveObserver(startTag);
+    vtkWeakPointer<vtkDataSet> removedData = actors(provider).first()->GetMapper()->GetInput();
+    view.scene()->clear();
+    QVERIFY(removedData == nullptr);
+    QVERIFY(!view.pickWorldPosition(center, cached));
+}
+
+void CaseWorkflowTest::onGridSurfaceTopology()
+{
+    IDOSGridObject grid;
+    QVector<double> coord;
+    for (int j = 0; j <= 1; ++j)
+    {
+        for (int i = 0; i <= 2; ++i)
+        {
+            coord << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << 2000.0;
+        }
+    }
+    const QVector<double> regular = {1000, 1000, 1000, 1000, 1010, 1010, 1010, 1010,
+                                     1000, 1000, 1000, 1000, 1010, 1010, 1010, 1010};
+    grid.setCornerPointData(2, 1, 1, coord, regular, {1, 1});
+    IDOSGridPropertyObject property;
+    property.setGridId(grid.objectId());
+    property.setDimensions(2, 1, 1);
+    property.setName(QStringLiteral("Topology property"));
+    QVERIFY(property.setValues({10.0, 20.0}));
+    IDOSGridRenderProvider* provider = new IDOSGridRenderProvider(&grid);
+    provider->setProperty(&property);
+    provider->update();
+    IDOSRenderObject* object = new IDOSRenderObject(provider);
+    object->setVisible(true);
+    IDOSRenderView view;
+    view.resize(640, 480);
+    view.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&view));
+    QVERIFY(view.scene()->add(object));
+    view.setOrientation(IDOSOrientation::Top);
+    view.resetCamera();
+    vtkDataSetMapper* mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QVERIFY(mapper != nullptr && mapper->GetPolyDataMapper() != nullptr);
+    QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), vtkIdType(12));
+    QCOMPARE(mapper->GetInput()->GetNumberOfCells(), vtkIdType(2));
+    QCOMPARE(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells(), vtkIdType(10));
+    vtkDataArray* surfaceIds = mapper->GetPolyDataMapper()->GetInput()->GetCellData()->GetArray("GlobalIndex");
+    QVERIFY(surfaceIds != nullptr);
+    int faceCounts[2] = {0, 0};
+    for (vtkIdType face = 0; face < surfaceIds->GetNumberOfTuples(); ++face)
+    {
+        const int id = static_cast<int>(surfaceIds->GetTuple1(face));
+        QVERIFY(id >= 0 && id < 2);
+        ++faceCounts[id];
+    }
+    QCOMPARE(faceCounts[0], 5);
+    QCOMPARE(faceCounts[1], 5);
+    vtkRenderer* renderer = view.vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
+    const int* renderSize = view.vtkWidget()->renderWindow()->GetSize();
+    for (int cell = 0; cell < 2; ++cell)
+    {
+        renderer->SetWorldPoint(5.0 + cell * 10.0, 5.0, 1000.0, 1.0);
+        renderer->WorldToDisplay();
+        const double* display = renderer->GetDisplayPoint();
+        const QPoint pixel(qRound(display[0] * view.vtkWidget()->width() / renderSize[0]),
+                           qRound((renderSize[1] - 1.0 - display[1]) * view.vtkWidget()->height() / renderSize[1]));
+        vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
+        picker->SetTolerance(0.005);
+        QVERIFY(view.pickCell(pixel, picker));
+        QCOMPARE(picker->GetDataSet(), mapper->GetInput());
+        QCOMPARE(picker->GetDataSet()->GetCellData()->GetArray("GlobalIndex")->GetTuple1(picker->GetCellId()),
+                 static_cast<double>(cell));
+        QCOMPARE(picker->GetDataSet()->GetCellData()->GetScalars()->GetTuple1(picker->GetCellId()),
+                 10.0 + 10.0 * cell);
+    }
+    vtkDataSet* cachedGeometry = mapper->GetInput();
+    vtkActor* cachedActor = actors(provider).first();
+    QVariantMap coloring = provider->coloringSettings();
+    coloring.insert(QStringLiteral("solidColor"), QStringLiteral("#123456"));
+    QVERIFY(provider->setColoringSettings(coloring));
+    QCOMPARE(actors(provider).first(), cachedActor);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput(), cachedGeometry);
+    QVERIFY(property.setValues({11.0, 21.0}));
+    provider->update();
+    QCOMPARE(actors(provider).first(), cachedActor);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput(), cachedGeometry);
+    QCOMPARE(cachedGeometry->GetCellData()->GetScalars()->GetTuple1(1), 21.0);
+    provider->setProperty(nullptr);
+    QCOMPARE(actors(provider).first()->GetMapper()->GetInput(), cachedGeometry);
+    QVERIFY(cachedGeometry->GetCellData()->GetScalars() == nullptr);
+    QVERIFY(property.setValues({10.0, 20.0}));
+    provider->setProperty(&property);
+    // A full fault, a partial shared face, and a sub-float source gap must remain open.
+    const QVector<int> pointCounts = {16, 13, 16};
+    for (int scenario = 0; scenario < pointCounts.size(); ++scenario)
+    {
+        QVector<double> corners = regular;
+        for (int corner = 0; corner < 8; ++corner)
+        {
+            if (scenario != 1 || corner == 0)
+            {
+                corners[8 + corner] += scenario == 2 ? 1.0e-8 : 2.0;
+            }
+        }
+        grid.setCornerPointData(2, 1, 1, coord, corners, {1, 1});
+        provider->update();
+        view.scene()->notifyChanged(object->id());
+        mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+        QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), static_cast<vtkIdType>(pointCounts.at(scenario)));
+        QCOMPARE(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells(), vtkIdType(12));
+    }
+    grid.setCornerPointData(2, 1, 1, coord, regular, {1, 0});
+    provider->update();
+    view.scene()->notifyChanged(object->id());
+    mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), vtkIdType(8));
+    QCOMPARE(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells(), vtkIdType(6));
+    grid.setCornerPointData(2, 1, 1, coord, regular, {1, 1});
+    const QVariantMap criteria{{QStringLiteral("axes"), QVariantMap{{QStringLiteral("i"),
+        QVariantMap{{QStringLiteral("enabled"), true}, {QStringLiteral("minimum"), 2},
+                    {QStringLiteral("maximum"), 2}}}}}};
+    QVERIFY(provider->setFilterCriteria(criteria));
+    provider->update();
+    view.scene()->notifyChanged(object->id());
+    mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QCOMPARE(mapper->GetInput()->GetNumberOfCells(), vtkIdType(1));
+    QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), vtkIdType(8));
+    QCOMPARE(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells(), vtkIdType(6));
+    QCOMPARE(mapper->GetInput()->GetCellData()->GetArray("GlobalIndex")->GetTuple1(0), 1.0);
+    QCOMPARE(mapper->GetInput()->GetCellData()->GetScalars()->GetTuple1(0), 20.0);
+    QVERIFY(provider->setFilterCriteria(QVariantMap()));
+    provider->setProperty(nullptr);
+    QVector<double> overlapCoord;
+    for (int j = 0; j <= 1; ++j)
+    {
+        for (int i = 0; i <= 3; ++i)
+        {
+            const double x = i % 2 == 0 ? 0.0 : 10.0;
+            overlapCoord << x << j * 10.0 << 0.0 << x << j * 10.0 << 2000.0;
+        }
+    }
+    QVector<double> overlapCorners = regular;
+    overlapCorners += regular.mid(0, 8);
+    grid.setCornerPointData(3, 1, 1, overlapCoord, overlapCorners, {1, 0, 1});
+    provider->update();
+    view.scene()->notifyChanged(object->id());
+    mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), vtkIdType(16));
+    QCOMPARE(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells(), vtkIdType(12));
+    grid.setCornerPointData(1, 1, 1, coord.mid(0, 12) + coord.mid(18, 12),
+                            QVector<double>(8, 1000.0), {1});
+    provider->update();
+    view.scene()->notifyChanged(object->id());
+    mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QCOMPARE(mapper->GetInput()->GetNumberOfCells(), vtkIdType(1));
+    QCOMPARE(mapper->GetInput()->GetNumberOfPoints(), vtkIdType(8));
+}
+
+void CaseWorkflowTest::onRenderPerformance()
+{
+    if (!qEnvironmentVariableIsSet("IDOS_RENDER_PROFILE_SIDE") &&
+        !qEnvironmentVariableIsSet("IDOS_RENDER_PROFILE_GRID"))
+    {
+        QSKIP("Set IDOS_RENDER_PROFILE_SIDE to run the rendering diagnostic.");
+    }
+    const int side = qEnvironmentVariableIsSet("IDOS_RENDER_PROFILE_SIDE")
+        ? qEnvironmentVariableIntValue("IDOS_RENDER_PROFILE_SIDE") : 40;
+    QVERIFY(side > 0 && side <= 200);
+    const int depth = 20;
+    IDOSGridObject grid;
+    QVector<double> coordinates;
+    for (int j = 0; j <= side; ++j)
+    {
+        for (int i = 0; i <= side; ++i)
+        {
+            coordinates << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << depth * 10.0;
+        }
+    }
+    QVector<double> corners;
+    corners.reserve(side * side * depth * 8);
+    for (int k = 0; k < depth; ++k)
+    {
+        for (int cell = 0; cell < side * side; ++cell)
+        {
+            for (int corner = 0; corner < 8; ++corner)
+            {
+                corners.append((k + (corner >= 4 ? 1 : 0)) * 10.0);
+            }
+        }
+    }
+    grid.setCornerPointData(side, side, depth, coordinates, corners, QVector<int>(side * side * depth, 1));
+    const QString gridPath = qEnvironmentVariable("IDOS_RENDER_PROFILE_GRID");
+    QTemporaryDir inputDirectory;
+    if (!gridPath.isEmpty())
+    {
+        QVERIFY(inputDirectory.isValid());
+        const QString isolatedPath = inputDirectory.filePath(QFileInfo(gridPath).fileName());
+        QVERIFY(QFile::copy(gridPath, isolatedPath));
+        std::unique_ptr<IDOSDataProvider> reader =
+            IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.grid.eclipse"));
+        QVERIFY(reader != nullptr);
+        QElapsedTimer readTimer;
+        readTimer.start();
+        const QList<IDOSDataObject*> objects = reader->read(isolatedPath);
+        qInfo("RENDER_PROFILE phase=file-read elapsed_ms=%.3f", readTimer.nsecsElapsed() / 1000000.0);
+        QVERIFY2(!objects.isEmpty(), qPrintable(reader->lastError()));
+        IDOSGridObject* imported = qobject_cast<IDOSGridObject*>(objects.first());
+        QVERIFY(imported != nullptr);
+        grid.setCornerPointData(imported->nx(), imported->ny(), imported->nz(),
+                                imported->coord(), imported->zcorn(), imported->actnum());
+        qDeleteAll(objects);
+    }
+    IDOSToolProviderRegistry tools;
+    QVERIFY(tools.registerMetadata(new IDOSRenderToolMetadata()));
+    IDOSRenderView view;
+    view.resize(960, 720);
+    view.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&view));
+    vtkRenderWindow* window = view.vtkWidget()->renderWindow();
+    vtkRenderer* renderer = window->GetRenderers()->GetFirstRenderer();
+    qInfo("RENDER_PROFILE backend=%s", renderer->GetClassName());
+    m_profileRenderCount = 0;
+    m_profileRenderNanoseconds = 0;
+    const unsigned long startTag = window->AddObserver(vtkCommand::StartEvent, this, &CaseWorkflowTest::onProfileRenderStarted);
+    const unsigned long endTag = window->AddObserver(vtkCommand::EndEvent, this, &CaseWorkflowTest::onProfileRenderEnded);
+    IDOSGridRenderProvider* provider = new IDOSGridRenderProvider(&grid);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    provider->update();
+    qInfo("RENDER_PROFILE phase=provider-build cells=%lld elapsed_ms=%.3f", static_cast<long long>(grid.totalCellCount()),
+          elapsed.nsecsElapsed() / 1000000.0);
+    vtkActor* originalActor = actors(provider).first();
+    vtkDataSet* originalGeometry = originalActor->GetMapper()->GetInput();
+    elapsed.restart();
+    provider->update();
+    qInfo("RENDER_PROFILE phase=provider-reuse elapsed_ms=%.3f", elapsed.nsecsElapsed() / 1000000.0);
+    QCOMPARE(actors(provider).first(), originalActor);
+    QCOMPARE(originalActor->GetMapper()->GetInput(), originalGeometry);
+    IDOSRenderObject* object = new IDOSRenderObject(provider);
+    object->setVisible(true);
+    elapsed.restart();
+    QVERIFY(view.scene()->add(object));
+    view.resetCamera();
+    qInfo("RENDER_PROFILE phase=scene-first-draw elapsed_ms=%.3f frames=%d render_ms=%.3f",
+          elapsed.nsecsElapsed() / 1000000.0, m_profileRenderCount, m_profileRenderNanoseconds / 1000000.0);
+    vtkDataSetMapper* mapper = vtkDataSetMapper::SafeDownCast(actors(provider).first()->GetMapper());
+    QVERIFY(mapper != nullptr && mapper->GetPolyDataMapper() != nullptr);
+    vtkPolyData* surface = mapper->GetPolyDataMapper()->GetInput();
+    QVERIFY(surface != nullptr);
+    qInfo("RENDER_PROFILE input_points=%lld surface_cells=%lld exterior_faces=%d",
+          static_cast<long long>(mapper->GetInput()->GetNumberOfPoints()),
+          static_cast<long long>(surface->GetNumberOfCells()), gridPath.isEmpty() ? 2 * (side * side + 2 * side * depth) : -1);
+    qInfo("RENDER_PROFILE graphics=%s", window->ReportCapabilities());
+    for (int repeat = 0; repeat < 3; ++repeat)
+    {
+        elapsed.restart();
+        view.render();
+        qInfo("RENDER_PROFILE phase=direct-render repeat=%d elapsed_ms=%.3f", repeat,
+              elapsed.nsecsElapsed() / 1000000.0);
+    }
+    elapsed.restart();
+    for (int repeat = 0; repeat < 100; ++repeat)
+    {
+        view.setSelection(QList<QString>());
+    }
+    qInfo("RENDER_PROFILE phase=unchanged-selection-100 elapsed_ms=%.3f", elapsed.nsecsElapsed() / 1000000.0);
+    IDOSToolBar* toolbar = new IDOSToolBar();
+    QVERIFY(view.setToolBar(toolbar));
+    QVERIFY(toolbar->setRegistry(&tools));
+    const QStringList actions = {QStringLiteral("viewToolFitAllAction"), QStringLiteral("viewToolRotateClockwiseAction"),
+        QStringLiteral("viewToolProjectionAction"), QStringLiteral("viewToolAxesAction"),
+        QStringLiteral("viewToolBoundsAction"), QStringLiteral("viewToolGridXrayAction")};
+    for (const QString& actionName : actions)
+    {
+        QAction* action = toolbar->findChild<QAction*>(actionName);
+        QVERIFY(action != nullptr);
+        for (int repeat = 0; repeat < 2; ++repeat)
+        {
+            m_profileRenderCount = 0;
+            m_profileRenderNanoseconds = 0;
+            elapsed.restart();
+            action->trigger();
+            qInfo("RENDER_PROFILE action=%s repeat=%d elapsed_ms=%.3f frames=%d render_ms=%.3f renderer_last_ms=%.3f",
+                  qPrintable(actionName), repeat, elapsed.nsecsElapsed() / 1000000.0, m_profileRenderCount,
+                  m_profileRenderNanoseconds / 1000000.0, renderer->GetLastRenderTimeInSeconds() * 1000.0);
+            elapsed.restart();
+            QCoreApplication::processEvents();
+            qInfo("RENDER_PROFILE phase=event-drain elapsed_ms=%.3f", elapsed.nsecsElapsed() / 1000000.0);
+        }
+    }
+    elapsed.restart();
+    for (int repeat = 0; repeat < 100; ++repeat)
+    {
+        QVERIFY(QMetaObject::invokeMethod(toolbar, "onViewStateChanged", Qt::DirectConnection));
+    }
+    qInfo("RENDER_PROFILE phase=toolbar-state-100 elapsed_ms=%.3f", elapsed.nsecsElapsed() / 1000000.0);
+    const QVector<int> bucketSizes = {10, 64, 256};
+    for (int bucketSize : bucketSizes)
+    {
+        vtkSmartPointer<vtkStaticCellLocator> locator = vtkSmartPointer<vtkStaticCellLocator>::New();
+        locator->SetDataSet(mapper->GetInput());
+        locator->SetNumberOfCellsPerNode(bucketSize);
+        elapsed.restart();
+        locator->BuildLocator();
+        qInfo("RENDER_PROFILE phase=locator-build cells_per_bucket=%d elapsed_ms=%.3f", bucketSize,
+              elapsed.nsecsElapsed() / 1000000.0);
+        vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
+        picker->SetTolerance(0.005);
+        picker->AddLocator(locator);
+        elapsed.restart();
+        const int* size = window->GetSize();
+        QVERIFY(picker->Pick(size[0] / 2.0, size[1] / 2.0, 0.0, renderer));
+        qInfo("RENDER_PROFILE phase=locator-query cells_per_bucket=%d elapsed_ms=%.3f", bucketSize,
+              elapsed.nsecsElapsed() / 1000000.0);
+    }
+    for (int repeat = 0; repeat < 3; ++repeat)
+    {
+        double position[3];
+        elapsed.restart();
+        const bool found = view.pickWorldPosition(QPoint(view.vtkWidget()->width() / 2,
+                                                        view.vtkWidget()->height() / 2), position);
+        qInfo("RENDER_PROFILE phase=cell-pick repeat=%d found=%d elapsed_ms=%.3f", repeat,
+              found ? 1 : 0, elapsed.nsecsElapsed() / 1000000.0);
+    }
+    for (int repeat = 0; repeat < 3; ++repeat)
+    {
+        vtkSmartPointer<vtkCellPicker> probe = vtkSmartPointer<vtkCellPicker>::New();
+        probe->SetTolerance(0.005);
+        elapsed.restart();
+        QVERIFY(view.pickCell(QPoint(view.vtkWidget()->width() / 2, view.vtkWidget()->height() / 2), probe));
+        qInfo("RENDER_PROFILE phase=probe-pick repeat=%d elapsed_ms=%.3f", repeat,
+              elapsed.nsecsElapsed() / 1000000.0);
+    }
+    for (int visible = 0; visible < 2; ++visible)
+    {
+        toolbar->setVisible(visible != 0);
+        QCoreApplication::processEvents();
+        for (int repeat = 0; repeat < 3; ++repeat)
+        {
+            elapsed.restart();
+            view.render();
+            QCoreApplication::processEvents();
+            qInfo("RENDER_PROFILE phase=toolbar-visibility visible=%d repeat=%d elapsed_ms=%.3f", visible, repeat,
+                  elapsed.nsecsElapsed() / 1000000.0);
+        }
+    }
+    // Diagnostic comparison only: the application's provider is not changed.
+    vtkSmartPointer<vtkStaticCleanUnstructuredGrid> clean = vtkSmartPointer<vtkStaticCleanUnstructuredGrid>::New();
+    clean->SetInputData(mapper->GetInput());
+    clean->SetTolerance(0.0);
+    elapsed.restart();
+    clean->Update();
+    qInfo("RENDER_PROFILE phase=merge-identical-points elapsed_ms=%.3f points=%lld", elapsed.nsecsElapsed() / 1000000.0,
+          static_cast<long long>(clean->GetOutput()->GetNumberOfPoints()));
+    mapper->SetInputData(clean->GetOutput());
+    for (int repeat = 0; repeat < 3; ++repeat)
+    {
+        elapsed.restart();
+        view.rotateView(true);
+        qInfo("RENDER_PROFILE phase=merged-rotate repeat=%d elapsed_ms=%.3f surface_cells=%lld", repeat,
+              elapsed.nsecsElapsed() / 1000000.0,
+              static_cast<long long>(mapper->GetPolyDataMapper()->GetInput()->GetNumberOfCells()));
+    }
+    window->RemoveObserver(startTag);
+    window->RemoveObserver(endTag);
+}
+
+void CaseWorkflowTest::onAcceptToolDialog()
+{
+    QInputDialog* input = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
+    if (input != nullptr)
+    {
+        input->setDoubleValue(1.5);
+        input->accept();
+        return;
+    }
+    QColorDialog* color = qobject_cast<QColorDialog*>(QApplication::activeModalWidget());
+    if (color != nullptr)
+    {
+        color->setCurrentColor(QColor(32, 64, 96));
+        color->accept();
+    }
+}
+
+void CaseWorkflowTest::onToolbarTools()
+{
+    IDOSProject project;
+    IDOSMainWindow main;
+    main.setProject(&project);
+    main.resize(1100, 800);
+    main.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&main));
+    IDOSRenderView* view = main.findChild<IDOSRenderView*>();
+    for (IDOSRenderView* candidate : main.findChildren<IDOSRenderView*>())
+    {
+        if (candidate->isVisible())
+        {
+            view = candidate;
+            break;
+        }
+    }
+    QVERIFY(view != nullptr && view->isVisible());
+    IDOSGridObject grid;
+    const int side = qEnvironmentVariableIsSet("IDOS_RENDER_PROFILE_SIDE")
+        ? qEnvironmentVariableIntValue("IDOS_RENDER_PROFILE_SIDE") : 8;
+    QVERIFY(side > 0 && side <= 200);
+    const int depth = 20;
+    QVector<double> coordinates;
+    QVector<double> corners;
+    for (int j = 0; j <= side; ++j)
+    {
+        for (int i = 0; i <= side; ++i)
+        {
+            coordinates << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << depth * 10.0;
+        }
+    }
+    for (int k = 0; k < depth; ++k)
+    {
+        for (int cell = 0; cell < side * side; ++cell)
+        {
+            for (int corner = 0; corner < 8; ++corner)
+            {
+                corners.append((k + (corner >= 4 ? 1 : 0)) * 10.0);
+            }
+        }
+    }
+    grid.setCornerPointData(side, side, depth, coordinates, corners, QVector<int>(side * side * depth, 1));
+    IDOSGridPropertyObject property;
+    property.setDimensions(side, side, depth);
+    property.setName(QStringLiteral("Porosity"));
+    property.setValues(QVector<double>(side * side * depth, 0.2));
+    IDOSGridRenderProvider* provider = new IDOSGridRenderProvider(&grid);
+    provider->setProperty(&property);
+    IDOSRenderObject* object = new IDOSRenderObject(provider);
+    object->setVisible(true);
+    object->update();
+    QVERIFY(view->scene()->add(object));
+    view->resetCamera();
+    view->setSelection(QList<QString>{object->id()});
+    const QStringList navigation = {QStringLiteral("Top"), QStringLiteral("Bottom"),
+        QStringLiteral("Front"), QStringLiteral("Back"), QStringLiteral("Left"),
+        QStringLiteral("Right"), QStringLiteral("Isometric"), QStringLiteral("Reset"),
+        QStringLiteral("FitSelection"), QStringLiteral("FitAll"),
+        QStringLiteral("RotateCounterclockwise"), QStringLiteral("RotateClockwise"),
+        QStringLiteral("Projection"), QStringLiteral("Axes"), QStringLiteral("Legend"),
+        QStringLiteral("CursorTracking"), QStringLiteral("Bounds"), QStringLiteral("GridXray"),
+        QStringLiteral("ClearDisplay"), QStringLiteral("Scale"), QStringLiteral("ZScale"),
+        QStringLiteral("BackgroundColor"), QStringLiteral("Screenshot")};
+    const QImage clipboard = QApplication::clipboard()->image();
+    for (const QString& name : navigation)
+    {
+        QAction* action = view->findChild<QAction*>(QStringLiteral("viewTool") + name + QStringLiteral("Action"));
+        QVERIFY2(action != nullptr && action->isEnabled(), qPrintable(name));
+        const int repeats = action->isCheckable() || name == QStringLiteral("ClearDisplay") ? 2 : 1;
+        for (int repeat = 0; repeat < repeats; ++repeat)
+        {
+            if (name == QStringLiteral("Scale") || name == QStringLiteral("ZScale") || name == QStringLiteral("BackgroundColor"))
+            {
+                QTimer::singleShot(100, this, &CaseWorkflowTest::onAcceptToolDialog);
+            }
+            QElapsedTimer timer;
+            timer.start();
+            action->trigger();
+            qInfo("TOOL_TEST action=%s elapsed_ms=%.3f", qPrintable(name), timer.nsecsElapsed() / 1000000.0);
+            QCoreApplication::processEvents();
+        }
+    }
+    QVERIFY(!QApplication::clipboard()->image().isNull());
+    QApplication::clipboard()->setImage(clipboard);
+    QVERIFY(object->isVisible());
+    QCOMPARE(view->zAxisScale(), 1.5);
+    QCOMPARE(view->background(), QColor(32, 64, 96));
+    const QStringList interactive = {QStringLiteral("PointZoom"), QStringLiteral("PointProbe"),
+        QStringLiteral("DistanceMeasurement"), QStringLiteral("Selection"),
+        QStringLiteral("ClippingPlane"), QStringLiteral("SliceByPoints")};
+    for (const QString& name : interactive)
+    {
+        view->findChild<QAction*>(QStringLiteral("viewToolTopAction"))->trigger();
+        view->resetCamera();
+        QAction* action = view->findChild<QAction*>(QStringLiteral("viewTool") + name + QStringLiteral("Action"));
+        QVERIFY2(action != nullptr && action->isEnabled(), qPrintable(name));
+        action->trigger();
+        QVERIFY(action->isChecked());
+        const QPoint center(view->vtkWidget()->width() / 2, view->vtkWidget()->height() / 2);
+        QElapsedTimer timer;
+        timer.start();
+        QTest::mouseClick(view->vtkWidget(), Qt::LeftButton, Qt::NoModifier, center);
+        QTest::mouseClick(view->vtkWidget(), Qt::LeftButton, Qt::NoModifier, center + QPoint(24, 0));
+        qInfo("TOOL_TEST interaction=%s two_clicks_ms=%.3f", qPrintable(name), timer.nsecsElapsed() / 1000000.0);
+        if (name == QStringLiteral("SliceByPoints"))
+        {
+            timer.restart();
+            QTest::keyClick(view->vtkWidget(), Qt::Key_Return);
+            qInfo("TOOL_TEST phase=slice-execute elapsed_ms=%.3f", timer.nsecsElapsed() / 1000000.0);
+            QVERIFY(view->findChild<QDialog*>(QStringLiteral("renderSliceProfileWindow")) != nullptr);
+        }
+        QTest::keyClick(view->vtkWidget(), Qt::Key_Escape);
+        QTRY_VERIFY(!action->isChecked());
+        QVERIFY(object->isVisible());
+    }
+    vtkSmartPointer<vtkCellPicker> restricted = vtkSmartPointer<vtkCellPicker>::New();
+    const QPoint pixel(view->vtkWidget()->width() / 2, view->vtkWidget()->height() / 2);
+    QVERIFY(view->pickCell(pixel, restricted, object->id()));
+    QVERIFY(!view->pickCell(pixel, restricted, QStringLiteral("missing-object")));
+    view->setTwoDimensional(true);
+    QVERIFY(!view->findChild<QAction*>(QStringLiteral("viewToolClippingPlaneAction"))->isEnabled());
+    QVERIFY(!view->findChild<QAction*>(QStringLiteral("viewToolSliceByPointsAction"))->isEnabled());
+    view->setTwoDimensional(false);
+    IDOSRenderView follower(&main);
+    follower.resize(400, 300);
+    follower.show();
+    QAction* link = view->findChild<QAction*>(QStringLiteral("viewToolLinkedViewAction"));
+    QVERIFY(link != nullptr && link->isEnabled());
+    link->trigger();
+    QVERIFY(follower.isCameraLinked());
+    vtkRenderWindow* window = follower.vtkWidget()->renderWindow();
+    const unsigned long tag = window->AddObserver(vtkCommand::StartEvent, this, &CaseWorkflowTest::onProfileRenderStarted);
+    m_profileRenderCount = 0;
+    vtkCamera* camera = view->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer()->GetActiveCamera();
+    camera->Azimuth(10.0);
+    camera->Elevation(5.0);
+    camera->OrthogonalizeViewUp();
+    QCOMPARE(m_profileRenderCount, 0);
+    QTRY_COMPARE(m_profileRenderCount, 1);
+    camera->Azimuth(5.0);
+    link->trigger();
+    QVERIFY(!follower.isCameraLinked());
+    m_profileRenderCount = 0;
+    QCoreApplication::processEvents();
+    QCOMPARE(m_profileRenderCount, 0);
+    window->RemoveObserver(tag);
+}
+
+void CaseWorkflowTest::onImportHeartbeat()
+{
+    ++m_importHeartbeatCount;
+}
+
+void CaseWorkflowTest::onBackgroundImport()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const int side = qEnvironmentVariableIsSet("IDOS_IMPORT_PROFILE_SIDE")
+        ? qEnvironmentVariableIntValue("IDOS_IMPORT_PROFILE_SIDE") : 8;
+    QVERIFY(side > 0 && side <= 200);
+    const QString binary = directory.filePath(QStringLiteral("grid.EGRID"));
+    const Opm::EclipseGrid reference(side, side, 20, 10.0, 10.0, 10.0);
+    reference.save(binary.toStdString(), false, std::vector<Opm::NNCdata>(), Opm::UnitSystem::newMETRIC());
+    const QString ascii = directory.filePath(QStringLiteral("grid.GRDECL"));
+    QFile file(ascii);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    QTextStream stream(&file);
+    stream << "SPECGRID\n" << side << ' ' << side << " 20 1 F /\nCOORD\n";
+    for (int j = 0; j <= side; ++j)
+    {
+        for (int i = 0; i <= side; ++i)
+        {
+            stream << i * 10 << ' ' << j * 10 << " 0 " << i * 10 << ' ' << j * 10 << " 200\n";
+        }
+    }
+    stream << "/\nZCORN\n";
+    for (int k = 0; k < 20; ++k)
+    {
+        stream << side * side * 4 << '*' << k * 10 << ' ' << side * side * 4 << '*' << (k + 1) * 10 << '\n';
+    }
+    stream << "/\nACTNUM\n" << side * side * 20 << "*1 /\nPORO\n" << side * side * 20 << "*0.2 /\n";
+    stream.flush();
+    file.close();
+    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.grid.eclipse"));
+    QVERIFY(reader != nullptr);
+    QTimer heartbeat;
+    heartbeat.setInterval(1);
+    connect(&heartbeat, &QTimer::timeout, this, &CaseWorkflowTest::onImportHeartbeat);
+    heartbeat.start();
+    m_importHeartbeatCount = 0;
+    QList<IDOSDataObject*> binaryObjects = reader->readInBackground(binary);
+    QVERIFY2(!binaryObjects.isEmpty(), qPrintable(reader->lastError()));
+    QList<IDOSDataObject*> asciiObjects = reader->readInBackground(ascii);
+    QVERIFY2(!asciiObjects.isEmpty(), qPrintable(reader->lastError()));
+    heartbeat.stop();
+    QVERIFY(m_importHeartbeatCount > 0);
+    IDOSGridObject* binaryGrid = qobject_cast<IDOSGridObject*>(binaryObjects.first());
+    IDOSGridObject* asciiGrid = qobject_cast<IDOSGridObject*>(asciiObjects.first());
+    QVERIFY(binaryGrid != nullptr && asciiGrid != nullptr);
+    QCOMPARE(binaryGrid->totalCellCount(), side * side * 20);
+    QCOMPARE(binaryGrid->coord(), asciiGrid->coord());
+    QCOMPARE(binaryGrid->zcorn(), asciiGrid->zcorn());
+    QCOMPARE(binaryGrid->actnum(), asciiGrid->actnum());
+    for (IDOSDataObject* object : binaryObjects + asciiObjects)
+    {
+        QCOMPARE(object->thread(), QThread::currentThread());
+        QVERIFY(object->parent() == nullptr);
+    }
+    QCOMPARE(asciiObjects.size(), 2);
+    IDOSGridPropertyObject* porosity = qobject_cast<IDOSGridPropertyObject*>(asciiObjects.last());
+    QVERIFY(porosity != nullptr);
+    QCOMPARE(porosity->gridId(), asciiGrid->objectId());
+    QCOMPARE(porosity->values().first(), 0.2);
+    QCOMPARE(porosity->values().last(), 0.2);
+    qDeleteAll(binaryObjects);
+    qDeleteAll(asciiObjects);
+    QVERIFY(reader->readInBackground(directory.filePath(QStringLiteral("missing.EGRID"))).isEmpty());
+    QVERIFY(!reader->lastError().isEmpty());
+
+    reader = IDOSDataProviderRegistry::instance().create(QStringLiteral("idos.case.simulation.eclipse"));
+    QList<IDOSDataObject*> objects = reader->readInBackground(QFINDTESTDATA("data/case.DATA"));
+    QVERIFY2(!objects.isEmpty(), qPrintable(reader->lastError()));
+    IDOSProject project;
+    QJsonObject arguments;
+    // An unavailable path proves adoption and redo do not parse the source a second time.
+    arguments.insert(QStringLiteral("filePath"), directory.filePath(QStringLiteral("removed.DATA")));
+    arguments.insert(QStringLiteral("caseName"), QStringLiteral("Prepared Case"));
+    IDOSImportCaseCommand* command = new IDOSImportCaseCommand(&project, arguments);
+    const QString originalId = objects.first()->objectId();
+    QVERIFY(command->adoptParsedObjects(objects));
+    QVERIFY(objects.isEmpty());
+    QVERIFY(project.commandManager()->execute(command));
+    QCOMPARE(project.objects().size(), 1);
+    QCOMPARE(project.objects().first()->objectId(), originalId);
+    QCOMPARE(project.objects().first()->name(), QStringLiteral("Prepared Case"));
+    project.commandManager()->undo();
+    QVERIFY(project.objects().isEmpty());
+    project.commandManager()->redo();
+    QCOMPARE(project.objects().first()->objectId(), originalId);
+}
+
+void CaseWorkflowTest::onImportPerformance()
+{
+    const QString path = qEnvironmentVariable("IDOS_IMPORT_PROFILE_FILE");
+    if (path.isEmpty())
+    {
+        QSKIP("Set IDOS_IMPORT_PROFILE_FILE to profile an actual import.");
+    }
+    const QString id = QFileInfo(path).suffix().compare(QStringLiteral("DATA"), Qt::CaseInsensitive) == 0
+        ? QStringLiteral("idos.case.simulation.eclipse") : QStringLiteral("idos.grid.eclipse");
+    std::unique_ptr<IDOSDataProvider> reader = IDOSDataProviderRegistry::instance().create(id);
+    QVERIFY(reader != nullptr);
+    QTimer heartbeat;
+    heartbeat.setInterval(1);
+    connect(&heartbeat, &QTimer::timeout, this, &CaseWorkflowTest::onImportHeartbeat);
+    heartbeat.start();
+    m_importHeartbeatCount = 0;
+    QElapsedTimer timer;
+    timer.start();
+    const QList<IDOSDataObject*> objects = reader->readInBackground(path);
+    qInfo("IMPORT_PROFILE actual_file=%s total_ms=%.3f objects=%d heartbeat=%d", qPrintable(path),
+          timer.nsecsElapsed() / 1000000.0, objects.size(), m_importHeartbeatCount);
+    QVERIFY2(!objects.isEmpty(), qPrintable(reader->lastError()));
+    for (IDOSDataObject* object : objects)
+    {
+        QCOMPARE(object->thread(), QThread::currentThread());
+    }
+    if (qEnvironmentVariableIsSet("IDOS_IMPORT_PROFILE_VERIFY"))
+    {
+        for (IDOSDataObject* object : objects)
+        {
+            IDOSSimulationSummaryResultsObject* summary = qobject_cast<IDOSSimulationSummaryResultsObject*>(object);
+            if (summary == nullptr)
+            {
+                continue;
+            }
+            Opm::EclIO::ESmry reference(summary->sourceFile().toStdString());
+            const std::vector<Opm::time_point> dates = reference.dates();
+            QCOMPARE(summary->timeValues().size(), static_cast<int>(dates.size()));
+            for (int index = 0; index < summary->timeValues().size(); ++index)
+            {
+                QCOMPARE(summary->timeValues().at(index), dates[index].time_since_epoch().count());
+            }
+            for (const QVariantMap& series : summary->series())
+            {
+                const std::string key = series.value(QStringLiteral("key")).toString().toStdString();
+                const std::vector<float>& expected = reference.get(key);
+                const QVector<double> actual = series.value(QStringLiteral("values")).value<QVector<double>>();
+                QCOMPARE(actual.size(), static_cast<int>(expected.size()));
+                QCOMPARE(series.value(QStringLiteral("unit")).toString(), QString::fromStdString(reference.get_unit(key)));
+                for (int index = 0; index < actual.size(); ++index)
+                {
+                    QCOMPARE(actual.at(index), static_cast<double>(expected[index]));
+                }
+            }
+            qInfo("IMPORT_PROFILE verified_series=%d time_steps=%d", summary->series().size(), summary->timeValues().size());
+        }
+    }
+    qDeleteAll(objects);
+}
+
+void CaseWorkflowTest::onWaitingDialog()
+{
+    QWidget parent;
+    parent.resize(800, 600);
+    parent.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&parent));
+    IDOSWaitingDialog dialog(&parent);
+    const QString detail = QStringLiteral("A_very_long_reservoir_model_with_properties_and_results_2026.EGRID");
+    dialog.begin(QStringLiteral("Importing Data"), QStringLiteral("Reading the grid and its properties…"), detail);
+    QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+    QVERIFY(dialog.isRunning());
+    QCOMPARE(dialog.windowModality(), Qt::ApplicationModal);
+    QProgressBar* progress = dialog.findChild<QProgressBar*>(QStringLiteral("waitingProgress"));
+    QLabel* file = dialog.findChild<QLabel*>(QStringLiteral("waitingDetail"));
+    QLabel* elapsed = dialog.findChild<QLabel*>(QStringLiteral("waitingElapsed"));
+    QVERIFY(progress != nullptr && file != nullptr && elapsed != nullptr);
+    QCOMPARE(progress->minimum(), 0);
+    QCOMPARE(progress->maximum(), 0);
+    QCOMPARE(file->toolTip(), detail);
+    QTest::keyClick(&dialog, Qt::Key_Escape);
+    QVERIFY(dialog.isVisible());
+    QVERIFY(!dialog.close());
+    dialog.reject();
+    dialog.accept();
+    QVERIFY(dialog.isRunning() && dialog.isVisible());
+    QTRY_VERIFY(elapsed->text().contains(QStringLiteral("1 s")));
+    const QString screenshots = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(dialog.grab().save(QDir(screenshots).filePath(QStringLiteral("waiting-dialog.png"))));
+    }
+    dialog.setMessage(QStringLiteral("Updating the project…"));
+    QCOMPARE(dialog.findChild<QLabel*>(QStringLiteral("waitingMessage"))->text(), QStringLiteral("Updating the project…"));
+    dialog.setProgress(7, 10);
+    QCOMPARE(progress->value(), 7);
+    QCOMPARE(progress->maximum(), 10);
+    dialog.setProgress(20, 10);
+    QCOMPARE(progress->value(), 10);
+    dialog.setDetail(QString());
+    QVERIFY(!file->isVisible());
+    dialog.finish();
+    QVERIFY(!dialog.isRunning() && !dialog.isVisible());
+    dialog.begin(QStringLiteral("Processing"), QStringLiteral("<literal text>"));
+    QCOMPARE(progress->maximum(), 0);
+    QCOMPARE(dialog.findChild<QLabel*>(QStringLiteral("waitingMessage"))->textFormat(), Qt::PlainText);
+    QVERIFY(elapsed->text().contains(QStringLiteral("0 s")));
+    dialog.finish();
+    QTranslator translator;
+    QVERIFY(translator.load(QCoreApplication::applicationDirPath() + QStringLiteral("/i18n/idos_zh_CN.qm")));
+    QCoreApplication::installTranslator(&translator);
+    const QString title = QCoreApplication::translate("IDOSMainWindow", "Importing Data");
+    const QString message = QCoreApplication::translate("IDOSMainWindow", "Reading data and updating the project…");
+    IDOSWaitingDialog chinese(&parent);
+    chinese.begin(title, message, detail);
+    QTest::qWait(300);
+    QVERIFY(chinese.findChild<QLabel*>(QStringLiteral("waitingElapsed"))->text().contains(QCoreApplication::translate("IDOSWaitingDialog", "%1 s").arg(0)));
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(chinese.grab().save(QDir(screenshots).filePath(QStringLiteral("waiting-dialog-zh.png"))));
+    }
+    chinese.finish();
+    const QPalette previous = QApplication::palette();
+    QPalette dark = previous;
+    dark.setColor(QPalette::Window, QColor(32, 36, 44));
+    dark.setColor(QPalette::WindowText, QColor(236, 240, 246));
+    dark.setColor(QPalette::Disabled, QPalette::WindowText, QColor(160, 173, 190));
+    dark.setColor(QPalette::Midlight, QColor(61, 70, 84));
+    dark.setColor(QPalette::Highlight, QColor(87, 155, 245));
+    QApplication::setPalette(dark);
+    IDOSWaitingDialog darkDialog;
+    darkDialog.begin(title, message, detail);
+    QTest::qWait(300);
+    const QPixmap darkImage = darkDialog.grab();
+    darkDialog.finish();
+    QApplication::setPalette(previous);
+    QCoreApplication::removeTranslator(&translator);
+    if (!screenshots.isEmpty())
+    {
+        QVERIFY(darkImage.save(QDir(screenshots).filePath(QStringLiteral("waiting-dialog-dark.png"))));
+    }
+}
+
+quint64 CaseWorkflowTest::processPrivateBytes()
+{
+#if defined(_WIN32)
+    PROCESS_MEMORY_COUNTERS_EX counters = {};
+    if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters)))
+    {
+        return static_cast<quint64>(counters.PrivateUsage);
+    }
+#endif
+    return 0;
+}
+
+void CaseWorkflowTest::onMemorySample()
+{
+    m_memoryPeak = qMax(m_memoryPeak, processPrivateBytes());
+}
+
+void CaseWorkflowTest::readRestartForMemory(IDOSGridPropertyEclipseProvider* provider, const QString& path,
+                                             const IDOSGridObject* grid, QThread* targetThread,
+                                             QList<IDOSDataObject*>* objects)
+{
+    *objects = provider->readRestart(path, grid);
+    for (IDOSDataObject* object : *objects)
+    {
+        object->moveToThread(targetThread);
+    }
+}
+
+void CaseWorkflowTest::onRestartMemory()
+{
+    const int layers = qEnvironmentVariableIsSet("IDOS_MEMORY_PROFILE") ? 80 : 2;
+    const int steps = qEnvironmentVariableIsSet("IDOS_MEMORY_PROFILE") ? 12 : 3;
+    const int cells = 100 * 100 * layers;
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("memory.UNRST"));
+    QVector<int> active(cells);
+    for (int index = 0; index < cells; ++index)
+    {
+        active[index] = index % 2;
+    }
+    IDOSGridObject grid;
+    grid.setCornerPointData(100, 100, layers, QVector<double>(), QVector<double>(), active);
+    {
+        Opm::EclIO::EclOutput file(path.toStdString(), false);
+        std::vector<int> header(100, 0);
+        header[8] = 100;
+        header[9] = 100;
+        header[10] = layers;
+        header[11] = cells / 2;
+        for (int step = 0; step < steps; ++step)
+        {
+            file.write("SEQNUM", std::vector<int>{step});
+            file.write("INTEHEAD", header);
+            file.write("PRESSURE", std::vector<float>(cells / 2, static_cast<float>(1000 + step)));
+            file.write("SWAT", std::vector<double>(cells / 2, step * 0.03125));
+            file.write("SGAS", std::vector<float>(cells, static_cast<float>(step * 0.0625)));
+        }
+    }
+    IDOSGridPropertyEclipseProvider provider;
+    QList<IDOSDataObject*> objects;
+    const quint64 before = processPrivateBytes();
+    m_memoryPeak = before;
+    QTimer sampler;
+    sampler.setInterval(1);
+    connect(&sampler, &QTimer::timeout, this, &CaseWorkflowTest::onMemorySample);
+    std::unique_ptr<QThread> worker(QThread::create(&CaseWorkflowTest::readRestartForMemory, &provider,
+                                                   path, &grid, QThread::currentThread(), &objects));
+    QEventLoop loop;
+    connect(worker.get(), &QThread::finished, &loop, &QEventLoop::quit);
+    sampler.start();
+    QElapsedTimer timer;
+    timer.start();
+    worker->start();
+    loop.exec();
+    worker->wait();
+    sampler.stop();
+    onMemorySample();
+    qInfo("MEMORY_PROFILE cells=%d steps=%d baseline_mib=%.2f peak_mib=%.2f delta_mib=%.2f loaded_mib=%.2f elapsed_ms=%.3f",
+          cells, steps, before / 1048576.0, m_memoryPeak / 1048576.0, (m_memoryPeak - before) / 1048576.0,
+          processPrivateBytes() / 1048576.0, timer.nsecsElapsed() / 1000000.0);
+    QVERIFY2(provider.lastError().isEmpty(), qPrintable(provider.lastError()));
+    QCOMPARE(objects.size(), 3);
+    QList<QPointer<IDOSDataObject>> guards;
+    for (IDOSDataObject* object : objects)
+    {
+        guards.append(object);
+        QCOMPARE(object->thread(), QThread::currentThread());
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        QVERIFY(property != nullptr);
+        QCOMPARE(property->reportSteps().size(), steps);
+        QCOMPARE(property->gridId(), grid.objectId());
+        for (int step = 0; step < steps; ++step)
+        {
+            const QVector<double> values = property->reportStepValues(step);
+            QCOMPARE(values.size(), cells);
+            for (int index = 0; index < cells; ++index)
+            {
+                const bool full = property->keyword() == QStringLiteral("SGAS");
+                const double expected = !full && index % 2 == 0 ? 0.0
+                    : property->keyword() == QStringLiteral("PRESSURE") ? 1000.0 + step
+                    : full ? step * 0.0625 : step * 0.03125;
+                QCOMPARE(values.at(index), expected);
+            }
+        }
+    }
+    qDeleteAll(objects);
+    for (const QPointer<IDOSDataObject>& guard : guards)
+    {
+        QVERIFY(guard.isNull());
+    }
+    qInfo("MEMORY_PROFILE after_delete_mib=%.2f", processPrivateBytes() / 1048576.0);
+    // Verify that releasing an INIT source array does not invalidate the next array's index.
+    const QString initPath = directory.filePath(QStringLiteral("memory.INIT"));
+    {
+        Opm::EclIO::EclOutput file(initPath.toStdString(), false);
+        std::vector<int> header(100, 0);
+        header[8] = 2;
+        header[9] = 2;
+        header[10] = 2;
+        header[11] = 4;
+        file.write("INTEHEAD", header);
+        file.write("PORO", std::vector<float>(4, 0.25f));
+        file.write("PERMX", std::vector<double>(4, 100.0));
+        file.write("SATNUM", std::vector<int>(4, 2));
+    }
+    const QList<IDOSDataObject*> properties = provider.read(initPath);
+    QVERIFY2(provider.lastError().isEmpty(), qPrintable(provider.lastError()));
+    QCOMPARE(properties.size(), 3);
+    for (IDOSDataObject* object : properties)
+    {
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        QVERIFY(property != nullptr);
+        const double expected = property->keyword() == QStringLiteral("PORO") ? 0.25
+            : property->keyword() == QStringLiteral("PERMX") ? 100.0 : 2.0;
+        QCOMPARE(property->values().size(), 4);
+        for (double value : property->values())
+        {
+            QCOMPARE(value, expected);
+        }
+    }
+    qDeleteAll(properties);
+}
+
+void CaseWorkflowTest::onTreeCheckRendering()
+{
+    IDOSProject project;
+    IDOSMainWindow main;
+    main.setProject(&project);
+    main.resize(1100, 800);
+    main.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&main));
+    IDOSRenderView* view = nullptr;
+    for (IDOSRenderView* candidate : main.findChildren<IDOSRenderView*>())
+    {
+        if (candidate->isVisible())
+        {
+            view = candidate;
+            break;
+        }
+    }
+    QVERIFY(view != nullptr);
+    const int side = qEnvironmentVariableIsSet("IDOS_RENDER_PROFILE_SIDE")
+        ? qEnvironmentVariableIntValue("IDOS_RENDER_PROFILE_SIDE") : 8;
+    QVERIFY(side > 0 && side <= 200);
+    const int depth = 20;
+    QVector<double> coordinates;
+    QVector<double> corners;
+    for (int j = 0; j <= side; ++j)
+    {
+        for (int i = 0; i <= side; ++i)
+        {
+            coordinates << i * 10.0 << j * 10.0 << 0.0 << i * 10.0 << j * 10.0 << depth * 10.0;
+        }
+    }
+    for (int k = 0; k < depth; ++k)
+    {
+        for (int cell = 0; cell < side * side; ++cell)
+        {
+            for (int corner = 0; corner < 8; ++corner)
+            {
+                corners.append((k + (corner >= 4 ? 1 : 0)) * 10.0);
+            }
+        }
+    }
+    IDOSGridObject* grid = new IDOSGridObject();
+    grid->setCornerPointData(side, side, depth, coordinates, corners, QVector<int>(side * side * depth, 1));
+    grid->setName(QStringLiteral("Check Grid"));
+    project.add(grid);
+    IDOSGridPropertyObject* property = new IDOSGridPropertyObject();
+    property->setName(QStringLiteral("Porosity"));
+    property->setGridId(grid->objectId());
+    property->setDimensions(side, side, depth);
+    property->setValues(QVector<double>(side * side * depth, 0.25));
+    project.add(property);
+    IDOSSimulationCaseObject* scenario = new IDOSSimulationCaseObject();
+    scenario->setName(QStringLiteral("Check Case"));
+    scenario->addItemRef(IDOSCaseItemRef(QStringLiteral("case.grid"), grid->objectId()));
+    scenario->addItemRef(IDOSCaseItemRef(QStringLiteral("case.gridProperty"), property->objectId()));
+    project.add(scenario);
+    IDOSTreeModel* model = main.caseTreeModel();
+    const unsigned long tag = view->vtkWidget()->renderWindow()->AddObserver(
+        vtkCommand::StartEvent, this, &CaseWorkflowTest::onProfileRenderStarted);
+    const QStringList ids = {grid->objectId(), grid->objectId(), grid->objectId(),
+        property->objectId(), property->objectId(), grid->objectId(), grid->objectId()};
+    const QList<Qt::CheckState> states = {Qt::Checked, Qt::Unchecked, Qt::Checked,
+        Qt::Checked, Qt::Unchecked, Qt::Unchecked, Qt::Checked};
+    vtkActor* originalActor = nullptr;
+    vtkDataSet* originalMesh = nullptr;
+    for (int index = 0; index < ids.size(); ++index)
+    {
+        QCoreApplication::processEvents();
+        const QModelIndex node = model->index(ids.at(index));
+        QVERIFY(node.isValid());
+        m_profileRenderCount = 0;
+        QElapsedTimer timer;
+        timer.start();
+        QVERIFY(model->setData(node, states.at(index), Qt::CheckStateRole));
+        qInfo("CHECK_PROFILE step=%d state=%d elapsed_ms=%.3f frames=%d", index, states.at(index),
+              timer.nsecsElapsed() / 1000000.0, m_profileRenderCount);
+        QCOMPARE(m_profileRenderCount, 1);
+        IDOSRenderObject* object = IDOSGridRenderProvider::renderObject(grid->objectId(), view);
+        QVERIFY(object != nullptr);
+        vtkActor* actor = actors(object->provider()).first();
+        if (originalActor == nullptr)
+        {
+            originalActor = actor;
+            originalMesh = actor->GetMapper()->GetInput();
+        }
+        QCOMPARE(actor, originalActor);
+        QCOMPARE(actor->GetMapper()->GetInput(), originalMesh);
+        QCOMPARE(object->isVisible(), index != 1 && index != 5);
+        if (!object->isVisible())
+        {
+            vtkRenderer* renderer = view->vtkWidget()->renderWindow()->GetRenderers()->GetFirstRenderer();
+            QVERIFY(renderer->HasViewProp(actor));
+            QCOMPARE(actor->GetVisibility(), 0);
+            const QPoint center(view->vtkWidget()->width() / 2, view->vtkWidget()->height() / 2);
+            double position[3];
+            QVERIFY(!view->pickWorldPosition(center, position));
+            QVERIFY(view->objectIdAt(center).isEmpty());
+        }
+        IDOSGridRenderProvider* provider = dynamic_cast<IDOSGridRenderProvider*>(object->provider());
+        QVERIFY(provider != nullptr);
+        QCOMPARE(provider->property(), index == 3 ? property : nullptr);
+    }
+    m_profileRenderCount = 0;
+    main.renderServer()->setChecked(grid->objectId(), Qt::Checked, view);
+    QCOMPARE(m_profileRenderCount, 0);
+    vtkWeakPointer<vtkActor> actorGuard = originalActor;
+    vtkWeakPointer<vtkDataSet> meshGuard = originalMesh;
+    IDOSRenderObject* object = IDOSGridRenderProvider::renderObject(grid->objectId(), view);
+    QVERIFY(view->scene()->remove(object->id()));
+    QVERIFY(actorGuard == nullptr);
+    QVERIFY(meshGuard == nullptr);
+    view->vtkWidget()->renderWindow()->RemoveObserver(tag);
+}
+
+void CaseWorkflowTest::onSyntheticDemoData()
+{
+    const QString directory = qEnvironmentVariable("IDOS_DEMO_DATA_DIR");
+    if (directory.isEmpty())
+    {
+        QSKIP("Set IDOS_DEMO_DATA_DIR to validate the generated demonstration data.");
+    }
+    std::unique_ptr<IDOSDataProvider> gridReader = IDOSDataProviderRegistry::instance().create(
+        QStringLiteral("idos.grid.eclipse"));
+    QVERIFY(gridReader != nullptr);
+    const QList<IDOSDataObject*> gridObjects = gridReader->read(directory + QStringLiteral("/SYNTHETIC.GRDECL"));
+    QVERIFY2(!gridObjects.isEmpty(), qPrintable(gridReader->lastError()));
+    int gridCount = 0;
+    int propertyCount = 0;
+    for (IDOSDataObject* object : gridObjects)
+    {
+        IDOSGridObject* grid = qobject_cast<IDOSGridObject*>(object);
+        if (grid != nullptr)
+        {
+            ++gridCount;
+            QCOMPARE(grid->nx(), 50);
+            QCOMPARE(grid->ny(), 40);
+            QCOMPARE(grid->nz(), 20);
+            QCOMPARE(grid->activeCellCount(), 39520);
+        }
+        IDOSGridPropertyObject* property = qobject_cast<IDOSGridPropertyObject*>(object);
+        if (property != nullptr)
+        {
+            ++propertyCount;
+            QCOMPARE(property->values().size(), 40000);
+            for (double value : property->values())
+            {
+                QVERIFY(std::isfinite(value));
+                QVERIFY(value > 0.0);
+            }
+        }
+    }
+    QCOMPARE(gridCount, 1);
+    QCOMPARE(propertyCount, 5);
+    qDeleteAll(gridObjects);
+    std::unique_ptr<IDOSDataProvider> headerReader = IDOSDataProviderRegistry::instance().create(
+        QStringLiteral("idos.well.header"));
+    std::unique_ptr<IDOSDataProvider> pathReader = IDOSDataProviderRegistry::instance().create(
+        QStringLiteral("idos.well.path"));
+    QVERIFY(headerReader != nullptr);
+    QVERIFY(pathReader != nullptr);
+    const QList<IDOSDataObject*> headers = headerReader->read(directory + QStringLiteral("/Wellheader.txt"));
+    QVERIFY2(headers.size() == 6, qPrintable(headerReader->lastError()));
+    for (IDOSDataObject* object : headers)
+    {
+        IDOSWellObject* header = qobject_cast<IDOSWellObject*>(object);
+        QVERIFY(header != nullptr);
+        const QList<IDOSDataObject*> paths = pathReader->read(
+            directory + QStringLiteral("/wells/") + header->name() + QStringLiteral(".dev"));
+        QVERIFY2(paths.size() == 1, qPrintable(pathReader->lastError()));
+        IDOSWellObject* well = qobject_cast<IDOSWellObject*>(paths.first());
+        QVERIFY(well != nullptr);
+        QCOMPARE(well->name(), header->name());
+        const QVector<IDOSWellPathPoint> points = well->path().points();
+        QCOMPARE(points.size(), 121);
+        QCOMPARE(points.first().x(), header->wellHead().surfaceX());
+        QCOMPARE(points.first().y(), header->wellHead().surfaceY());
+        QCOMPARE(points.first().z(), 0.0);
+        for (int index = 1; index < points.size(); ++index)
+        {
+            QVERIFY(points.at(index).md() > points.at(index - 1).md());
+            QCOMPARE(points.at(index).z(), points.at(index).tvd());
+        }
+        qDeleteAll(paths);
+    }
+    qDeleteAll(headers);
+}
+
+void CaseWorkflowTest::onSubmitProjectCoordinates()
+{
+    IDOSNewProjectDialog* dialog = qobject_cast<IDOSNewProjectDialog*>(QApplication::activeModalWidget());
+    if (dialog != nullptr)
+    {
+        dialog->findChild<QDoubleSpinBox*>(QStringLiteral("coordinateOriginZ"))->setValue(45.0);
+        dialog->onAccepted();
+        setProperty("coordinateDialogSubmitted", true);
+    }
+}
+
+void CaseWorkflowTest::onProjectCoordinates()
+{
+    QTranslator coordinateTranslator;
+    QVERIFY(coordinateTranslator.load(QCoreApplication::applicationDirPath() + QStringLiteral("/i18n/idos_zh_CN.qm")));
+    QVERIFY(QApplication::installTranslator(&coordinateTranslator));
+    QString error;
+    QVector<double> point{1.0, 1.0, 25.0};
+    QVERIFY2(IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:4326"), QStringLiteral("EPSG:3857"), point, error), qPrintable(error));
+    QVERIFY(std::abs(point.at(0) - 111319.49079327357) < 1.0e-6);
+    QVERIFY(std::abs(point.at(1) - 111325.1428663851) < 1.0e-6);
+    QCOMPARE(point.at(2), 25.0);
+    QVERIFY(IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:3857"), QStringLiteral("EPSG:4326"), point, error));
+    QVERIFY(std::abs(point.at(0) - 1.0) < 1.0e-10);
+    QVERIFY(std::abs(point.at(1) - 1.0) < 1.0e-10);
+    QVector<double> earth{0.0, 0.0, 0.0};
+    QVERIFY(IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:4979"), QStringLiteral("EPSG:4978"), earth, error));
+    QVERIFY(std::abs(earth.at(0) - 6378137.0) < 1.0e-6);
+    QVERIFY(std::abs(earth.at(1)) < 1.0e-6);
+    QVERIFY(std::abs(earth.at(2)) < 1.0e-6);
+    QVector<double> dynamic{0.0, 0.0, 0.0};
+    QVERIFY(!IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:7912"), QStringLiteral("EPSG:7789"), dynamic, error));
+    QVERIFY(IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:7912"), QStringLiteral("EPSG:7789"), dynamic, error, 2020.0));
+    const QVector<double> before = point;
+    QVERIFY(!IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:0"), QStringLiteral("EPSG:4326"), point, error));
+    QCOMPARE(point, before);
+    QVERIFY(!error.isEmpty());
+    QVector<double> invalid{0.0, 100.0, 0.0};
+    const QVector<double> invalidBefore = invalid;
+    QVERIFY(!IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:4326"), QStringLiteral("EPSG:3857"), invalid, error));
+    QCOMPARE(invalid, invalidBefore);
+    QVector<double> missingGrid{0.0, 0.0, 0.0};
+    QVERIFY(!IDOSProjectMetadata::transformCrs(QStringLiteral("EPSG:4326+5773"), QStringLiteral("EPSG:4979"), missingGrid, error));
+    IDOSProjectMetadata source;
+    source.setName(QStringLiteral("Source"));
+    source.setCoordinateType(IDOSProjectMetadata::CoordinateType::Local);
+    source.setLengthUnit(IDOSProjectMetadata::LengthUnit::Feet);
+    source.setZDirection(IDOSProjectMetadata::ZDirection::PositiveDown);
+    source.setOrigin(100.0, 200.0, 30.0);
+    source.setRotationDegrees(90.0);
+    source.setHorizontalScale(2.0);
+    IDOSProjectMetadata target;
+    target.setName(QStringLiteral("Target"));
+    target.setZDirection(IDOSProjectMetadata::ZDirection::PositiveUp);
+    target.setCoordinateType(IDOSProjectMetadata::CoordinateType::Local);
+    QVector<double> local{10.0, 0.0, 20.0};
+    QVERIFY(target.transformCoordinates(source, local, error));
+    QVERIFY(std::abs(local.at(0) - 100.0) < 1.0e-10);
+    QVERIFY(std::abs(local.at(1) - 206.096) < 1.0e-10);
+    QVERIFY(std::abs(local.at(2) - 23.904) < 1.0e-10);
+    QVERIFY(source.transformCoordinates(target, local, error));
+    QVERIFY(std::abs(local.at(0) - 10.0) < 1.0e-10);
+    QVERIFY(std::abs(local.at(1)) < 1.0e-10);
+    QVERIFY(std::abs(local.at(2) - 20.0) < 1.0e-10);
+    IDOSProjectMetadata restored;
+    QVERIFY(restored.restoreProjectData(source.projectData(), error));
+    QCOMPARE(restored.projectData(), source.projectData());
+    QVariantMap legacy = source.projectData();
+    const QStringList newFields{QStringLiteral("lengthUnit"), QStringLiteral("zDirection"), QStringLiteral("originX"),
+        QStringLiteral("originY"), QStringLiteral("originZ"), QStringLiteral("rotationDegrees"), QStringLiteral("horizontalScale")};
+    for (const QString& field : newFields)
+    {
+        legacy.remove(field);
+    }
+    QVERIFY(restored.restoreProjectData(legacy, error));
+    QCOMPARE(restored.originX(), 0.0);
+    QCOMPARE(restored.horizontalScale(), 1.0);
+    target.setCoordinateType(IDOSProjectMetadata::CoordinateType::Custom);
+    target.setCoordinateReference(QStringLiteral("EPSG:32650"));
+    IDOSNewProjectDialog dialog;
+    dialog.setProjectMetadata(target);
+    QCOMPARE(dialog.projectMetadata().projectData(), target.projectData());
+    dialog.findChild<QLineEdit*>(QStringLiteral("conversionSourceCrs"))->setText(QStringLiteral("EPSG:4326"));
+    dialog.findChild<QLineEdit*>(QStringLiteral("conversionInput"))->setText(QStringLiteral("117, 0, 50"));
+    dialog.findChild<QPushButton*>(QStringLiteral("convertCoordinates"))->click();
+    QVERIFY(dialog.findChild<QLabel*>(QStringLiteral("conversionResult"))->text().contains(QStringLiteral("500000")));
+    dialog.findChild<QToolButton*>()->setChecked(true);
+    dialog.show();
+    QTest::qWait(30);
+    QScrollArea* coordinateScroll = dialog.findChild<QScrollArea*>();
+    QVERIFY(coordinateScroll != nullptr);
+    QVERIFY(coordinateScroll->verticalScrollBar()->maximum() > 0);
+    const QString screenshotDirectory = qEnvironmentVariable("IDOS_TEST_SCREENSHOT_DIR");
+    if (!screenshotDirectory.isEmpty())
+    {
+        QVERIFY(dialog.grab().save(screenshotDirectory + QStringLiteral("/project-coordinates.png")));
+        coordinateScroll->ensureWidgetVisible(dialog.findChild<QLabel*>(QStringLiteral("conversionResult")));
+        QTest::qWait(20);
+        QVERIFY(dialog.grab().save(screenshotDirectory + QStringLiteral("/project-coordinate-result.png")));
+    }
+    dialog.hide();
+    QVERIFY(!target.transformCoordinates(source, local, error));
+    source.setCoordinateReference(QStringLiteral("EPSG:32650"));
+    QVERIFY(target.transformCoordinates(source, local, error));
+    source.setVerticalDatum(QStringLiteral("KB"));
+    QVERIFY(!target.transformCoordinates(source, local, error));
+    IDOSProject project;
+    IDOSMainWindow window;
+    window.setProject(&project);
+    IDOSProjectMetadata original = project.metadata();
+    original.setName(QStringLiteral("Coordinate Study"));
+    QVERIFY(project.setMetadata(original));
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("metadata"), QJsonObject::fromVariantMap(target.projectData()));
+    QVERIFY(project.commandManager()->execute(QStringLiteral("project.settings.update"), arguments).value(QStringLiteral("success")).toBool());
+    QCOMPARE(project.metadata().coordinateReference(), QStringLiteral("EPSG:32650"));
+    QVERIFY(project.commandManager()->canUndo());
+    project.commandManager()->undo();
+    QCOMPARE(project.metadata().projectData(), original.projectData());
+    QVERIFY(project.commandManager()->canRedo());
+    project.commandManager()->redo();
+    QCOMPARE(project.metadata().coordinateReference(), QStringLiteral("EPSG:32650"));
+    QJsonObject query;
+    query.insert(QStringLiteral("sourceCrs"), QStringLiteral("EPSG:4326"));
+    query.insert(QStringLiteral("targetCrs"), QStringLiteral("EPSG:3857"));
+    query.insert(QStringLiteral("xyz"), QJsonArray{1.0, 1.0, 25.0});
+    const QString historyText = project.commandManager()->undoText();
+    QVERIFY(project.commandManager()->execute(QStringLiteral("coordinates.transform"), query).value(QStringLiteral("success")).toBool());
+    QCOMPARE(project.commandManager()->undoText(), historyText);
+    const QJsonArray queryResult = project.commandManager()->result().value(QStringLiteral("xyz")).toArray();
+    QVERIFY(std::abs(queryResult.at(0).toDouble() - 111319.49079327357) < 1.0e-6);
+    QAction* settings = window.findChild<QAction*>(QStringLiteral("projectSettingsAction"));
+    QVERIFY(settings != nullptr && settings->isEnabled());
+    setProperty("coordinateDialogSubmitted", false);
+    QTimer submit;
+    connect(&submit, &QTimer::timeout, this, &CaseWorkflowTest::onSubmitProjectCoordinates);
+    submit.start(20);
+    settings->trigger();
+    submit.stop();
+    QVERIFY(property("coordinateDialogSubmitted").toBool());
+    QCOMPARE(project.metadata().originZ(), 45.0);
+    project.commandManager()->undo();
+    QCOMPARE(project.metadata().originZ(), 0.0);
+    QTemporaryDir savedDirectory;
+    QVERIFY(savedDirectory.isValid());
+    const QString savedPath = savedDirectory.filePath(QStringLiteral("coordinates.idos"));
+    QVERIFY2(project.save(savedPath, window.dataRegistry(), error), qPrintable(error));
+    QScopedPointer<IDOSProject> loaded(IDOSProject::load(savedPath, window.dataRegistry(), error));
+    QVERIFY2(loaded != nullptr, qPrintable(error));
+    QCOMPARE(loaded->metadata().projectData(), project.metadata().projectData());
+    window.setProject(nullptr);
+}
+
 QTEST_MAIN(CaseWorkflowTest)
 
 CaseWorkflowTest::CaseWorkflowTest()
     :
-    m_cancel(false)
+    m_memoryPeak(0)
+    , m_importHeartbeatCount(0)
+    , m_profileRenderNanoseconds(0)
+    , m_profileRenderCount(0)
+    , m_cancel(false)
     , m_expectDisabled(false)
     , m_settingsDirectory(new QTemporaryDir())
     , m_previousSettingsFormat(QSettings::defaultFormat())

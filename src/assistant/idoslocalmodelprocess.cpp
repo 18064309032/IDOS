@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -8,11 +10,20 @@
 #include "idoslocalmodelprocess.h"
 
 IDOSLocalModelProcess::IDOSLocalModelProcess(QObject* parent)
-    : QObject(parent)
+    :
+    QObject(parent)
+#ifdef Q_OS_WIN
+    , m_jobHandle(nullptr)
+    , m_startupInfo()
+#endif
     , m_process(new QProcess(this))
     , m_baseUrl(QStringLiteral("http://127.0.0.1:18080"))
     , m_lastError()
 {
+#ifdef Q_OS_WIN
+    m_process->setCreateProcessArgumentsModifier(
+        std::bind(&IDOSLocalModelProcess::modifyProcessArguments, this, std::placeholders::_1));
+#endif
     connect(m_process,
             &QProcess::stateChanged,
             this,
@@ -49,12 +60,22 @@ bool IDOSLocalModelProcess::start(const QString& assistantRoot, QString& error)
     }
 
     m_lastError.clear();
+#ifdef Q_OS_WIN
+    if (!prepareProcessJob(error))
+    {
+        setError(error);
+        return false;
+    }
+#endif
     m_process->setWorkingDirectory(workingDirectory);
     m_process->start(executablePath, arguments);
     if (!m_process->waitForStarted(5000))
     {
         error = m_process->errorString();
         setError(error);
+#ifdef Q_OS_WIN
+        releaseProcessJob();
+#endif
         return false;
     }
 
@@ -65,6 +86,9 @@ void IDOSLocalModelProcess::stop()
 {
     if (!isRunning())
     {
+#ifdef Q_OS_WIN
+        releaseProcessJob();
+#endif
         return;
     }
 
@@ -74,7 +98,81 @@ void IDOSLocalModelProcess::stop()
         m_process->kill();
         m_process->waitForFinished(3000);
     }
+#ifdef Q_OS_WIN
+    releaseProcessJob();
+#endif
 }
+
+#ifdef Q_OS_WIN
+bool IDOSLocalModelProcess::prepareProcessJob(QString& error)
+{
+    releaseProcessJob();
+    m_jobHandle = CreateJobObjectW(nullptr, nullptr);
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {};
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if (m_jobHandle == nullptr ||
+        !SetInformationJobObject(m_jobHandle, JobObjectExtendedLimitInformation,
+                                 &limits, sizeof(limits)))
+    {
+        const DWORD code = GetLastError();
+        error = tr("Unable to configure assistant process cleanup (Windows error %1).").arg(code);
+        releaseProcessJob();
+        return false;
+    }
+
+    SIZE_T size = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &size);
+    LPPROC_THREAD_ATTRIBUTE_LIST attributes = static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(
+        HeapAlloc(GetProcessHeap(), 0, size));
+    if (attributes == nullptr)
+    {
+        error = tr("Unable to allocate assistant process startup attributes.");
+        releaseProcessJob();
+        return false;
+    }
+    if (!InitializeProcThreadAttributeList(attributes, 1, 0, &size))
+    {
+        const DWORD code = GetLastError();
+        HeapFree(GetProcessHeap(), 0, attributes);
+        error = tr("Unable to configure assistant process cleanup (Windows error %1).").arg(code);
+        releaseProcessJob();
+        return false;
+    }
+    m_startupInfo.lpAttributeList = attributes;
+    if (!UpdateProcThreadAttribute(attributes, 0, PROC_THREAD_ATTRIBUTE_JOB_LIST,
+                                   &m_jobHandle, sizeof(m_jobHandle), nullptr, nullptr))
+    {
+        const DWORD code = GetLastError();
+        error = tr("Unable to configure assistant process cleanup (Windows error %1).").arg(code);
+        releaseProcessJob();
+        return false;
+    }
+    return true;
+}
+
+void IDOSLocalModelProcess::releaseProcessJob()
+{
+    if (m_startupInfo.lpAttributeList != nullptr)
+    {
+        DeleteProcThreadAttributeList(m_startupInfo.lpAttributeList);
+        HeapFree(GetProcessHeap(), 0, m_startupInfo.lpAttributeList);
+        m_startupInfo.lpAttributeList = nullptr;
+    }
+    if (m_jobHandle != nullptr)
+    {
+        CloseHandle(m_jobHandle);
+        m_jobHandle = nullptr;
+    }
+}
+
+void IDOSLocalModelProcess::modifyProcessArguments(QProcess::CreateProcessArguments* arguments)
+{
+    m_startupInfo.StartupInfo = *arguments->startupInfo;
+    m_startupInfo.StartupInfo.cb = sizeof(m_startupInfo);
+    arguments->startupInfo = &m_startupInfo.StartupInfo;
+    arguments->flags |= EXTENDED_STARTUPINFO_PRESENT;
+}
+#endif
 
 bool IDOSLocalModelProcess::isRunning() const
 {

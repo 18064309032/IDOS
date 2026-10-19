@@ -1,5 +1,7 @@
 #include <memory>
 
+#include <QDebug>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QMap>
@@ -78,6 +80,12 @@ bool IDOSImportCaseCommand::apply(QString& error)
     {
         return false;
     }
+    targetProject = project();
+    if (targetProject == nullptr || !validateCommand(error))
+    {
+        error = error.isEmpty() ? QObject::tr("The target project is unavailable.") : error;
+        return false;
+    }
 
     for (const QPointer<IDOSDataObject>& object : m_objects)
     {
@@ -111,6 +119,8 @@ bool IDOSImportCaseCommand::apply(QString& error)
         importedIds.insert(object->objectId());
     }
 
+    QElapsedTimer commitTimer;
+    commitTimer.start();
     targetProject->beginUpdate();
 
     QStringList objectIds;
@@ -141,6 +151,10 @@ bool IDOSImportCaseCommand::apply(QString& error)
     commandResult.insert(QStringLiteral("objectIds"), ids);
     setResult(commandResult);
     targetProject->endUpdate();
+    if (qEnvironmentVariableIsSet("IDOS_IMPORT_PROFILE"))
+    {
+        qInfo("IMPORT_PROFILE phase=project-commit elapsed_ms=%.3f", commitTimer.nsecsElapsed() / 1000000.0);
+    }
     return true;
 }
 
@@ -196,8 +210,8 @@ bool IDOSImportCaseCommand::loadObjects(QString& error)
         return false;
     }
 
-    QList<IDOSDataObject*> objects = provider->read(m_filePath);
-    if (objects.isEmpty() || !provider->lastError().isEmpty())
+    QList<IDOSDataObject*> objects = provider->readInBackground(m_filePath);
+    if (project() == nullptr || objects.isEmpty() || !provider->lastError().isEmpty())
     {
         error = provider->lastError().isEmpty()
             ? QObject::tr("The import file did not contain supported objects.")
@@ -206,23 +220,36 @@ bool IDOSImportCaseCommand::loadObjects(QString& error)
         return false;
     }
 
-    for (IDOSDataObject* object : objects)
+    if (!adoptParsedObjects(objects))
     {
-        if (object == nullptr)
-        {
-            continue;
-        }
-
-        prepareObject(object);
-        m_objects.append(QPointer<IDOSDataObject>(object));
-    }
-
-    if (m_objects.isEmpty())
-    {
+        qDeleteAll(objects);
         error = QObject::tr("The import file did not contain supported objects.");
         return false;
     }
+    return true;
+}
 
+bool IDOSImportCaseCommand::adoptParsedObjects(QList<IDOSDataObject*>& objects)
+{
+    if (m_loaded || project() == nullptr || objects.isEmpty())
+    {
+        return false;
+    }
+    QSet<IDOSDataObject*> unique;
+    for (IDOSDataObject* object : objects)
+    {
+        if (object == nullptr || object->parent() != nullptr || object->thread() != project()->thread() || unique.contains(object))
+        {
+            return false;
+        }
+        unique.insert(object);
+    }
+    for (IDOSDataObject* object : objects)
+    {
+        prepareObject(object);
+        m_objects.append(QPointer<IDOSDataObject>(object));
+    }
+    objects.clear();
     m_loaded = true;
     return true;
 }

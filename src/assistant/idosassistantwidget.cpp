@@ -128,7 +128,7 @@ void IDOSAssistantWidget::startAssistant()
     }
 
     const QString assistantRoot = QCoreApplication::applicationDirPath()
-        + QStringLiteral("/assistant");
+        + QStringLiteral("/resources/assistant");
     QString error;
     m_startupPending = true;
     m_statusLabel->setText(tr("Starting"));

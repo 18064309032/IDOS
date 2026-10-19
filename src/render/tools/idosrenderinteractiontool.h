@@ -83,7 +83,7 @@ private:
     void clearMeasurement();
     void updateMeasurement(const double worldPosition[3]);
     void performProbe(const QPoint& position);
-    void clearProbe();
+    void clearProbe(bool redraw = true);
     QString probeAttributes(vtkDataSetAttributes* attributes, vtkIdType tupleId) const;
 
     Mode m_mode;

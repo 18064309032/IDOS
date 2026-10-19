@@ -1,10 +1,17 @@
+#include <cstdio>
+
+#include <QApplication>
+#include <QFile>
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTemporaryDir>
 #include <QTextBrowser>
 #include <QUrl>
 #include <QtTest>
@@ -30,6 +37,7 @@
 #include "idosassistantservice.h"
 #include "idosassistantwidget.h"
 #include "idosdataobject.h"
+#include "idoslocalmodelprocess.h"
 #include "idoslocalmodelservice.h"
 #include "idosproject.h"
 
@@ -557,4 +565,192 @@ void AssistantWidgetTest::onHistoryAndProjectSwitch()
     QVERIFY(!replacement.commandManager()->canUndo());
 }
 
-QTEST_MAIN(AssistantWidgetTest)
+int AssistantWidgetTest::runProcessHelper()
+{
+    const QString mode = qEnvironmentVariable("IDOS_PROCESS_TEST_MODE");
+    const QString root = qEnvironmentVariable("IDOS_PROCESS_TEST_ROOT");
+    if (mode == QStringLiteral("owner"))
+    {
+        qputenv("IDOS_PROCESS_TEST_MODE", "runtime");
+        IDOSLocalModelProcess model;
+        QString error;
+        if (!model.start(root, error))
+        {
+            qWarning() << error;
+            return 2;
+        }
+        QFile ready(root + QStringLiteral("/owner.ready"));
+        if (!ready.open(QIODevice::WriteOnly))
+        {
+            return 3;
+        }
+        ready.close();
+        std::getchar();
+#ifdef Q_OS_WIN
+        if (qEnvironmentVariable("IDOS_PROCESS_TEST_EXIT") == QStringLiteral("crash"))
+        {
+            SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+            RaiseFailFastException(nullptr, nullptr, 0);
+        }
+#endif
+        return 0;
+    }
+    if (mode == QStringLiteral("runtime"))
+    {
+        QProcess child;
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("IDOS_PROCESS_TEST_MODE"), QStringLiteral("leaf"));
+        child.setProcessEnvironment(environment);
+        child.start(QCoreApplication::applicationFilePath(), QStringList());
+        if (!child.waitForStarted())
+        {
+            return 4;
+        }
+        QFile marker(root + QStringLiteral("/processes.txt"));
+        if (!marker.open(QIODevice::WriteOnly))
+        {
+            return 5;
+        }
+        marker.write(QByteArray::number(QCoreApplication::applicationPid()) + '\n' +
+                     QByteArray::number(child.processId()));
+        marker.close();
+        return QCoreApplication::exec();
+    }
+    if (mode == QStringLiteral("leaf"))
+    {
+        return QCoreApplication::exec();
+    }
+    return 6;
+}
+
+void AssistantWidgetTest::onProcessRestartAfterFailure()
+{
+#ifdef Q_OS_WIN
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QFile invalidRuntime(directory.path() + QStringLiteral("/invalid.exe"));
+    QVERIFY(invalidRuntime.open(QIODevice::WriteOnly));
+    invalidRuntime.write("Invalid executable for process startup recovery test.");
+    invalidRuntime.close();
+    QJsonObject settings;
+    settings.insert(QStringLiteral("runtime"), QStringLiteral("invalid.exe"));
+    settings.insert(QStringLiteral("model"), QStringLiteral("local-ai.json"));
+    QFile configuration(directory.path() + QStringLiteral("/local-ai.json"));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(QJsonDocument(settings).toJson());
+    configuration.close();
+
+    IDOSLocalModelProcess model;
+    QString error;
+    QVERIFY(!model.start(directory.path(), error));
+    QVERIFY(!error.isEmpty());
+    QVERIFY(!model.isRunning());
+    model.stop();
+
+    settings.insert(QStringLiteral("runtime"), QCoreApplication::applicationFilePath());
+    QVERIFY(configuration.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    configuration.write(QJsonDocument(settings).toJson());
+    configuration.close();
+    QProcess* process = model.findChild<QProcess*>();
+    QVERIFY(process != nullptr);
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert(QStringLiteral("IDOS_PROCESS_TEST_MODE"), QStringLiteral("leaf"));
+    process->setProcessEnvironment(environment);
+    for (int iteration = 0; iteration < 2; ++iteration)
+    {
+        QVERIFY2(model.start(directory.path(), error), qPrintable(error));
+        QVERIFY(model.isRunning());
+        HANDLE runtime = OpenProcess(SYNCHRONIZE, FALSE, DWORD(process->processId()));
+        QVERIFY(runtime != nullptr);
+        model.stop();
+        const DWORD result = WaitForSingleObject(runtime, 5000);
+        CloseHandle(runtime);
+        QCOMPARE(result, DWORD(WAIT_OBJECT_0));
+        QVERIFY(!model.isRunning());
+    }
+#else
+    QSKIP("Windows process job test.");
+#endif
+}
+
+void AssistantWidgetTest::onProcessLifetime_data()
+{
+    QTest::addColumn<QString>("exitMode");
+    QTest::newRow("normal") << QStringLiteral("normal");
+    QTest::newRow("forced") << QStringLiteral("forced");
+    QTest::newRow("crash") << QStringLiteral("crash");
+}
+
+void AssistantWidgetTest::onProcessLifetime()
+{
+#ifdef Q_OS_WIN
+    QFETCH(QString, exitMode);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QFile configuration(directory.path() + QStringLiteral("/local-ai.json"));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    QJsonObject settings;
+    settings.insert(QStringLiteral("runtime"), QCoreApplication::applicationFilePath());
+    settings.insert(QStringLiteral("model"), QStringLiteral("local-ai.json"));
+    configuration.write(QJsonDocument(settings).toJson());
+    configuration.close();
+
+    QProcess owner;
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert(QStringLiteral("IDOS_PROCESS_TEST_MODE"), QStringLiteral("owner"));
+    environment.insert(QStringLiteral("IDOS_PROCESS_TEST_ROOT"), directory.path());
+    environment.insert(QStringLiteral("IDOS_PROCESS_TEST_EXIT"), exitMode);
+    owner.setProcessEnvironment(environment);
+    owner.start(QCoreApplication::applicationFilePath(), QStringList());
+    QVERIFY(owner.waitForStarted());
+    const QString markerPath = directory.path() + QStringLiteral("/processes.txt");
+    QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(markerPath), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(directory.path() + QStringLiteral("/owner.ready")), 5000);
+    QFile marker(markerPath);
+    QVERIFY(marker.open(QIODevice::ReadOnly));
+    const QList<QByteArray> ids = marker.readAll().split('\n');
+    QCOMPARE(ids.size(), 2);
+    HANDLE runtime = OpenProcess(SYNCHRONIZE, FALSE, ids.at(0).toULong());
+    HANDLE leaf = OpenProcess(SYNCHRONIZE, FALSE, ids.at(1).toULong());
+    QVERIFY(runtime != nullptr);
+    QVERIFY(leaf != nullptr);
+    if (exitMode == QStringLiteral("forced"))
+    {
+        owner.kill();
+    }
+    else
+    {
+        owner.write("exit\n");
+        owner.waitForBytesWritten();
+    }
+    QVERIFY(owner.waitForFinished(15000));
+    const DWORD runtimeWait = WaitForSingleObject(runtime, 5000);
+    const DWORD leafWait = WaitForSingleObject(leaf, 5000);
+    CloseHandle(runtime);
+    CloseHandle(leaf);
+    QCOMPARE(runtimeWait, DWORD(WAIT_OBJECT_0));
+    QCOMPARE(leafWait, DWORD(WAIT_OBJECT_0));
+    if (exitMode == QStringLiteral("normal"))
+    {
+        QCOMPARE(owner.exitCode(), 0);
+        QCOMPARE(owner.exitStatus(), QProcess::NormalExit);
+    }
+    else
+    {
+        QCOMPARE(owner.exitStatus(), QProcess::CrashExit);
+    }
+#else
+    QSKIP("Windows process job test.");
+#endif
+}
+
+int main(int argc, char* argv[])
+{
+    QApplication application(argc, argv);
+    if (!qEnvironmentVariableIsEmpty("IDOS_PROCESS_TEST_MODE"))
+    {
+        return AssistantWidgetTest::runProcessHelper();
+    }
+    AssistantWidgetTest test;
+    return QTest::qExec(&test, argc, argv);
+}

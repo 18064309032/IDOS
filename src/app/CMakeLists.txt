@@ -1,5 +1,9 @@
 # idos_app: application composition
 add_library(idos_app SHARED
+    command/idosconvertcoordinatescommand.cpp
+    command/idosconvertcoordinatescommand.h
+    command/idosupdateprojectmetadatacommand.cpp
+    command/idosupdateprojectmetadatacommand.h
     render/idosrenderprovidermetadata.cpp
     render/idosrenderprovidermetadata.h
     render/idosrenderproviderregistry.cpp

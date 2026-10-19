@@ -1,9 +1,12 @@
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 #include <QColor>
+#include <QHash>
 #include <QList>
 #include <QObject>
+#include <QPair>
 #include <QVector>
 #include <QVector3D>
 #include <QtGlobal>
@@ -11,6 +14,7 @@
 #ifdef IDOS_ENABLE_RENDER
 #include <vtkActor.h>
 #include <vtkCellData.h>
+#include <vtkDataArray.h>
 #include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
 #include <vtkHexahedron.h>
@@ -54,6 +58,13 @@ IDOSGridRenderProvider::IDOSGridRenderProvider(IDOSGridObject* dataObject)
     , m_filterProperties()
     , m_filterError()
     , m_filteredCellCount(0)
+    , m_geometry()
+    , m_geometryCoord()
+    , m_geometryCorners()
+    , m_geometryActive()
+    , m_geometrySelection()
+    , m_geometryDimensions()
+    , m_geometryTime(0)
 {
     m_coloringSettings.insert(QStringLiteral("ramp"), QStringLiteral("Default"));
     m_coloringSettings.insert(QStringLiteral("reversed"), false);
@@ -77,12 +88,19 @@ IDOSGridObject* IDOSGridRenderProvider::grid() const
 
 void IDOSGridRenderProvider::update()
 {
+    const vtkSmartPointer<vtkActor> previousActor = m_actors.isEmpty() ? nullptr : m_actors.first();
     m_actors.clear();
     m_legends.clear();
     m_filterError.clear();
     m_filteredCellCount = 0;
     if (m_dataObject.isNull())
     {
+        m_geometry = nullptr;
+        m_geometryCoord.clear();
+        m_geometryCorners.clear();
+        m_geometryActive.clear();
+        m_geometrySelection.clear();
+        m_geometryDimensions.clear();
         return;
     }
     const QVariantMap axes = m_filterCriteria.value(QStringLiteral("axes")).toMap();
@@ -116,58 +134,128 @@ void IDOSGridRenderProvider::update()
         filterProperties.insert(id, property);
     }
 #ifdef IDOS_ENABLE_RENDER
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-    grid->SetPoints(points);
-    vtkSmartPointer<vtkIntArray> originalIds = vtkSmartPointer<vtkIntArray>::New();
-    originalIds->SetName("GlobalIndex");
-    vtkSmartPointer<vtkIntArray> indicesI = vtkSmartPointer<vtkIntArray>::New();
-    indicesI->SetName("I");
-    vtkSmartPointer<vtkIntArray> indicesJ = vtkSmartPointer<vtkIntArray>::New();
-    indicesJ->SetName("J");
-    vtkSmartPointer<vtkIntArray> indicesK = vtkSmartPointer<vtkIntArray>::New();
-    indicesK->SetName("K");
-    grid->GetCellData()->AddArray(originalIds);
-    grid->GetCellData()->AddArray(indicesI);
-    grid->GetCellData()->AddArray(indicesJ);
-    grid->GetCellData()->AddArray(indicesK);
-    QVector<double> values;
     const IDOSGridObject* sourceGrid = m_dataObject.data();
     const QVector<quint8> selection = IDOSGridFilterObject::selection(m_filterCriteria, sourceGrid->nx(), sourceGrid->ny(), sourceGrid->nz(), filterProperties);
-    const bool hasScalars = !m_property.isNull() && !m_property->values().isEmpty();
-    for (int k = 0; k < sourceGrid->nz(); ++k)
+    const QVector<double> propertyValues = m_property != nullptr ? m_property->values() : QVector<double>();
+    const bool hasScalars = !propertyValues.isEmpty();
+    const bool sameSelection = m_geometrySelection.size() == selection.size() &&
+        (selection.isEmpty() || std::memcmp(m_geometrySelection.constData(), selection.constData(),
+                                           static_cast<std::size_t>(selection.size())) == 0);
+    const bool reuseGeometry = m_geometry != nullptr &&
+        m_geometryDimensions == dimensions && sameSelection &&
+        m_geometryCoord.constData() == sourceGrid->coord().constData() &&
+        m_geometryCorners.constData() == sourceGrid->zcorn().constData() &&
+        m_geometryActive.constData() == sourceGrid->actnum().constData() &&
+        m_geometryTime == m_geometry->GetMeshMTime();
+    vtkSmartPointer<vtkUnstructuredGrid> grid = m_geometry;
+    if (!reuseGeometry)
     {
-        for (int j = 0; j < sourceGrid->ny(); ++j)
+        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+        grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+        grid->SetPoints(points);
+        int selectedCells = 0;
+        for (int index = 0; index < selection.size(); ++index)
         {
-            for (int i = 0; i < sourceGrid->nx(); ++i)
+            if (selection.at(index) != 0 && (sourceGrid->actnum().isEmpty() || sourceGrid->actnum().at(index) != 0))
             {
-                const int globalIndex = IDOSGridPropertyObject::cellIndex(i, j, k, sourceGrid->nx(), sourceGrid->ny());
-                if (!sourceGrid->isActive(i, j, k) || selection.at(globalIndex) == 0)
+                ++selectedCells;
+            }
+        }
+        const qint64 pillarCountI = static_cast<qint64>(sourceGrid->nx()) + 1;
+        const qint64 pillarCountJ = static_cast<qint64>(sourceGrid->ny()) + 1;
+        const qint64 expectedPoints = qMin(static_cast<qint64>(selectedCells) * 8,
+            pillarCountI * pillarCountJ * (static_cast<qint64>(sourceGrid->nz()) + 1));
+        QHash<QPair<qint64, double>, vtkIdType> cornerIds;
+        cornerIds.reserve(static_cast<int>(qMin(expectedPoints, static_cast<qint64>(std::numeric_limits<int>::max()))));
+        points->Allocate(static_cast<vtkIdType>(expectedPoints));
+        grid->AllocateEstimate(selectedCells, 8);
+        const int offsetI[8] = {0, 1, 1, 0, 0, 1, 1, 0};
+        const int offsetJ[8] = {0, 0, 1, 1, 0, 0, 1, 1};
+        vtkSmartPointer<vtkIntArray> originalIds = vtkSmartPointer<vtkIntArray>::New();
+        originalIds->SetName("GlobalIndex");
+        originalIds->Allocate(selectedCells);
+        vtkSmartPointer<vtkIntArray> indicesI = vtkSmartPointer<vtkIntArray>::New();
+        indicesI->SetName("I");
+        indicesI->Allocate(selectedCells);
+        vtkSmartPointer<vtkIntArray> indicesJ = vtkSmartPointer<vtkIntArray>::New();
+        indicesJ->SetName("J");
+        indicesJ->Allocate(selectedCells);
+        vtkSmartPointer<vtkIntArray> indicesK = vtkSmartPointer<vtkIntArray>::New();
+        indicesK->SetName("K");
+        indicesK->Allocate(selectedCells);
+        grid->GetCellData()->AddArray(originalIds);
+        grid->GetCellData()->AddArray(indicesI);
+        grid->GetCellData()->AddArray(indicesJ);
+        grid->GetCellData()->AddArray(indicesK);
+        for (int k = 0; k < sourceGrid->nz(); ++k)
+        {
+            for (int j = 0; j < sourceGrid->ny(); ++j)
+            {
+                for (int i = 0; i < sourceGrid->nx(); ++i)
                 {
-                    continue;
-                }
-                vtkIdType pointIds[8];
-                for (int corner = 0; corner < 8; ++corner)
-                {
-                    const QVector3D point = sourceGrid->cornerPosition(i, j, k, corner);
-                    pointIds[corner] = points->InsertNextPoint(point.x(), point.y(), point.z());
-                }
-                grid->InsertNextCell(VTK_HEXAHEDRON, 8, pointIds);
-                originalIds->InsertNextValue(globalIndex);
-                indicesI->InsertNextValue(i + 1);
-                indicesJ->InsertNextValue(j + 1);
-                indicesK->InsertNextValue(k + 1);
-                ++m_filteredCellCount;
-                if (hasScalars)
-                {
-                    values.append(globalIndex < m_property->values().size() ? m_property->values().at(globalIndex)
-                                                                            : std::numeric_limits<double>::quiet_NaN());
+                    const int globalIndex = IDOSGridPropertyObject::cellIndex(i, j, k, sourceGrid->nx(), sourceGrid->ny());
+                    if (!sourceGrid->isActive(i, j, k) || selection.at(globalIndex) == 0)
+                    {
+                        continue;
+                    }
+                    vtkIdType pointIds[8];
+                    for (int corner = 0; corner < 8; ++corner)
+                    {
+                        const qint64 logicalCorner = i + offsetI[corner] +
+                            (j + offsetJ[corner]) * pillarCountI +
+                            (k + (corner >= 4 ? 1 : 0)) * pillarCountI * pillarCountJ;
+                        // Same logical corner implies the same pillar; exact source depth preserves fault gaps.
+                        const QPair<qint64, double> key(logicalCorner, sourceGrid->zcorn().at(globalIndex * 8 + corner));
+                        const QHash<QPair<qint64, double>, vtkIdType>::const_iterator found = cornerIds.constFind(key);
+                        if (found == cornerIds.constEnd())
+                        {
+                            const QVector3D point = sourceGrid->cornerPosition(i, j, k, corner);
+                            pointIds[corner] = points->InsertNextPoint(point.x(), point.y(), point.z());
+                            cornerIds.insert(key, pointIds[corner]);
+                        }
+                        else
+                        {
+                            pointIds[corner] = found.value();
+                        }
+                    }
+                    grid->InsertNextCell(VTK_HEXAHEDRON, 8, pointIds);
+                    originalIds->InsertNextValue(globalIndex);
+                    indicesI->InsertNextValue(i + 1);
+                    indicesJ->InsertNextValue(j + 1);
+                    indicesK->InsertNextValue(k + 1);
+                    ++m_filteredCellCount;
                 }
             }
         }
+        m_geometry = grid;
+        m_geometryCoord = sourceGrid->coord();
+        m_geometryCorners = sourceGrid->zcorn();
+        m_geometryActive = sourceGrid->actnum();
+        m_geometrySelection = selection;
+        m_geometryDimensions = dimensions;
+        m_geometryTime = grid->GetMeshMTime();
     }
+    m_filteredCellCount = static_cast<int>(grid->GetNumberOfCells());
+    QVector<double> values;
+    if (hasScalars)
+    {
+        values.reserve(m_filteredCellCount);
+        vtkDataArray* globalIds = grid->GetCellData()->GetArray("GlobalIndex");
+        for (int cell = 0; cell < m_filteredCellCount; ++cell)
+        {
+            const int globalIndex = static_cast<int>(globalIds->GetTuple1(cell));
+            values.append(globalIndex < propertyValues.size() ? propertyValues.at(globalIndex)
+                                                             : std::numeric_limits<double>::quiet_NaN());
+        }
+    }
+    grid->GetCellData()->SetScalars(nullptr);
     const bool hasCellScalars = hasScalars && !values.isEmpty();
-    vtkSmartPointer<vtkDataSetMapper> mapper = vtkSmartPointer<vtkDataSetMapper>::New();
+    vtkSmartPointer<vtkDataSetMapper> mapper = reuseGeometry && previousActor != nullptr
+        ? vtkDataSetMapper::SafeDownCast(previousActor->GetMapper()) : nullptr;
+    if (mapper == nullptr)
+    {
+        mapper = vtkSmartPointer<vtkDataSetMapper>::New();
+    }
     mapper->SetInputData(grid);
     if (!hasCellScalars)
     {
@@ -235,7 +323,8 @@ void IDOSGridRenderProvider::update()
         mapper->ScalarVisibilityOn();
     }
 
-    vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+    vtkSmartPointer<vtkActor> actor = reuseGeometry && previousActor != nullptr
+        ? previousActor : vtkSmartPointer<vtkActor>::New();
     actor->SetMapper(mapper);
     actor->GetProperty()->SetOpacity(m_opacity);
     actor->GetProperty()->SetInterpolationToFlat();
@@ -913,7 +1002,7 @@ void IDOSGridRenderProvider::setDataChecked(IDOSDataObject* data, Qt::CheckState
     if (grid != nullptr)
     {
         object->setVisible(checked);
-        if (!checked)
+        if (!checked && provider->property() != nullptr)
         {
             provider->setProperty(nullptr);
         }

@@ -18,6 +18,13 @@ add_subdirectory(plugins)
 # 可执行目标
 add_executable(idos WIN32 main.cpp)
 add_custom_command(TARGET idos POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        "-DRUNTIME_DIRECTORY=$<TARGET_FILE_DIR:idos>"
+        -P "${PROJECT_SOURCE_DIR}/cmake/MigrateRuntimeResources.cmake"
+    COMMENT "Moving runtime resources into resources..."
+    VERBATIM
+)
+add_custom_command(TARGET idos POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E rm -f
         "$<TARGET_FILE_DIR:idos>/plugins/idossimulationplugin.dll"
         "$<TARGET_FILE_DIR:idos>/i18n/idossimulationplugin_zh_CN.qm"
@@ -27,7 +34,7 @@ add_custom_command(TARGET idos POST_BUILD
 add_custom_command(TARGET idos POST_BUILD
     COMMAND ${CMAKE_COMMAND}
         "-DSOURCE_FILE=${PROJECT_SOURCE_DIR}/resources/opm/extra-keywords.json"
-        "-DDESTINATION_FILE=$<TARGET_FILE_DIR:idos>/opm/extra-keywords.json"
+        "-DDESTINATION_FILE=$<TARGET_FILE_DIR:idos>/resources/opm/extra-keywords.json"
         -P "${PROJECT_SOURCE_DIR}/cmake/CopyOpmKeywords.cmake"
     COMMENT "Deploying OPM custom keyword definitions..."
     VERBATIM
@@ -46,29 +53,29 @@ if(WIN32)
     foreach(_idos_assistant_runtime_file IN LISTS _idos_assistant_runtime_files)
         add_custom_command(TARGET idos POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                "$<TARGET_FILE_DIR:idos>/assistant/runtime"
+                "$<TARGET_FILE_DIR:idos>/resources/assistant/runtime"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_idos_assistant_runtime_file}"
-                "$<TARGET_FILE_DIR:idos>/assistant/runtime"
+                "$<TARGET_FILE_DIR:idos>/resources/assistant/runtime"
             COMMENT "Deploying local model runtime..."
         )
     endforeach()
 
     add_custom_command(TARGET idos POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:idos>/assistant/models"
+            "$<TARGET_FILE_DIR:idos>/resources/assistant/models"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PROJECT_SOURCE_DIR}/resources/assistant/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
-            "$<TARGET_FILE_DIR:idos>/assistant/models"
+            "$<TARGET_FILE_DIR:idos>/resources/assistant/models"
         COMMENT "Deploying local model..."
     )
 
     add_custom_command(TARGET idos POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:idos>/assistant"
+            "$<TARGET_FILE_DIR:idos>/resources/assistant"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PROJECT_SOURCE_DIR}/resources/assistant/local-ai.json"
-            "$<TARGET_FILE_DIR:idos>/assistant"
+            "$<TARGET_FILE_DIR:idos>/resources/assistant"
         COMMENT "Deploying local model configuration..."
     )
 endif()
