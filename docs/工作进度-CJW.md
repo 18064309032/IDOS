@@ -197,6 +197,12 @@
 - OPM 源码及关键字定义生成流程仍待继续检查；尚未改动 OPM 源码、关键字定义或重编 OPM。后续应确认 `POISSONSRATIO` 的数组类型/段信息，并让网格解析器识别后保留属性值。
 - 同日完成 IDOS 网格导入中的 PRESSURE 属性提取和大型 QVector 移动交接优化；Debug `idos` 构建通过。尚未使用用户的 Petrel GRDECL 在 GUI 中回归导入，不能据此认定关键字问题或内存问题已经验收解决。
 
+## GRDECL 未知单元属性自动导入（2026-10-20）
+
+- GRDECL 网格解析启用 OPM `ParseContext::setPreserveUnknownKeywords(true)`。OPM 源码已有未知关键字 RAW_STRING 保留逻辑，当前 OPM 二进制无需修改或重编。
+- 网格属性 Provider 遍历 OPM Deck 中所有关键字，保留原有已知属性路径，并对未知 RAW_STRING、整数和双精度数组解析数值与 ECLIPSE `n*value`/`n*` 重复及缺省写法；只把数组长度匹配全网格或活动单元数的内容创建为静态网格属性。跳过 ACTNUM、ZCORN、COORD 等几何结构关键字。
+- Debug `idos` 完整构建通过。临时 Provider 验证程序读取 `D:/QtCoder/IDOS/data/eclipse.GRDECL` 成功，返回网格和 `POISSONSRATIO` 属性，属性长度为 6,962,436 个单元；验证时将运行目录 JSON 置为空，证明该属性可在没有自定义 JSON 定义时通过 OPM 未知关键字保留和长度识别导入。未通过 GUI 验收，也未遍历核对全部 6,962,436 个数值；峰值内存约 2.9 GB，仍需注意大型模型资源占用。
+
 ## 修复 OPM fmt 运行库部署（2026-10-19）
 
 - Release 启动时报缺少 `fmt.dll`。此前部署命令在 `idos_providers` 构建阶段执行，且 `idos` 的复制步骤排在 Qt 部署之前，最终产物目录没有该文件。移除 Provider 层重复复制，并将配置对应的 `fmt.dll`/`fmtd.dll` 复制放在 `idos` 所有部署步骤之后。

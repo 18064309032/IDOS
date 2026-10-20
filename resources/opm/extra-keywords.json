@@ -1,5 +1,24 @@
 {
-  "keywords": [],
+  "keywords": [
+    {
+      "name": "POISSONSRATIO",
+      "sections": [
+        "PROPS"
+      ],
+      "size": "UNKNOWN",
+      "description": "Cell-wise Poisson's ratio property exported from Petrel.",
+      "records": [
+        [
+          {
+            "name": "VALUE",
+            "value_type": "DOUBLE",
+            "size_type": "ALL",
+            "description": "Poisson's ratio values for grid cells."
+          }
+        ]
+      ]
+    }
+  ],
   "example": {
     "name": "MYKEY",
     "sections": [

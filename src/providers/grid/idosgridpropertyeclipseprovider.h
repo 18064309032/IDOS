@@ -32,7 +32,8 @@ class PROVIDERS_EXPORT IDOSGridPropertyEclipseProvider : public IDOSDataProvider
 
   private:
     QStringList propertyKeywords() const;
-    QVector<double> values(const Opm::DeckKeyword& keyword, bool convertToSi = true) const;
+    QVector<double> values(const Opm::DeckKeyword& keyword, bool convertToSi = true,
+                           int maximumValues = 0) const;
     void appendProperty(QList<IDOSDataObject*>* result, const QString& keyword,
                         const QVector<double>& values) const;
     template<typename Value>

@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFileInfo>
@@ -24,6 +25,7 @@
 #include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Utility/Typetools.hpp>
 #include <opm/io/eclipse/EInit.hpp>
 
 #include "case/idossimulationsummaryprovider.h"
@@ -48,14 +50,22 @@ QList<IDOSDataObject*> IDOSGridEclipseProvider::read(const QString& filePath)
     {
         std::unique_ptr<Opm::EclipseGrid> eclipseGrid;
         std::unique_ptr<Opm::Deck> grdeclDeck;
+        std::unique_ptr<Opm::Parser> grdeclParser;
         if (fi.suffix().compare(QStringLiteral("GRDECL"), Qt::CaseInsensitive) == 0)
         {
-            Opm::Parser parser;
+            grdeclParser = std::make_unique<Opm::Parser>();
+            const QString keywordFilePath = QDir(QCoreApplication::applicationDirPath())
+                                                .filePath(QStringLiteral("resources/opm/extra-keywords.json"));
+            if (QFileInfo::exists(keywordFilePath))
+            {
+                grdeclParser->addParserKeywords(std::filesystem::path(keywordFilePath.toStdWString()));
+            }
             Opm::ParseContext context;
             context.update(Opm::ParseContext::PARSE_MISSING_INCLUDE, Opm::InputErrorAction::THROW_EXCEPTION);
             context.update(Opm::ParseContext::PARSE_UNKNOWN_KEYWORD, Opm::InputErrorAction::IGNORE);
+            context.setPreserveUnknownKeywords(true);
             Opm::ErrorGuard errors;
-            grdeclDeck = std::make_unique<Opm::Deck>(parser.parseFile(dataFile, context, errors));
+            grdeclDeck = std::make_unique<Opm::Deck>(grdeclParser->parseFile(dataFile, context, errors));
             if (errors)
             {
                 setLastError(QObject::tr("OPM could not parse the GRDECL grid file: %1")

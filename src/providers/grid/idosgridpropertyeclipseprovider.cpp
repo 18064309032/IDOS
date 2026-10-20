@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -13,6 +14,7 @@
 #include <QHash>
 #include <QObject>
 #include <QSet>
+#include <QString>
 #include <QStringList>
 #include <QVector>
 
@@ -24,6 +26,7 @@
 #include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Utility/Typetools.hpp>
 #include <opm/io/eclipse/EInit.hpp>
 #include <opm/io/eclipse/ERst.hpp>
 #include <opm/io/eclipse/EclIOdata.hpp>
@@ -67,7 +70,20 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readGridProperties(
     {
         activeCellCount = totalCellCount;
     }
-    for (const QString& propertyKeyword : propertyKeywords())
+    QStringList supportedPropertyKeywords = propertyKeywords();
+    const QStringList structuralKeywords = {
+        QStringLiteral("ACTNUM"), QStringLiteral("COORD"), QStringLiteral("DIMENS"),
+        QStringLiteral("GRIDUNIT"), QStringLiteral("MAPAXES"), QStringLiteral("MAPUNITS"),
+        QStringLiteral("NOECHO"), QStringLiteral("SPECGRID"), QStringLiteral("ZCORN")};
+    for (Opm::Deck::const_iterator iterator = deck.begin(); iterator != deck.end(); ++iterator)
+    {
+        const QString keyword = QString::fromStdString(iterator->name());
+        if (!structuralKeywords.contains(keyword) && !supportedPropertyKeywords.contains(keyword))
+        {
+            supportedPropertyKeywords.append(keyword);
+        }
+    }
+    for (const QString& propertyKeyword : supportedPropertyKeywords)
     {
         const std::vector<const Opm::DeckKeyword*> matches =
             deck.getKeywordList(propertyKeyword.toStdString());
@@ -81,7 +97,7 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readGridProperties(
         {
             if (match != nullptr)
             {
-                propertyValues = values(*match, false);
+                propertyValues = values(*match, false, totalCellCount);
             }
         }
         if (propertyValues.size() == activeCellCount && activeCellCount != totalCellCount)
@@ -121,7 +137,7 @@ QList<IDOSDataObject*> IDOSGridPropertyEclipseProvider::readGridProperties(
 }
 
 QVector<double> IDOSGridPropertyEclipseProvider::values(const Opm::DeckKeyword& keyword,
-                                                       bool convertToSi) const
+                                                       bool convertToSi, int maximumValues) const
 {
     QVector<double> result;
     for (std::size_t recordIndex = 0; recordIndex < keyword.size(); ++recordIndex)
@@ -150,6 +166,52 @@ QVector<double> IDOSGridPropertyEclipseProvider::values(const Opm::DeckKeyword& 
                     {
                         result.append(item.getSIDouble(valueIndex));
                     }
+                }
+                else if (item.getType() == Opm::get_type<Opm::RawString>())
+                {
+                    const QString token = QString::fromStdString(item.get<Opm::RawString>(valueIndex));
+                    const int separator = token.indexOf(QLatin1Char('*'));
+                    int repeatCount = 1;
+                    QString valueToken = token;
+                    if (separator >= 0)
+                    {
+                        const QString countToken = token.left(separator);
+                        valueToken = token.mid(separator + 1);
+                        if (!countToken.isEmpty())
+                        {
+                            bool countValid = false;
+                            const qlonglong parsedCount = countToken.toLongLong(&countValid);
+                            if (!countValid || parsedCount <= 0 || parsedCount > std::numeric_limits<int>::max())
+                            {
+                                return QVector<double>();
+                            }
+                            repeatCount = static_cast<int>(parsedCount);
+                        }
+                    }
+                    double value = 0.0;
+                    if (!valueToken.isEmpty())
+                    {
+                        valueToken.replace(QLatin1Char('D'), QLatin1Char('E'));
+                        valueToken.replace(QLatin1Char('d'), QLatin1Char('e'));
+                        bool valueValid = false;
+                        value = valueToken.toDouble(&valueValid);
+                        if (!valueValid)
+                        {
+                            return QVector<double>();
+                        }
+                    }
+                    if (maximumValues > 0 && result.size() > maximumValues - repeatCount)
+                    {
+                        return QVector<double>();
+                    }
+                    for (int repeatIndex = 0; repeatIndex < repeatCount; ++repeatIndex)
+                    {
+                        result.append(value);
+                    }
+                }
+                else
+                {
+                    return QVector<double>();
                 }
             }
         }
